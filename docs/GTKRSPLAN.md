@@ -92,10 +92,14 @@ Migrate simple panels first to establish patterns:
 
 ### Phase 5: Main Window Integration
 **Goal**: Assemble the application.
+**Status**: Completed
 
 1.  **Layout**: Use `adw::Leaflet` or `gtk::Paned` for the sidebar layout.
+    *   *Completed*: Used `gtk::StackSidebar` and `gtk::Stack` for a standard sidebar navigation layout.
 2.  **Navigation**: Implement the sidebar navigation to switch between the migrated views (Editor, Visualizer, Designer).
+    *   *Completed*: Integrated `GcodeEditor`, `GcodeVisualizer`, and `DesignerCanvas` into the stack.
 3.  **Menu Bar**: Implement `gio::Menu` for application menus.
+    *   *Completed*: Added a HeaderBar with a MenuButton containing actions for Preferences, Device Manager, and CAM Tools.
 
 ### Phase 6: Styling & Polish
 1.  **CSS**: Apply custom CSS for specific styling needs (e.g., visualizer overlays).
