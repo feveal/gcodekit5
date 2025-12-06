@@ -299,13 +299,32 @@ pub fn main() {
         });
         app.add_action(&console_action);
 
+        // About Dialog Action
+        let app_clone = app.clone();
+        let about_action = gio::SimpleAction::new("about", None);
+        about_action.connect_activate(move |_, _| {
+            let about_dialog = gtk4::AboutDialog::builder()
+                .program_name("GCodeKit5")
+                .version(env!("CARGO_PKG_VERSION"))
+                .comments("GCode Toolkit for CNC/Laser Machines")
+                .website("https://github.com/thawkins/gcodekit5")
+                .license_type(gtk4::License::MitX11)
+                .authors(vec!["GCodeKit Contributors".to_string()])
+                .logo_icon_name("application-x-executable")
+                .build();
+            
+            about_dialog.set_transient_for(app_clone.active_window().as_ref());
+            about_dialog.present();
+        });
+        app.add_action(&about_action);
+
         // Placeholder Actions for Menu Items
         let action_names = vec![
             "file_new", "file_open", "file_save", "file_save_as", "file_export", "quit",
             "edit_undo", "edit_redo", "edit_cut", "edit_copy", "edit_paste",
             "view_toolbars", "view_status_bar", "view_visualizer",
             "machine_connect", "machine_disconnect", "machine_home", "machine_reset",
-            "help_docs", "about"
+            "help_docs"
         ];
 
         for name in action_names {
