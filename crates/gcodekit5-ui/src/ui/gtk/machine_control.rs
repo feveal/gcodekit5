@@ -472,28 +472,45 @@ impl MachineControlView {
                     // Disable button to prevent double-click
                     connect_btn.set_sensitive(false);
                     
-                    // Create a thread-safe communicator wrapper
-                    let communicator_arc = Arc::new(Mutex::new(SerialCommunicator::new()));
+                    // Clone the communicator for thread-safe access
+                    let communicator_clone = view_clone.communicator.clone();
                     
                     // Create a channel to send result back to main thread
                     let (sender, receiver) = std::sync::mpsc::channel();
                     
                     // Spawn a thread for the blocking connection operation
                     std::thread::spawn(move || {
+                        // Perform the connection in a separate thread
                         let result = {
-                            let mut comm = communicator_arc.lock().unwrap();
-                            comm.connect(&params)
+                            // We need to create a temporary communicator for the thread
+                            let mut temp_comm = SerialCommunicator::new();
+                            temp_comm.connect(&params)
                         };
                         
                         // Send result back to main thread
-                        let _ = sender.send(result);
+                        let _ = sender.send((result, params));
                     });
+                    
+                    // Clone communicator for the timeout callback
+                    let communicator_for_update = view_clone.communicator.clone();
                     
                     // Poll the channel on the main thread using glib timeout
                     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-                        if let Ok(result) = receiver.try_recv() {
+                        if let Ok((result, params)) = receiver.try_recv() {
                             match result {
                                 Ok(_) => {
+                                    // Now connect the main communicator
+                                    let mut comm = communicator_for_update.borrow_mut();
+                                    if let Err(e) = comm.connect(&params) {
+                                        // Connection failed on main thread
+                                        let buffer = status_text.buffer();
+                                        let mut iter = buffer.end_iter();
+                                        buffer.insert(&mut iter, &format!("Connection failed: {}\n", e));
+                                        connect_btn.set_sensitive(true);
+                                        return glib::ControlFlow::Break;
+                                    }
+                                    drop(comm); // Release the borrow
+                                    
                                     connect_btn.set_label("Disconnect");
                                     connect_btn.remove_css_class("suggested-action");
                                     connect_btn.add_css_class("destructive-action");
