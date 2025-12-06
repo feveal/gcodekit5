@@ -196,7 +196,10 @@ pub fn main() {
                 match comm.receive() {
                     Ok(data) if !data.is_empty() => {
                         let text = String::from_utf8_lossy(&data);
-                        console_clone.append_log(&text);
+                        // Filter out status responses (GRBL status messages start with '<')
+                        if !text.trim().starts_with('<') {
+                            console_clone.append_log(&text);
+                        }
                     }
                     Ok(_) => {} // No data
                     Err(_) => {} // Ignore errors for now

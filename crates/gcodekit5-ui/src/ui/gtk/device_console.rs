@@ -156,8 +156,12 @@ impl DeviceConsoleView {
 
     pub fn append_log(&self, message: &str) {
         let buffer = self.console_text.buffer();
-        // Prepend to top as per requirement "most recent entry is at the top"
-        let mut iter = buffer.start_iter();
+        // Append to bottom and auto-scroll
+        let mut iter = buffer.end_iter();
         buffer.insert(&mut iter, message);
+        
+        // Auto-scroll to bottom
+        let mark = buffer.create_mark(None, &buffer.end_iter(), false);
+        self.console_text.scroll_to_mark(&mark, 0.0, true, 0.0, 1.0);
     }
 }
