@@ -1,73 +1,44 @@
-use gtk4::prelude::*;
-use gtk4::{
-    Application, ApplicationWindow, Box, Orientation, Stack, StackSwitcher, HeaderBar,
-    MenuButton, PopoverMenu, Label, Button, CssProvider, StyleContext, PopoverMenuBar,
-};
-use libadwaita::prelude::*;
-use libadwaita::Application as AdwApplication;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::sync::Arc;
-use std::path::PathBuf;
-
-use crate::ui::gtk::editor::GcodeEditor;
-use crate::ui::gtk::visualizer::GcodeVisualizer;
-use crate::ui::gtk::designer::DesignerCanvas;
-use crate::ui::gtk::settings::SettingsWindow;
-use crate::ui::gtk::device_manager::DeviceManagerWindow;
-use crate::ui::gtk::cam_tools::CamToolsView;
-use crate::ui::gtk::status_bar::StatusBar;
 use crate::ui::gtk::machine_control::MachineControlView;
 use crate::ui::gtk::device_console::DeviceConsoleView;
-
-use gcodekit5_settings::{SettingsController, SettingsDialog, SettingsPersistence, SettingsManager};
-use gcodekit5_devicedb::{DeviceManager, DeviceUiController};
-use gcodekit5_designer::designer_state::DesignerState;
+use crate::ui::gtk::editor::GcodeEditor;
+use crate::ui::gtk::visualizer::GcodeVisualizer;
+use crate::ui::gtk::cam_tools::CamToolsView;
+use crate::ui::gtk::designer::DesignerCanvas;
+use crate::ui::gtk::device_manager::DeviceManagerWindow;
+use crate::ui::gtk::status_bar::StatusBar;
+use crate::ui::gtk::settings::SettingsWindow;
+use crate::ui::gtk::device_info::DeviceInfoView;
+use crate::ui::gtk::config_settings::ConfigSettingsView;
+use crate::ui::gtk::tools_manager::ToolsManagerView;
+use crate::ui::gtk::materials_manager::MaterialsManagerView;
 use gcodekit5_communication::Communicator;
+use gtk4::prelude::*;
+use gtk4::{Application, ApplicationWindow, Box, CssProvider, Orientation, PopoverMenuBar, Stack, StackSwitcher, StyleContext};
+use gtk4::gio;
+use std::rc::Rc;
+use std::cell::RefCell;
 
-pub fn main() {
-    let app = AdwApplication::builder()
-        .application_id("com.github.thawkins.gcodekit5")
+pub fn gtk_app() {
+    let app = Application::builder()
+        .application_id("com.gcodekit5.app")
         .build();
 
-    app.connect_startup(|_| {
-        load_css();
-    });
+    app.connect_startup(|_| load_css());
 
     app.connect_activate(|app| {
-        // Initialize Backend Systems
-        let config_path = SettingsManager::config_file_path().unwrap_or_else(|_| PathBuf::from("config.json"));
-        
-        let persistence = if config_path.exists() {
-            SettingsPersistence::load_from_file(&config_path).unwrap_or_else(|e| {
-                eprintln!("Failed to load settings: {}", e);
-                SettingsPersistence::new()
-            })
-        } else {
-            SettingsPersistence::new()
-        };
-        
-        let settings_persistence = Rc::new(RefCell::new(persistence));
-        let settings_dialog = Rc::new(RefCell::new(SettingsDialog::new()));
-        
-        // Populate dialog with settings
-        settings_persistence.borrow().populate_dialog(&mut settings_dialog.borrow_mut());
-        
-        let settings_controller = Rc::new(SettingsController::new(settings_dialog.clone(), settings_persistence.clone()));
-        
-        // Ensure config dir exists
-        let _ = SettingsManager::ensure_config_dir();
+        // Initialize Controllers
+        let settings_dialog = Rc::new(RefCell::new(gcodekit5_settings::SettingsDialog::new()));
+        let settings_persistence = Rc::new(RefCell::new(gcodekit5_settings::SettingsPersistence::new()));
+        let settings_controller = Rc::new(gcodekit5_settings::SettingsController::new(settings_dialog, settings_persistence));
+        let config_dir = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+        let device_config_path = config_dir.join("gcodekit5").join("devices.json");
+        if let Some(parent) = device_config_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let device_manager = std::sync::Arc::new(gcodekit5_devicedb::DeviceManager::new(device_config_path));
+        let device_controller = Rc::new(gcodekit5_devicedb::DeviceUiController::new(device_manager));
+        let designer_state = Rc::new(RefCell::new(gcodekit5_designer::DesignerState::new()));
 
-        let config_dir = dirs::config_dir()
-            .map(|p| p.join("gcodekit5"))
-            .unwrap_or_else(|| PathBuf::from("config"));
-            
-        let device_manager = Arc::new(DeviceManager::new(config_dir));
-        let device_controller = Rc::new(DeviceUiController::new(device_manager.clone()));
-
-        let designer_state = Rc::new(RefCell::new(DesignerState::new()));
-
-        // Build UI
         let window = ApplicationWindow::builder()
             .application(app)
             .title("GCodeKit5")
@@ -75,54 +46,45 @@ pub fn main() {
             .default_height(800)
             .build();
 
+        // Use HeaderBar as titlebar
+        let header_bar = gtk4::HeaderBar::new();
+        window.set_titlebar(Some(&header_bar));
+
         let main_box = Box::new(Orientation::Vertical, 0);
-        
-        // Header Bar
-        let header = HeaderBar::new();
-        window.set_titlebar(Some(&header));
 
-        // Main Menu Bar
+        // Menu Bar
         let menu_bar_model = gio::Menu::new();
-
-        // File Menu
+        
         let file_menu = gio::Menu::new();
         file_menu.append(Some("New"), Some("app.file_new"));
-        file_menu.append(Some("Open..."), Some("app.file_open"));
+        file_menu.append(Some("Open"), Some("app.file_open"));
         file_menu.append(Some("Save"), Some("app.file_save"));
         file_menu.append(Some("Save As..."), Some("app.file_save_as"));
-        file_menu.append(Some("Export..."), Some("app.file_export"));
-        file_menu.append(Some("Exit"), Some("app.quit"));
+        file_menu.append(Some("Export"), Some("app.file_export"));
+        file_menu.append(Some("Quit"), Some("app.quit"));
         menu_bar_model.append_submenu(Some("File"), &file_menu);
 
-        // Edit Menu
         let edit_menu = gio::Menu::new();
         edit_menu.append(Some("Undo"), Some("app.edit_undo"));
         edit_menu.append(Some("Redo"), Some("app.edit_redo"));
         edit_menu.append(Some("Cut"), Some("app.edit_cut"));
         edit_menu.append(Some("Copy"), Some("app.edit_copy"));
         edit_menu.append(Some("Paste"), Some("app.edit_paste"));
-        
-        let preferences_section = gio::Menu::new();
-        preferences_section.append(Some("Preferences"), Some("app.preferences"));
-        edit_menu.append_section(None, &preferences_section);
-        
+        edit_menu.append(Some("Preferences"), Some("app.preferences"));
         menu_bar_model.append_submenu(Some("Edit"), &edit_menu);
 
-        // View Menu
         let view_menu = gio::Menu::new();
         view_menu.append(Some("Toolbars"), Some("app.view_toolbars"));
         view_menu.append(Some("Status Bar"), Some("app.view_status_bar"));
-        view_menu.append(Some("Console"), Some("app.view_console"));
         view_menu.append(Some("Visualizer"), Some("app.view_visualizer"));
+        view_menu.append(Some("Console"), Some("app.view_console"));
         menu_bar_model.append_submenu(Some("View"), &view_menu);
 
-        // Tools Menu
         let tools_menu = gio::Menu::new();
         tools_menu.append(Some("Device Manager"), Some("app.devices"));
         tools_menu.append(Some("CAM Tools"), Some("app.cam_tools"));
         menu_bar_model.append_submenu(Some("Tools"), &tools_menu);
 
-        // Machine Menu
         let machine_menu = gio::Menu::new();
         machine_menu.append(Some("Connect"), Some("app.machine_connect"));
         machine_menu.append(Some("Disconnect"), Some("app.machine_disconnect"));
@@ -130,7 +92,6 @@ pub fn main() {
         machine_menu.append(Some("Reset"), Some("app.machine_reset"));
         menu_bar_model.append_submenu(Some("Machine"), &machine_menu);
 
-        // Help Menu
         let help_menu = gio::Menu::new();
         help_menu.append(Some("Documentation"), Some("app.help_docs"));
         help_menu.append(Some("About"), Some("app.about"));
@@ -190,41 +151,7 @@ pub fn main() {
         mc.jog_z_neg.connect_clicked(move |_| println!("Jog Z-"));
         mc.estop_btn.connect_clicked(|_| println!("E-STOP clicked"));
 
-        // 2. Editor
-        let editor = Rc::new(GcodeEditor::new());
-        stack.add_titled(&editor.widget, Some("editor"), "G-Code Editor");
-        
-        // 2. Visualizer
-        let visualizer = Rc::new(GcodeVisualizer::new());
-        stack.add_titled(&visualizer.widget, Some("visualizer"), "Visualizer");
-
-        // Connect Editor to Visualizer
-        let vis_clone = visualizer.clone();
-        editor.connect_changed(move |buffer| {
-            let start = buffer.start_iter();
-            let end = buffer.end_iter();
-            let text = buffer.text(&start, &end, true);
-            vis_clone.set_gcode(&text);
-        });
-        
-        // 3. Designer
-        let designer = DesignerCanvas::new(designer_state.clone());
-        stack.add_titled(&designer.widget, Some("designer"), "Designer");
-        
-        // 4. Device Manager
-        let device_manager_view = DeviceManagerWindow::new(device_controller.clone());
-        stack.add_titled(device_manager_view.widget(), Some("devices"), "Device Manager");
-
-        // 5. CAM Tools
-        let editor_clone = editor.clone();
-        let stack_clone_for_cam = stack.clone();
-        let cam_tools_view = CamToolsView::new(move |gcode| {
-            editor_clone.set_text(&gcode);
-            stack_clone_for_cam.set_visible_child_name("editor");
-        });
-        stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), "CAM Tools");
-
-        // 6. Device Console
+        // 2. Device Console
         let device_console = DeviceConsoleView::new();
         stack.add_titled(&device_console.widget, Some("console"), "Device Console");
 
@@ -276,6 +203,56 @@ pub fn main() {
             }
             gtk4::glib::ControlFlow::Continue
         });
+
+        // 3. G-Code Editor
+        let editor = Rc::new(GcodeEditor::new());
+        stack.add_titled(&editor.widget, Some("editor"), "G-Code Editor");
+        
+        // 4. Visualizer
+        let visualizer = Rc::new(GcodeVisualizer::new());
+        stack.add_titled(&visualizer.widget, Some("visualizer"), "Visualizer");
+
+        // Connect Editor to Visualizer
+        let vis_clone = visualizer.clone();
+        editor.connect_changed(move |buffer| {
+            let start = buffer.start_iter();
+            let end = buffer.end_iter();
+            let text = buffer.text(&start, &end, true);
+            vis_clone.set_gcode(&text);
+        });
+        
+        // 5. CAM Tools
+        let editor_clone = editor.clone();
+        let stack_clone_for_cam = stack.clone();
+        let cam_tools_view = CamToolsView::new(move |gcode| {
+            editor_clone.set_text(&gcode);
+            stack_clone_for_cam.set_visible_child_name("editor");
+        });
+        stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), "CAM Tools");
+
+        // 6. Designer
+        let designer = DesignerCanvas::new(designer_state.clone());
+        stack.add_titled(&designer.widget, Some("designer"), "Designer");
+        
+        // 7. Device Info
+        let device_info = DeviceInfoView::new();
+        stack.add_titled(&device_info.container, Some("device_info"), "Device Info");
+
+        // 8. Device Config
+        let config_settings = ConfigSettingsView::new();
+        stack.add_titled(&config_settings.container, Some("config"), "Device Config");
+
+        // 9. Device Manager
+        let device_manager_view = DeviceManagerWindow::new(device_controller.clone());
+        stack.add_titled(device_manager_view.widget(), Some("devices"), "Device Manager");
+
+        // 10. CNC Tools
+        let tools_manager = ToolsManagerView::new();
+        stack.add_titled(&tools_manager.container, Some("tools"), "CNC Tools");
+
+        // 11. Materials
+        let materials_manager = MaterialsManagerView::new();
+        stack.add_titled(&materials_manager.container, Some("materials"), "Materials");
 
         main_box.append(&content_box);
 

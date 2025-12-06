@@ -7,3 +7,7 @@ pub mod machine_control;
 pub mod editor;
 pub mod visualizer;
 pub mod designer;
+pub mod device_info;
+pub mod config_settings;
+pub mod tools_manager;
+pub mod materials_manager;
