@@ -6,8 +6,10 @@ use gtk4::{
     Align, Box, Button, ComboBoxText, Frame, Grid, Label, Orientation, Paned, PolicyType,
     ScrolledWindow, TextView, ToggleButton,
 };
+use gtk4::glib;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 
 use crate::ui::gtk::status_bar::StatusBar;
 
@@ -458,7 +460,7 @@ impl MachineControlView {
                         ..Default::default()
                     };
                     
-                    let communicator = view_clone.communicator.clone();
+                    // Clone widgets for UI update
                     let connect_btn = view_clone.connect_btn.clone();
                     let port_combo = view_clone.port_combo.clone();
                     let refresh_btn = view_clone.refresh_btn.clone();
@@ -470,36 +472,57 @@ impl MachineControlView {
                     // Disable button to prevent double-click
                     connect_btn.set_sensitive(false);
                     
-                    // Use glib::timeout to give UI a chance to update
-                    glib::timeout_add_once(std::time::Duration::from_millis(50), move || {
-                        let result = communicator.borrow_mut().connect(&params);
+                    // Create a thread-safe communicator wrapper
+                    let communicator_arc = Arc::new(Mutex::new(SerialCommunicator::new()));
+                    
+                    // Create a channel to send result back to main thread
+                    let (sender, receiver) = std::sync::mpsc::channel();
+                    
+                    // Spawn a thread for the blocking connection operation
+                    std::thread::spawn(move || {
+                        let result = {
+                            let mut comm = communicator_arc.lock().unwrap();
+                            comm.connect(&params)
+                        };
                         
-                        match result {
-                            Ok(_) => {
-                                connect_btn.set_label("Disconnect");
-                                connect_btn.remove_css_class("suggested-action");
-                                connect_btn.add_css_class("destructive-action");
-                                connect_btn.set_sensitive(true);
-                                port_combo.set_sensitive(false);
-                                refresh_btn.set_sensitive(false);
-                                state_label.set_text("CONNECTED");
-                                
-                                // Update StatusBar
-                                if let Some(ref sb) = status_bar {
-                                    sb.set_connected(true, &port_name_copy);
+                        // Send result back to main thread
+                        let _ = sender.send(result);
+                    });
+                    
+                    // Poll the channel on the main thread using glib timeout
+                    glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                        if let Ok(result) = receiver.try_recv() {
+                            match result {
+                                Ok(_) => {
+                                    connect_btn.set_label("Disconnect");
+                                    connect_btn.remove_css_class("suggested-action");
+                                    connect_btn.add_css_class("destructive-action");
+                                    connect_btn.set_sensitive(true);
+                                    port_combo.set_sensitive(false);
+                                    refresh_btn.set_sensitive(false);
+                                    state_label.set_text("CONNECTED");
+                                    
+                                    // Update StatusBar
+                                    if let Some(ref sb) = status_bar {
+                                        sb.set_connected(true, &port_name_copy);
+                                    }
+                                    
+                                    // Log to status
+                                    let buffer = status_text.buffer();
+                                    let mut iter = buffer.end_iter();
+                                    buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
                                 }
-                                
-                                // Log to status
-                                let buffer = status_text.buffer();
-                                let mut iter = buffer.end_iter();
-                                buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
+                                Err(e) => {
+                                    connect_btn.set_sensitive(true);
+                                    let buffer = status_text.buffer();
+                                    let mut iter = buffer.end_iter();
+                                    buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                                }
                             }
-                            Err(e) => {
-                                connect_btn.set_sensitive(true);
-                                let buffer = status_text.buffer();
-                                let mut iter = buffer.end_iter();
-                                buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
-                            }
+                            
+                            glib::ControlFlow::Break
+                        } else {
+                            glib::ControlFlow::Continue
                         }
                     });
                 }
