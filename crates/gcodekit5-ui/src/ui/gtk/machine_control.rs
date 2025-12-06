@@ -445,7 +445,7 @@ impl MachineControlView {
                     }
                 }
             } else {
-                // Connect - spawn in separate thread
+                // Connect - use blocking call in idle callback to avoid freezing UI
                 if let Some(port_name) = view_clone.port_combo.active_text() {
                     if port_name == "No ports available" {
                         return;
@@ -467,35 +467,41 @@ impl MachineControlView {
                     let status_bar = view_clone.status_bar.clone();
                     let port_name_copy = port_name.to_string();
 
-                    // Spawn connection in a separate thread
-                    // Connect on main thread to avoid Send/Sync issues
-                    let result = communicator.borrow_mut().connect(&params);
+                    // Disable button to prevent double-click
+                    connect_btn.set_sensitive(false);
                     
-                    match result {
-                        Ok(_) => {
-                            connect_btn.set_label("Disconnect");
-                            connect_btn.remove_css_class("suggested-action");
-                            connect_btn.add_css_class("destructive-action");
-                            port_combo.set_sensitive(false);
-                            refresh_btn.set_sensitive(false);
-                            state_label.set_text("CONNECTED");
-                            
-                            // Update StatusBar
-                            if let Some(ref sb) = status_bar {
-                                sb.set_connected(true, &port_name_copy);
+                    // Use glib::timeout to give UI a chance to update
+                    glib::timeout_add_once(std::time::Duration::from_millis(50), move || {
+                        let result = communicator.borrow_mut().connect(&params);
+                        
+                        match result {
+                            Ok(_) => {
+                                connect_btn.set_label("Disconnect");
+                                connect_btn.remove_css_class("suggested-action");
+                                connect_btn.add_css_class("destructive-action");
+                                connect_btn.set_sensitive(true);
+                                port_combo.set_sensitive(false);
+                                refresh_btn.set_sensitive(false);
+                                state_label.set_text("CONNECTED");
+                                
+                                // Update StatusBar
+                                if let Some(ref sb) = status_bar {
+                                    sb.set_connected(true, &port_name_copy);
+                                }
+                                
+                                // Log to status
+                                let buffer = status_text.buffer();
+                                let mut iter = buffer.end_iter();
+                                buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
                             }
-                            
-                            // Log to status
-                            let buffer = status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
+                            Err(e) => {
+                                connect_btn.set_sensitive(true);
+                                let buffer = status_text.buffer();
+                                let mut iter = buffer.end_iter();
+                                buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                            }
                         }
-                        Err(e) => {
-                            let buffer = status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
-                        }
-                    }
+                    });
                 }
             }
         });
