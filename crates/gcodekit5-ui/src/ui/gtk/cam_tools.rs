@@ -236,7 +236,17 @@ struct TabbedBoxWidgets {
     surrounding_spaces: Entry,
     play: Entry,
     extra_length: Entry,
-    // dimple_height: Entry, // Not in screenshot but in struct
+    // New controls
+    box_type: ComboBoxText,
+    dividers_x: Entry,
+    dividers_y: Entry,
+    divider_keying: ComboBoxText,
+    optimize_layout: CheckButton,
+    passes: Entry,
+    power: Entry,
+    feed_rate: Entry,
+    offset_x: Entry,
+    offset_y: Entry,
 }
 
 pub struct TabbedBoxMaker {
@@ -293,6 +303,37 @@ impl TabbedBoxMaker {
         let play = Entry::builder().text("0").valign(Align::Center).build();
         let extra_length = Entry::builder().text("0").valign(Align::Center).build();
 
+        // New Widgets
+        let box_type = ComboBoxText::new();
+        box_type.append(Some("0"), "Full Box");
+        box_type.append(Some("1"), "No Top");
+        box_type.append(Some("2"), "No Bottom");
+        box_type.append(Some("3"), "No Sides");
+        box_type.append(Some("4"), "No Front/Back");
+        box_type.append(Some("5"), "No Left/Right");
+        box_type.set_active_id(Some("0"));
+        box_type.set_valign(Align::Center);
+
+        let dividers_x = Entry::builder().text("0").valign(Align::Center).build();
+        let dividers_y = Entry::builder().text("0").valign(Align::Center).build();
+        
+        let divider_keying = ComboBoxText::new();
+        divider_keying.append(Some("0"), "Walls & Floor");
+        divider_keying.append(Some("1"), "Walls Only");
+        divider_keying.append(Some("2"), "Floor Only");
+        divider_keying.append(Some("3"), "None");
+        divider_keying.set_active_id(Some("0"));
+        divider_keying.set_valign(Align::Center);
+
+        let optimize_layout = CheckButton::builder().active(false).valign(Align::Center).build();
+        
+        let passes = Entry::builder().text("3").valign(Align::Center).build();
+        let power = Entry::builder().text("1000").valign(Align::Center).build();
+        let feed_rate = Entry::builder().text("500").valign(Align::Center).build();
+        
+        let offset_x = Entry::builder().text("10").valign(Align::Center).build();
+        let offset_y = Entry::builder().text("10").valign(Align::Center).build();
+
         // Box Dimensions
         let dim_group = PreferencesGroup::builder().title("Box Dimensions (mm)").build();
         dim_group.add(&Self::create_row("X (Width):", &width));
@@ -304,6 +345,19 @@ impl TabbedBoxMaker {
         dim_group.add(&outside_row);
         
         scroll_content.append(&dim_group);
+
+        // Box Configuration
+        let config_group = PreferencesGroup::builder().title("Box Configuration").build();
+        config_group.add(&Self::create_row("Box Type:", &box_type));
+        config_group.add(&Self::create_row("Dividers X:", &dividers_x));
+        config_group.add(&Self::create_row("Dividers Y:", &dividers_y));
+        config_group.add(&Self::create_row("Divider Keying:", &divider_keying));
+        
+        let optimize_row = ActionRow::builder().title("Optimize Layout:").build();
+        optimize_row.add_suffix(&optimize_layout);
+        config_group.add(&optimize_row);
+        
+        scroll_content.append(&config_group);
 
         // Material Settings
         let mat_group = PreferencesGroup::builder().title("Material Settings").build();
@@ -319,6 +373,19 @@ impl TabbedBoxMaker {
         finger_group.add(&Self::create_row("Play (fit tolerance):", &play));
         finger_group.add(&Self::create_row("Extra Length:", &extra_length));
         scroll_content.append(&finger_group);
+
+        // Laser Settings
+        let laser_group = PreferencesGroup::builder().title("Laser Settings").build();
+        laser_group.add(&Self::create_row("Passes:", &passes));
+        laser_group.add(&Self::create_row("Power (S):", &power));
+        laser_group.add(&Self::create_row("Feed Rate:", &feed_rate));
+        scroll_content.append(&laser_group);
+
+        // Work Origin Offsets
+        let offset_group = PreferencesGroup::builder().title("Work Origin Offsets (mm)").build();
+        offset_group.add(&Self::create_row("Offset X:", &offset_x));
+        offset_group.add(&Self::create_row("Offset Y:", &offset_y));
+        scroll_content.append(&offset_group);
 
         content_box.append(&scrolled);
 
@@ -343,7 +410,9 @@ impl TabbedBoxMaker {
 
         let widgets = Rc::new(TabbedBoxWidgets {
             width, depth, height, outside, thickness, burn,
-            finger_width, space_width, surrounding_spaces, play, extra_length
+            finger_width, space_width, surrounding_spaces, play, extra_length,
+            box_type, dividers_x, dividers_y, divider_keying, optimize_layout,
+            passes, power, feed_rate, offset_x, offset_y,
         });
 
         // Connect Signals
@@ -410,6 +479,24 @@ impl TabbedBoxMaker {
         params.finger_joint.surrounding_spaces = w.surrounding_spaces.text().parse().unwrap_or(2.0);
         params.finger_joint.play = w.play.text().parse().unwrap_or(0.0);
         params.finger_joint.extra_length = w.extra_length.text().parse().unwrap_or(0.0);
+
+        // New params
+        if let Some(id) = w.box_type.active_id() {
+            params.box_type = BoxType::from(id.parse::<i32>().unwrap_or(0));
+        }
+        params.dividers_x = w.dividers_x.text().parse().unwrap_or(0);
+        params.dividers_y = w.dividers_y.text().parse().unwrap_or(0);
+        if let Some(id) = w.divider_keying.active_id() {
+            params.key_divider_type = KeyDividerType::from(id.parse::<i32>().unwrap_or(0));
+        }
+        params.optimize_layout = w.optimize_layout.is_active();
+        
+        params.laser_passes = w.passes.text().parse().unwrap_or(3);
+        params.laser_power = w.power.text().parse().unwrap_or(1000);
+        params.feed_rate = w.feed_rate.text().parse().unwrap_or(500.0);
+        
+        params.offset_x = w.offset_x.text().parse().unwrap_or(10.0);
+        params.offset_y = w.offset_y.text().parse().unwrap_or(10.0);
 
         params
     }
@@ -481,5 +568,19 @@ impl TabbedBoxMaker {
         w.surrounding_spaces.set_text(&p.finger_joint.surrounding_spaces.to_string());
         w.play.set_text(&p.finger_joint.play.to_string());
         w.extra_length.set_text(&p.finger_joint.extra_length.to_string());
+
+        // New params
+        w.box_type.set_active_id(Some(&(p.box_type as i32).to_string()));
+        w.dividers_x.set_text(&p.dividers_x.to_string());
+        w.dividers_y.set_text(&p.dividers_y.to_string());
+        w.divider_keying.set_active_id(Some(&(p.key_divider_type as i32).to_string()));
+        w.optimize_layout.set_active(p.optimize_layout);
+        
+        w.passes.set_text(&p.laser_passes.to_string());
+        w.power.set_text(&p.laser_power.to_string());
+        w.feed_rate.set_text(&p.feed_rate.to_string());
+        
+        w.offset_x.set_text(&p.offset_x.to_string());
+        w.offset_y.set_text(&p.offset_y.to_string());
     }
 }
