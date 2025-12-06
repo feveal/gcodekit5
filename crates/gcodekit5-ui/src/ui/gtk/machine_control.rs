@@ -493,7 +493,7 @@ impl MachineControlView {
                             // Spawn background thread
                             std::thread::spawn(move || {
                                 loop {
-                                    std::thread::sleep(std::time::Duration::from_millis(250));
+                                    std::thread::sleep(std::time::Duration::from_millis(500));
                                     
                                     let is_connected = {
                                         let comm = communicator_poll.lock().unwrap();
@@ -511,7 +511,7 @@ impl MachineControlView {
                                     };
                                     
                                     // Small delay before reading
-                                    std::thread::sleep(std::time::Duration::from_millis(50));
+                                    std::thread::sleep(std::time::Duration::from_millis(100));
                                     
                                     // Read response
                                     if let Ok(response_bytes) = {
