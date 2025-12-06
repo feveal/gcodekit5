@@ -571,49 +571,61 @@ impl Visualizer2D {
     /// Calculate zoom and offset to fit all cutting commands in view with 5% margin
     pub fn fit_to_view(&mut self, canvas_width: f32, canvas_height: f32) {
         let mut bounds = Bounds::new();
+        let mut has_content = false;
 
         for cmd in self.toolpath_cache.commands() {
             match cmd {
                 GCodeCommand::Move { to, rapid, .. } => {
                     if !rapid {
                         bounds.update(to.x, to.y);
+                        has_content = true;
                     }
                 }
                 GCodeCommand::Arc { to, .. } => {
                     bounds.update(to.x, to.y);
+                    has_content = true;
                 }
                 GCodeCommand::Dwell { pos, .. } => {
                     bounds.update(pos.x, pos.y);
+                    has_content = true;
                 }
             }
         }
 
-        if !bounds.is_valid() {
+        if !has_content || !bounds.is_valid() {
             self.zoom_scale = 1.0;
-            self.set_default_view(canvas_width, canvas_height);
+            self.x_offset = 0.0;
+            self.y_offset = 0.0;
             return;
         }
 
         let bbox_width = bounds.max_x - bounds.min_x;
         let bbox_height = bounds.max_y - bounds.min_y;
 
-        let padded_width = bbox_width * (1.0 + 2.0 * FIT_MARGIN_FACTOR);
-        let padded_height = bbox_height * (1.0 + 2.0 * FIT_MARGIN_FACTOR);
+        // Add 10% padding
+        let padding_factor = 1.1;
+        let target_width = bbox_width * padding_factor;
+        let target_height = bbox_height * padding_factor;
 
-        let available_width = canvas_width - 2.0 * CANVAS_PADDING;
-        let available_height = canvas_height - 2.0 * CANVAS_PADDING;
+        if target_width == 0.0 || target_height == 0.0 {
+             self.zoom_scale = 1.0;
+             self.x_offset = -bounds.min_x;
+             self.y_offset = -bounds.min_y;
+             return;
+        }
 
-        let scale = (available_width / padded_width).min(available_height / padded_height);
+        let scale_x = canvas_width / target_width;
+        let scale_y = canvas_height / target_height;
+        
+        // Use the smaller scale to fit both dimensions
+        self.zoom_scale = scale_x.min(scale_y);
 
-        let bbox_min_x_padded = bounds.min_x - bbox_width * FIT_MARGIN_FACTOR;
-        let bbox_min_y_padded = bounds.min_y - bbox_height * FIT_MARGIN_FACTOR;
+        // Center the bounding box
+        let center_x = bounds.min_x + bbox_width / 2.0;
+        let center_y = bounds.min_y + bbox_height / 2.0;
 
-        let center_x = (canvas_width - padded_width * scale) / 2.0;
-        let center_y = (canvas_height - padded_height * scale) / 2.0;
-
-        self.zoom_scale = scale / self.scale_factor;
-        self.x_offset = center_x - (bbox_min_x_padded - self.min_x) * scale - CANVAS_PADDING;
-        self.y_offset = (bbox_min_y_padded - self.min_y) * scale + CANVAS_PADDING - center_y;
+        self.x_offset = -center_x;
+        self.y_offset = -center_y;
     }
 
     /// Get bounds of cutting moves only (excluding rapid moves)
