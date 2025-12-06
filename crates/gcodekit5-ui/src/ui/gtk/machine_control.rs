@@ -490,11 +490,17 @@ impl MachineControlView {
                             let communicator_poll = view_clone.communicator.clone();
                             let (sender, receiver) = async_channel::unbounded();
                             
-                            // Spawn background thread
+                            // Spawn background thread with gcodekit4-style efficient polling
                             std::thread::spawn(move || {
+                                let mut cycle_count: u32 = 0;
+                                let mut response_buffer = String::new();
+                                
+                                // Main polling loop runs at 35ms intervals (matches gcodekit4)
                                 loop {
-                                    std::thread::sleep(std::time::Duration::from_millis(500));
+                                    std::thread::sleep(std::time::Duration::from_millis(35));
+                                    cycle_count += 1;
                                     
+                                    // Check connection status (quick check without holding lock long)
                                     let is_connected = {
                                         let comm = communicator_poll.lock().unwrap();
                                         comm.is_connected()
@@ -504,57 +510,66 @@ impl MachineControlView {
                                         break;
                                     }
                                     
-                                    // Request status update
-                                    let _ = {
+                                    // Read responses continuously (without sending ? yet)
+                                    let response_bytes = {
                                         let mut comm = communicator_poll.lock().unwrap();
-                                        comm.send(b"?")
-                                    };
+                                        comm.receive().ok()
+                                    }; // Lock released immediately
                                     
-                                    // Small delay before reading
-                                    std::thread::sleep(std::time::Duration::from_millis(100));
-                                    
-                                    // Read response
-                                    if let Ok(response_bytes) = {
-                                        let mut comm = communicator_poll.lock().unwrap();
-                                        comm.receive()
-                                    } {
-                                        if response_bytes.is_empty() {
-                                            continue;
-                                        }
-                                        let response = String::from_utf8_lossy(&response_bytes).to_string();
-                                        
-                                        // Parse GRBL status and send to UI thread
-                                        if let Some(start) = response.find('<') {
-                                            if let Some(end) = response.find('>') {
-                                                let status = &response[start + 1..end];
-                                                let parts: Vec<&str> = status.split('|').collect();
+                                    if let Some(response_bytes) = response_bytes {
+                                        if !response_bytes.is_empty() {
+                                            response_buffer.push_str(&String::from_utf8_lossy(&response_bytes));
+                                            
+                                            // Process complete lines from buffer
+                                            while let Some(idx) = response_buffer.find('\n') {
+                                                let line = response_buffer[..idx].trim().to_string();
+                                                response_buffer.drain(..idx + 1);
                                                 
-                                                let mut state_text = String::new();
-                                                let mut x_val = 0.0f64;
-                                                let mut y_val = 0.0f64;
-                                                let mut z_val = 0.0f64;
+                                                if line.is_empty() { continue; }
                                                 
-                                                if !parts.is_empty() {
-                                                    state_text = parts[0].to_string();
-                                                }
-                                                
-                                                // Parse MPos
-                                                for part in &parts {
-                                                    if part.starts_with("MPos:") {
-                                                        let coords = &part[5..];
-                                                        let nums: Vec<&str> = coords.split(',').collect();
-                                                        if nums.len() >= 3 {
-                                                            x_val = nums[0].parse::<f64>().unwrap_or(0.0);
-                                                            y_val = nums[1].parse::<f64>().unwrap_or(0.0);
-                                                            z_val = nums[2].parse::<f64>().unwrap_or(0.0);
+                                                // Parse GRBL status responses (format: <Idle|MPos:0.000,0.000,0.000|...>)
+                                                if line.contains('<') && line.contains('>') {
+                                                    if let Some(start) = line.find('<') {
+                                                        if let Some(end) = line.find('>') {
+                                                            let status = &line[start + 1..end];
+                                                            let parts: Vec<&str> = status.split('|').collect();
+                                                            
+                                                            let mut state_text = String::new();
+                                                            let mut x_val = 0.0f64;
+                                                            let mut y_val = 0.0f64;
+                                                            let mut z_val = 0.0f64;
+                                                            
+                                                            if !parts.is_empty() {
+                                                                state_text = parts[0].to_string();
+                                                            }
+                                                            
+                                                            // Parse MPos
+                                                            for part in &parts {
+                                                                if part.starts_with("MPos:") {
+                                                                    let coords = &part[5..];
+                                                                    let nums: Vec<&str> = coords.split(',').collect();
+                                                                    if nums.len() >= 3 {
+                                                                        x_val = nums[0].parse::<f64>().unwrap_or(0.0);
+                                                                        y_val = nums[1].parse::<f64>().unwrap_or(0.0);
+                                                                        z_val = nums[2].parse::<f64>().unwrap_or(0.0);
+                                                                    }
+                                                                }
+                                                            }
+                                                            
+                                                            let _ = sender.send((state_text, x_val, y_val, z_val));
                                                         }
                                                     }
                                                 }
-                                                
-                                                let _ = sender.send((state_text, x_val, y_val, z_val));
                                             }
                                         }
                                     }
+                                    
+                                    // Send status query every ~200ms (every 6 cycles of 35ms)
+                                    // This matches gcodekit4's pattern (every 4 cycles of 50ms ≈ 200ms)
+                                    if cycle_count % 6 == 0 {
+                                        let mut comm = communicator_poll.lock().unwrap();
+                                        let _ = comm.send(b"?");
+                                    } // Lock released immediately
                                 }
                             });
                             
