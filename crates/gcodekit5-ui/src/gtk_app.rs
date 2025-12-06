@@ -184,6 +184,23 @@ pub fn main() {
             app.add_action(&action);
         }
 
+        // Set Keyboard Shortcuts (Accelerators)
+        app.set_accels_for_action("app.file_new", &["<Control>n"]);
+        app.set_accels_for_action("app.file_open", &["<Control>o"]);
+        app.set_accels_for_action("app.file_save", &["<Control>s"]);
+        app.set_accels_for_action("app.file_save_as", &["<Control><Shift>s"]);
+        app.set_accels_for_action("app.quit", &["<Control>q"]);
+        
+        app.set_accels_for_action("app.edit_undo", &["<Control>z"]);
+        app.set_accels_for_action("app.edit_redo", &["<Control>y", "<Control><Shift>z"]);
+        app.set_accels_for_action("app.edit_cut", &["<Control>x"]);
+        app.set_accels_for_action("app.edit_copy", &["<Control>c"]);
+        app.set_accels_for_action("app.edit_paste", &["<Control>v"]);
+        
+        app.set_accels_for_action("app.help_docs", &["F1"]);
+        app.set_accels_for_action("app.machine_home", &["<Control>h"]);
+        app.set_accels_for_action("app.machine_reset", &["F5"]);
+
         window.present();
     });
 
