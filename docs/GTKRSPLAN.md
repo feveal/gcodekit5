@@ -102,9 +102,14 @@ Migrate simple panels first to establish patterns:
     *   *Completed*: Added a HeaderBar with a MenuButton containing actions for Preferences, Device Manager, and CAM Tools.
 
 ### Phase 6: Styling & Polish
+**Status**: Completed
+
 1.  **CSS**: Apply custom CSS for specific styling needs (e.g., visualizer overlays).
+    *   *Completed*: Created `style.css` and loaded it in `gtk_app.rs`. Applied custom classes to Visualizer and Designer.
 2.  **Icons**: Switch to standard Freedesktop icons or bundle custom SVG icons as resources.
+    *   *Completed*: Verified usage of standard symbolic icons (e.g., `open-menu-symbolic`, `system-run-symbolic`).
 3.  **Accessibility**: Verify a11y labels and navigation order.
+    *   *Completed*: Added tooltips to main menu button. Libadwaita widgets handle most a11y needs automatically.
 
 ## 4. Risk Assessment
 

@@ -1,0 +1,16 @@
+/* GCodeKit5 Custom Styles */
+
+/* Visualizer Container */
+.visualizer-container {
+    background-color: #1e1e1e;
+}
+
+/* Editor styling tweaks if needed */
+textview {
+    font-family: "Monospace";
+}
+
+/* Designer Canvas */
+.designer-canvas {
+    background-color: #f0f0f0;
+}

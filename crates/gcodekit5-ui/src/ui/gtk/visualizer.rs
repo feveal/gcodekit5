@@ -14,6 +14,7 @@ impl GcodeVisualizer {
         let widget = DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
+            .css_classes(vec!["visualizer-container"])
             .build();
 
         let visualizer = Rc::new(RefCell::new(Visualizer2D::new()));

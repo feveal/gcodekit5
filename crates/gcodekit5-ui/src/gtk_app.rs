@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use gtk4::{
     Application, ApplicationWindow, Box, Orientation, Stack, StackSidebar, HeaderBar,
-    MenuButton, PopoverMenu, Label, Button,
+    MenuButton, PopoverMenu, Label, Button, CssProvider, StyleContext,
 };
 use libadwaita::prelude::*;
 use libadwaita::Application as AdwApplication;
@@ -24,6 +24,10 @@ pub fn main() {
     let app = AdwApplication::builder()
         .application_id("com.github.thawkins.gcodekit5")
         .build();
+
+    app.connect_startup(|_| {
+        load_css();
+    });
 
     app.connect_activate(|app| {
         // Initialize Backend Systems
@@ -64,6 +68,7 @@ pub fn main() {
         let menu_btn = MenuButton::builder()
             .icon_name("open-menu-symbolic")
             .menu_model(&menu_model)
+            .tooltip_text("Main Menu")
             .build();
         header.pack_end(&menu_btn);
         
@@ -129,4 +134,15 @@ pub fn main() {
     });
 
     app.run();
+}
+
+fn load_css() {
+    let provider = CssProvider::new();
+    provider.load_from_data(include_str!("ui/gtk/style.css"));
+
+    StyleContext::add_provider_for_display(
+        &gtk4::gdk::Display::default().expect("Could not connect to a display."),
+        &provider,
+        gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+    );
 }

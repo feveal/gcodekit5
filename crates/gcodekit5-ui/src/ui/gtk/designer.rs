@@ -15,6 +15,7 @@ impl DesignerCanvas {
         let widget = DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
+            .css_classes(vec!["designer-canvas"])
             .build();
 
         let state_clone = state.clone();
