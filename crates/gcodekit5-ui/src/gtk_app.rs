@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use gtk4::{
     Application, ApplicationWindow, Box, Orientation, Stack, StackSidebar, HeaderBar,
-    MenuButton, PopoverMenu, Label, Button, CssProvider, StyleContext,
+    MenuButton, PopoverMenu, Label, Button, CssProvider, StyleContext, PopoverMenuBar,
 };
 use libadwaita::prelude::*;
 use libadwaita::Application as AdwApplication;
@@ -62,22 +62,54 @@ pub fn main() {
         
         // Header Bar
         let header = HeaderBar::new();
-        
-        // Menu
-        let menu_model = gio::Menu::new();
-        menu_model.append(Some("Preferences"), Some("app.preferences"));
-        menu_model.append(Some("Device Manager"), Some("app.devices"));
-        menu_model.append(Some("CAM Tools"), Some("app.cam_tools"));
-        menu_model.append(Some("About"), Some("app.about"));
-        
-        let menu_btn = MenuButton::builder()
-            .icon_name("open-menu-symbolic")
-            .menu_model(&menu_model)
-            .tooltip_text("Main Menu")
-            .build();
-        header.pack_end(&menu_btn);
-        
         main_box.append(&header);
+
+        // Main Menu Bar
+        let menu_bar_model = gio::Menu::new();
+
+        // File Menu
+        let file_menu = gio::Menu::new();
+        file_menu.append(Some("New"), Some("app.file_new"));
+        file_menu.append(Some("Open..."), Some("app.file_open"));
+        file_menu.append(Some("Save"), Some("app.file_save"));
+        file_menu.append(Some("Save As..."), Some("app.file_save_as"));
+        file_menu.append(Some("Export..."), Some("app.file_export"));
+        file_menu.append(Some("Exit"), Some("app.quit"));
+        menu_bar_model.append_submenu(Some("File"), &file_menu);
+
+        // Edit Menu
+        let edit_menu = gio::Menu::new();
+        edit_menu.append(Some("Undo"), Some("app.edit_undo"));
+        edit_menu.append(Some("Redo"), Some("app.edit_redo"));
+        edit_menu.append(Some("Cut"), Some("app.edit_cut"));
+        edit_menu.append(Some("Copy"), Some("app.edit_copy"));
+        edit_menu.append(Some("Paste"), Some("app.edit_paste"));
+        menu_bar_model.append_submenu(Some("Edit"), &edit_menu);
+
+        // View Menu
+        let view_menu = gio::Menu::new();
+        view_menu.append(Some("Toolbars"), Some("app.view_toolbars"));
+        view_menu.append(Some("Status Bar"), Some("app.view_status_bar"));
+        view_menu.append(Some("Console"), Some("app.view_console"));
+        view_menu.append(Some("Visualizer"), Some("app.view_visualizer"));
+        menu_bar_model.append_submenu(Some("View"), &view_menu);
+
+        // Machine Menu
+        let machine_menu = gio::Menu::new();
+        machine_menu.append(Some("Connect"), Some("app.machine_connect"));
+        machine_menu.append(Some("Disconnect"), Some("app.machine_disconnect"));
+        machine_menu.append(Some("Home"), Some("app.machine_home"));
+        machine_menu.append(Some("Reset"), Some("app.machine_reset"));
+        menu_bar_model.append_submenu(Some("Machine"), &machine_menu);
+
+        // Help Menu
+        let help_menu = gio::Menu::new();
+        help_menu.append(Some("Documentation"), Some("app.help_docs"));
+        help_menu.append(Some("About"), Some("app.about"));
+        menu_bar_model.append_submenu(Some("Help"), &help_menu);
+
+        let menu_bar = PopoverMenuBar::from_model(Some(&menu_bar_model));
+        main_box.append(&menu_bar);
 
         // Content Area
         let content_box = Box::new(Orientation::Horizontal, 0);
@@ -134,6 +166,23 @@ pub fn main() {
             win.present();
         });
         app.add_action(&cam_action);
+
+        // Placeholder Actions for Menu Items
+        let action_names = vec![
+            "file_new", "file_open", "file_save", "file_save_as", "file_export", "quit",
+            "edit_undo", "edit_redo", "edit_cut", "edit_copy", "edit_paste",
+            "view_toolbars", "view_status_bar", "view_console", "view_visualizer",
+            "machine_connect", "machine_disconnect", "machine_home", "machine_reset",
+            "help_docs", "about"
+        ];
+
+        for name in action_names {
+            let action = gio::SimpleAction::new(name, None);
+            action.connect_activate(move |_, _| {
+                println!("Action triggered: {}", name);
+            });
+            app.add_action(&action);
+        }
 
         window.present();
     });
