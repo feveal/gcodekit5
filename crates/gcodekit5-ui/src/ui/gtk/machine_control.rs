@@ -452,6 +452,10 @@ impl MachineControlView {
                         return;
                     }
                     
+                    // Disable connect button while connecting
+                    view_clone.connect_btn.set_sensitive(false);
+                    view_clone.state_label.set_text("CONNECTING...");
+                    
                     let params = ConnectionParams {
                         driver: ConnectionDriver::Serial,
                         port: port_name.to_string(),
@@ -459,67 +463,126 @@ impl MachineControlView {
                         ..Default::default()
                     };
                     
-                    // Clone widgets for UI update
-                    let connect_btn = view_clone.connect_btn.clone();
-                    let port_combo = view_clone.port_combo.clone();
-                    let refresh_btn = view_clone.refresh_btn.clone();
-                    let state_label = view_clone.state_label.clone();
-                    let status_text = view_clone.status_text.clone();
-                    let status_bar = view_clone.status_bar.clone();
-                    let port_name_copy = port_name.to_string();
-
-                    // Clone the communicator for thread-safe access
-                    let communicator_clone = view_clone.communicator.clone();
+                    // Perform synchronous connection (it's fast)
+                    let result = view_clone.communicator.lock().unwrap().connect(&params);
                     
-                    // Create a channel to send result back to main thread
-                    let (sender, receiver) = std::sync::mpsc::channel();
-                    
-                    // Spawn a thread for the blocking connection operation
-                    std::thread::spawn(move || {
-                        // Perform the connection in a separate thread
-                        let result = communicator_clone.lock().unwrap().connect(&params);
-                        
-                        // Send result back to main thread
-                        let _ = sender.send(result);
-                    });
-                    
-                    // Poll the channel on the main thread using glib timeout
-                    glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
-                        if let Ok(result) = receiver.try_recv() {
-                            match result {
-                                Ok(_) => {
-                                    
-                                    connect_btn.set_label("Disconnect");
-                                    connect_btn.remove_css_class("suggested-action");
-                                    connect_btn.add_css_class("destructive-action");
-                                    connect_btn.set_sensitive(true);
-                                    port_combo.set_sensitive(false);
-                                    refresh_btn.set_sensitive(false);
-                                    state_label.set_text("CONNECTED");
-                                    
-                                    // Update StatusBar
-                                    if let Some(ref sb) = status_bar {
-                                        sb.set_connected(true, &port_name_copy);
-                                    }
-                                    
-                                    // Log to status
-                                    let buffer = status_text.buffer();
-                                    let mut iter = buffer.end_iter();
-                                    buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
-                                }
-                                Err(e) => {
-                                    connect_btn.set_sensitive(true);
-                                    let buffer = status_text.buffer();
-                                    let mut iter = buffer.end_iter();
-                                    buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
-                                }
+                    match result {
+                        Ok(_) => {
+                            view_clone.connect_btn.set_label("Disconnect");
+                            view_clone.connect_btn.remove_css_class("suggested-action");
+                            view_clone.connect_btn.add_css_class("destructive-action");
+                            view_clone.connect_btn.set_sensitive(true);
+                            view_clone.port_combo.set_sensitive(false);
+                            view_clone.refresh_btn.set_sensitive(false);
+                            view_clone.state_label.set_text("CONNECTED");
+                            
+                            // Update StatusBar
+                            if let Some(ref sb) = view_clone.status_bar {
+                                sb.set_connected(true, &port_name.to_string());
                             }
                             
-                            glib::ControlFlow::Break
-                        } else {
-                            glib::ControlFlow::Continue
+                            // Log to status
+                            let buffer = view_clone.status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
+                            
+                            // Start background polling thread for status updates
+                            let communicator_poll = view_clone.communicator.clone();
+                            let (sender, receiver) = async_channel::unbounded();
+                            
+                            // Spawn background thread
+                            std::thread::spawn(move || {
+                                loop {
+                                    std::thread::sleep(std::time::Duration::from_millis(250));
+                                    
+                                    let is_connected = {
+                                        let comm = communicator_poll.lock().unwrap();
+                                        comm.is_connected()
+                                    };
+                                    
+                                    if !is_connected {
+                                        break;
+                                    }
+                                    
+                                    // Request status update
+                                    let _ = {
+                                        let mut comm = communicator_poll.lock().unwrap();
+                                        comm.send(b"?")
+                                    };
+                                    
+                                    // Small delay before reading
+                                    std::thread::sleep(std::time::Duration::from_millis(50));
+                                    
+                                    // Read response
+                                    if let Ok(response_bytes) = {
+                                        let mut comm = communicator_poll.lock().unwrap();
+                                        comm.receive()
+                                    } {
+                                        if response_bytes.is_empty() {
+                                            continue;
+                                        }
+                                        let response = String::from_utf8_lossy(&response_bytes).to_string();
+                                        
+                                        // Parse GRBL status and send to UI thread
+                                        if let Some(start) = response.find('<') {
+                                            if let Some(end) = response.find('>') {
+                                                let status = &response[start + 1..end];
+                                                let parts: Vec<&str> = status.split('|').collect();
+                                                
+                                                let mut state_text = String::new();
+                                                let mut x_val = 0.0f64;
+                                                let mut y_val = 0.0f64;
+                                                let mut z_val = 0.0f64;
+                                                
+                                                if !parts.is_empty() {
+                                                    state_text = parts[0].to_string();
+                                                }
+                                                
+                                                // Parse MPos
+                                                for part in &parts {
+                                                    if part.starts_with("MPos:") {
+                                                        let coords = &part[5..];
+                                                        let nums: Vec<&str> = coords.split(',').collect();
+                                                        if nums.len() >= 3 {
+                                                            x_val = nums[0].parse::<f64>().unwrap_or(0.0);
+                                                            y_val = nums[1].parse::<f64>().unwrap_or(0.0);
+                                                            z_val = nums[2].parse::<f64>().unwrap_or(0.0);
+                                                        }
+                                                    }
+                                                }
+                                                
+                                                let _ = sender.send((state_text, x_val, y_val, z_val));
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                            
+                            // Receive status updates on main thread
+                            let state_label_upd = view_clone.state_label.clone();
+                            let x_dro_upd = view_clone.x_dro.clone();
+                            let y_dro_upd = view_clone.y_dro.clone();
+                            let z_dro_upd = view_clone.z_dro.clone();
+                            
+                            glib::spawn_future_local(async move {
+                                while let Ok((state_text, x_val, y_val, z_val)) = receiver.recv().await {
+                                    if !state_text.is_empty() {
+                                        state_label_upd.set_text(&state_text);
+                                    }
+                                    x_dro_upd.set_text(&format!("{:.3}", x_val));
+                                    y_dro_upd.set_text(&format!("{:.3}", y_val));
+                                    z_dro_upd.set_text(&format!("{:.3}", z_val));
+                                }
+                            });
                         }
-                    });
+                        Err(e) => {
+                            view_clone.connect_btn.set_sensitive(true);
+                            view_clone.state_label.set_text("DISCONNECTED");
+                            let buffer = view_clone.status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                        }
+                    }
                 }
             }
         });
