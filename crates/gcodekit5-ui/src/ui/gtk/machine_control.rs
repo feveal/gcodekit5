@@ -5,6 +5,7 @@ use gtk4::{
 };
 use std::rc::Rc;
 use std::cell::RefCell;
+use gcodekit5_communication::communication::serial::list_ports;
 
 pub struct MachineControlView {
     pub widget: Box,
@@ -351,7 +352,7 @@ impl MachineControlView {
         main_area.append(&jog_area);
         widget.append(&main_area);
 
-        Rc::new(Self {
+        let view = Rc::new(Self {
             widget,
             port_combo,
             connect_btn,
@@ -387,7 +388,35 @@ impl MachineControlView {
             jog_z_pos,
             jog_z_neg,
             estop_btn,
-        })
+        });
+
+        view.refresh_ports();
+
+        let view_clone = view.clone();
+        view.refresh_btn.connect_clicked(move |_| {
+            view_clone.refresh_ports();
+        });
+
+        view
+    }
+
+    pub fn refresh_ports(&self) {
+        self.port_combo.remove_all();
+        
+        match list_ports() {
+            Ok(ports) if !ports.is_empty() => {
+                for port in ports {
+                    let label = format!("{} - {}", port.port_name, port.description);
+                    self.port_combo.append(Some(&port.port_name), &label);
+                }
+                // Select the first port
+                self.port_combo.set_active(Some(0));
+            }
+            _ => {
+                self.port_combo.append(Some("none"), "No ports available");
+                self.port_combo.set_active_id(Some("none"));
+            }
+        }
     }
 
     pub fn get_step_size(&self) -> f64 {
