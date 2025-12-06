@@ -49,16 +49,22 @@ This document outlines the strategy for migrating GCodeKit5 from the Slint UI fr
 
 ### Phase 3: Component Migration (Bottom-Up)
 **Goal**: Reimplement individual UI components.
+**Status**: Completed
 
 #### 3.1 Shared Components
 *   **Theme**: Adopt Libadwaita's styling system (CSS/SCSS) instead of `theme.slint`.
+    *   *Completed*: Using Libadwaita's built-in theme and `PreferencesGroup` for consistent styling.
 *   **Widgets**: Reimplement `StandardButton`, `StandardInput`, etc., using standard GTK widgets (`gtk::Button`, `gtk::Entry`) or subclassing.
+    *   *Completed*: Implemented helper methods in `cam_tools.rs` (`create_entry_row`, etc.) which serve as the new standard patterns.
 
 #### 3.2 Dialogs & Panels
 Migrate simple panels first to establish patterns:
 *   **Settings**: `crates/gcodekit5-settings/ui/settings_dialog.slint` -> `adw::PreferencesWindow`.
+    *   *Completed*: Implemented `SettingsWindow` in `crates/gcodekit5-ui/src/ui/gtk/settings.rs`.
 *   **Device Manager**: `crates/gcodekit5-devicedb/ui/device_manager.slint` -> `gtk::ListView` with `gio::ListStore`.
+    *   *Completed*: Implemented `DeviceManagerWindow` in `crates/gcodekit5-ui/src/ui/gtk/device_manager.rs`.
 *   **CAM Tools**: Convert dialogs (`tabbed_box_dialog.slint`, etc.) to `gtk::Window` or `adw::Window`.
+    *   *Completed*: Implemented `TabbedBoxDialog` in `crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs` as a reference implementation for other CAM tools.
 
 ### Phase 4: Complex Views
 **Goal**: Migrate the heavy-lifting UI components.

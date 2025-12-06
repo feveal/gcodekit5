@@ -44,6 +44,7 @@ pub mod state;
 pub mod themes;
 pub mod tools_manager_backend;
 pub mod ui_polish;
+pub mod gtk;
 
 pub use advanced_features_panel::{
     AdvancedFeaturesPanel, PerformanceMetrics, SimulationState, SoftLimits, Tool, ToolChangeMode,
