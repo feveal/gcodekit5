@@ -468,38 +468,34 @@ impl MachineControlView {
                     let port_name_copy = port_name.to_string();
 
                     // Spawn connection in a separate thread
-                    std::thread::spawn(move || {
-                        let result = communicator.borrow_mut().connect(&params);
-                        
-                        // Update UI on main thread
-                        glib::idle_add_once(move || {
-                            match result {
-                                Ok(_) => {
-                                    connect_btn.set_label("Disconnect");
-                                    connect_btn.remove_css_class("suggested-action");
-                                    connect_btn.add_css_class("destructive-action");
-                                    port_combo.set_sensitive(false);
-                                    refresh_btn.set_sensitive(false);
-                                    state_label.set_text("CONNECTED");
-                                    
-                                    // Update StatusBar
-                                    if let Some(ref sb) = status_bar {
-                                        sb.set_connected(true, &port_name_copy);
-                                    }
-                                    
-                                    // Log to status
-                                    let buffer = status_text.buffer();
-                                    let mut iter = buffer.end_iter();
-                                    buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
-                                }
-                                Err(e) => {
-                                    let buffer = status_text.buffer();
-                                    let mut iter = buffer.end_iter();
-                                    buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
-                                }
+                    // Connect on main thread to avoid Send/Sync issues
+                    let result = communicator.borrow_mut().connect(&params);
+                    
+                    match result {
+                        Ok(_) => {
+                            connect_btn.set_label("Disconnect");
+                            connect_btn.remove_css_class("suggested-action");
+                            connect_btn.add_css_class("destructive-action");
+                            port_combo.set_sensitive(false);
+                            refresh_btn.set_sensitive(false);
+                            state_label.set_text("CONNECTED");
+                            
+                            // Update StatusBar
+                            if let Some(ref sb) = status_bar {
+                                sb.set_connected(true, &port_name_copy);
                             }
-                        });
-                    });
+                            
+                            // Log to status
+                            let buffer = status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name_copy));
+                        }
+                        Err(e) => {
+                            let buffer = status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                        }
+                    }
                 }
             }
         });
