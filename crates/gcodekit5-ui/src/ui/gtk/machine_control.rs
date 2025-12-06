@@ -1,33 +1,31 @@
+use gcodekit5_communication::{
+    Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator, SerialParity,
+};
 use gtk4::prelude::*;
 use gtk4::{
-    Box, Orientation, Label, Button, ComboBoxText, Frame, Grid, Align, Image, ToggleButton,
-    TextView, ScrolledWindow, PolicyType, Paned,
+    Align, Box, Button, ComboBoxText, Frame, Grid, Label, Orientation, Paned, PolicyType,
+    ScrolledWindow, TextView, ToggleButton,
 };
-use std::rc::Rc;
 use std::cell::RefCell;
-use gcodekit5_communication::communication::serial::list_ports;
+use std::rc::Rc;
+
+use crate::ui::gtk::status_bar::StatusBar;
 
 pub struct MachineControlView {
     pub widget: Paned,
-    // Connection
     pub port_combo: ComboBoxText,
     pub connect_btn: Button,
     pub refresh_btn: Button,
-    // Transmission
     pub send_btn: Button,
     pub stop_btn: Button,
     pub pause_btn: Button,
     pub resume_btn: Button,
-    // State
     pub state_label: Label,
     pub home_btn: Button,
     pub unlock_btn: Button,
-    // Work Coordinates
     pub reset_g53_btn: Button,
     pub wcs_btns: Vec<Button>,
-    // Status
     pub status_text: TextView,
-    // DRO
     pub x_dro: Label,
     pub y_dro: Label,
     pub z_dro: Label,
@@ -35,11 +33,9 @@ pub struct MachineControlView {
     pub y_zero_btn: Button,
     pub z_zero_btn: Button,
     pub zero_all_btn: Button,
-    // World Coords
     pub world_x: Label,
     pub world_y: Label,
     pub world_z: Label,
-    // Jog
     pub step_0_1_btn: ToggleButton,
     pub step_1_0_btn: ToggleButton,
     pub step_10_btn: ToggleButton,
@@ -51,6 +47,7 @@ pub struct MachineControlView {
     pub jog_z_pos: Button,
     pub jog_z_neg: Button,
     pub estop_btn: Button,
+    pub communicator: Rc<RefCell<SerialCommunicator>>,
 }
 
 impl MachineControlView {
@@ -365,6 +362,8 @@ impl MachineControlView {
             gtk4::glib::ControlFlow::Continue
         });
 
+        let communicator = Rc::new(RefCell::new(SerialCommunicator::new()));
+
         let view = Rc::new(Self {
             widget,
             port_combo,
@@ -401,6 +400,7 @@ impl MachineControlView {
             jog_z_pos,
             jog_z_neg,
             estop_btn,
+            communicator,
         });
 
         view.refresh_ports();
@@ -410,13 +410,74 @@ impl MachineControlView {
             view_clone.refresh_ports();
         });
 
+        let view_clone = view.clone();
+        view.connect_btn.connect_clicked(move |_| {
+            let mut comm = view_clone.communicator.borrow_mut();
+            if comm.is_connected() {
+                match comm.disconnect() {
+                    Ok(_) => {
+                        view_clone.connect_btn.set_label("Connect");
+                        view_clone.connect_btn.remove_css_class("destructive-action");
+                        view_clone.connect_btn.add_css_class("suggested-action");
+                        view_clone.port_combo.set_sensitive(true);
+                        view_clone.refresh_btn.set_sensitive(true);
+                        view_clone.state_label.set_text("DISCONNECTED");
+                        
+                        // Log to status
+                        let buffer = view_clone.status_text.buffer();
+                        let mut iter = buffer.end_iter();
+                        buffer.insert(&mut iter, "Disconnected\n");
+                    }
+                    Err(e) => {
+                        let buffer = view_clone.status_text.buffer();
+                        let mut iter = buffer.end_iter();
+                        buffer.insert(&mut iter, &format!("Error disconnecting: {}\n", e));
+                    }
+                }
+            } else {
+                if let Some(port_name) = view_clone.port_combo.active_text() {
+                    if port_name == "No ports available" {
+                        return;
+                    }
+                    
+                    let params = ConnectionParams {
+                        driver: ConnectionDriver::Serial,
+                        port: port_name.to_string(),
+                        baud_rate: 115200,
+                        ..Default::default()
+                    };
+
+                    match comm.connect(&params) {
+                        Ok(_) => {
+                            view_clone.connect_btn.set_label("Disconnect");
+                            view_clone.connect_btn.remove_css_class("suggested-action");
+                            view_clone.connect_btn.add_css_class("destructive-action");
+                            view_clone.port_combo.set_sensitive(false);
+                            view_clone.refresh_btn.set_sensitive(false);
+                            view_clone.state_label.set_text("CONNECTED");
+                            
+                            // Log to status
+                            let buffer = view_clone.status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
+                        }
+                        Err(e) => {
+                            let buffer = view_clone.status_text.buffer();
+                            let mut iter = buffer.end_iter();
+                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                        }
+                    }
+                }
+            }
+        });
+
         view
     }
 
     pub fn refresh_ports(&self) {
         self.port_combo.remove_all();
         
-        match list_ports() {
+        match gcodekit5_communication::list_ports() {
             Ok(ports) if !ports.is_empty() => {
                 for port in ports {
                     self.port_combo.append(Some(&port.port_name), &port.port_name);
