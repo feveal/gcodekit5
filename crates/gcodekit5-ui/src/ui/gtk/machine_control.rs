@@ -57,6 +57,60 @@ impl MachineControlView {
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
+        
+        // Helper function to disable connection-dependent buttons
+        fn set_controls_enabled(
+            send_btn: &Button,
+            stop_btn: &Button,
+            pause_btn: &Button,
+            resume_btn: &Button,
+            home_btn: &Button,
+            unlock_btn: &Button,
+            reset_g53_btn: &Button,
+            wcs_btns: &[Button],
+            x_zero_btn: &Button,
+            y_zero_btn: &Button,
+            z_zero_btn: &Button,
+            zero_all_btn: &Button,
+            step_0_1_btn: &ToggleButton,
+            step_1_0_btn: &ToggleButton,
+            step_10_btn: &ToggleButton,
+            step_50_btn: &ToggleButton,
+            jog_x_pos: &Button,
+            jog_x_neg: &Button,
+            jog_y_pos: &Button,
+            jog_y_neg: &Button,
+            jog_z_pos: &Button,
+            jog_z_neg: &Button,
+            estop_btn: &Button,
+            enabled: bool,
+        ) {
+            send_btn.set_sensitive(enabled);
+            stop_btn.set_sensitive(enabled);
+            pause_btn.set_sensitive(enabled);
+            resume_btn.set_sensitive(enabled);
+            home_btn.set_sensitive(enabled);
+            unlock_btn.set_sensitive(enabled);
+            reset_g53_btn.set_sensitive(enabled);
+            for btn in wcs_btns {
+                btn.set_sensitive(enabled);
+            }
+            x_zero_btn.set_sensitive(enabled);
+            y_zero_btn.set_sensitive(enabled);
+            z_zero_btn.set_sensitive(enabled);
+            zero_all_btn.set_sensitive(enabled);
+            step_0_1_btn.set_sensitive(enabled);
+            step_1_0_btn.set_sensitive(enabled);
+            step_10_btn.set_sensitive(enabled);
+            step_50_btn.set_sensitive(enabled);
+            jog_x_pos.set_sensitive(enabled);
+            jog_x_neg.set_sensitive(enabled);
+            jog_y_pos.set_sensitive(enabled);
+            jog_y_neg.set_sensitive(enabled);
+            jog_z_pos.set_sensitive(enabled);
+            jog_z_neg.set_sensitive(enabled);
+            estop_btn.set_sensitive(enabled);
+        }
 
         // ═════════════════════════════════════════════
         // LEFT SIDEBAR
@@ -407,6 +461,34 @@ impl MachineControlView {
         };
 
         view.refresh_ports();
+        
+        // Disable all controls initially (until connected)
+        set_controls_enabled(
+            &view.send_btn,
+            &view.stop_btn,
+            &view.pause_btn,
+            &view.resume_btn,
+            &view.home_btn,
+            &view.unlock_btn,
+            &view.reset_g53_btn,
+            &view.wcs_btns,
+            &view.x_zero_btn,
+            &view.y_zero_btn,
+            &view.z_zero_btn,
+            &view.zero_all_btn,
+            &view.step_0_1_btn,
+            &view.step_1_0_btn,
+            &view.step_10_btn,
+            &view.step_50_btn,
+            &view.jog_x_pos,
+            &view.jog_x_neg,
+            &view.jog_y_pos,
+            &view.jog_y_neg,
+            &view.jog_z_pos,
+            &view.jog_z_neg,
+            &view.estop_btn,
+            false,
+        );
 
         // Setup jog button handlers
         {
@@ -562,6 +644,34 @@ impl MachineControlView {
                         view_clone.refresh_btn.set_sensitive(true);
                         view_clone.state_label.set_text("DISCONNECTED");
                         
+                        // Disable all controls on disconnect
+                        set_controls_enabled(
+                            &view_clone.send_btn,
+                            &view_clone.stop_btn,
+                            &view_clone.pause_btn,
+                            &view_clone.resume_btn,
+                            &view_clone.home_btn,
+                            &view_clone.unlock_btn,
+                            &view_clone.reset_g53_btn,
+                            &view_clone.wcs_btns,
+                            &view_clone.x_zero_btn,
+                            &view_clone.y_zero_btn,
+                            &view_clone.z_zero_btn,
+                            &view_clone.zero_all_btn,
+                            &view_clone.step_0_1_btn,
+                            &view_clone.step_1_0_btn,
+                            &view_clone.step_10_btn,
+                            &view_clone.step_50_btn,
+                            &view_clone.jog_x_pos,
+                            &view_clone.jog_x_neg,
+                            &view_clone.jog_y_pos,
+                            &view_clone.jog_y_neg,
+                            &view_clone.jog_z_pos,
+                            &view_clone.jog_z_neg,
+                            &view_clone.estop_btn,
+                            false,
+                        );
+                        
                         // Update StatusBar
                         if let Some(ref status_bar) = view_clone.status_bar {
                             status_bar.set_connected(false, "");
@@ -618,6 +728,34 @@ impl MachineControlView {
                             let buffer = view_clone.status_text.buffer();
                             let mut iter = buffer.end_iter();
                             buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
+                            
+                            // Enable all controls on successful connection
+                            set_controls_enabled(
+                                &view_clone.send_btn,
+                                &view_clone.stop_btn,
+                                &view_clone.pause_btn,
+                                &view_clone.resume_btn,
+                                &view_clone.home_btn,
+                                &view_clone.unlock_btn,
+                                &view_clone.reset_g53_btn,
+                                &view_clone.wcs_btns,
+                                &view_clone.x_zero_btn,
+                                &view_clone.y_zero_btn,
+                                &view_clone.z_zero_btn,
+                                &view_clone.zero_all_btn,
+                                &view_clone.step_0_1_btn,
+                                &view_clone.step_1_0_btn,
+                                &view_clone.step_10_btn,
+                                &view_clone.step_50_btn,
+                                &view_clone.jog_x_pos,
+                                &view_clone.jog_x_neg,
+                                &view_clone.jog_y_pos,
+                                &view_clone.jog_y_neg,
+                                &view_clone.jog_z_pos,
+                                &view_clone.jog_z_neg,
+                                &view_clone.estop_btn,
+                                true,
+                            );
                             
                             // Simple polling using glib::timeout_add_local - runs on main thread, no blocking
                             let state_label_poll = view_clone.state_label.clone();
