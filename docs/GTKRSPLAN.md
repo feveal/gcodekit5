@@ -110,16 +110,18 @@ Migrate simple panels first to establish patterns:
     *   *Completed*: Added a status bar at the bottom of the window.
 
 ### Phase 6: Styling & Polish
-**Status**: In Progress
+**Status**: Completed
 
 1.  **CSS**: Apply custom CSS for specific styling needs (e.g., visualizer overlays).
     *   *Completed*: Created `style.css` and loaded it in `gtk_app.rs`. Applied custom classes to Visualizer, Designer, and Machine Control.
 2.  **Layout Consistency**: Ensure consistent layout across views.
-    *   *Completed*: Standardized sidebar width to 250px (approx 20% of window) for Machine Control, Visualizer, and Device Manager.
+    *   *Completed*: Standardized sidebar width to dynamic 20% of window width using `GtkPaned` and `add_tick_callback` for Machine Control, Visualizer, and Device Manager.
 3.  **Icons**: Switch to standard Freedesktop icons or bundle custom SVG icons as resources.
-    *   *Completed*: Verified usage of standard symbolic icons (e.g., `open-menu-symbolic`, `system-run-symbolic`).
+    *   *Completed*: Verified usage of standard symbolic icons (e.g., `open-menu-symbolic`, `system-run-symbolic`). Updated Machine Control to use symbolic arrows.
 4.  **Accessibility**: Verify a11y labels and navigation order.
     *   *Completed*: Added tooltips to main menu button. Libadwaita widgets handle most a11y needs automatically.
+5.  **HIG Compliance**: Ensure conformity with GNOME Human Interface Guidelines.
+    *   *Completed*: Reviewed all views. Updated Machine Control typography and icons. Verified HeaderBar and Menu usage.
 
 ## 4. Risk Assessment
 
