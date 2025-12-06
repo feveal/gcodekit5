@@ -302,10 +302,10 @@ impl MachineControlView {
         xy_grid.set_column_spacing(5);
         xy_grid.set_row_spacing(5);
         
-        let jog_y_pos = Button::with_label("▲");
-        let jog_x_neg = Button::with_label("◀");
-        let jog_x_pos = Button::with_label("▶");
-        let jog_y_neg = Button::with_label("▼");
+        let jog_y_pos = Button::from_icon_name("go-up-symbolic");
+        let jog_x_neg = Button::from_icon_name("go-previous-symbolic");
+        let jog_x_pos = Button::from_icon_name("go-next-symbolic");
+        let jog_y_neg = Button::from_icon_name("go-down-symbolic");
         let home_center = Label::new(Some("XY"));
         
         // Style buttons
@@ -325,9 +325,9 @@ impl MachineControlView {
         let z_estop_box = Box::new(Orientation::Horizontal, 20);
         
         let z_box = Box::new(Orientation::Vertical, 5);
-        let jog_z_pos = Button::with_label("▲");
+        let jog_z_pos = Button::from_icon_name("go-up-symbolic");
         let z_label = Label::new(Some("Z"));
-        let jog_z_neg = Button::with_label("▼");
+        let jog_z_neg = Button::from_icon_name("go-down-symbolic");
         
         for btn in [&jog_z_pos, &jog_z_neg] {
             btn.set_width_request(60);
