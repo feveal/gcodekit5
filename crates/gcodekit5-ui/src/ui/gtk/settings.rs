@@ -91,8 +91,17 @@ impl SettingsWindow {
                     .valign(Align::Center)
                     .build();
                 
+                let id_clone = id.clone();
+                let controller_clone = controller.clone();
+                let window_clone = self.window.clone();
                 switch.connect_toggled(move |btn| {
-                    controller.update_setting(&id, &btn.is_active().to_string());
+                    controller_clone.update_setting(&id_clone, &btn.is_active().to_string());
+                    if let Err(e) = controller_clone.save() {
+                        eprintln!("Failed to save settings: {}", e);
+                    } else {
+                        // Optional: Show toast?
+                        // window_clone.add_toast(libadwaita::Toast::new("Setting saved"));
+                    }
                 });
                 
                 row.add_suffix(&switch);
@@ -107,9 +116,12 @@ impl SettingsWindow {
                     }
                 }
                 
+                let id_clone = id.clone();
+                let controller_clone = controller.clone();
                 combo.connect_changed(move |c| {
                     if let Some(text) = c.active_text() {
-                        controller.update_setting(&id, &text);
+                        controller_clone.update_setting(&id_clone, &text);
+                        let _ = controller_clone.save();
                     }
                 });
                 
@@ -133,6 +145,7 @@ impl SettingsWindow {
                 let controller_clone = controller.clone();
                 entry.connect_changed(move |e| {
                     controller_clone.update_setting(&id_clone, &e.text());
+                    let _ = controller_clone.save();
                 });
 
                 let box_container = Box::new(Orientation::Horizontal, 6);
@@ -148,8 +161,11 @@ impl SettingsWindow {
                     .width_chars(20)
                     .build();
                 
+                let id_clone = id.clone();
+                let controller_clone = controller.clone();
                 entry.connect_changed(move |e| {
-                    controller.update_setting(&id, &e.text());
+                    controller_clone.update_setting(&id_clone, &e.text());
+                    let _ = controller_clone.save();
                 });
                 
                 row.add_suffix(&entry);

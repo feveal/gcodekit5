@@ -17,7 +17,7 @@ use crate::ui::gtk::settings::SettingsWindow;
 use crate::ui::gtk::device_manager::DeviceManagerWindow;
 use crate::ui::gtk::cam_tools::TabbedBoxDialog;
 
-use gcodekit5_settings::{SettingsController, SettingsDialog, SettingsPersistence};
+use gcodekit5_settings::{SettingsController, SettingsDialog, SettingsPersistence, SettingsManager};
 use gcodekit5_devicedb::{DeviceManager, DeviceUiController};
 use gcodekit5_designer::designer_state::DesignerState;
 
@@ -32,14 +32,27 @@ pub fn main() {
 
     app.connect_activate(|app| {
         // Initialize Backend Systems
+        let config_path = SettingsManager::config_file_path().unwrap_or_else(|_| PathBuf::from("config.json"));
+        
+        let persistence = if config_path.exists() {
+            SettingsPersistence::load_from_file(&config_path).unwrap_or_else(|e| {
+                eprintln!("Failed to load settings: {}", e);
+                SettingsPersistence::new()
+            })
+        } else {
+            SettingsPersistence::new()
+        };
+        
+        let settings_persistence = Rc::new(RefCell::new(persistence));
         let settings_dialog = Rc::new(RefCell::new(SettingsDialog::new()));
-        let settings_persistence = Rc::new(RefCell::new(SettingsPersistence::new()));
+        
+        // Populate dialog with settings
+        settings_persistence.borrow().populate_dialog(&mut settings_dialog.borrow_mut());
+        
         let settings_controller = Rc::new(SettingsController::new(settings_dialog.clone(), settings_persistence.clone()));
         
-        // Load settings
-        if let Err(e) = settings_controller.save() { 
-            eprintln!("Settings init warning: {}", e);
-        }
+        // Ensure config dir exists
+        let _ = SettingsManager::ensure_config_dir();
 
         let config_dir = dirs::config_dir()
             .map(|p| p.join("gcodekit5"))
