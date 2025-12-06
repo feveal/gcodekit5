@@ -82,7 +82,7 @@ Migrate simple panels first to establish patterns:
 *   **Integration**: Port the OpenGL/WGPU rendering logic to draw within the `GLArea`'s context.
     *   *Completed*: Ported `Visualizer2D` command iteration to Cairo drawing calls.
 *   **Interaction**: Map GTK pointer/scroll events to the visualizer's camera controller.
-    *   *Pending*: Basic rendering is in place; interaction (zoom/pan) to be added in Phase 5/6 or as a refinement.
+    *   *Completed*: Implemented pan and zoom (scroll) interactions. Added "Fit to View" functionality.
 
 #### 4.3 Designer (`gcodekit5-designer`)
 *   **Canvas**: Implement a custom widget using `gtk::Snapshot` (Cairo-like 2D drawing) or `gtk::GLArea` for performance.
@@ -90,22 +90,30 @@ Migrate simple panels first to establish patterns:
 *   **Interactivity**: Reimplement drag-and-drop, selection, and resizing logic using GTK's EventControllers (`gtk::GestureDrag`, `gtk::GestureClick`).
     *   *Completed*: Attached `GestureClick` and `GestureDrag` controllers to the canvas. Basic event handling structure is in place.
 
+#### 4.4 Machine Control
+*   **Panel**: Reimplement the Machine Control panel with DRO, Jog controls, and Connection management.
+    *   *Completed*: Implemented `MachineControlView` in `crates/gcodekit5-ui/src/ui/gtk/machine_control.rs`.
+*   **Functionality**: Wire up port listing, connection handling, and machine state updates.
+    *   *Completed*: Implemented port listing and refresh.
+
 ### Phase 5: Main Window Integration
 **Goal**: Assemble the application.
 **Status**: Completed
 
 1.  **Layout**: Use `adw::Leaflet` or `gtk::Paned` for the sidebar layout.
-    *   *Completed*: Used `gtk::StackSidebar` and `gtk::Stack` for a standard sidebar navigation layout.
+    *   *Completed*: Used `gtk::StackSwitcher` (top tab bar) and `gtk::Stack` for navigation.
 2.  **Navigation**: Implement the sidebar navigation to switch between the migrated views (Editor, Visualizer, Designer).
-    *   *Completed*: Integrated `GcodeEditor`, `GcodeVisualizer`, and `DesignerCanvas` into the stack.
+    *   *Completed*: Integrated `GcodeEditor`, `GcodeVisualizer`, `DesignerCanvas`, and `MachineControlView` into the stack.
 3.  **Menu Bar**: Implement `gio::Menu` for application menus.
-    *   *Completed*: Added a HeaderBar with a MenuButton containing actions for Preferences, Device Manager, and CAM Tools.
+    *   *Completed*: Added a full menu bar with File, Edit, View, Tools, Machine, Help menus.
+4.  **Status Bar**: Implement a status bar for messages and state.
+    *   *Completed*: Added a status bar at the bottom of the window.
 
 ### Phase 6: Styling & Polish
 **Status**: Completed
 
 1.  **CSS**: Apply custom CSS for specific styling needs (e.g., visualizer overlays).
-    *   *Completed*: Created `style.css` and loaded it in `gtk_app.rs`. Applied custom classes to Visualizer and Designer.
+    *   *Completed*: Created `style.css` and loaded it in `gtk_app.rs`. Applied custom classes to Visualizer, Designer, and Machine Control.
 2.  **Icons**: Switch to standard Freedesktop icons or bundle custom SVG icons as resources.
     *   *Completed*: Verified usage of standard symbolic icons (e.g., `open-menu-symbolic`, `system-run-symbolic`).
 3.  **Accessibility**: Verify a11y labels and navigation order.
