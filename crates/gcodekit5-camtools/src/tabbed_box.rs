@@ -1263,14 +1263,29 @@ impl TabbedBoxMaker {
 
         gcode.push_str("; Tabbed Box Maker G-code\n");
         gcode.push_str("; Based on https://github.com/florianfesti/boxes\n");
+        gcode.push_str(";\n");
+        gcode.push_str("; --- Box Dimensions ---\n");
         gcode.push_str(&format!(
-            "; Box: {}x{}x{} mm\n",
+            "; Dimensions: {}x{}x{} mm\n",
             self.params.x, self.params.y, self.params.h
         ));
+        gcode.push_str(&format!("; Outside Dimensions: {}\n", self.params.outside));
+        gcode.push_str(&format!("; Box Type: {:?}\n", self.params.box_type));
+        gcode.push_str(&format!("; Dividers X: {}\n", self.params.dividers_x));
+        gcode.push_str(&format!("; Dividers Y: {}\n", self.params.dividers_y));
+        gcode.push_str(&format!("; Divider Keying: {:?}\n", self.params.key_divider_type));
+        gcode.push_str(&format!("; Optimize Layout: {}\n", self.params.optimize_layout));
+        gcode.push_str(";\n");
+        
+        gcode.push_str("; --- Material Settings ---\n");
         gcode.push_str(&format!(
             "; Material thickness: {} mm\n",
             self.params.thickness
         ));
+        gcode.push_str(&format!("; Burn / Tool Dia: {} mm\n", self.params.burn));
+        gcode.push_str(";\n");
+
+        gcode.push_str("; --- Finger Joint Settings ---\n");
         gcode.push_str(&format!(
             "; Finger width: {} * thickness = {} mm\n",
             self.params.finger_joint.finger,
@@ -1282,15 +1297,32 @@ impl TabbedBoxMaker {
             self.params.finger_joint.space * self.params.thickness
         ));
         gcode.push_str(&format!(
+            "; Surrounding spaces: {}\n",
+            self.params.finger_joint.surrounding_spaces
+        ));
+        gcode.push_str(&format!(
             "; Play: {} mm\n",
             self.params.finger_joint.play * self.params.thickness
         ));
+        gcode.push_str(&format!(
+            "; Extra length: {} mm\n",
+            self.params.finger_joint.extra_length * self.params.thickness
+        ));
+        gcode.push_str(&format!("; Finger Style: {:?}\n", self.params.finger_joint.style));
+        gcode.push_str(";\n");
+
+        gcode.push_str("; --- Laser Settings ---\n");
         gcode.push_str(&format!("; Laser passes: {}\n", self.params.laser_passes));
         gcode.push_str(&format!("; Laser power: S{}\n", self.params.laser_power));
         gcode.push_str(&format!(
             "; Feed rate: {:.0} mm/min\n",
             self.params.feed_rate
         ));
+        gcode.push_str(";\n");
+
+        gcode.push_str("; --- Work Origin Offsets ---\n");
+        gcode.push_str(&format!("; Offset X: {} mm\n", self.params.offset_x));
+        gcode.push_str(&format!("; Offset Y: {} mm\n", self.params.offset_y));
         gcode.push_str(";\n");
 
         gcode.push_str("; Initialization\n");
