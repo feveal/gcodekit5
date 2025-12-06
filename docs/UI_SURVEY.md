@@ -1,7 +1,7 @@
 # UI Consistency Survey
 
 ## Overview
-This document reports on the consistency of styling, layout, and function across the 11 tabbed views in the GCodeKit4 application.
+This document reports on the consistency of styling, layout, and function across the 11 tabbed views in the GCodeKit5 application.
 
 ## Inspected Views
 1.  **G-Code Editor** (`ui_panels/gcode_editor.slint`)

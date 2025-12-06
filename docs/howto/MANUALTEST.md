@@ -1,8 +1,8 @@
-# GCodeKit4 Manual Test Plan
+# GCodeKit5 Manual Test Plan
 
 **Version**: 0.8.2-alpha  
 **Last Updated**: 2025-10-21  
-**Document Purpose**: Comprehensive manual testing procedures for GCodeKit4 CNC sender application
+**Document Purpose**: Comprehensive manual testing procedures for GCodeKit5 CNC sender application
 
 ---
 
@@ -24,7 +24,7 @@
 
 ## Introduction
 
-This document provides comprehensive manual testing procedures for GCodeKit4, a Rust-based G-Code sender for CNC machines. The test plan covers functional features, UI/UX, integration, performance, error handling, and cross-platform compatibility.
+This document provides comprehensive manual testing procedures for GCodeKit5, a Rust-based G-Code sender for CNC machines. The test plan covers functional features, UI/UX, integration, performance, error handling, and cross-platform compatibility.
 
 ### Test Execution Guidelines
 

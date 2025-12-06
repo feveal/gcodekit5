@@ -1,4 +1,4 @@
-# GCodeKit4 - Specification Document
+# GCodeKit5 - Specification Document
 
 **Version**: 0.1.0-alpha.0
 **Last Updated**: 2025-12-06
@@ -405,12 +405,12 @@
 
 ## 1. Executive Summary
 
-GCodeKit4 is a cross-platform, Rust-based G-Code sender and CNC machine controller application. It provides a modern alternative to Universal G-Code Sender (UGS), supporting multiple CNC controller firmware types including GRBL, TinyG, g2core, Smoothieware, and FluidNC. The application enables users to load G-Code files, visualize toolpaths, control CNC machines in real-time, and manage machine operations through an intuitive graphical interface.
+GCodeKit5 is a cross-platform, Rust-based G-Code sender and CNC machine controller application. It provides a modern alternative to Universal G-Code Sender (UGS), supporting multiple CNC controller firmware types including GRBL, TinyG, g2core, Smoothieware, and FluidNC. The application enables users to load G-Code files, visualize toolpaths, control CNC machines in real-time, and manage machine operations through an intuitive graphical interface.
 
 ## 2. Product Overview
 
 ### 2.1 Purpose
-GCodeKit4 enables makers, engineers, and manufacturers to:
+GCodeKit5 enables makers, engineers, and manufacturers to:
 - Connect to and control CNC machines via serial/network protocols
 - Load and process G-Code files
 - Visualize machine toolpaths in 2D/3D
@@ -1694,7 +1694,7 @@ G54                ; Back to work coordinates
 
 ## 8. Firmware Capabilities Database
 
-GcodeKit4 includes a comprehensive **Firmware Capabilities Database** that tracks which features are supported by each firmware version. This enables:
+GCodeKit5 includes a comprehensive **Firmware Capabilities Database** that tracks which features are supported by each firmware version. This enables:
 
 - Version-aware UI feature enabling/disabling
 - G-code validation against controller capabilities

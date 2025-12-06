@@ -1,7 +1,11 @@
 ## [0.1.0-alpha.0] - 2025-12-06
 
 ### Changed
-- **Version**: Bumped version to 0.1.0-alpha.0.
+- **Project Rename**: Renamed project from `gcodekit4` to `gcodekit5`.
+  - Updated all crate names to `gcodekit5-*`.
+  - Updated all file references and documentation.
+  - Reset versioning to `0.1.0-alpha.0` for the new major iteration.
+- **Repository**: Migrated to new repository `gcodekit5`.
 
 ## [0.69.1-alpha.0] - 2025-12-06
 

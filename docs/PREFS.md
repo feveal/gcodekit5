@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document analyzes the implementation of application settings and preferences in GCodeKit4 and documents the refactoring that was performed to improve maintainability, user experience, and code organization.
+This document analyzes the implementation of application settings and preferences in GCodeKit5 and documents the refactoring that was performed to improve maintainability, user experience, and code organization.
 
 **Note:** This analysis focuses solely on **Application Settings** (UI themes, connection defaults, file processing), distinct from **Device/Firmware Settings** (GRBL $ settings).
 

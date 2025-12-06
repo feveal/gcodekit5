@@ -2,7 +2,7 @@
 
 ## Overview
 
-The firmware capabilities database tracks which features are supported by each CNC controller firmware version. This enables GCodeKit4 to provide version-aware UI and G-code generation that's tailored to the connected controller's capabilities.
+The firmware capabilities database tracks which features are supported by each CNC controller firmware version. This enables GCodeKit5 to provide version-aware UI and G-code generation that's tailored to the connected controller's capabilities.
 
 ## Purpose
 
@@ -12,7 +12,7 @@ Different firmware versions support different features. For example:
 - TinyG supports macros and conditional blocks
 - FluidNC supports up to 9 axes
 
-The capabilities database allows GCodeKit4 to:
+The capabilities database allows GCodeKit5 to:
 1. Enable/disable UI features based on what the controller supports
 2. Generate firmware-appropriate G-code
 3. Show warnings for unsupported operations

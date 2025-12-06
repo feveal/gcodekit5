@@ -1,4 +1,4 @@
-# GCodeKit4 Enhancement Checklist vs UGS
+# GCodeKit5 Enhancement Checklist vs UGS
 
 ## Critical Priority (Complete First)
 

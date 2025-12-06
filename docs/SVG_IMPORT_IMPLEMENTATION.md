@@ -2,7 +2,7 @@
 
 ## Overview
 
-Successfully implemented full SVG import functionality for the Designer tool in GCodeKit4. Users can now import vector graphics from external applications (Inkscape, Adobe Illustrator, etc.) directly into the Designer canvas.
+Successfully implemented full SVG import functionality for the Designer tool in GCodeKit5. Users can now import vector graphics from external applications (Inkscape, Adobe Illustrator, etc.) directly into the Designer canvas.
 
 ## Implementation Details
 

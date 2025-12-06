@@ -2,7 +2,7 @@
 
 ## 1. Executive Summary
 
-The current Designer tool in GCodeKit4 provides functional 2D CAD/CAM capabilities but deviates significantly from industry-standard UI/UX patterns found in vector editing software (e.g., Adobe Illustrator, Figma, Inkscape). While the underlying logic (state management, undo/redo, toolpath generation) is robust, the user interface relies heavily on modal dialogs and non-standard interaction models, which may increase cognitive load for users accustomed to standard design tools.
+The current Designer tool in GCodeKit5 provides functional 2D CAD/CAM capabilities but deviates significantly from industry-standard UI/UX patterns found in vector editing software (e.g., Adobe Illustrator, Figma, Inkscape). While the underlying logic (state management, undo/redo, toolpath generation) is robust, the user interface relies heavily on modal dialogs and non-standard interaction models, which may increase cognitive load for users accustomed to standard design tools.
 
 This analysis outlines the current patterns, compares them with industry norms, and proposes a roadmap to align the interface with user expectations.
 
@@ -38,13 +38,13 @@ The following keystrokes are currently implemented and functional:
 ### Competitive Benchmark: Inkscape
 [Inkscape](https://inkscape.org/) represents the open-source standard for vector graphics and is explicitly used for "making patterns for use with cutting machines and laser engravers" (Source: [Inkscape Manual](https://inkscape-manuals.readthedocs.io/en/latest/why-use-inkscape.html)).
 
-**Key Inkscape Patterns vs. GCodeKit4:**
-*   **Object-Oriented Workflow**: Inkscape treats every element as a distinct "object" with style and geometry properties. GCodeKit4 shares this underlying logic but hides it behind modal dialogs.
+**Key Inkscape Patterns vs. GCodeKit5:**
+*   **Object-Oriented Workflow**: Inkscape treats every element as a distinct "object" with style and geometry properties. GCodeKit5 shares this underlying logic but hides it behind modal dialogs.
 *   **Direct Manipulation**: In Inkscape, users expect to click an object and immediately see its properties (width, height, position) in a toolbar or side panel, editable in real-time.
-*   **Scalability**: Inkscape emphasizes that vector images are "mathematically-defined lines and curves" that maintain sharpness. GCodeKit4's UI should reflect this precision by offering precise, non-blocking coordinate inputs at all times.
+*   **Scalability**: Inkscape emphasizes that vector images are "mathematically-defined lines and curves" that maintain sharpness. GCodeKit5's UI should reflect this precision by offering precise, non-blocking coordinate inputs at all times.
 
 ### Broader Market Analysis
-A review of the [Top 10 Vector Graphic Software](https://veikk.com/route/blog/post?blog_post_id=88) highlights several universal standards that GCodeKit4 should aim to meet:
+A review of the [Top 10 Vector Graphic Software](https://veikk.com/route/blog/post?blog_post_id=88) highlights several universal standards that GCodeKit5 should aim to meet:
 
 1.  **Adobe Illustrator & CorelDRAW (The Heavyweights)**
     *   **Standard**: "Pixel-perfect shapes" and "flawless alignment".
@@ -59,12 +59,12 @@ A review of the [Top 10 Vector Graphic Software](https://veikk.com/route/blog/po
 3.  **Gravit Designer, Vectr, & SVG-Edit (The Web/Lightweight Class)**
     *   **Standard**: "Intuitive dashboards" and "Cross-platform compatibility".
     *   **Lesson**: Even simple tools avoid modal dialogs for core properties. They use **context-sensitive sidebars** that change based on the selected tool or object.
-    *   **UI Pattern**: **Direct SVG editing** (SVG-Edit) is a niche but powerful feature for technical users, aligning well with GCodeKit4's target audience of makers/engineers.
+    *   **UI Pattern**: **Direct SVG editing** (SVG-Edit) is a niche but powerful feature for technical users, aligning well with GCodeKit5's target audience of makers/engineers.
 
-**Synthesis for GCodeKit4:**
+**Synthesis for GCodeKit5:**
 Across all 10 top tools, **none** rely on modal dialogs for basic shape manipulation. The industry consensus is clear: **Canvas + Contextual Sidebar** is the universal interaction model.
 
-| Feature | GCodeKit4 Designer | Industry Standard (Figma/Illustrator/Inkscape) | Gap Analysis |
+| Feature | GCodeKit5 Designer | Industry Standard (Figma/Illustrator/Inkscape) | Gap Analysis |
 | :--- | :--- | :--- | :--- |
 | **Properties Panel** | **Modal Dialog**: Blocks interaction with canvas while editing. | **Persistent Sidebar**: Updates in real-time as objects are selected. | **Critical**: Modals break flow. Users expect to tweak values and see results immediately without closing a window. |
 | **Canvas Pan** | **Left-Drag on Empty Space**: Conflicts with standard selection behavior. | **Space + Drag** or **Middle Mouse**: Left-drag is reserved for marquee selection. | **High**: Non-standard panning confuses users trying to select multiple objects. |
@@ -109,4 +109,4 @@ Across all 10 top tools, **none** rely on modal dialogs for basic shape manipula
 
 ## 6. Conclusion
 
-The GCodeKit4 Designer is functionally capable but suffers from "programmer UI" decisions (modals for properties, non-standard inputs). By adopting the **Properties Panel** pattern and standardizing **Canvas Navigation**, the tool will feel significantly more professional and intuitive to designers and engineers already familiar with CAD/Vector software.
+The GCodeKit5 Designer is functionally capable but suffers from "programmer UI" decisions (modals for properties, non-standard inputs). By adopting the **Properties Panel** pattern and standardizing **Canvas Navigation**, the tool will feel significantly more professional and intuitive to designers and engineers already familiar with CAD/Vector software.

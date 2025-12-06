@@ -1,6 +1,6 @@
 # Implementing Selectable Units (Metric/Imperial)
 
-This guide describes the steps required to implement selectable measurement units (Metric vs. Imperial) for a dialog or panel in GCodeKit4. The system allows users to view and enter values in their preferred unit system (mm or inches), while the application internally maintains all values in millimeters.
+This guide describes the steps required to implement selectable measurement units (Metric vs. Imperial) for a dialog or panel in GCodeKit5. The system allows users to view and enter values in their preferred unit system (mm or inches), while the application internally maintains all values in millimeters.
 
 ## 1. UI Implementation (.slint)
 

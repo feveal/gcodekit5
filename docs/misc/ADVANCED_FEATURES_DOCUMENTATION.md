@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tasks 97-102 implement advanced features for GCodeKit4, including file validation UI, file comparison, backup/recovery, templates, and probing capabilities.
+Tasks 97-102 implement advanced features for GCodeKit5, including file validation UI, file comparison, backup/recovery, templates, and probing capabilities.
 
 ## Architecture
 

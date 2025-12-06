@@ -22,7 +22,7 @@ What actually happened.
 
 ## Environment
 - OS: [e.g. Linux, Windows, macOS]
-- GCodeKit4 Version: [e.g. 0.1.0]
+- GCodeKit5 Version: [e.g. 0.1.0]
 - Controller: [e.g. GRBL, TinyG]
 
 ## Additional Context

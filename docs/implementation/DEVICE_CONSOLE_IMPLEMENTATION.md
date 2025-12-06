@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document details the implementation of the `DeviceConsoleManager` in GCodeKit4, which is inspired by the Universal G-Code Sender (UGS) console architecture but improved for Rust with modern concurrency patterns.
+This document details the implementation of the `DeviceConsoleManager` in GCodeKit5, which is inspired by the Universal G-Code Sender (UGS) console architecture but improved for Rust with modern concurrency patterns.
 
 ## UGS Reference Architecture
 
@@ -27,7 +27,7 @@ The CommandPanel in `com.willwinder.universalgcodesender.uielements.panels` prov
 - **Popup Menu**: Clear, verbose toggle, scroll window options
 - **Message Formatting**: Color-coded by level with timestamps
 
-## GCodeKit4 Implementation
+## GCodeKit5 Implementation
 
 ### Architecture Overview
 
@@ -243,7 +243,7 @@ let console_manager = Rc::new(DeviceConsoleManager::new());
 // Add startup messages
 console_manager.add_message(
     DeviceMessageType::Success, 
-    "GCodeKit4 initialized"
+    "GCodeKit5 initialized"
 );
 
 // Update UI when view changes
@@ -270,20 +270,20 @@ match device_response {
 }
 ```
 
-## Comparison: UGS vs GCodeKit4
+## Comparison: UGS vs GCodeKit5
 
-| Feature | UGS | GCodeKit4 | Advantage |
+| Feature | UGS | GCodeKit5 | Advantage |
 |---------|-----|----------|-----------|
-| Message Types | 3 | 5 | ✅ GCodeKit4 (more granular) |
+| Message Types | 3 | 5 | ✅ GCodeKit5 (more granular) |
 | Verbose Filtering | ✓ | ✓ | ➖ Same |
 | Auto-Scroll | ✓ | ✓ | ➖ Same |
-| Thread Safety | EDT-based | Arc<Mutex> | ✅ GCodeKit4 (explicit) |
-| Memory Efficiency | 1MB fixed | 100-150KB | ✅ GCodeKit4 (10x better) |
-| Event System | Interface | Callback | ✅ GCodeKit4 (more flexible) |
+| Thread Safety | EDT-based | Arc<Mutex> | ✅ GCodeKit5 (explicit) |
+| Memory Efficiency | 1MB fixed | 100-150KB | ✅ GCodeKit5 (10x better) |
+| Event System | Interface | Callback | ✅ GCodeKit5 (more flexible) |
 | Color Support | ✓ | UI-level | ➖ Same (UI responsibility) |
 | Command History | ✓ | ✓ | ➖ Same |
-| Configurable | ✗ | ✓ | ✅ GCodeKit4 (new) |
-| Buffer Size | Fixed | Tunable | ✅ GCodeKit4 (new) |
+| Configurable | ✗ | ✓ | ✅ GCodeKit5 (new) |
+| Buffer Size | Fixed | Tunable | ✅ GCodeKit5 (new) |
 
 ## Performance Characteristics
 

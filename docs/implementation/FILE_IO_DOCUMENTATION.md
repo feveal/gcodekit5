@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tasks 91 and 92 implement comprehensive file I/O functionality for GCodeKit4, enabling efficient reading of G-code files of any size and tracking of recently opened files with automatic persistence.
+Tasks 91 and 92 implement comprehensive file I/O functionality for GCodeKit5, enabling efficient reading of G-code files of any size and tracking of recently opened files with automatic persistence.
 
 ## Architecture
 

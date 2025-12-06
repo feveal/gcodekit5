@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Designer tool is a 2D CAD/CAM design utility integrated into GCodeKit4 that allows users to create CNC projects visually and generate G-code directly within the application. Phase 1 focuses on core functionality to get the MVP working quickly.
+The Designer tool is a 2D CAD/CAM design utility integrated into GCodeKit5 that allows users to create CNC projects visually and generate G-code directly within the application. Phase 1 focuses on core functionality to get the MVP working quickly.
 
 ## Phase 1 MVP Features
 

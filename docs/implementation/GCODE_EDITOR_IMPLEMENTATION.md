@@ -101,7 +101,7 @@ Uses native dialogs via `rfd` crate for:
 
 ## Comparison with Java UGS
 
-| Java UGS | GCodeKit4 Equivalent |
+| Java UGS | GCodeKit5 Equivalent |
 |----------|---------------------|
 | EditorUtils.openFile() | `open_and_load_file()` |
 | EditorUtils.unloadFile() | `clear_execution_state()` |

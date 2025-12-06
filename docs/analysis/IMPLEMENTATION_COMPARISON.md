@@ -1,7 +1,7 @@
-# GCodeKit4 vs Universal G-Code Sender (Java) Implementation Comparison
+# GCodeKit5 vs Universal G-Code Sender (Java) Implementation Comparison
 
 ## Overview
-This document compares the Rust implementation of GCodeKit4 with the reference Java implementation (Universal G-Code Sender) to identify gaps, improvements, and architectural differences.
+This document compares the Rust implementation of GCodeKit5 with the reference Java implementation (Universal G-Code Sender) to identify gaps, improvements, and architectural differences.
 
 ## Executive Summary
 
@@ -423,7 +423,7 @@ Return GcodeCommand
 
 ## Conclusion
 
-The Rust implementation of GCodeKit4 has **superior architecture and design** in terms of:
+The Rust implementation of GCodeKit5 has **superior architecture and design** in terms of:
 - Safety and concurrency
 - Error handling
 - Testing coverage

@@ -1,13 +1,13 @@
-# GCodeKit4 vs Universal-G-Code-Sender Implementation Comparison
+# GCodeKit5 vs Universal-G-Code-Sender Implementation Comparison
 
 ## Architecture Comparison
 
 ### 1. **Controller Interface & Implementation**
 **UGS Pattern**: `IController` interface with `AbstractController` base class and firmware-specific implementations
-**GCodeKit4**: Currently has `Controller` trait in core module (minimal implementation)
+**GCodeKit5**: Currently has `Controller` trait in core module (minimal implementation)
 
 **Issues Found**:
-- GCodeKit4 needs comprehensive Controller interface with full command set
+- GCodeKit5 needs comprehensive Controller interface with full command set
 - Missing jog, probe, override, and many operation methods
 - Need abstractcontroller equivalent for shared implementation
 
@@ -18,7 +18,7 @@
 - `CommandListener` for individual command tracking
 - Event-based architecture using listener pattern
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has `CommandListener` trait (basic)
 - Missing comprehensive event system
 - No communicator listener
@@ -42,7 +42,7 @@
 - `Overrides` (feed/rapid/spindle overrides)
 - `UnitUtils` (conversion utilities)
 
-**GCodeKit4**:
+**GCodeKit5**:
 - ✓ Has Position, PartialPosition, CNCPoint
 - ✓ Has Units with conversion
 - ✗ Missing Alarm, Axis enums
@@ -78,7 +78,7 @@
 - TranslateProcessor
 - WhitespaceProcessor
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Architecture exists but no actual implementations
 - Missing all preprocessors
 
@@ -97,7 +97,7 @@
 - FluidNC
 - XLCD (legacy)
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has firmware enum
 - Missing implementations
 
@@ -118,7 +118,7 @@
 - Connection abstraction with `IConnectionDevice`
 - Support for Serial, TCP, WebSocket, Xmodem
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has `Communicator` trait (minimal)
 - No implementations yet
 
@@ -137,7 +137,7 @@
 - `FirmwareSettingsFile` for persistence
 - Settings validation and UI binding
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has `FirmwareSettings` trait (empty)
 - Config file has settings but no firmware binding
 
@@ -156,7 +156,7 @@
 - Tracks feed rate, rapid, spindle overrides
 - Real-time override commands
 
-**GCodeKit4**:
+**GCodeKit5**:
 - No override system implemented
 
 **Issues**:
@@ -173,7 +173,7 @@
 - `ControllerException` for controller errors
 - Detailed error reporting with codes/messages
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has generic error types
 - Missing structured Alarm codes
 - Missing firmware-specific error mappings
@@ -193,7 +193,7 @@
 - Connection watch timer for health checks
 - Comprehensive status reporting
 
-**GCodeKit4**:
+**GCodeKit5**:
 - ✓ Has ControllerState and ControllerStatus
 - ✓ Has ModalState
 - ✗ Missing StatusPollTimer
@@ -214,7 +214,7 @@
 - Resume from line capability
 - File validation before streaming
 
-**GCodeKit4**:
+**GCodeKit5**:
 - No file service yet
 - No streaming implementation
 - No command buffer
@@ -234,7 +234,7 @@
 - Event-based UI refresh
 - Listener pattern for decoupling
 
-**GCodeKit4**:
+**GCodeKit5**:
 - Has CommandListener
 - Missing comprehensive UI listener pattern
 - UI module minimal
@@ -396,7 +396,7 @@ pub trait CommunicatorListener: Send + Sync {
 
 ## Conclusion
 
-GCodeKit4 is well-structured but lacks many critical implementations present in UGS. The architecture is sound but needs:
+GCodeKit5 is well-structured but lacks many critical implementations present in UGS. The architecture is sound but needs:
 1. Complete firmware implementations
 2. All G-Code processors
 3. Comprehensive listener/event system

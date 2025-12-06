@@ -1,7 +1,7 @@
 # Menu System Implementation
 
 ## Overview
-The GCodeKit4 menu system has been fully implemented with functional menu items and proper event handlers wired up to application functionality, inspired by the Universal G-Code Sender Java application.
+The GCodeKit5 menu system has been fully implemented with functional menu items and proper event handlers wired up to application functionality, inspired by the Universal G-Code Sender Java application.
 
 ## Menu Structure
 

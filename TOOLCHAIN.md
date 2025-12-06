@@ -1,4 +1,4 @@
-# GCodeKit4 Toolchain Setup
+# GCodeKit5 Toolchain Setup
 
 This document describes how to set up your development environment with Rust and the Wild linker for optimal build performance.
 
@@ -15,7 +15,7 @@ This document describes how to set up your development environment with Rust and
 
 ## Installing Rust
 
-GCodeKit4 requires Rust 1.70 or later. We recommend using `rustup` for managing your Rust installation.
+GCodeKit5 requires Rust 1.70 or later. We recommend using `rustup` for managing your Rust installation.
 
 ### Install Rustup (Recommended)
 
@@ -111,7 +111,7 @@ cargo install tokei
 tokei --version
 ```
 
-## Configuring GCodeKit4 for Wild Linker
+## Configuring GCodeKit5 for Wild Linker
 
 The project is pre-configured to use the wild linker. The configuration is in `.cargo/config.toml`:
 
@@ -122,7 +122,7 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 
 This tells the Rust compiler to use LLD (wild linker) instead of the default system linker.
 
-## Building GCodeKit4
+## Building GCodeKit5
 
 Once your toolchain is set up, building is straightforward:
 
@@ -233,7 +233,7 @@ incremental = true      # Highly recommended for dev builds
 For issues related to:
 - **Rust installation**: Visit [rustup.rs](https://rustup.rs)
 - **Wild linker/LLD**: Check [lld.llvm.org](https://lld.llvm.org/)
-- **GCodeKit4 builds**: See the main [README.md](README.md)
+- **GCodeKit5 builds**: See the main [README.md](README.md)
 
 ---
 

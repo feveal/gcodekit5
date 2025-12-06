@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tasks 93 and 94 implement comprehensive file processing capabilities for GCodeKit4, including a flexible processing pipeline with caching and detailed file statistics calculation.
+Tasks 93 and 94 implement comprehensive file processing capabilities for GCodeKit5, including a flexible processing pipeline with caching and detailed file statistics calculation.
 
 ## Architecture
 

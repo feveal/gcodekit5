@@ -1,4 +1,4 @@
-# User Acceptance Tests (UAT) for GCodeKit4
+# User Acceptance Tests (UAT) for GCodeKit5
 
 **Date**: 2025-12-04
 **Version**: 0.67.0-alpha.0
@@ -18,7 +18,7 @@
 
 | ID | Test Case | Steps | Expected Result | Pass/Fail |
 |----|-----------|-------|-----------------|-----------|
-| 1.1 | Port Detection | 1. Connect device via USB.<br>2. Launch GCodeKit4.<br>3. Open "Connection" panel.<br>4. Click "Refresh Ports". | The device's serial port (e.g., `/dev/ttyUSB0` or `COM3`) appears in the dropdown list.<br>If no port was selected, the first available port is automatically selected. | |
+| 1.1 | Port Detection | 1. Connect device via USB.<br>2. Launch GCodeKit5.<br>3. Open "Connection" panel.<br>4. Click "Refresh Ports". | The device's serial port (e.g., `/dev/ttyUSB0` or `COM3`) appears in the dropdown list.<br>If no port was selected, the first available port is automatically selected. | |
 | 1.2 | Connection (Laser) | 1. Select Laser port.<br>2. Set Baud Rate to 115200.<br>3. Click "Connect". | Console shows "Grbl 1.1..." welcome message.<br>Status bar changes to "Idle".<br>DRO updates with positions.<br>Console log shows "Connecting..." then "Connected". | |
 | 1.3 | Connection (CNC) | 1. Select CNC port.<br>2. Set Baud Rate to 115200.<br>3. Click "Connect". | Console shows "Grbl 1.1..." welcome message.<br>Status bar changes to "Idle".<br>DRO updates with positions.<br>Console log shows "Connecting..." then "Connected". | |
 | 1.4 | Disconnect | 1. While connected, click "Disconnect". | Status bar changes to "Disconnected".<br>Port becomes available for other apps. | |

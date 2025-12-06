@@ -15,7 +15,7 @@ The device console is now fully functional with proper text display, alignment, 
 ### Console Messages Display:
 All messages now appear in the console with proper formatting:
 ```
-[HH:MM:SS] [OK] GCodeKit4 initialized
+[HH:MM:SS] [OK] GCodeKit5 initialized
 [HH:MM:SS] [INFO] Ready for operation
 [HH:MM:SS] [INFO] Connecting to /dev/ttyUSB0 at 115200 baud
 [HH:MM:SS] [OK] Successfully connected to /dev/ttyUSB0 at 115200 baud

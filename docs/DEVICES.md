@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the design and implementation plan for a Device Profile Management system in GCodeKit4. This system will allow users to define, manage, and select different machine configurations (e.g., "My Laser Cutter", "Desktop CNC", "3D Printer") with specific workspace dimensions, controller types, and capabilities.
+This document outlines the design and implementation plan for a Device Profile Management system in GCodeKit5. This system will allow users to define, manage, and select different machine configurations (e.g., "My Laser Cutter", "Desktop CNC", "3D Printer") with specific workspace dimensions, controller types, and capabilities.
 
 ## Requirements
 

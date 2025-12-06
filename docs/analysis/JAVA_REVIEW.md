@@ -1,8 +1,8 @@
-# Review: GCodeKit4 Rust Implementation vs Universal G-Code Sender Java Implementation
+# Review: GCodeKit5 Rust Implementation vs Universal G-Code Sender Java Implementation
 
 **Date**: 2025-10-21  
 **Focus**: Task 14 - G-Code Preprocessors - Basic  
-**Reviewed By**: GCodeKit4 Development Team
+**Reviewed By**: GCodeKit5 Development Team
 
 ## Executive Summary
 
@@ -21,7 +21,7 @@ public class WhitespaceProcessor extends PatternRemover {
 }
 ```
 
-#### Rust Implementation (GCodeKit4)
+#### Rust Implementation (GCodeKit5)
 - Direct implementation of `CommandProcessor` trait
 - Trims leading and trailing whitespace
 - Skips commands that become empty after trimming
@@ -44,7 +44,7 @@ public class CommentProcessor extends PatternRemover {
 ```
 Where COMMENT pattern is: `\\(.*\\)|\\s*;.*|%.*$`
 
-#### Rust Implementation (GCodeKit4)
+#### Rust Implementation (GCodeKit5)
 - Implements `CommandProcessor` trait
 - Removes:
   - Parentheses comments: `(comment text)`
@@ -66,7 +66,7 @@ public class EmptyLineRemoverProcessor extends PatternRemover {
 }
 ```
 
-#### Rust Implementation (GCodeKit4)
+#### Rust Implementation (GCodeKit5)
 - Removes lines that are empty after whitespace trimming
 - Returns empty vector for empty commands
 - Returns processed command for non-empty commands
@@ -82,7 +82,7 @@ public class EmptyLineRemoverProcessor extends PatternRemover {
 - Adjusts command length based on configuration
 - Extended ASCII support
 
-#### Rust Implementation (GCodeKit4)
+#### Rust Implementation (GCodeKit5)
 - Validates command doesn't exceed configured maximum length
 - Adds configurable maximum command length option
 - Returns error if command exceeds limit, or original if within limit
@@ -101,7 +101,7 @@ static public String truncateDecimals(int length, String command) {
 }
 ```
 
-#### Rust Implementation (GCodeKit4)
+#### Rust Implementation (GCodeKit5)
 - Parses command for numeric values
 - Rounds all decimals to specified precision (default 5)
 - Preserves command structure and non-numeric parts

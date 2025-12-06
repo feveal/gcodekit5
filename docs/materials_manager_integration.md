@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Materials Manager has been successfully integrated into the main GCodeKit4 UI as a dedicated tab view.
+The Materials Manager has been successfully integrated into the main GCodeKit5 UI as a dedicated tab view.
 
 ## Integration Points
 

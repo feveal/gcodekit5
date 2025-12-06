@@ -8,7 +8,7 @@ The CNC Tools Manager provides a comprehensive interface for managing your CNC t
 
 ## Accessing the Tools Manager
 
-1. Launch GCodeKit4
+1. Launch GCodeKit5
 2. Click the **🔩 CNC Tools** tab in the top navigation bar
 3. The Tools Manager interface will open
 
@@ -255,7 +255,7 @@ copy %APPDATA%\gcodekit5\custom_tools.json %USERPROFILE%\Backups\
 
 ## Standard Library Tools
 
-GCodeKit4 includes standard tools:
+GCodeKit5 includes standard tools:
 
 1. **T1** - 3.175mm (1/8") Carbide End Mill - 2-flute
 2. **T2** - 6.35mm (1/4") Carbide End Mill - 2-flute

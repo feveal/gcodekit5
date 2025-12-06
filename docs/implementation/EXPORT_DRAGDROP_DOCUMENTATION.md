@@ -2,7 +2,7 @@
 
 ## Overview
 
-Tasks 95 and 96 implement file export capabilities and drag-and-drop support for GCodeKit4, enabling users to save processed G-code in various formats and intuitively import files via drag-and-drop interface.
+Tasks 95 and 96 implement file export capabilities and drag-and-drop support for GCodeKit5, enabling users to save processed G-code in various formats and intuitively import files via drag-and-drop interface.
 
 ## Architecture
 
@@ -132,7 +132,7 @@ for format in &[FileFormat::GCode, FileFormat::NGC, FileFormat::GCO] {
 ### Export Header Example
 
 ```
-; GCodeKit4 Exported File
+; GCodeKit5 Exported File
 ; Exported: 2025-10-25 12:34:56
 ; Format options:
 ;   Include comments: true

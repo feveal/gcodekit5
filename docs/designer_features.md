@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Designer tool is a 2D CAD/CAM application integrated into GCodeKit4, allowing users to create designs and generate G-code toolpaths directly within the application.
+The Designer tool is a 2D CAD/CAM application integrated into GCodeKit5, allowing users to create designs and generate G-code toolpaths directly within the application.
 
 ## Visual Features
 

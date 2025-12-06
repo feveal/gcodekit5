@@ -1,4 +1,4 @@
-# Architecture Review - GCodeKit4 (Updated Post-Refactoring)
+# Architecture Review - GCodeKit5 (Updated Post-Refactoring)
 
 **Date:** 2025-11-18  
 **Status:** Post-Refactoring Analysis (v0.32.0-alpha)  
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-GCodeKit4 is a well-architected Rust/Slint-based G-Code sender for CNC machines. Following comprehensive refactoring, the project is now organized into **7 discrete crates** (previously 4) with enhanced separation of concerns and cleaner layering:
+GCodeKit5 is a well-architected Rust/Slint-based G-Code sender for CNC machines. Following comprehensive refactoring, the project is now organized into **7 discrete crates** (previously 4) with enhanced separation of concerns and cleaner layering:
 
 - **gcodekit5-core** (3.4K LOC): Foundation - data models, events, messages, materials, tools
 - **gcodekit5-parser** (14K LOC): G-Code parsing and utilities (reduced from 23.8K)
@@ -708,7 +708,7 @@ Verified with `cargo check` - all dependencies are acyclic.
 
 **Overall Architecture Grade: A+ (Improved from A-)**
 
-GCodeKit4 demonstrates excellent architecture that has been significantly improved through recent refactoring:
+GCodeKit5 demonstrates excellent architecture that has been significantly improved through recent refactoring:
 
 ### Strengths ✅
 
@@ -811,7 +811,7 @@ Layer 3: ui (→ all layer 2 + core)
 
 **Updated Architecture Grade: A+** (up from A-)
 
-The recent refactoring has taken an already good architecture and transformed it into an exemplary Rust project structure. With 6 focused crates, clean layering, zero circular dependencies, and comprehensive functionality, GCodeKit4 is now:
+The recent refactoring has taken an already good architecture and transformed it into an exemplary Rust project structure. With 6 focused crates, clean layering, zero circular dependencies, and comprehensive functionality, GCodeKit5 is now:
 
 - **Production-Ready:** Excellent code quality and organization
 - **Maintainable:** Clear separation of concerns and focused crates

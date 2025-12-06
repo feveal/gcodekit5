@@ -1,6 +1,6 @@
 # Keybindings
 
-This document tracks the currently assigned keybindings in GCodeKit4, organized by functional area.
+This document tracks the currently assigned keybindings in GCodeKit5, organized by functional area.
 
 ## Global / Machine Control
 

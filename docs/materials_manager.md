@@ -1,6 +1,6 @@
 # Materials Manager
 
-The Materials Manager provides a comprehensive CRUD (Create, Read, Update, Delete) interface for managing the materials database in GCodeKit4.
+The Materials Manager provides a comprehensive CRUD (Create, Read, Update, Delete) interface for managing the materials database in GCodeKit5.
 
 ## Features
 

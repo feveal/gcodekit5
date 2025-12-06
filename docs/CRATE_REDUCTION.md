@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines a plan to reduce redundancy, fix version mismatches, and consolidate dependencies across the GCodeKit4 workspace. By centralizing dependency management and removing redundant crates, we can improve build times, reduce binary size, and ensure consistent behavior.
+This document outlines a plan to reduce redundancy, fix version mismatches, and consolidate dependencies across the GCodeKit5 workspace. By centralizing dependency management and removing redundant crates, we can improve build times, reduce binary size, and ensure consistent behavior.
 
 **Estimated Reduction:**
 - **Direct Dependencies:** We can eliminate ~5-10 redundant direct dependency declarations by moving them to the workspace level.

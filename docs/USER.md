@@ -1,8 +1,8 @@
-# GCodeKit4 User Manual
+# GCodeKit5 User Manual
 
 **Version:** 0.51.0-alpha  
 **Last Updated:** November 28, 2025  
-**Application:** GCodeKit4 CNC Controller & G-Code Sender
+**Application:** GCodeKit5 CNC Controller & G-Code Sender
 
 ---
 
@@ -28,9 +28,9 @@
 
 ## 1. Introduction
 
-### 1.1 What is GCodeKit4?
+### 1.1 What is GCodeKit5?
 
-GCodeKit4 is a modern, cross-platform CNC machine controller application written in Rust with a Slint UI framework. It provides a comprehensive solution for controlling CNC machines, editing G-Code, designing toolpaths, and monitoring machine operations in real-time.
+GCodeKit5 is a modern, cross-platform CNC machine controller application written in Rust with a Slint UI framework. It provides a comprehensive solution for controlling CNC machines, editing G-Code, designing toolpaths, and monitoring machine operations in real-time.
 
 ### 1.2 Key Features
 
@@ -67,7 +67,7 @@ GCodeKit4 is a modern, cross-platform CNC machine controller application written
 
 Pre-compiled binaries are available for Linux, Windows, and macOS.
 
-1.  Go to the [GCodeKit4 Releases Page](https://github.com/thawkins/gcodekit5/releases).
+1.  Go to the [GCodeKit5 Releases Page](https://github.com/thawkins/gcodekit5/releases).
 2.  Find the latest release (e.g., `v0.51.0-alpha`).
 3.  Download the archive for your operating system:
     *   **Linux**: `gcodekit5-linux-x86_64.flatpak`
@@ -94,7 +94,7 @@ The compiled binary will be located at `target/release/gcodekit5`.
 
 ### 2.2 First Launch
 
-When you first launch GCodeKit4, you'll see:
+When you first launch GCodeKit5, you'll see:
 
 1. **Main Window**: Tabbed interface with Machine Control, G-Code Editor, Designer, and other panels
 2. **Menu Bar**: File, Machine, Tools, and Help menus
@@ -142,7 +142,7 @@ When you first launch GCodeKit4, you'll see:
 
 ### 3.1 Main Window Layout
 
-The GCodeKit4 interface features a modern dark theme for reduced eye strain and better visibility of toolpaths.
+The GCodeKit5 interface features a modern dark theme for reduced eye strain and better visibility of toolpaths.
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -278,7 +278,7 @@ Real-time adjustments to machine operation:
 
 ### 6.1 Overview
 
-The Designer tab provides vector drawing tools and toolpath generation for creating G-Code programs directly within GCodeKit4.
+The Designer tab provides vector drawing tools and toolpath generation for creating G-Code programs directly within GCodeKit5.
 
 ### 6.2 Drawing Tools
 
@@ -345,7 +345,7 @@ The Visualizer provides a 2D/3D preview of the G-Code toolpath, allowing you to 
 
 ## 8. CAM Tools
 
-GCodeKit4 includes specialized generators for common tasks:
+GCodeKit5 includes specialized generators for common tasks:
 
 ### 8.1 Tabbed Box Generator
 Create laser-cut boxes with finger joints.
@@ -473,7 +473,7 @@ Enable in settings to control the machine with arrow keys and PageUp/PageDown.
 - **Windows**: `%APPDATA%\gcodekit5\config.json`
 
 ### 15.2 License
-GCodeKit4 is dual-licensed under MIT and Apache 2.0.
+GCodeKit5 is dual-licensed under MIT and Apache 2.0.
 
 ---
 

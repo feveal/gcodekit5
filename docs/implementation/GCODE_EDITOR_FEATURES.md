@@ -2,7 +2,7 @@
 
 ## Overview
 
-The G-Code editor in GCodeKit4 provides a full-featured editing and file management system for G-Code files. It's built in Rust using the Slint UI framework and integrates with the `rfd` crate for native file dialogs.
+The G-Code editor in GCodeKit5 provides a full-featured editing and file management system for G-Code files. It's built in Rust using the Slint UI framework and integrates with the `rfd` crate for native file dialogs.
 
 ## Architecture
 

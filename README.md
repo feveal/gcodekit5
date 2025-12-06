@@ -1,4 +1,4 @@
-# GCodeKit4
+# GCodeKit5
 
 A modern, cross-platform G-Code sender and CNC machine controller written in Rust with Slint UI framework.
 
@@ -8,11 +8,11 @@ A modern, cross-platform G-Code sender and CNC machine controller written in Rus
 
 ## Overview
 
-GCodeKit4 is a Rust-based CNC machine controller providing a modern alternative to Universal G-Code Sender. It supports multiple controller firmware types including GRBL, grblHAL, TinyG, g2core, Smoothieware, and FluidNC through a unified, intuitive interface built with the Slint UI framework.
+GCodeKit5 is a Rust-based CNC machine controller providing a modern alternative to Universal G-Code Sender. It supports multiple controller firmware types including GRBL, grblHAL, TinyG, g2core, Smoothieware, and FluidNC through a unified, intuitive interface built with the Slint UI framework.
 
 ## Architecture
 
-GCodeKit4 is organized as a Cargo workspace with 7 crates for modular compilation and better code organization:
+GCodeKit5 is organized as a Cargo workspace with 7 crates for modular compilation and better code organization:
 
 - **gcodekit5-core** - Core types, traits, state management, events, and data models
 - **gcodekit5-camtools** - CAM tools and special G-code processing operations
@@ -278,7 +278,7 @@ RUST_LOG=debug cargo run
 ## Quick Start Guide
 
 ### 1. Connect to Your CNC Controller
-1. Launch GCodeKit4
+1. Launch GCodeKit5
 2. Click **"Refresh Ports"** to detect available serial devices
 3. Select your controller's port from the dropdown
 4. Choose baud rate (typically **115200** for GRBL)
