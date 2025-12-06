@@ -412,8 +412,11 @@ impl MachineControlView {
 
         let view_clone = view.clone();
         view.connect_btn.connect_clicked(move |_| {
-            let mut comm = view_clone.communicator.borrow_mut();
-            if comm.is_connected() {
+            let is_connected = view_clone.communicator.borrow().is_connected();
+            
+            if is_connected {
+                // Disconnect
+                let mut comm = view_clone.communicator.borrow_mut();
                 match comm.disconnect() {
                     Ok(_) => {
                         view_clone.connect_btn.set_label("Connect");
@@ -435,6 +438,7 @@ impl MachineControlView {
                     }
                 }
             } else {
+                // Connect - spawn in separate thread
                 if let Some(port_name) = view_clone.port_combo.active_text() {
                     if port_name == "No ports available" {
                         return;
@@ -446,27 +450,42 @@ impl MachineControlView {
                         baud_rate: 115200,
                         ..Default::default()
                     };
+                    
+                    let communicator = view_clone.communicator.clone();
+                    let connect_btn = view_clone.connect_btn.clone();
+                    let port_combo = view_clone.port_combo.clone();
+                    let refresh_btn = view_clone.refresh_btn.clone();
+                    let state_label = view_clone.state_label.clone();
+                    let status_text = view_clone.status_text.clone();
 
-                    match comm.connect(&params) {
-                        Ok(_) => {
-                            view_clone.connect_btn.set_label("Disconnect");
-                            view_clone.connect_btn.remove_css_class("suggested-action");
-                            view_clone.connect_btn.add_css_class("destructive-action");
-                            view_clone.port_combo.set_sensitive(false);
-                            view_clone.refresh_btn.set_sensitive(false);
-                            view_clone.state_label.set_text("CONNECTED");
-                            
-                            // Log to status
-                            let buffer = view_clone.status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
-                        }
-                        Err(e) => {
-                            let buffer = view_clone.status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
-                        }
-                    }
+                    // Spawn connection in a separate thread
+                    std::thread::spawn(move || {
+                        let result = communicator.borrow_mut().connect(&params);
+                        
+                        // Update UI on main thread
+                        glib::idle_add_once(move || {
+                            match result {
+                                Ok(_) => {
+                                    connect_btn.set_label("Disconnect");
+                                    connect_btn.remove_css_class("suggested-action");
+                                    connect_btn.add_css_class("destructive-action");
+                                    port_combo.set_sensitive(false);
+                                    refresh_btn.set_sensitive(false);
+                                    state_label.set_text("CONNECTED");
+                                    
+                                    // Log to status
+                                    let buffer = status_text.buffer();
+                                    let mut iter = buffer.end_iter();
+                                    buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
+                                }
+                                Err(e) => {
+                                    let buffer = status_text.buffer();
+                                    let mut iter = buffer.end_iter();
+                                    buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                                }
+                            }
+                        });
+                    });
                 }
             }
         });
