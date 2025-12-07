@@ -296,7 +296,7 @@ impl CamToolsView {
         paned.set_hexpand(true);
         paned.set_vexpand(true);
 
-        // Sidebar (20%)
+        // Sidebar (40%)
         let sidebar = Box::new(Orientation::Vertical, 12);
         sidebar.add_css_class("sidebar");
         sidebar.set_margin_top(24);
@@ -336,10 +336,10 @@ impl CamToolsView {
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&content));
 
-        // Sidebar sizing (20%)
+        // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
-            let target = (width as f64 * 0.20) as i32;
+            let target = (width as f64 * 0.40) as i32;
             if paned.position() != target {
                 paned.set_position(target);
             }
@@ -404,7 +404,7 @@ impl JigsawTool {
         paned.set_vexpand(true);
         content_box.append(&paned);
 
-        // Sidebar (20%)
+        // Sidebar (40%)
         let sidebar = Box::new(Orientation::Vertical, 12);
         sidebar.add_css_class("sidebar");
         sidebar.set_margin_top(24);
@@ -523,10 +523,10 @@ impl JigsawTool {
 
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
-        // Sidebar sizing (20%)
+        // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
-            let target = (width as f64 * 0.20) as i32;
+            let target = (width as f64 * 0.40) as i32;
             if (paned.position() - target).abs() > 5 {
                 paned.set_position(target);
             }
@@ -853,7 +853,7 @@ impl BitmapEngravingTool {
         paned.set_vexpand(true);
         content_box.append(&paned);
 
-        // Sidebar with Preview (20%)
+        // Sidebar with Preview (40%)
         let sidebar = Box::new(Orientation::Vertical, 12);
         sidebar.add_css_class("sidebar");
         sidebar.set_margin_top(24);
@@ -1027,10 +1027,10 @@ impl BitmapEngravingTool {
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
         
-        // Sidebar sizing (25%)
+        // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
-            let target = (width as f64 * 0.25) as i32;
+            let target = (width as f64 * 0.40) as i32;
             if (paned.position() - target).abs() > 5 {
                 paned.set_position(target);
             }
@@ -1565,7 +1565,7 @@ impl VectorEngravingTool {
         paned.set_vexpand(true);
         content_box.append(&paned);
 
-        // Sidebar with Preview (20%)
+        // Sidebar with Preview (40%)
         let sidebar = Box::new(Orientation::Vertical, 12);
         sidebar.add_css_class("sidebar");
         sidebar.set_margin_top(24);
@@ -1741,10 +1741,10 @@ impl VectorEngravingTool {
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
         
-        // Sidebar sizing (20%)
+        // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
-            let target = (width as f64 * 0.2) as i32;
+            let target = (width as f64 * 0.40) as i32;
             if (paned.position() - target).abs() > 5 {
                 paned.set_position(target);
             }
@@ -2370,7 +2370,7 @@ impl TabbedBoxMaker {
         paned.set_hexpand(true);
         paned.set_vexpand(true);
 
-        // Sidebar (20% width)
+        // Sidebar (40% width)
         let sidebar = Box::new(Orientation::Vertical, 12);
         sidebar.add_css_class("sidebar");
         sidebar.set_margin_top(24);
@@ -2546,10 +2546,10 @@ impl TabbedBoxMaker {
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
 
-        // 20% Sidebar Dynamic Sizing
+        // 40% Sidebar Dynamic Sizing
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
-            let target = (width as f64 * 0.2) as i32;
+            let target = (width as f64 * 0.40) as i32;
             if (paned.position() - target).abs() > 5 {
                 paned.set_position(target);
             }
