@@ -4,14 +4,18 @@ use gcodekit5_communication::{
 use gcodekit5_communication::firmware::grbl::status_parser::StatusParser;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, ComboBoxText, Frame, Grid, Label, Orientation, Paned, PolicyType,
-    ScrolledWindow, TextView, ToggleButton,
+    Align, Box, Button, ComboBoxText, Frame, Grid, Label, Orientation, Paned, Picture,
+    PolicyType, ScrolledWindow, TextView, ToggleButton,
 };
 use gtk4::glib;
 use std::sync::{Arc, Mutex};
+use std::collections::VecDeque;
 
 use crate::ui::gtk::status_bar::StatusBar;
+use crate::ui::gtk::device_console::DeviceConsoleView;
+use crate::ui::gtk::editor::GcodeEditor;
 use crate::device_status;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct MachineControlView {
@@ -28,7 +32,6 @@ pub struct MachineControlView {
     pub unlock_btn: Button,
     pub reset_g53_btn: Button,
     pub wcs_btns: Vec<Button>,
-    pub status_text: TextView,
     pub x_dro: Label,
     pub y_dro: Label,
     pub z_dro: Label,
@@ -50,12 +53,23 @@ pub struct MachineControlView {
     pub jog_z_pos: Button,
     pub jog_z_neg: Button,
     pub estop_btn: Button,
-     pub communicator: Arc<Mutex<SerialCommunicator>>,
+    pub communicator: Arc<Mutex<SerialCommunicator>>,
     pub status_bar: Option<StatusBar>,
+    pub device_console: Option<Rc<DeviceConsoleView>>,
+    pub editor: Option<Rc<GcodeEditor>>,
+    pub send_queue: Arc<Mutex<VecDeque<String>>>,
+    pub total_lines: Arc<Mutex<usize>>,
+    pub is_streaming: Arc<Mutex<bool>>,
+    pub is_paused: Arc<Mutex<bool>>,
+    pub waiting_for_ack: Arc<Mutex<bool>>,
 }
 
 impl MachineControlView {
-    pub fn new(status_bar: Option<StatusBar>) -> Self {
+    pub fn new(
+        status_bar: Option<StatusBar>,
+        device_console: Option<Rc<DeviceConsoleView>>,
+        editor: Option<Rc<GcodeEditor>>,
+    ) -> Self {
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
@@ -232,20 +246,6 @@ impl MachineControlView {
         wcs_frame.set_child(Some(&wcs_box));
         sidebar.append(&wcs_frame);
 
-        // Status Message Section
-        let status_frame = Frame::new(Some("Status Message:"));
-        let status_scroll = ScrolledWindow::new();
-        status_scroll.set_policy(PolicyType::Automatic, PolicyType::Automatic);
-        status_scroll.set_height_request(100);
-        
-        let status_text = TextView::new();
-        status_text.set_editable(false);
-        status_text.set_wrap_mode(gtk4::WrapMode::Word);
-        status_text.add_css_class("monospace");
-        status_scroll.set_child(Some(&status_text));
-        status_frame.set_child(Some(&status_scroll));
-        sidebar.append(&status_frame);
-
         // widget.append(&sidebar); // Moved to Paned setup
 
         // ═════════════════════════════════════════════
@@ -395,7 +395,11 @@ impl MachineControlView {
         z_estop_box.append(&z_box);
 
         // eStop
-        let estop_btn = Button::with_label("EMERGENCY\nSTOP");
+        let estop_btn = Button::new();
+        let estop_picture = Picture::for_filename("assets/Pictures/eStop2.png");
+        estop_picture.set_can_shrink(true);
+        estop_btn.set_child(Some(&estop_picture));
+        
         estop_btn.add_css_class("estop-big");
         estop_btn.set_width_request(150);
         estop_btn.set_height_request(150);
@@ -436,7 +440,6 @@ impl MachineControlView {
             unlock_btn,
             reset_g53_btn,
             wcs_btns,
-            status_text,
             x_dro,
             y_dro,
             z_dro,
@@ -460,6 +463,13 @@ impl MachineControlView {
             estop_btn,
             communicator,
             status_bar: status_bar.clone(),
+            device_console: device_console.clone(),
+            editor,
+            send_queue: Arc::new(Mutex::new(VecDeque::new())),
+            total_lines: Arc::new(Mutex::new(0)),
+            is_streaming: Arc::new(Mutex::new(false)),
+            is_paused: Arc::new(Mutex::new(false)),
+            waiting_for_ack: Arc::new(Mutex::new(false)),
         };
 
         view.refresh_ports();
@@ -630,6 +640,219 @@ impl MachineControlView {
             view_clone.refresh_ports();
         });
 
+        // Transmission Controls
+        {
+            let communicator = view.communicator.clone();
+            let is_paused = view.is_paused.clone();
+            view.pause_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send(b"!");
+                }
+                *is_paused.lock().unwrap() = true;
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            let is_paused = view.is_paused.clone();
+            let is_streaming = view.is_streaming.clone();
+            let waiting_for_ack = view.waiting_for_ack.clone();
+            let send_queue = view.send_queue.clone();
+            
+            view.resume_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send(b"~");
+                }
+                *is_paused.lock().unwrap() = false;
+                
+                // Kickstart if stalled (streaming, not waiting for ack, and has commands)
+                if *is_streaming.lock().unwrap() && !*waiting_for_ack.lock().unwrap() {
+                     let mut queue = send_queue.lock().unwrap();
+                     if let Some(cmd) = queue.pop_front() {
+                          if let Ok(mut comm) = communicator.lock() {
+                               let _ = comm.send_command(&cmd);
+                               *waiting_for_ack.lock().unwrap() = true;
+                          }
+                     }
+                }
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            let is_streaming = view.is_streaming.clone();
+            let is_paused = view.is_paused.clone();
+            let waiting_for_ack = view.waiting_for_ack.clone();
+            let send_queue = view.send_queue.clone();
+            view.stop_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    // 0x18 = Ctrl-x = Soft Reset
+                    let _ = comm.send(&[0x18]);
+                }
+                *is_streaming.lock().unwrap() = false;
+                *is_paused.lock().unwrap() = false;
+                *waiting_for_ack.lock().unwrap() = false;
+                send_queue.lock().unwrap().clear();
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            let editor = view.editor.clone();
+            let send_queue = view.send_queue.clone();
+            let is_streaming = view.is_streaming.clone();
+            let is_paused = view.is_paused.clone();
+            let waiting_for_ack = view.waiting_for_ack.clone();
+            let total_lines = view.total_lines.clone();
+            let console = view.device_console.clone();
+            
+            view.send_btn.connect_clicked(move |_| {
+                if *is_streaming.lock().unwrap() {
+                    return;
+                }
+                
+                let mut content = String::new();
+                if let Some(ed) = editor.as_ref() {
+                    content = ed.get_text();
+                    // println!("DEBUG: Retrieved {} chars from editor", content.len());
+                } else {
+                    // println!("DEBUG: Editor is None");
+                }
+
+                if content.trim().is_empty() {
+                    let dialog = gtk4::MessageDialog::builder()
+                        .message_type(gtk4::MessageType::Error)
+                        .buttons(gtk4::ButtonsType::Ok)
+                        .text("No G-Code to Send")
+                        .secondary_text("Please load or type G-Code into the editor first.")
+                        .build();
+                    dialog.connect_response(|d, _| d.close());
+                    dialog.show();
+                    return;
+                }
+                
+                let lines: Vec<String> = content.lines()
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty() && !s.starts_with(';') && !s.starts_with('('))
+                    .collect();
+                    
+                if lines.is_empty() {
+                    if let Some(c) = console.as_ref() {
+                         c.append_log("No valid G-Code lines found.\n");
+                    }
+                    return;
+                }
+
+                {
+                    let mut queue = send_queue.lock().unwrap();
+                    queue.clear();
+                    for line in lines.iter() {
+                        queue.push_back(line.clone());
+                    }
+                    *total_lines.lock().unwrap() = queue.len();
+                    // println!("DEBUG: Queued {} lines", queue.len());
+                }
+                
+                *is_streaming.lock().unwrap() = true;
+                *is_paused.lock().unwrap() = false;
+                *waiting_for_ack.lock().unwrap() = false;
+                
+                // Kickstart
+                if let Ok(mut comm) = communicator.lock() {
+                    let mut queue = send_queue.lock().unwrap();
+                    if let Some(cmd) = queue.pop_front() {
+                        // println!("DEBUG: Kickstarting with: {}", cmd);
+                        let _ = comm.send_command(&cmd);
+                        *waiting_for_ack.lock().unwrap() = true;
+                    } else {
+                        // println!("DEBUG: Queue empty on kickstart");
+                    }
+                } else {
+                    // println!("DEBUG: Failed to lock communicator for kickstart");
+                }
+            });
+        }
+
+        // Machine State Controls
+        {
+            let communicator = view.communicator.clone();
+            view.home_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("$H");
+                }
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            view.unlock_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("$X");
+                }
+            });
+        }
+
+        // WCS Controls
+        {
+            let communicator = view.communicator.clone();
+            view.reset_g53_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("G53");
+                }
+            });
+        }
+        
+        for (i, btn) in view.wcs_btns.iter().enumerate() {
+            let communicator = view.communicator.clone();
+            let cmd = format!("G{}", 54 + i);
+            btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command(&cmd);
+                }
+            });
+        }
+
+        // Zero Controls
+        {
+            let communicator = view.communicator.clone();
+            view.x_zero_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("G92 X0");
+                }
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            view.y_zero_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("G92 Y0");
+                }
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            view.z_zero_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("G92 Z0");
+                }
+            });
+        }
+        {
+            let communicator = view.communicator.clone();
+            view.zero_all_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send_command("G92 X0 Y0 Z0");
+                }
+            });
+        }
+
+        // E-Stop
+        {
+            let communicator = view.communicator.clone();
+            view.estop_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send(&[0x18]);
+                }
+            });
+        }
+
+
         let view_clone = view.clone();
         view.connect_btn.connect_clicked(move |_| {
             let is_connected = view_clone.communicator.lock().unwrap().is_connected();
@@ -682,15 +905,16 @@ impl MachineControlView {
                             status_bar.set_connected(false, "");
                         }
                         
-                        // Log to status
-                        let buffer = view_clone.status_text.buffer();
-                        let mut iter = buffer.end_iter();
-                        buffer.insert(&mut iter, "Disconnected\n");
+                        // Log to device console
+                        if let Some(ref console) = view_clone.device_console {
+                            console.append_log("Disconnected\n");
+                        }
                     }
                     Err(e) => {
-                        let buffer = view_clone.status_text.buffer();
-                        let mut iter = buffer.end_iter();
-                        buffer.insert(&mut iter, &format!("Error disconnecting: {}\n", e));
+                        // Log error to device console
+                        if let Some(ref console) = view_clone.device_console {
+                            console.append_log(&format!("Error disconnecting: {}\n", e));
+                        }
                     }
                 }
             } else {
@@ -732,10 +956,10 @@ impl MachineControlView {
                                 sb.set_connected(true, &port_name.to_string());
                             }
                             
-                            // Log to status
-                            let buffer = view_clone.status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Connected to {}\n", port_name));
+                            // Log to device console
+                            if let Some(ref console) = view_clone.device_console {
+                                console.append_log(&format!("Connected to {}\n", port_name));
+                            }
                             
                             // Enable all controls on successful connection
                             set_controls_enabled(
@@ -764,14 +988,23 @@ impl MachineControlView {
                                 &view_clone.estop_btn,
                                 true,
                             );
+
+                            // Unlock button should initially be disabled until ALARM state is detected
+                            view_clone.unlock_btn.set_sensitive(false);
                             
                             // Simple polling using glib::timeout_add_local - runs on main thread, no blocking
                             let state_label_poll = view_clone.state_label.clone();
                             let x_dro_poll = view_clone.x_dro.clone();
                             let y_dro_poll = view_clone.y_dro.clone();
                             let z_dro_poll = view_clone.z_dro.clone();
+                            let unlock_btn_poll = view_clone.unlock_btn.clone();
                             let communicator_poll = view_clone.communicator.clone();
                             let status_bar_poll = view_clone.status_bar.clone();
+                            let is_streaming_poll = view_clone.is_streaming.clone();
+                            let is_paused_poll = view_clone.is_paused.clone();
+                            let waiting_for_ack_poll = view_clone.waiting_for_ack.clone();
+                            let send_queue_poll = view_clone.send_queue.clone();
+                            let device_console_poll = view_clone.device_console.clone();
                             
                             let mut query_counter = 0u32;
                             let mut response_buffer = String::new();
@@ -796,7 +1029,9 @@ impl MachineControlView {
                                 if let Ok(mut comm) = communicator_poll.try_lock() {
                                     if let Ok(response_bytes) = comm.receive() {
                                         if !response_bytes.is_empty() {
-                                            response_buffer.push_str(&String::from_utf8_lossy(&response_bytes));
+                                            let s = String::from_utf8_lossy(&response_bytes);
+                                            // println!("DEBUG: Received: {}", s.trim());
+                                            response_buffer.push_str(&s);
                                             
                                             // Process complete lines
                                             while let Some(idx) = response_buffer.find('\n') {
@@ -804,6 +1039,42 @@ impl MachineControlView {
                                                 response_buffer.drain(..idx + 1);
                                                 
                                                 if line.is_empty() { continue; }
+
+                                                // Log to console, filtering out status reports and 'ok' acks to avoid spam
+                                                if !line.starts_with('<') && line != "ok" {
+                                                    if let Some(c) = device_console_poll.as_ref() {
+                                                        c.append_log(&format!("{}\n", line));
+                                                    }
+                                                }
+
+                                                // Handle 'ok' or 'error' for streaming
+                                                let is_ack = line == "ok";
+                                                let is_error = line.starts_with("error:");
+                                                
+                                                if is_ack || is_error {
+                                                     *waiting_for_ack_poll.lock().unwrap() = false;
+                                                     
+                                                     // If error, we might want to stop, but for now we continue
+                                                     // if is_error { ... logic to stop ... }
+
+                                                     if *is_streaming_poll.lock().unwrap() {
+                                                         if !*is_paused_poll.lock().unwrap() {
+                                                              let mut queue = send_queue_poll.lock().unwrap();
+                                                              if let Some(next_cmd) = queue.pop_front() {
+                                                                   // println!("DEBUG: Sending next: {}", next_cmd);
+                                                                   let _ = comm.send_command(&next_cmd);
+                                                                    *waiting_for_ack_poll.lock().unwrap() = true;
+                                                              } else {
+                                                                   // Done
+                                                                   *is_streaming_poll.lock().unwrap() = false;
+                                                                   *is_paused_poll.lock().unwrap() = false;
+                                                                   if let Some(c) = device_console_poll.as_ref() {
+                                                                       c.append_log("Job Completed.\n");
+                                                                   }
+                                                              }
+                                                         }
+                                                     }
+                                                }
                                                 
                                                 // Parse GRBL status: <Idle|MPos:0.000,0.000,0.000|...>
                                                 if line.starts_with('<') && line.ends_with('>') {
@@ -816,6 +1087,10 @@ impl MachineControlView {
                                                         if let Some(sb) = status_bar_poll.as_ref() {
                                                             sb.set_state(&state);
                                                         }
+
+                                                        // Unlock button only enabled in ALARM state
+                                                        let is_alarm = state.to_lowercase().starts_with("alarm");
+                                                        unlock_btn_poll.set_sensitive(is_alarm);
                                                     }
                                                     
                                                     // Parse and update machine position
@@ -874,9 +1149,10 @@ impl MachineControlView {
                         Err(e) => {
                             view_clone.connect_btn.set_sensitive(true);
                             view_clone.state_label.set_text("DISCONNECTED");
-                            let buffer = view_clone.status_text.buffer();
-                            let mut iter = buffer.end_iter();
-                            buffer.insert(&mut iter, &format!("Error connecting: {}\n", e));
+                            // Log error to device console
+                            if let Some(ref console) = view_clone.device_console {
+                                console.append_log(&format!("Error connecting: {}\n", e));
+                            }
                         }
                     }
                 }

@@ -66,7 +66,11 @@ pub struct AxisLimits {
 
 impl Default for AxisLimits {
     fn default() -> Self {
-        Self { min: 0.0, max: 200.0, enabled: true }
+        Self {
+            min: 0.0,
+            max: 200.0,
+            enabled: true,
+        }
     }
 }
 
@@ -78,19 +82,20 @@ pub struct DeviceProfile {
     pub description: String,
     pub device_type: DeviceType,
     pub controller_type: ControllerType,
-    
+
     // Workspace Limits
     pub x_axis: AxisLimits,
     pub y_axis: AxisLimits,
     pub z_axis: AxisLimits,
     pub a_axis: AxisLimits, // Rotary/Aux
-    
+
     // Capabilities
     pub has_spindle: bool,
     pub has_laser: bool,
     pub has_coolant: bool,
     pub max_feed_rate: f64,
-    
+    pub max_s_value: f64,
+
     // Power
     pub cnc_spindle_watts: f64,
     pub laser_watts: f64,
@@ -114,12 +119,21 @@ impl Default for DeviceProfile {
             controller_type: ControllerType::default(),
             x_axis: AxisLimits::default(),
             y_axis: AxisLimits::default(),
-            z_axis: AxisLimits { min: 0.0, max: 100.0, enabled: true },
-            a_axis: AxisLimits { min: 0.0, max: 360.0, enabled: false },
+            z_axis: AxisLimits {
+                min: 0.0,
+                max: 100.0,
+                enabled: true,
+            },
+            a_axis: AxisLimits {
+                min: 0.0,
+                max: 360.0,
+                enabled: false,
+            },
             has_spindle: true,
             has_laser: false,
             has_coolant: false,
             max_feed_rate: 1000.0,
+            max_s_value: 1000.0,
             cnc_spindle_watts: 500.0,
             laser_watts: 5.0,
             connection_type: "Serial".to_string(),

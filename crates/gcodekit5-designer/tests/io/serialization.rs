@@ -34,6 +34,7 @@ fn test_save_and_load() {
         group_id: None,
         corner_radius: 0.0,
         is_slot: false,
+        rotation: 0.0,
     });
 
     design.save_to_file(&file_path).unwrap();

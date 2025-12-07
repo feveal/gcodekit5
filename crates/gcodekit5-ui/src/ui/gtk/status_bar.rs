@@ -8,7 +8,9 @@ pub struct StatusBar {
     status_indicator: Label,
     port_label: Label,
     version_label: Label,
+    state_separator: Label,
     state_label: Label,
+    position_separator: Label,
     position_label: Label,
     elapsed_label: Label,
     remaining_label: Label,
@@ -50,29 +52,32 @@ impl StatusBar {
         port_label.add_css_class("status-text");
         left_box.append(&port_label);
 
-        // Separator
-        left_box.append(&Label::new(Some("|")));
-
         // Version
         let version_label = Label::new(None);
         version_label.add_css_class("status-text");
         left_box.append(&version_label);
 
-        // Separator
-        left_box.append(&Label::new(Some("|")));
+        // Separator (for state)
+        let state_separator = Label::new(Some("|"));
+        state_separator.set_visible(false);
+        left_box.append(&state_separator);
 
         // State
-        let state_label = Label::new(Some("DISCONNECTED"));
+        let state_label = Label::new(None);
         state_label.add_css_class("status-text");
+        state_label.set_visible(false);
         left_box.append(&state_label);
 
-        // Separator
-        left_box.append(&Label::new(Some("|")));
+        // Separator (for position)
+        let position_separator = Label::new(Some("|"));
+        position_separator.set_visible(false);
+        left_box.append(&position_separator);
 
         // Position
-        let position_label = Label::new(Some("Position: ---"));
+        let position_label = Label::new(None);
         position_label.add_css_class("status-text");
         position_label.add_css_class("monospace");
+        position_label.set_visible(false);
         left_box.append(&position_label);
 
         widget.append(&left_box);
@@ -107,7 +112,9 @@ impl StatusBar {
             status_indicator,
             port_label,
             version_label,
+            state_separator,
             state_label,
+            position_separator,
             position_label,
             elapsed_label,
             remaining_label,
@@ -120,13 +127,21 @@ impl StatusBar {
             self.status_indicator.remove_css_class("disconnected");
             self.status_indicator.add_css_class("connected");
             self.port_label.set_text(port);
+            self.state_separator.set_visible(true);
+            self.state_label.set_visible(true);
+            self.position_separator.set_visible(true);
+            self.position_label.set_visible(true);
         } else {
             self.status_indicator.remove_css_class("connected");
             self.status_indicator.add_css_class("disconnected");
             self.port_label.set_text("Disconnected");
             self.version_label.set_text("");
-            self.state_label.set_text("DISCONNECTED");
-            self.position_label.set_text("Position: ---");
+            self.state_separator.set_visible(false);
+            self.state_label.set_visible(false);
+            self.state_label.set_text("");
+            self.position_separator.set_visible(false);
+            self.position_label.set_visible(false);
+            self.position_label.set_text("");
         }
     }
 

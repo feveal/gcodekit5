@@ -65,6 +65,7 @@ textview {
 .sidebar {
     background-color: #2d2d2d;
     border-right: 1px solid #1e1e1e;
+    padding-left: 10px;
 }
 
 .dro-axis {
@@ -108,3 +109,54 @@ textview {
     font-weight: bold;
 }
 
+
+.active-badge {
+    background-color: #2ecc71;
+    color: white;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+/* Visualizer Floating OSD Panels */
+.visualizer-osd {
+    background-color: rgba(30, 30, 30, 0.85);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 8px;
+    min-height: 28px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.visualizer-osd label {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+.visualizer-osd button {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    border-radius: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    font-size: 13px;
+}
+
+.visualizer-osd button:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.visualizer-osd button:active {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Vector Preview Frame */
+frame.vector-preview {
+    background-color: #e0e0e0;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+}

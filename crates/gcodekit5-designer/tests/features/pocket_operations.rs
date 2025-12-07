@@ -42,6 +42,7 @@ fn test_pocket_generator_circular() {
     let circle = Circle {
         center: Point::new(50.0, 50.0),
         radius: 25.0,
+        rotation: 0.0,
     };
 
     let toolpaths = gen.generate_circular_pocket(&circle, 1.0);

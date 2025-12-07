@@ -1,14 +1,14 @@
 # GCodeKit5
 
-A modern, cross-platform G-Code sender and CNC machine controller written in Rust with Slint UI framework.
+A modern, cross-platform G-Code sender and CNC machine controller written in Rust with GTK4 UI framework.
 
 [![Build Status](https://github.com/thawkins/gcodekit5/workflows/Build%20and%20Release/badge.svg)](https://github.com/thawkins/gcodekit5/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.70.0--alpha.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.1.0--alpha.0-brightgreen.svg)](CHANGELOG.md)
 
 ## Overview
 
-GCodeKit5 is a Rust-based CNC machine controller providing a modern alternative to Universal G-Code Sender. It supports multiple controller firmware types including GRBL, grblHAL, TinyG, g2core, Smoothieware, and FluidNC through a unified, intuitive interface built with the Slint UI framework.
+GCodeKit5 is a Rust-based CNC machine controller providing a modern alternative to Universal G-Code Sender. It supports multiple controller firmware types including GRBL, grblHAL, TinyG, g2core, Smoothieware, and FluidNC through a unified, intuitive interface built with the GTK4 UI framework.
 
 ## Architecture
 

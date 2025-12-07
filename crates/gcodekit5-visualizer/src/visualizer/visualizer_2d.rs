@@ -284,11 +284,7 @@ impl Visualizer2D {
                         );
                     }
                     4 => {
-                        Self::parse_dwell(
-                            &mut commands,
-                            line,
-                            &mut current_pos,
-                        );
+                        Self::parse_dwell(&mut commands, line, &mut current_pos);
                     }
                     _ => {}
                 }
@@ -316,14 +312,12 @@ impl Visualizer2D {
         )
     }
 
-    fn parse_dwell(
-        commands: &mut Vec<GCodeCommand>,
-        line: &str,
-        current_pos: &mut Point2D,
-    ) {
+    fn parse_dwell(commands: &mut Vec<GCodeCommand>, line: &str, current_pos: &mut Point2D) {
         let mut duration = 0.0;
         for part in line.split_whitespace() {
-            if part.len() < 2 { continue; }
+            if part.len() < 2 {
+                continue;
+            }
             let first_char = part.chars().next().unwrap();
             match first_char {
                 'P' | 'X' => {
@@ -568,21 +562,33 @@ impl Visualizer2D {
         self.y_offset = 0.0;
     }
 
-    /// Calculate zoom and offset to fit all cutting commands in view with 5% margin
+    /// Calculate zoom and offset to fit all cutting commands in view with margin
     pub fn fit_to_view(&mut self, canvas_width: f32, canvas_height: f32) {
         let mut bounds = Bounds::new();
         let mut has_content = false;
 
+        // Collect bounds of all cutting moves
         for cmd in self.toolpath_cache.commands() {
             match cmd {
-                GCodeCommand::Move { to, rapid, .. } => {
+                GCodeCommand::Move {
+                    from, to, rapid, ..
+                } => {
                     if !rapid {
+                        bounds.update(from.x, from.y);
                         bounds.update(to.x, to.y);
                         has_content = true;
                     }
                 }
-                GCodeCommand::Arc { to, .. } => {
+                GCodeCommand::Arc {
+                    from, to, center, ..
+                } => {
+                    // For arcs, we should strictly check the arc extents, but adding points + center is a safe approximation for now
+                    bounds.update(from.x, from.y);
                     bounds.update(to.x, to.y);
+                    // Including center ensures we don't clip the curve if it bows out, though it might be loose
+                    let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                    bounds.update(center.x - radius, center.y - radius);
+                    bounds.update(center.x + radius, center.y + radius);
                     has_content = true;
                 }
                 GCodeCommand::Dwell { pos, .. } => {
@@ -599,30 +605,32 @@ impl Visualizer2D {
             return;
         }
 
-        let bbox_width = bounds.max_x - bounds.min_x;
-        let bbox_height = bounds.max_y - bounds.min_y;
+        let content_width = bounds.max_x - bounds.min_x;
+        let content_height = bounds.max_y - bounds.min_y;
 
-        // Add 10% padding
-        let padding_factor = 1.1;
-        let target_width = bbox_width * padding_factor;
-        let target_height = bbox_height * padding_factor;
+        // Apply 10% margin
+        let margin_percent = 0.1;
+        let available_width = canvas_width * (1.0 - margin_percent * 2.0);
+        let available_height = canvas_height * (1.0 - margin_percent * 2.0);
 
-        if target_width == 0.0 || target_height == 0.0 {
-             self.zoom_scale = 1.0;
-             self.x_offset = -bounds.min_x;
-             self.y_offset = -bounds.min_y;
-             return;
+        if content_width == 0.0 || content_height == 0.0 {
+            // Point content
+            self.zoom_scale = 1.0;
+            self.x_offset = -(bounds.min_x + bounds.max_x) / 2.0;
+            self.y_offset = -(bounds.min_y + bounds.max_y) / 2.0;
+            return;
         }
 
-        let scale_x = canvas_width / target_width;
-        let scale_y = canvas_height / target_height;
-        
-        // Use the smaller scale to fit both dimensions
+        // Calculate zoom to fit
+        let scale_x = available_width / content_width;
+        let scale_y = available_height / content_height;
         self.zoom_scale = scale_x.min(scale_y);
 
-        // Center the bounding box
-        let center_x = bounds.min_x + bbox_width / 2.0;
-        let center_y = bounds.min_y + bbox_height / 2.0;
+        // Center the content
+        // The draw function applies: translate(screen_center) -> scale -> translate(offset)
+        // So offset needs to be the negative center of the content to bring it to (0,0) before scaling/centering on screen
+        let center_x = (bounds.min_x + bounds.max_x) / 2.0;
+        let center_y = (bounds.min_y + bounds.max_y) / 2.0;
 
         self.x_offset = -center_x;
         self.y_offset = -center_y;

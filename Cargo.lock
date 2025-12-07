@@ -1272,6 +1272,7 @@ dependencies = [
  "gio",
  "glib",
  "gtk4",
+ "image 0.25.9",
  "libadwaita",
  "lyon",
  "once_cell",

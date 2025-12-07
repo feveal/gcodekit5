@@ -1,5 +1,5 @@
 use crate::manager::DeviceManager;
-use crate::model::{DeviceProfile, DeviceType, ControllerType};
+use crate::model::{ControllerType, DeviceProfile, DeviceType};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,8 @@ pub struct DeviceProfileUiModel {
     pub has_spindle: bool,
     pub has_laser: bool,
     pub has_coolant: bool,
+    pub max_feed_rate: String,
+    pub max_s_value: String,
     pub cnc_spindle_watts: String,
     pub laser_watts: String,
     pub connection_type: String,
@@ -46,6 +48,8 @@ impl From<DeviceProfile> for DeviceProfileUiModel {
             has_spindle: p.has_spindle,
             has_laser: p.has_laser,
             has_coolant: p.has_coolant,
+            max_feed_rate: p.max_feed_rate.to_string(),
+            max_s_value: p.max_s_value.to_string(),
             cnc_spindle_watts: p.cnc_spindle_watts.to_string(),
             laser_watts: p.laser_watts.to_string(),
             connection_type: p.connection_type,
@@ -81,18 +85,18 @@ impl DeviceUiController {
                 ui_model
             })
             .collect();
-            
+
         ui_profiles.sort_by(|a, b| a.name.cmp(&b.name));
         ui_profiles
     }
 
     pub fn update_profile_from_ui(&self, ui_model: DeviceProfileUiModel) -> anyhow::Result<()> {
         let mut profile = self.manager.get_profile(&ui_model.id).unwrap_or_default();
-        
+
         profile.id = ui_model.id;
         profile.name = ui_model.name;
         profile.description = ui_model.description;
-        
+
         profile.device_type = match ui_model.device_type.as_str() {
             "CNC Mill" => DeviceType::CncMill,
             "CNC Lathe" => DeviceType::CncLathe,
@@ -114,26 +118,37 @@ impl DeviceUiController {
 
         let mut x_min = ui_model.x_min.parse().unwrap_or(0.0);
         let mut x_max = ui_model.x_max.parse().unwrap_or(200.0);
-        if x_min > x_max { std::mem::swap(&mut x_min, &mut x_max); }
+        if x_min > x_max {
+            std::mem::swap(&mut x_min, &mut x_max);
+        }
         profile.x_axis.min = x_min;
         profile.x_axis.max = x_max;
 
         let mut y_min = ui_model.y_min.parse().unwrap_or(0.0);
         let mut y_max = ui_model.y_max.parse().unwrap_or(200.0);
-        if y_min > y_max { std::mem::swap(&mut y_min, &mut y_max); }
+        if y_min > y_max {
+            std::mem::swap(&mut y_min, &mut y_max);
+        }
         profile.y_axis.min = y_min;
         profile.y_axis.max = y_max;
 
         let mut z_min = ui_model.z_min.parse().unwrap_or(0.0);
         let mut z_max = ui_model.z_max.parse().unwrap_or(100.0);
-        if z_min > z_max { std::mem::swap(&mut z_min, &mut z_max); }
+        if z_min > z_max {
+            std::mem::swap(&mut z_min, &mut z_max);
+        }
         profile.z_axis.min = z_min;
         profile.z_axis.max = z_max;
-        
+
         profile.has_spindle = ui_model.has_spindle;
         profile.has_laser = ui_model.has_laser;
         profile.has_coolant = ui_model.has_coolant;
-        
+
+        profile.has_coolant = ui_model.has_coolant;
+
+        profile.max_feed_rate = ui_model.max_feed_rate.parse().unwrap_or(1000.0);
+        profile.max_s_value = ui_model.max_s_value.parse().unwrap_or(1000.0);
+
         profile.cnc_spindle_watts = ui_model.cnc_spindle_watts.parse().unwrap_or(500.0);
         profile.laser_watts = ui_model.laser_watts.parse().unwrap_or(5.0);
 
@@ -146,18 +161,18 @@ impl DeviceUiController {
 
         self.manager.save_profile(profile)
     }
-    
+
     pub fn create_new_profile(&self) -> anyhow::Result<String> {
         let profile = DeviceProfile::default();
         let id = profile.id.clone();
         self.manager.save_profile(profile)?;
         Ok(id)
     }
-    
+
     pub fn delete_profile(&self, id: &str) -> anyhow::Result<()> {
         self.manager.delete_profile(id)
     }
-    
+
     pub fn set_active_profile(&self, id: &str) -> anyhow::Result<()> {
         self.manager.set_active_profile(id)
     }

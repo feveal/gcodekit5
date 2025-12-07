@@ -2,9 +2,10 @@
 //!
 //! Generates G-code toolpaths for laser/CNC cutting jigsaw puzzles with interlocking pieces.
 
+use serde::{Deserialize, Serialize};
 use std::f32::consts::PI;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PuzzleParameters {
     pub width: f32,
     pub height: f32,
@@ -561,5 +562,3 @@ impl JigsawPuzzleMaker {
         gcode
     }
 }
-
-

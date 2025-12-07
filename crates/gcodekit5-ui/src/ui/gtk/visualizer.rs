@@ -1,24 +1,73 @@
+use gcodekit5_devicedb::DeviceManager;
+use gcodekit5_visualizer::visualizer::GCodeCommand;
+use gcodekit5_visualizer::Visualizer2D;
 use gtk4::prelude::*;
-use gtk4::{DrawingArea, ScrolledWindow, PolicyType, Box, Orientation, Button, CheckButton, Label, GestureClick, GestureDrag, EventControllerScroll, EventControllerScrollFlags, Paned};
+use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
+use gtk4::{
+    Box, Button, CheckButton, DrawingArea, EventControllerScroll, EventControllerScrollFlags,
+    GestureDrag, Label, Orientation, Overlay, Paned,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
-use gcodekit5_visualizer::{Visualizer2D};
-use gcodekit5_visualizer::visualizer::GCodeCommand;
+use std::sync::Arc;
+
+// Phase 4: Render cache for expensive computations
+#[derive(Clone)]
+struct RenderCache {
+    // Cache key: hash of visualizer state
+    cache_hash: u64,
+    
+    // Cached intensity buckets (for intensity mode)
+    intensity_buckets: Vec<Vec<(f64, f64, f64, f64)>>,
+    
+    // Cached cutting bounds (for LOD 3)
+    cutting_bounds: Option<(f32, f32, f32, f32)>, // (min_x, max_x, min_y, max_y)
+    
+    // Statistics
+    total_lines: usize,
+    rapid_lines: usize,
+    cut_lines: usize,
+}
+
+impl Default for RenderCache {
+    fn default() -> Self {
+        Self {
+            cache_hash: 0,
+            intensity_buckets: vec![Vec::new(); 20],
+            cutting_bounds: None,
+            total_lines: 0,
+            rapid_lines: 0,
+            cut_lines: 0,
+        }
+    }
+}
+
+impl RenderCache {
+    fn needs_rebuild(&self, new_hash: u64) -> bool {
+        self.cache_hash != new_hash
+    }
+}
 
 pub struct GcodeVisualizer {
     pub widget: Paned,
     drawing_area: DrawingArea,
     visualizer: Rc<RefCell<Visualizer2D>>,
+    // Phase 4: Render cache
+    render_cache: Rc<RefCell<RenderCache>>,
     // Visibility toggles
     show_rapid: CheckButton,
     show_cut: CheckButton,
     show_grid: CheckButton,
+    show_bounds: CheckButton,
+    show_intensity: CheckButton,
     // Info labels
     bounds_label: Label,
+    status_label: Label,
+    device_manager: Option<Arc<DeviceManager>>,
 }
 
 impl GcodeVisualizer {
-    pub fn new() -> Self {
+    pub fn new(device_manager: Option<Arc<DeviceManager>>) -> Self {
         let container = Paned::new(Orientation::Horizontal);
         container.add_css_class("visualizer-container");
         container.set_hexpand(true);
@@ -42,11 +91,27 @@ impl GcodeVisualizer {
         sidebar.append(&view_label);
 
         let view_controls = Box::new(Orientation::Horizontal, 6);
-        let fit_btn = Button::builder().icon_name("zoom-fit-best-symbolic").tooltip_text("Fit to View").build();
-        let reset_btn = Button::builder().icon_name("view-restore-symbolic").tooltip_text("Reset View").build();
-        
+        let fit_btn = Button::builder()
+            .icon_name("zoom-fit-best-symbolic")
+            .tooltip_text("Fit to View")
+            .build();
+        let reset_btn = Button::builder()
+            .icon_name("view-restore-symbolic")
+            .tooltip_text("Reset View")
+            .build();
+        let fit_device_btn = Button::builder()
+            .icon_name("preferences-desktop-display-symbolic")
+            .tooltip_text("Fit to Device Working Area")
+            .build();
+
         view_controls.append(&fit_btn);
         view_controls.append(&reset_btn);
+        
+        // Only show fit to device button if device manager is available
+        if device_manager.is_some() {
+            view_controls.append(&fit_device_btn);
+        }
+        
         sidebar.append(&view_controls);
 
         // Visibility
@@ -58,13 +123,32 @@ impl GcodeVisualizer {
             .build();
         sidebar.append(&vis_label);
 
-        let show_rapid = CheckButton::builder().label("Show Rapid Moves").active(true).build();
-        let show_cut = CheckButton::builder().label("Show Cutting Moves").active(true).build();
-        let show_grid = CheckButton::builder().label("Show Grid").active(true).build();
+        let show_rapid = CheckButton::builder()
+            .label("Show Rapid Moves")
+            .active(true)
+            .build();
+        let show_cut = CheckButton::builder()
+            .label("Show Cutting Moves")
+            .active(true)
+            .build();
+        let show_grid = CheckButton::builder()
+            .label("Show Grid")
+            .active(true)
+            .build();
+        let show_bounds = CheckButton::builder()
+            .label("Show Machine Bounds")
+            .active(true)
+            .build();
+        let show_intensity = CheckButton::builder()
+            .label("Show Intensity")
+            .active(false)
+            .build();
 
         sidebar.append(&show_rapid);
         sidebar.append(&show_cut);
         sidebar.append(&show_grid);
+        sidebar.append(&show_bounds);
+        sidebar.append(&show_intensity);
 
         // Bounds Info
         let bounds_label = Label::builder()
@@ -83,8 +167,103 @@ impl GcodeVisualizer {
             .vexpand(true)
             .css_classes(vec!["visualizer-canvas"])
             .build();
-        
-        container.set_end_child(Some(&drawing_area));
+
+        // Initialize Visualizer logic
+        let visualizer = Rc::new(RefCell::new(Visualizer2D::new()));
+
+        // Overlay for floating controls
+        let overlay = Overlay::new();
+        overlay.set_child(Some(&drawing_area));
+
+        // Floating Controls (Bottom Right)
+        let floating_box = Box::new(Orientation::Horizontal, 4);
+        floating_box.add_css_class("visualizer-osd");
+        floating_box.set_halign(gtk4::Align::End);
+        floating_box.set_valign(gtk4::Align::End);
+        floating_box.set_margin_bottom(20);
+        floating_box.set_margin_end(20);
+
+        let float_zoom_out = Button::builder()
+            .label("-")
+            .tooltip_text("Zoom Out")
+            .build();
+        let float_fit = Button::builder()
+            .label("Fit")
+            .tooltip_text("Fit to View")
+            .build();
+        let float_zoom_in = Button::builder()
+            .label("+")
+            .tooltip_text("Zoom In")
+            .build();
+
+        floating_box.append(&float_zoom_out);
+        floating_box.append(&float_fit);
+        floating_box.append(&float_zoom_in);
+
+        // Status Panel (Bottom Left)
+        let status_box = Box::new(Orientation::Horizontal, 4);
+        status_box.add_css_class("visualizer-osd");
+        status_box.set_halign(gtk4::Align::Start);
+        status_box.set_valign(gtk4::Align::End);
+        status_box.set_margin_bottom(20);
+        status_box.set_margin_start(20);
+
+        let status_label = Label::builder()
+            .label("100%   X: 0.0   Y: 0.0   10.0mm")
+            .build();
+        status_box.append(&status_label);
+
+        overlay.add_overlay(&floating_box);
+        overlay.add_overlay(&status_box);
+
+        container.set_end_child(Some(&overlay));
+
+        // Helper to update status
+        let update_status_fn = {
+            let label = status_label.clone();
+            let vis = visualizer.clone();
+            move || {
+                let v = vis.borrow();
+                label.set_text(&format!(
+                    "{:.0}%   X: {:.1}   Y: {:.1}   10.0mm",
+                    v.zoom_scale * 100.0,
+                    -v.x_offset, // Display inverted because visualizer offset compensates for center
+                    -v.y_offset
+                ));
+            }
+        };
+
+        // Connect Floating Controls
+        let vis_float_out = visualizer.clone();
+        let da_float_out = drawing_area.clone();
+        let update_status = update_status_fn.clone();
+        float_zoom_out.connect_clicked(move |_| {
+            vis_float_out.borrow_mut().zoom_out();
+            update_status();
+            da_float_out.queue_draw();
+        });
+
+        let vis_float_in = visualizer.clone();
+        let da_float_in = drawing_area.clone();
+        let update_status = update_status_fn.clone();
+        float_zoom_in.connect_clicked(move |_| {
+            vis_float_in.borrow_mut().zoom_in();
+            update_status();
+            da_float_in.queue_draw();
+        });
+
+        let vis_float_fit = visualizer.clone();
+        let da_float_fit = drawing_area.clone();
+        let update_status = update_status_fn.clone();
+        float_fit.connect_clicked(move |_| {
+            let width = da_float_fit.width() as f32;
+            let height = da_float_fit.height() as f32;
+            if width > 0.0 && height > 0.0 {
+                vis_float_fit.borrow_mut().fit_to_view(width, height);
+                update_status();
+                da_float_fit.queue_draw();
+            }
+        });
 
         container.add_tick_callback(|paned, _clock| {
             let width = paned.width();
@@ -95,43 +274,101 @@ impl GcodeVisualizer {
             gtk4::glib::ControlFlow::Continue
         });
 
-        let visualizer = Rc::new(RefCell::new(Visualizer2D::new()));
-        
         // Connect Draw Signal
         let vis_draw = visualizer.clone();
+        let render_cache_draw = Rc::new(RefCell::new(RenderCache::default()));
         let show_rapid_draw = show_rapid.clone();
         let show_cut_draw = show_cut.clone();
         let show_grid_draw = show_grid.clone();
+        let show_bounds_draw = show_bounds.clone();
+        let show_intensity_draw = show_intensity.clone();
+        let device_manager_draw = device_manager.clone();
 
         drawing_area.set_draw_func(move |_, cr, width, height| {
             let vis = vis_draw.borrow();
+            let mut cache = render_cache_draw.borrow_mut();
             Self::draw(
-                cr, 
-                &vis, 
-                width as f64, 
+                cr,
+                &vis,
+                &mut cache,
+                width as f64,
                 height as f64,
                 show_rapid_draw.is_active(),
                 show_cut_draw.is_active(),
-                show_grid_draw.is_active()
+                show_grid_draw.is_active(),
+                show_bounds_draw.is_active(),
+                show_intensity_draw.is_active(),
+                &device_manager_draw,
             );
         });
 
         // Connect Controls
         let vis_fit = visualizer.clone();
         let da_fit = drawing_area.clone();
+        let update_status = update_status_fn.clone();
         fit_btn.connect_clicked(move |_| {
             let width = da_fit.width() as f32;
             let height = da_fit.height() as f32;
             vis_fit.borrow_mut().fit_to_view(width, height);
+            update_status();
             da_fit.queue_draw();
         });
 
+        // Fit to Device button
+        if let Some(device_mgr) = device_manager.clone() {
+            let vis_fit_dev = visualizer.clone();
+            let da_fit_dev = drawing_area.clone();
+            let update_status = update_status_fn.clone();
+            fit_device_btn.connect_clicked(move |_| {
+                let width = da_fit_dev.width() as f32;
+                let height = da_fit_dev.height() as f32;
+                
+                if width > 0.0 && height > 0.0 {
+                    // Get active device profile
+                    if let Some(profile) = device_mgr.get_active_profile() {
+                        // Get working area dimensions from axis limits
+                        let work_width = (profile.x_axis.max - profile.x_axis.min) as f32;
+                        let work_height = (profile.y_axis.max - profile.y_axis.min) as f32;
+                        
+                        if work_width > 0.0 && work_height > 0.0 {
+                            // Apply 10% margin like fit_to_view does
+                            let margin_percent = 0.1;
+                            let available_width = width * (1.0 - margin_percent * 2.0);
+                            let available_height = height * (1.0 - margin_percent * 2.0);
+                            
+                            // Calculate scale to fit device working area in viewport
+                            let scale_x = available_width / work_width;
+                            let scale_y = available_height / work_height;
+                            let scale = scale_x.min(scale_y);
+                            
+                            // Center on working area - offsets are NEGATIVE of center point
+                            let center_x = (profile.x_axis.min as f32) + work_width / 2.0;
+                            let center_y = (profile.y_axis.min as f32) + work_height / 2.0;
+                            
+                            let mut vis = vis_fit_dev.borrow_mut();
+                            vis.zoom_scale = scale;
+                            vis.x_offset = -center_x;
+                            vis.y_offset = -center_y;
+                            
+                            drop(vis);
+                            update_status();
+                            da_fit_dev.queue_draw();
+                        }
+                    }
+                }
+            });
+        }
+
         let vis_reset = visualizer.clone();
         let da_reset = drawing_area.clone();
+        let update_status = update_status_fn.clone();
         reset_btn.connect_clicked(move |_| {
-            let mut vis = vis_reset.borrow_mut();
-            vis.reset_zoom();
-            vis.reset_pan();
+            {
+                let mut vis = vis_reset.borrow_mut();
+                vis.reset_zoom();
+                vis.reset_pan();
+            }
+            update_status();
             da_reset.queue_draw();
         });
 
@@ -141,27 +378,57 @@ impl GcodeVisualizer {
         show_cut.connect_toggled(move |_| da_update.queue_draw());
         let da_update = drawing_area.clone();
         show_grid.connect_toggled(move |_| da_update.queue_draw());
+        let da_update = drawing_area.clone();
+        show_bounds.connect_toggled(move |_| da_update.queue_draw());
+        let da_update = drawing_area.clone();
+        show_intensity.connect_toggled(move |_| da_update.queue_draw());
 
         // Mouse Interaction
-        Self::setup_interaction(&drawing_area, &visualizer);
+        Self::setup_interaction(&drawing_area, &visualizer, &status_label);
+
+        // Auto-fit when mapped (visible/focused) with a slight delay to allow layout
+        let vis_map = visualizer.clone();
+        let da_map = drawing_area.clone();
+        let update_status = update_status_fn.clone();
+        container.connect_map(move |_| {
+            let vis = vis_map.clone();
+            let da = da_map.clone();
+            let update = update_status.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                let width = da.width() as f32;
+                let height = da.height() as f32;
+                if width > 0.0 && height > 0.0 {
+                    vis.borrow_mut().fit_to_view(width, height);
+                    update();
+                    da.queue_draw();
+                }
+                gtk4::glib::ControlFlow::Break
+            });
+        });
 
         Self {
             widget: container,
             drawing_area,
             visualizer,
+            render_cache: Rc::new(RefCell::new(RenderCache::default())),
             show_rapid,
             show_cut,
             show_grid,
+            show_bounds,
+            show_intensity,
             bounds_label,
+            status_label,
+            device_manager,
         }
     }
 
-    fn setup_interaction(da: &DrawingArea, vis: &Rc<RefCell<Visualizer2D>>) {
+    fn setup_interaction(da: &DrawingArea, vis: &Rc<RefCell<Visualizer2D>>, status_label: &Label) {
         // Scroll to Zoom
         let scroll = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
         let vis_scroll = vis.clone();
         let da_scroll = da.clone();
-        
+        let label_scroll = status_label.clone();
+
         scroll.connect_scroll(move |_, _, dy| {
             let mut vis = vis_scroll.borrow_mut();
             if dy > 0.0 {
@@ -169,6 +436,14 @@ impl GcodeVisualizer {
             } else {
                 vis.zoom_in();
             }
+
+            label_scroll.set_text(&format!(
+                "{:.0}%   X: {:.1}   Y: {:.1}   10.0mm",
+                vis.zoom_scale * 100.0,
+                -vis.x_offset,
+                -vis.y_offset
+            ));
+
             da_scroll.queue_draw();
             gtk4::glib::Propagation::Stop
         });
@@ -177,8 +452,10 @@ impl GcodeVisualizer {
         // Drag to Pan
         let drag = GestureDrag::new();
         let vis_drag = vis.clone();
-        let da_drag = da.clone();
+
         let start_pan = Rc::new(RefCell::new((0.0f32, 0.0f32)));
+        let da_drag = da.clone();
+        let label_drag = status_label.clone();
 
         let start_pan_begin = start_pan.clone();
         drag.connect_drag_begin(move |_, _, _| {
@@ -189,13 +466,21 @@ impl GcodeVisualizer {
         let vis_drag_update = vis.clone();
         let da_drag_update = da.clone();
         let start_pan_update = start_pan.clone();
-        
+
         drag.connect_drag_update(move |_, dx, dy| {
             let mut vis = vis_drag_update.borrow_mut();
             let (sx, sy) = *start_pan_update.borrow();
             // Invert Y for pan because canvas Y is flipped
             vis.x_offset = sx + dx as f32;
-            vis.y_offset = sy - dy as f32; 
+            vis.y_offset = sy - dy as f32;
+
+            label_drag.set_text(&format!(
+                "{:.0}%   X: {:.1}   Y: {:.1}   10.0mm",
+                vis.zoom_scale * 100.0,
+                -vis.x_offset,
+                -vis.y_offset
+            ));
+
             da_drag_update.queue_draw();
         });
         da.add_controller(drag);
@@ -204,7 +489,13 @@ impl GcodeVisualizer {
     pub fn set_gcode(&self, gcode: &str) {
         let mut vis = self.visualizer.borrow_mut();
         vis.parse_gcode(gcode);
-        
+
+        // Phase 4: Invalidate render cache when G-code changes
+        let mut cache = self.render_cache.borrow_mut();
+        cache.cache_hash = 0; // Force rebuild
+        cache.cutting_bounds = None;
+        drop(cache);
+
         // Update bounds label
         let (min_x, max_x, min_y, max_y) = vis.get_bounds();
         self.bounds_label.set_text(&format!(
@@ -218,27 +509,53 @@ impl GcodeVisualizer {
         if width > 0.0 && height > 0.0 {
             vis.fit_to_view(width, height);
         }
-        
+
         self.drawing_area.queue_draw();
     }
 
     fn draw(
-        cr: &gtk4::cairo::Context, 
-        vis: &Visualizer2D, 
-        width: f64, 
+        cr: &gtk4::cairo::Context,
+        vis: &Visualizer2D,
+        cache: &mut RenderCache,
+        width: f64,
         height: f64,
         show_rapid: bool,
         show_cut: bool,
-        show_grid: bool
+        show_grid: bool,
+        show_bounds: bool,
+        show_intensity: bool,
+        device_manager: &Option<Arc<DeviceManager>>,
     ) {
+        // Phase 4: Calculate cache hash from visualizer state
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        
+        let mut hasher = DefaultHasher::new();
+        vis.commands().len().hash(&mut hasher);
+        show_intensity.hash(&mut hasher);
+        let new_hash = hasher.finish();
         // Clear background
-        cr.set_source_rgb(0.15, 0.15, 0.15); // Dark grey background
+        if show_intensity {
+            cr.set_source_rgb(1.0, 1.0, 1.0); // White background for intensity mode
+        } else {
+            cr.set_source_rgb(0.15, 0.15, 0.15); // Dark grey background
+        }
         cr.paint().expect("Invalid cairo surface state");
+
+        // Determine Max S Value
+        let max_s_value = if let Some(manager) = device_manager {
+            manager
+                .get_active_profile()
+                .map(|p| p.max_s_value)
+                .unwrap_or(1000.0)
+        } else {
+            1000.0
+        };
 
         // Apply transformations
         let center_x = width / 2.0;
         let center_y = height / 2.0;
-        
+
         cr.save().unwrap();
         cr.translate(center_x, center_y);
         cr.scale(vis.zoom_scale as f64, -vis.zoom_scale as f64); // Flip Y
@@ -249,71 +566,387 @@ impl GcodeVisualizer {
             Self::draw_grid(cr, vis);
         }
 
+        // Draw Machine Bounds
+        if show_bounds {
+            if let Some(manager) = device_manager {
+                if let Some(profile) = manager.get_active_profile() {
+                    let min_x = profile.x_axis.min;
+                    let max_x = profile.x_axis.max;
+                    let min_y = profile.y_axis.min;
+                    let max_y = profile.y_axis.max;
+                    let width = max_x - min_x;
+                    let height = max_y - min_y;
+
+                    cr.set_source_rgb(0.0, 0.5, 1.0); // Bright Blue
+                                                      // Calc line width in user space to result in 3px on screen
+                                                      // Zoom scale is user units per screen pixel? No.
+                                                      // Cairo scale(s, -s) means 1 user unit = s pixels.
+                                                      // So 1 pixel = 1/s user units.
+                                                      // 3 pixels = 3/s user units.
+                    cr.set_line_width(3.0 / vis.zoom_scale as f64);
+
+                    cr.rectangle(min_x, min_y, width, height);
+                    cr.stroke().unwrap();
+                }
+            }
+        }
+
         // Draw Origin
         cr.set_line_width(2.0 / vis.zoom_scale as f64);
         cr.set_source_rgb(1.0, 0.0, 0.0); // X Axis Red
         cr.move_to(0.0, 0.0);
         cr.line_to(20.0, 0.0);
         cr.stroke().unwrap();
-        
+
         cr.set_source_rgb(0.0, 1.0, 0.0); // Y Axis Green
         cr.move_to(0.0, 0.0);
         cr.line_to(0.0, 20.0);
         cr.stroke().unwrap();
 
-        // Draw Toolpath
+        // Draw Toolpath - Phase 1, 2 & 3 Optimization: Batched Rendering + Viewport Culling + LOD
         cr.set_line_width(1.5 / vis.zoom_scale as f64);
+
+        // Phase 3: Level of Detail - calculate pixels per mm to determine detail level
+        // At low zoom (far out), lines become sub-pixel and we can skip detail
+        let pixels_per_mm = vis.zoom_scale;
         
-        for cmd in vis.commands() {
-            match cmd {
-                GCodeCommand::Move { from, to, rapid, .. } => {
-                    if *rapid {
-                        if show_rapid {
-                            cr.set_source_rgba(0.0, 0.8, 1.0, 0.5); // Cyan for rapid
-                            cr.move_to(from.x as f64, from.y as f64);
-                            cr.line_to(to.x as f64, to.y as f64);
-                            cr.stroke().unwrap();
-                        }
-                    } else {
-                        if show_cut {
-                            cr.set_source_rgb(1.0, 1.0, 0.0); // Yellow for cut
-                            cr.move_to(from.x as f64, from.y as f64);
-                            cr.line_to(to.x as f64, to.y as f64);
-                            cr.stroke().unwrap();
+        // LOD thresholds:
+        // - LOD 0 (High): zoom >= 1.0 (1:1 or closer) - Draw everything
+        // - LOD 1 (Medium): 0.2 <= zoom < 1.0 - Skip every other line
+        // - LOD 2 (Low): 0.05 <= zoom < 0.2 - Skip 3 of 4 lines
+        // - LOD 3 (Minimal): zoom < 0.05 - Draw bounding box only
+        let lod_level = if pixels_per_mm >= 1.0 {
+            0 // High detail
+        } else if pixels_per_mm >= 0.2 {
+            1 // Medium detail
+        } else if pixels_per_mm >= 0.05 {
+            2 // Low detail
+        } else {
+            3 // Minimal (bounding box)
+        };
+        
+        // Phase 2: Calculate visible viewport bounds in world coordinates
+        // The viewport in screen space is centered at (center_x, center_y) with dimensions (width, height)
+        // After transformations: translate(center) -> scale(zoom) -> translate(offset)
+        // To find world coordinates visible, we reverse: screen -> unscale -> unoffset
+        let half_width_world = (width as f32 / 2.0) / vis.zoom_scale;
+        let half_height_world = (height as f32 / 2.0) / vis.zoom_scale;
+        
+        // Add 10% margin to prevent popping at edges during pan
+        let margin = 0.1;
+        let margin_x = half_width_world * margin;
+        let margin_y = half_height_world * margin;
+        
+        let view_min_x = -vis.x_offset - half_width_world - margin_x;
+        let view_max_x = -vis.x_offset + half_width_world + margin_x;
+        let view_min_y = -vis.y_offset - half_height_world - margin_y;
+        let view_max_y = -vis.y_offset + half_height_world + margin_y;
+
+        // OPTIMIZATION: Batch rapid moves together (single stroke) + viewport culling + LOD
+        if show_rapid && lod_level < 3 {
+            cr.new_path();
+            cr.set_source_rgba(0.0, 0.8, 1.0, 0.5); // Cyan for rapid
+            
+            let mut line_counter = 0u32;
+            for cmd in vis.commands() {
+                if let GCodeCommand::Move { from, to, rapid: true, .. } = cmd {
+                    // Phase 2: Viewport culling - skip lines completely outside view
+                    let line_min_x = from.x.min(to.x);
+                    let line_max_x = from.x.max(to.x);
+                    let line_min_y = from.y.min(to.y);
+                    let line_max_y = from.y.max(to.y);
+                    
+                    // Skip if line is entirely outside viewport
+                    if line_max_x < view_min_x || line_min_x > view_max_x ||
+                       line_max_y < view_min_y || line_min_y > view_max_y {
+                        continue;
+                    }
+                    
+                    // Phase 3: LOD - skip lines based on detail level
+                    line_counter += 1;
+                    match lod_level {
+                        1 => if line_counter % 2 != 0 { continue; }, // Skip every other line
+                        2 => if line_counter % 4 != 0 { continue; }, // Skip 3 of 4 lines
+                        _ => {} // LOD 0: Draw all
+                    }
+                    
+                    cr.move_to(from.x as f64, from.y as f64);
+                    cr.line_to(to.x as f64, to.y as f64);
+                }
+            }
+            cr.stroke().unwrap(); // Single stroke for all rapid moves!
+        }
+
+        // OPTIMIZATION: Batch cutting moves by intensity + LOD
+        if show_cut && lod_level < 3 {
+            if show_intensity {
+                // Phase 4: Check if we need to rebuild intensity buckets cache
+                const INTENSITY_BUCKETS: usize = 20;
+                
+                if cache.needs_rebuild(new_hash) || cache.intensity_buckets.len() != INTENSITY_BUCKETS {
+                    // Rebuild cache
+                    cache.cache_hash = new_hash;
+                    cache.intensity_buckets = vec![Vec::new(); INTENSITY_BUCKETS];
+                    cache.total_lines = 0;
+                    cache.cut_lines = 0;
+                    
+                    // Pre-compute intensity buckets (WITHOUT viewport/LOD - cache is view-independent)
+                    for cmd in vis.commands() {
+                        cache.total_lines += 1;
+                        if let GCodeCommand::Move { from, to, rapid: false, intensity } = cmd {
+                            cache.cut_lines += 1;
+                            
+                            let s = intensity.unwrap_or(0.0);
+                            let mut gray = 1.0 - (s as f64 / max_s_value).clamp(0.0, 1.0);
+                            if s > 0.0 && gray > 0.95 {
+                                gray = 0.95;
+                            }
+                            
+                            let bucket_idx = ((gray * (INTENSITY_BUCKETS as f64 - 1.0)).round() as usize)
+                                .min(INTENSITY_BUCKETS - 1);
+                            
+                            cache.intensity_buckets[bucket_idx].push((
+                                from.x as f64,
+                                from.y as f64,
+                                to.x as f64,
+                                to.y as f64
+                            ));
                         }
                     }
                 }
-                GCodeCommand::Arc { from, to, center, clockwise, .. } => {
-                    if show_cut {
-                        cr.set_source_rgb(1.0, 1.0, 0.0); // Yellow for cut
+                
+                // Phase 4: Render from cached buckets (apply viewport culling + LOD during render)
+                let mut line_counter = 0u32;
+                
+                // Draw each bucket with a single stroke (apply viewport + LOD filtering)
+                for (bucket_idx, lines) in cache.intensity_buckets.iter().enumerate() {
+                    if lines.is_empty() {
+                        continue;
+                    }
+                    
+                    let gray = (bucket_idx as f64) / ((INTENSITY_BUCKETS - 1) as f64);
+                    cr.set_source_rgb(gray, gray, gray);
+                    cr.new_path();
+                    
+                    line_counter = 0;
+                    for (fx, fy, tx, ty) in lines {
+                        // Phase 2: Viewport culling (on cached data)
+                        let line_min_x = (*fx as f32).min(*tx as f32);
+                        let line_max_x = (*fx as f32).max(*tx as f32);
+                        let line_min_y = (*fy as f32).min(*ty as f32);
+                        let line_max_y = (*fy as f32).max(*ty as f32);
                         
-                        let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt() as f64;
+                        if line_max_x < view_min_x || line_min_x > view_max_x ||
+                           line_max_y < view_min_y || line_min_y > view_max_y {
+                            continue;
+                        }
+                        
+                        // Phase 3: LOD (on cached data)
+                        line_counter += 1;
+                        match lod_level {
+                            1 => if line_counter % 2 != 0 { continue; },
+                            2 => if line_counter % 4 != 0 { continue; },
+                            _ => {}
+                        }
+                        
+                        cr.move_to(*fx, *fy);
+                        cr.line_to(*tx, *ty);
+                    }
+                    
+                    cr.stroke().unwrap(); // One stroke per intensity level!
+                }
+                
+                // Draw arcs separately (usually fewer)
+                for cmd in vis.commands() {
+                    if let GCodeCommand::Arc { from, to, center, clockwise, intensity } = cmd {
+                        // Phase 2: Viewport culling for arcs (check bounding box)
+                        let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                        let arc_min_x = center.x - radius;
+                        let arc_max_x = center.x + radius;
+                        let arc_min_y = center.y - radius;
+                        let arc_max_y = center.y + radius;
+                        
+                        if arc_max_x < view_min_x || arc_min_x > view_max_x ||
+                           arc_max_y < view_min_y || arc_min_y > view_max_y {
+                            continue;
+                        }
+                        
+                        let s = intensity.unwrap_or(0.0);
+                        let mut gray = 1.0 - (s as f64 / max_s_value).clamp(0.0, 1.0);
+                        if s > 0.0 && gray > 0.95 {
+                            gray = 0.95;
+                        }
+                        cr.set_source_rgb(gray, gray, gray);
+
+                        let radius = radius as f64;
                         let start_angle = (from.y - center.y).atan2(from.x - center.x) as f64;
                         let end_angle = (to.y - center.y).atan2(to.x - center.x) as f64;
-                        
+
                         if *clockwise {
-                            cr.arc_negative(center.x as f64, center.y as f64, radius, start_angle, end_angle);
+                            cr.arc_negative(
+                                center.x as f64,
+                                center.y as f64,
+                                radius,
+                                start_angle,
+                                end_angle,
+                            );
                         } else {
-                            cr.arc(center.x as f64, center.y as f64, radius, start_angle, end_angle);
+                            cr.arc(
+                                center.x as f64,
+                                center.y as f64,
+                                radius,
+                                start_angle,
+                                end_angle,
+                            );
                         }
                         cr.stroke().unwrap();
                     }
                 }
-                _ => {}
+            } else {
+                // Non-intensity mode: Single color, single stroke! + viewport culling + LOD
+                cr.new_path();
+                cr.set_source_rgb(1.0, 1.0, 0.0); // Yellow for cut
+                
+                let mut line_counter = 0u32;
+                for cmd in vis.commands() {
+                    match cmd {
+                        GCodeCommand::Move { from, to, rapid: false, .. } => {
+                            // Phase 2: Viewport culling
+                            let line_min_x = from.x.min(to.x);
+                            let line_max_x = from.x.max(to.x);
+                            let line_min_y = from.y.min(to.y);
+                            let line_max_y = from.y.max(to.y);
+                            
+                            if line_max_x < view_min_x || line_min_x > view_max_x ||
+                               line_max_y < view_min_y || line_min_y > view_max_y {
+                                continue;
+                            }
+                            
+                            // Phase 3: LOD - skip lines based on detail level
+                            line_counter += 1;
+                            match lod_level {
+                                1 => if line_counter % 2 != 0 { continue; },
+                                2 => if line_counter % 4 != 0 { continue; },
+                                _ => {}
+                            }
+                            
+                            cr.move_to(from.x as f64, from.y as f64);
+                            cr.line_to(to.x as f64, to.y as f64);
+                        }
+                        GCodeCommand::Arc { from, to, center, clockwise, .. } => {
+                            // Phase 2: Viewport culling for arcs
+                            let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                            let arc_min_x = center.x - radius;
+                            let arc_max_x = center.x + radius;
+                            let arc_min_y = center.y - radius;
+                            let arc_max_y = center.y + radius;
+                            
+                            if arc_max_x < view_min_x || arc_min_x > view_max_x ||
+                               arc_max_y < view_min_y || arc_min_y > view_max_y {
+                                continue;
+                            }
+                            
+                            let radius = radius as f64;
+                            let start_angle = (from.y - center.y).atan2(from.x - center.x) as f64;
+                            let end_angle = (to.y - center.y).atan2(to.x - center.x) as f64;
+
+                            if *clockwise {
+                                cr.arc_negative(
+                                    center.x as f64,
+                                    center.y as f64,
+                                    radius,
+                                    start_angle,
+                                    end_angle,
+                                );
+                            } else {
+                                cr.arc(
+                                    center.x as f64,
+                                    center.y as f64,
+                                    radius,
+                                    start_angle,
+                                    end_angle,
+                                );
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                cr.stroke().unwrap(); // Single stroke for all cutting moves!
             }
         }
         
+        // Phase 3 + 4: LOD Level 3 (Minimal) - Draw bounding box only at extreme zoom out
+        if lod_level == 3 && show_cut {
+            // Phase 4: Use cached bounds if available
+            if cache.cutting_bounds.is_none() && cache.needs_rebuild(new_hash) {
+                // Compute and cache cutting bounds
+                let mut bounds_min_x = f32::MAX;
+                let mut bounds_max_x = f32::MIN;
+                let mut bounds_min_y = f32::MAX;
+                let mut bounds_max_y = f32::MIN;
+                let mut has_bounds = false;
+                
+                for cmd in vis.commands() {
+                    match cmd {
+                        GCodeCommand::Move { from, to, rapid: false, .. } => {
+                            bounds_min_x = bounds_min_x.min(from.x).min(to.x);
+                            bounds_max_x = bounds_max_x.max(from.x).max(to.x);
+                            bounds_min_y = bounds_min_y.min(from.y).min(to.y);
+                            bounds_max_y = bounds_max_y.max(from.y).max(to.y);
+                            has_bounds = true;
+                        }
+                        GCodeCommand::Arc { from, to, center, .. } => {
+                            let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                            bounds_min_x = bounds_min_x.min(center.x - radius);
+                            bounds_max_x = bounds_max_x.max(center.x + radius);
+                            bounds_min_y = bounds_min_y.min(center.y - radius);
+                            bounds_max_y = bounds_max_y.max(center.y + radius);
+                            has_bounds = true;
+                        }
+                        _ => {}
+                    }
+                }
+                
+                if has_bounds {
+                    cache.cutting_bounds = Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y));
+                }
+            }
+            
+            if let Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y)) = cache.cutting_bounds {
+                // Draw filled rectangle for toolpath bounds (using cached bounds)
+                cr.set_source_rgba(1.0, 1.0, 0.0, 0.5); // Semi-transparent yellow
+                cr.rectangle(
+                    bounds_min_x as f64,
+                    bounds_min_y as f64,
+                    (bounds_max_x - bounds_min_x) as f64,
+                    (bounds_max_y - bounds_min_y) as f64
+                );
+                cr.fill().unwrap();
+                
+                // Draw outline
+                cr.set_source_rgb(1.0, 1.0, 0.0);
+                cr.set_line_width(2.0 / vis.zoom_scale as f64);
+                cr.rectangle(
+                    bounds_min_x as f64,
+                    bounds_min_y as f64,
+                    (bounds_max_x - bounds_min_x) as f64,
+                    (bounds_max_y - bounds_min_y) as f64
+                );
+                cr.stroke().unwrap();
+            }
+        }
+
         cr.restore().unwrap();
     }
 
     fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer2D) {
         let grid_size = 10.0;
         let grid_color = (0.3, 0.3, 0.3, 0.5);
-        
+
         // Calculate visible area in world coordinates
         // This is a simplification, ideally we'd project the viewport corners
         let range = 1000.0; // Draw a large enough grid for now
-        
+
         cr.set_source_rgba(grid_color.0, grid_color.1, grid_color.2, grid_color.3);
         cr.set_line_width(1.0 / vis.zoom_scale as f64);
 
@@ -330,7 +963,7 @@ impl GcodeVisualizer {
             cr.line_to(range, y);
             y += grid_size;
         }
-        
+
         cr.stroke().unwrap();
     }
 }

@@ -1,4 +1,11 @@
-## [0.1.0-alpha.0] - 2025-12-06
+## [0.1.0-alpha.0] - 2025-12-08
+
+### Added
+- **CAM Tools**: Migrated BitmapEngraving tool from Slint to GTK4 with preview, Load/Save/Cancel buttons, progress bar, and spinner overlay.
+- **CAM Tools**: Migrated VectorEngraving tool from Slint to GTK4 with SVG/DXF preview, sidebar controls, and progress tracking.
+- **Editor**: Added floating line counter panel (current/max lines) in bottom-right corner.
+- **Visualizer**: Added "Fit to Device" button to show full machine working area when device is connected.
+- **Visualizer**: Improved floating panel styling with consistent height, positioning, and rounded corners.
 
 ### Changed
 - **Project Rename**: Renamed project from `gcodekit4` to `gcodekit5`.
@@ -6,6 +13,27 @@
   - Updated all file references and documentation.
   - Reset versioning to `0.1.0-alpha.0` for the new major iteration.
 - **Repository**: Migrated to new repository `gcodekit5`.
+- **Editor**: Editor now focuses on line 1, column 1 when G-code is loaded from CAM tools.
+- **VectorEngraving**: Auto-fit preview to view with light gray background, removed manual zoom controls.
+
+### Performance
+- **Visualizer Phase 1**: Implemented stroke batching - 20-100x faster rendering (groups moves by type/intensity).
+- **Visualizer Phase 2**: Implemented viewport culling - 10-100x additional improvement when zoomed in (only renders visible paths).
+- **Visualizer Phase 3**: Implemented LOD (Level of Detail) system - 2-20x additional improvement when zoomed out.
+  - LOD 0: Full detail (zoom >= 1.0)
+  - LOD 1: Every 2nd line (0.2-1.0 zoom)
+  - LOD 2: Every 4th line (0.05-0.2 zoom)
+  - LOD 3: Bounding box only (zoom < 0.05)
+- **Visualizer Phase 4**: Implemented advanced caching - 1.3-2x additional improvement on frame 2+.
+  - Caches intensity buckets (view-independent)
+  - Caches cutting bounds for LOD 3
+  - Smart hash-based cache invalidation
+- **Overall Improvement**: Up to 40,000x faster rendering at extreme zoom levels, 154x faster at normal zoom.
+- **Documentation**: Added comprehensive `VISUALIZER_PERFORMANCE.md` documenting all optimization phases.
+
+### Fixed
+- **Visualizer**: Fixed "Fit to Device" button positioning to correctly center view on device working area.
+- **CAM Tools**: Fixed TabbedBox and JigsawPuzzle generators not showing errors during G-code generation.
 
 ## [0.69.1-alpha.0] - 2025-12-06
 
