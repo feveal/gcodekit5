@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion};
+use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, Box, Label, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -7,58 +7,104 @@ use gcodekit5_designer::shapes::{Shape, Point};
 
 pub struct DesignerCanvas {
     pub widget: DrawingArea,
-    #[allow(dead_code)]
     state: Rc<RefCell<DesignerState>>,
+    mouse_pos: Rc<RefCell<(f64, f64)>>, // Canvas coordinates
+}
+
+pub struct DesignerView {
+    pub widget: Box,
+    canvas: Rc<DesignerCanvas>,
+    status_label: Label,
+    coord_label: Label,
 }
 
 impl DesignerCanvas {
-    pub fn new(state: Rc<RefCell<DesignerState>>) -> Self {
+    pub fn new(state: Rc<RefCell<DesignerState>>) -> Rc<Self> {
         let widget = DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
             .css_classes(vec!["designer-canvas"])
             .build();
 
+        let mouse_pos = Rc::new(RefCell::new((0.0, 0.0)));
+
         let state_clone = state.clone();
+        let mouse_pos_clone = mouse_pos.clone();
         widget.set_draw_func(move |_, cr, width, height| {
             let state = state_clone.borrow();
-            Self::draw(cr, &state, width as f64, height as f64);
+            let mouse = *mouse_pos_clone.borrow();
+            Self::draw(cr, &state, width as f64, height as f64, mouse);
         });
+
+        let canvas = Rc::new(Self {
+            widget: widget.clone(),
+            state: state.clone(),
+            mouse_pos: mouse_pos.clone(),
+        });
+
+        // Mouse motion tracking
+        let motion_ctrl = EventControllerMotion::new();
+        let mouse_pos_motion = mouse_pos.clone();
+        let widget_motion = widget.clone();
+        motion_ctrl.connect_motion(move |_, x, y| {
+            // Convert screen coords to canvas coords
+            let width = widget_motion.width() as f64;
+            let height = widget_motion.height() as f64;
+            
+            // Transform to canvas coordinates (centered origin, Y-up)
+            let canvas_x = x - width / 2.0;
+            let canvas_y = -(y - height / 2.0); // Flip Y
+            
+            *mouse_pos_motion.borrow_mut() = (canvas_x, canvas_y);
+            widget_motion.queue_draw();
+        });
+        widget.add_controller(motion_ctrl);
 
         // Interaction controllers
         let click_gesture = GestureClick::new();
-        let state_click = state.clone();
-        let widget_click = widget.clone();
+        let canvas_click = canvas.clone();
         click_gesture.connect_pressed(move |gesture, n_press, x, y| {
-            // Handle click (selection)
-            // let mut state = state_click.borrow_mut();
-            // state.handle_click(x, y);
-            // widget_click.queue_draw();
-            println!("Click at {}, {}", x, y);
+            canvas_click.handle_click(x, y);
         });
         widget.add_controller(click_gesture);
 
         let drag_gesture = GestureDrag::new();
-        let state_drag = state.clone();
-        let widget_drag = widget.clone();
+        let canvas_drag = canvas.clone();
         drag_gesture.connect_drag_begin(move |gesture, x, y| {
-            println!("Drag begin at {}, {}", x, y);
+            canvas_drag.handle_drag_begin(x, y);
         });
+        
+        let canvas_drag_update = canvas.clone();
         drag_gesture.connect_drag_update(move |gesture, offset_x, offset_y| {
-             println!("Drag update {}, {}", offset_x, offset_y);
+            canvas_drag_update.handle_drag_update(offset_x, offset_y);
         });
+        
+        let canvas_drag_end = canvas.clone();
         drag_gesture.connect_drag_end(move |gesture, offset_x, offset_y| {
-             println!("Drag end {}, {}", offset_x, offset_y);
+            canvas_drag_end.handle_drag_end(offset_x, offset_y);
         });
         widget.add_controller(drag_gesture);
 
-        Self {
-            widget,
-            state,
-        }
+        canvas
+    }
+    
+    fn handle_click(&self, x: f64, y: f64) {
+        // TODO: Phase 3 - Handle selection
+    }
+    
+    fn handle_drag_begin(&self, x: f64, y: f64) {
+        // TODO: Phase 2/3 - Handle shape creation or pan
+    }
+    
+    fn handle_drag_update(&self, offset_x: f64, offset_y: f64) {
+        // TODO: Phase 2/3 - Update shape creation or pan
+    }
+    
+    fn handle_drag_end(&self, offset_x: f64, offset_y: f64) {
+        // TODO: Phase 2/3 - Finish shape creation or pan
     }
 
-    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64) {
+    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64)) {
         // Clear background
         cr.set_source_rgb(0.95, 0.95, 0.95); // Light grey background
         cr.paint().expect("Invalid cairo surface state");
@@ -76,6 +122,9 @@ impl DesignerCanvas {
         if state.show_grid {
             Self::draw_grid(cr, width, height);
         }
+        
+        // Draw Origin Crosshair
+        Self::draw_origin_crosshair(cr);
 
         // Draw Shapes
         for obj in state.canvas.shape_store.iter() {
@@ -186,16 +235,173 @@ impl DesignerCanvas {
 
     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
         cr.save().unwrap();
-        cr.set_source_rgba(0.8, 0.8, 0.8, 0.5);
+        
+        // Grid spacing in mm (10mm major grid)
+        let grid_spacing = 10.0;
+        let minor_spacing = grid_spacing / 5.0; // 2mm minor grid
+        
+        // Calculate visible range
+        let half_w = width / 2.0;
+        let half_h = height / 2.0;
+        
+        // Minor grid lines (lighter)
+        cr.set_source_rgba(0.85, 0.85, 0.85, 0.5);
+        cr.set_line_width(0.5);
+        
+        let mut x = 0.0;
+        while x < half_w {
+            if (x / grid_spacing).round() != x / grid_spacing {
+                cr.move_to(x, -half_h);
+                cr.line_to(x, half_h);
+                cr.move_to(-x, -half_h);
+                cr.line_to(-x, half_h);
+            }
+            x += minor_spacing;
+        }
+        
+        let mut y = 0.0;
+        while y < half_h {
+            if (y / grid_spacing).round() != y / grid_spacing {
+                cr.move_to(-half_w, y);
+                cr.line_to(half_w, y);
+                cr.move_to(-half_w, -y);
+                cr.line_to(half_w, -y);
+            }
+            y += minor_spacing;
+        }
+        cr.stroke().unwrap();
+        
+        // Major grid lines (darker)
+        cr.set_source_rgba(0.7, 0.7, 0.7, 0.6);
         cr.set_line_width(1.0);
-
-        // Draw axes
-        cr.move_to(-1000.0, 0.0);
-        cr.line_to(1000.0, 0.0);
-        cr.move_to(0.0, -1000.0);
-        cr.line_to(0.0, 1000.0);
+        
+        x = 0.0;
+        while x < half_w {
+            cr.move_to(x, -half_h);
+            cr.line_to(x, half_h);
+            if x != 0.0 {
+                cr.move_to(-x, -half_h);
+                cr.line_to(-x, half_h);
+            }
+            x += grid_spacing;
+        }
+        
+        y = 0.0;
+        while y < half_h {
+            cr.move_to(-half_w, y);
+            cr.line_to(half_w, y);
+            if y != 0.0 {
+                cr.move_to(-half_w, -y);
+                cr.line_to(half_w, -y);
+            }
+            y += grid_spacing;
+        }
+        cr.stroke().unwrap();
+        
+        // Draw axes (thicker, darker)
+        cr.set_source_rgba(0.3, 0.3, 0.3, 0.8);
+        cr.set_line_width(2.0);
+        cr.move_to(-half_w, 0.0);
+        cr.line_to(half_w, 0.0);
+        cr.move_to(0.0, -half_h);
+        cr.line_to(0.0, half_h);
         cr.stroke().unwrap();
 
         cr.restore().unwrap();
+    }
+    
+    fn draw_origin_crosshair(cr: &gtk4::cairo::Context) {
+        cr.save().unwrap();
+        
+        // Draw crosshair at origin
+        cr.set_source_rgb(1.0, 0.0, 0.0); // Red
+        cr.set_line_width(2.0);
+        
+        let size = 15.0;
+        
+        // Horizontal line
+        cr.move_to(-size, 0.0);
+        cr.line_to(size, 0.0);
+        
+        // Vertical line
+        cr.move_to(0.0, -size);
+        cr.line_to(0.0, size);
+        
+        cr.stroke().unwrap();
+        
+        // Draw circle
+        cr.arc(0.0, 0.0, size * 0.7, 0.0, 2.0 * std::f64::consts::PI);
+        cr.stroke().unwrap();
+        
+        cr.restore().unwrap();
+    }
+}
+
+impl DesignerView {
+    pub fn new() -> Rc<Self> {
+        let container = Box::new(Orientation::Vertical, 0);
+        container.set_hexpand(true);
+        container.set_vexpand(true);
+        
+        // Create designer state
+        let state = Rc::new(RefCell::new(DesignerState::new()));
+        
+        // Create canvas
+        let canvas = DesignerCanvas::new(state.clone());
+        container.append(&canvas.widget);
+        
+        // Status bar at bottom
+        let status_bar = Box::new(Orientation::Horizontal, 10);
+        status_bar.set_margin_start(10);
+        status_bar.set_margin_end(10);
+        status_bar.set_margin_top(5);
+        status_bar.set_margin_bottom(5);
+        status_bar.add_css_class("statusbar");
+        
+        let status_label = Label::new(Some("Ready"));
+        status_label.set_halign(gtk4::Align::Start);
+        status_label.set_hexpand(true);
+        status_bar.append(&status_label);
+        
+        // Grid toggle
+        let grid_toggle = gtk4::CheckButton::with_label("Show Grid");
+        grid_toggle.set_active(true);
+        let state_grid = state.clone();
+        let canvas_grid = canvas.clone();
+        grid_toggle.connect_toggled(move |btn| {
+            state_grid.borrow_mut().show_grid = btn.is_active();
+            canvas_grid.widget.queue_draw();
+        });
+        status_bar.append(&grid_toggle);
+        
+        // Coordinate display
+        let coord_label = Label::new(Some("X: 0.00  Y: 0.00"));
+        coord_label.set_halign(gtk4::Align::End);
+        coord_label.add_css_class("monospace");
+        status_bar.append(&coord_label);
+        
+        container.append(&status_bar);
+        
+        // Update coordinate label on mouse move
+        let coord_label_clone = coord_label.clone();
+        let canvas_coord = canvas.clone();
+        gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+            let (x, y) = *canvas_coord.mouse_pos.borrow();
+            coord_label_clone.set_text(&format!("X: {:.2}  Y: {:.2}", x, y));
+            gtk4::glib::ControlFlow::Continue
+        });
+        
+        let view = Rc::new(Self {
+            widget: container,
+            canvas,
+            status_label,
+            coord_label,
+        });
+        
+        view
+    }
+    
+    pub fn set_status(&self, message: &str) {
+        self.status_label.set_text(message);
     }
 }

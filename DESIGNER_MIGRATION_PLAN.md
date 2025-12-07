@@ -3,7 +3,7 @@
 ## Overview
 Migrate the Designer tool from Slint to GTK4, following the same pattern used for other panels. This document breaks down the migration into manageable phases.
 
-## Phase 1: Basic Canvas and Drawing Infrastructure
+## Phase 1: Basic Canvas and Drawing Infrastructure ✅ COMPLETE
 **Goal:** Get the canvas rendering basic shapes with pan/zoom
 
 ### Tasks:
@@ -11,9 +11,9 @@ Migrate the Designer tool from Slint to GTK4, following the same pattern used fo
 - [x] Implement Cairo drawing for basic shapes (Rectangle, Circle, Line, Ellipse)
 - [x] Set up coordinate system transformation (Y-up Cartesian)
 - [x] Implement basic viewport (pan/zoom)
-- [ ] Add grid rendering with configurable spacing
-- [ ] Add origin crosshair marker
-- [ ] Add mouse position tracking and display
+- [x] Add grid rendering with configurable spacing (10mm major, 2mm minor)
+- [x] Add origin crosshair marker (red circle with cross)
+- [x] Add mouse position tracking and display (real-time coordinate display)
 
 ### Files to Create/Modify:
 - `crates/gcodekit5-ui/src/ui/gtk/designer.rs` (partially done)
@@ -221,12 +221,17 @@ Migrate the Designer tool from Slint to GTK4, following the same pattern used fo
 
 ## Implementation Notes
 
-### Current Status (Phase 1)
-- Basic canvas rendering implemented
-- Cairo shape drawing for Rectangle, Circle, Line, Ellipse, Path, Text
-- Coordinate system transformation (Y-up)
-- Click and drag gesture handlers (stubs)
-- Grid drawing (basic)
+### Current Status
+**Phase 1: ✅ COMPLETE (2025-12-08)**
+- Full canvas rendering with Cairo
+- Shape drawing: Rectangle, Circle, Line, Ellipse, Path, Text
+- Coordinate system: Y-up Cartesian (centered origin)
+- Grid system: Major (10mm) and minor (2mm) gridlines with axes
+- Origin marker: Red crosshair with circle
+- Mouse tracking: Real-time coordinate display in status bar
+- Status bar: Grid toggle, position display, status messages
+- Event handlers: Click, drag, motion (stubs for future phases)
+- Integration: Fully integrated into main app
 
 ### Architecture
 ```
@@ -264,11 +269,18 @@ DesignerView
 
 ## Decision Log
 
-### 2025-12-07
+### 2025-12-08
 - Created phased migration plan
 - Decided on 8 phases to spread complexity
-- Phase 1 partially implemented (basic canvas)
-- Priority: Get Phase 1 complete, then Phase 2 for basic usability
+- **Phase 1 COMPLETED**:
+  - Full canvas rendering infrastructure
+  - Professional grid system with major/minor lines
+  - Origin crosshair marker
+  - Real-time mouse coordinate tracking
+  - Status bar with grid toggle
+  - Event handling framework
+  - Integrated into main application
+- Next: Phase 2 - Toolbox and shape creation
 
 ---
 

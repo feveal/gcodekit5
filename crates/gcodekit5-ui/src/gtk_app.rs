@@ -1,6 +1,6 @@
 use crate::ui::gtk::cam_tools::CamToolsView;
 use crate::ui::gtk::config_settings::ConfigSettingsView;
-use crate::ui::gtk::designer::DesignerCanvas;
+use crate::ui::gtk::designer::DesignerView;
 use crate::ui::gtk::device_console::DeviceConsoleView;
 use crate::ui::gtk::device_info::DeviceInfoView;
 use crate::ui::gtk::device_manager::DeviceManagerWindow;
@@ -55,7 +55,7 @@ pub fn main() {
         let device_controller = Rc::new(gcodekit5_devicedb::DeviceUiController::new(
             device_manager.clone(),
         ));
-        let designer_state = Rc::new(RefCell::new(gcodekit5_designer::DesignerState::new()));
+        // Designer state is now managed internally by DesignerView
 
         let window = ApplicationWindow::builder()
             .application(app)
@@ -210,7 +210,7 @@ pub fn main() {
         stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), "CAM Tools");
 
         // 6. Designer
-        let designer = DesignerCanvas::new(designer_state.clone());
+        let designer = DesignerView::new();
         stack.add_titled(&designer.widget, Some("designer"), "Designer");
 
         // 7. Device Info

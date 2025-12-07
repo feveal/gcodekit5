@@ -1,0 +1,249 @@
+    Checking gcodekit5-camtools v0.1.0-alpha.0 (/home/thawkins/Projects/gcodekit5/crates/gcodekit5-camtools)
+warning: constant `FIT_MARGIN_FACTOR` is never used
+  --> crates/gcodekit5-visualizer/src/visualizer/visualizer_2d.rs:17:7
+   |
+17 | const FIT_MARGIN_FACTOR: f32 = 0.05;
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gcodekit5-visualizer` (lib) generated 1 warning
+    Checking gcodekit5-designer v0.1.0-alpha.0 (/home/thawkins/Projects/gcodekit5/crates/gcodekit5-designer)
+    Checking gcodekit5-ui v0.1.0-alpha.0 (/home/thawkins/Projects/gcodekit5/crates/gcodekit5-ui)
+warning: unused import: `Frame`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_manager.rs:3:59
+  |
+3 |     Align, Box, Button, CheckButton, ComboBoxText, Entry, Frame, Grid, Label, ListBox,
+  |                                                           ^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `Frame`, `GestureClick`, and `IconTheme`
+ --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:5:5
+  |
+5 |     Frame, GestureClick, Grid, IconTheme, Image, Label, Orientation, Paned, ResponseType,
+  |     ^^^^^  ^^^^^^^^^^^^        ^^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:10:5
+   |
+10 | use std::cell::RefCell;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::path::PathBuf`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:12:5
+   |
+12 | use std::path::PathBuf;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FingerJointSettings` and `FingerStyle`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:17:29
+   |
+17 |     BoxParameters, BoxType, FingerJointSettings, FingerStyle, KeyDividerType,
+   |                             ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `SerialParity`
+ --> crates/gcodekit5-ui/src/ui/gtk/machine_control.rs:2:75
+  |
+2 |     Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator, SerialParity,
+  |                                                                           ^^^^^^^^^^^^
+
+warning: unused imports: `PolicyType`, `ScrolledWindow`, and `TextView`
+ --> crates/gcodekit5-ui/src/ui/gtk/machine_control.rs:8:5
+  |
+8 |     PolicyType, ScrolledWindow, TextView, ToggleButton,
+  |     ^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `LanguageManager`
+ --> crates/gcodekit5-ui/src/ui/gtk/editor.rs:4:33
+  |
+4 | use sourceview5::{View, Buffer, LanguageManager, StyleSchemeManager};
+  |                                 ^^^^^^^^^^^^^^^
+
+warning: unused import: `EventControllerMotion`
+ --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:2:52
+  |
+2 | use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion};
+  |                                                    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Point`
+ --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:6:41
+  |
+6 | use gcodekit5_designer::shapes::{Shape, Point};
+  |                                         ^^^^^
+
+warning: unused imports: `Stack` and `Widget`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:2:72
+  |
+2 | use gtk4::{Box, Button, Label, Orientation, ScrolledWindow, Separator, Stack, Widget};
+  |                                                                        ^^^^^  ^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:3:5
+  |
+3 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:4:5
+  |
+4 | use std::rc::Rc;
+  |     ^^^^^^^^^^^
+
+warning: unnecessary trailing semicolon
+  --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:19:125
+   |
+19 |         sidebar.set_margin_top(15); sidebar.set_margin_bottom(15); sidebar.set_margin_start(15); sidebar.set_margin_end(15);;
+   |                                                                                                                             ^ help: remove this semicolon
+   |
+   = note: `#[warn(redundant_semicolons)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary trailing semicolon
+  --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:51:145
+   |
+51 | ...t_margin_start(20); main_content.set_margin_end(20);;
+   |                                                        ^ help: remove this semicolon
+
+warning: unused imports: `SingleSelection` and `Widget`
+ --> crates/gcodekit5-ui/src/ui/gtk/config_settings.rs:2:127
+  |
+2 | ...n, ScrolledWindow, SearchEntry, SignalListItemFactory, SingleSelection, Widget};
+  |                                                           ^^^^^^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `gtk4::gio`
+ --> crates/gcodekit5-ui/src/ui/gtk/config_settings.rs:3:5
+  |
+3 | use gtk4::gio;
+  |     ^^^^^^^^^
+
+warning: unused imports: `ToolId` and `ToolType`
+  --> crates/gcodekit5-ui/src/ui/gtk/tools_manager.rs:11:41
+   |
+11 | use gcodekit5_core::data::tools::{Tool, ToolId, ToolType};
+   |                                         ^^^^^^  ^^^^^^^^
+
+warning: unused import: `MaterialCategory`
+  --> crates/gcodekit5-ui/src/ui/gtk/materials_manager.rs:11:49
+   |
+11 | use gcodekit5_core::data::materials::{Material, MaterialCategory, MaterialId};
+   |                                                 ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated associated function `gtk4::style_context::<impl gtk4::StyleContext>::add_provider_for_display`: Use gtk::style_context_add_provider_for_display instead.
+   --> crates/gcodekit5-ui/src/gtk_app.rs:370:19
+    |
+370 |     StyleContext::add_provider_for_display(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: unused variable: `da_drag`
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:323:13
+    |
+323 |         let da_drag = da.clone();
+    |             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_da_drag`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `state_click`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:30:13
+   |
+30 |         let state_click = state.clone();
+   |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_state_click`
+
+warning: unused variable: `widget_click`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:31:13
+   |
+31 |         let widget_click = widget.clone();
+   |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_widget_click`
+
+warning: unused variable: `state_drag`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:42:13
+   |
+42 |         let state_drag = state.clone();
+   |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_state_drag`
+
+warning: unused variable: `widget_drag`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:43:13
+   |
+43 |         let widget_drag = widget.clone();
+   |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_widget_drag`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:32:45
+   |
+32 |         click_gesture.connect_pressed(move |gesture, n_press, x, y| {
+   |                                             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `n_press`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:32:54
+   |
+32 |         click_gesture.connect_pressed(move |gesture, n_press, x, y| {
+   |                                                      ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_n_press`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:44:47
+   |
+44 |         drag_gesture.connect_drag_begin(move |gesture, x, y| {
+   |                                               ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:47:48
+   |
+47 |         drag_gesture.connect_drag_update(move |gesture, offset_x, offset_y| {
+   |                                                ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:50:45
+   |
+50 |         drag_gesture.connect_drag_end(move |gesture, offset_x, offset_y| {
+   |                                             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `width`
+   --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:187:45
+    |
+187 |     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
+    |                                             ^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+
+warning: unused variable: `height`
+   --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:187:57
+    |
+187 |     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
+    |                                                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_height`
+
+warning: fields `edit_device_type`, `edit_controller_type`, `edit_connection_type`, and `edit_baud_rate` are never read
+  --> crates/gcodekit5-ui/src/ui/gtk/device_manager.rs:20:5
+   |
+12 | pub struct DeviceManagerWindow {
+   |            ------------------- fields in this struct
+...
+20 |     edit_device_type: ComboBoxText,
+   |     ^^^^^^^^^^^^^^^^
+21 |     edit_controller_type: ComboBoxText,
+   |     ^^^^^^^^^^^^^^^^^^^^
+22 |     edit_connection_type: ComboBoxText,
+   |     ^^^^^^^^^^^^^^^^^^^^
+23 |     edit_port: Entry,
+24 |     edit_baud_rate: ComboBoxText,
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `DeviceManagerWindow` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `show_rapid`, `show_cut`, `show_grid`, and `status_label` are never read
+  --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:16:5
+   |
+11 | pub struct GcodeVisualizer {
+   |            --------------- fields in this struct
+...
+16 |     show_rapid: CheckButton,
+   |     ^^^^^^^^^^
+17 |     show_cut: CheckButton,
+   |     ^^^^^^^^
+18 |     show_grid: CheckButton,
+   |     ^^^^^^^^^
+...
+21 |     status_label: Label,
+   |     ^^^^^^^^^^^^
+
+warning: `gcodekit5-ui` (lib) generated 34 warnings (run `cargo fix --lib -p gcodekit5-ui` to apply 17 suggestions)
+    Finished `dev` profile [optimized + debuginfo] target(s) in 3.60s

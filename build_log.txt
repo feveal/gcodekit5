@@ -1,0 +1,1510 @@
+warning: constant `FIT_MARGIN_FACTOR` is never used
+  --> crates/gcodekit5-visualizer/src/visualizer/visualizer_2d.rs:17:7
+   |
+17 | const FIT_MARGIN_FACTOR: f32 = 0.05;
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `gcodekit5-visualizer` (lib) generated 1 warning
+    Checking gcodekit5-ui v0.1.0-alpha.0 (/home/thawkins/Projects/gcodekit5/crates/gcodekit5-ui)
+   Compiling gcodekit5 v0.1.0-alpha.0 (/home/thawkins/Projects/gcodekit5)
+warning: unused imports: `Label`, `ListView`, `ScrolledWindow`, `SelectionMode`, `SignalListItemFactory`, `SingleSelection`, and `Window`
+ --> crates/gcodekit5-ui/src/ui/gtk/settings.rs:3:70
+  |
+3 |     Align, Box, Button, Entry, FileChooserAction, FileChooserNative, Label, ListView, Orientation,
+  |                                                                      ^^^^^  ^^^^^^^^
+4 |     ResponseType, ScrolledWindow, SelectionMode, SignalListItemFactory, SingleSelection,
+  |                   ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^
+5 |     StringList, Switch, Window,
+  |                         ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::cell::RefCell`
+  --> crates/gcodekit5-ui/src/ui/gtk/settings.rs:11:5
+   |
+11 | use std::cell::RefCell;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Frame`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_manager.rs:3:59
+  |
+3 |     Align, Box, Button, CheckButton, ComboBoxText, Entry, Frame, Grid, Label, ListBox,
+  |                                                           ^^^^^
+
+warning: unused imports: `Frame`, `GestureClick`, and `IconTheme`
+ --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:5:5
+  |
+5 |     Frame, GestureClick, Grid, IconTheme, Image, Label, Orientation, Paned, ResponseType,
+  |     ^^^^^  ^^^^^^^^^^^^        ^^^^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:10:5
+   |
+10 | use std::cell::RefCell;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::path::PathBuf`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:12:5
+   |
+12 | use std::path::PathBuf;
+   |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `FingerJointSettings` and `FingerStyle`
+  --> crates/gcodekit5-ui/src/ui/gtk/cam_tools.rs:16:29
+   |
+16 |     BoxParameters, BoxType, FingerJointSettings, FingerStyle, KeyDividerType,
+   |                             ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+
+warning: unused import: `SerialParity`
+ --> crates/gcodekit5-ui/src/ui/gtk/machine_control.rs:2:75
+  |
+2 |     Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator, SerialParity,
+  |                                                                           ^^^^^^^^^^^^
+
+warning: unused imports: `PolicyType`, `ScrolledWindow`, and `TextView`
+ --> crates/gcodekit5-ui/src/ui/gtk/machine_control.rs:8:5
+  |
+8 |     PolicyType, ScrolledWindow, TextView, ToggleButton,
+  |     ^^^^^^^^^^  ^^^^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `LanguageManager`
+ --> crates/gcodekit5-ui/src/ui/gtk/editor.rs:4:33
+  |
+4 | use sourceview5::{View, Buffer, LanguageManager, StyleSchemeManager};
+  |                                 ^^^^^^^^^^^^^^^
+
+warning: unused imports: `GestureClick`, `PolicyType`, and `ScrolledWindow`
+ --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:5:5
+  |
+5 |     GestureClick, GestureDrag, Label, Orientation, Overlay, Paned, PolicyType, ScrolledWindow,
+  |     ^^^^^^^^^^^^                                                   ^^^^^^^^^^  ^^^^^^^^^^^^^^
+
+warning: unused import: `EventControllerMotion`
+ --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:2:52
+  |
+2 | use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion};
+  |                                                    ^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `Point`
+ --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:6:41
+  |
+6 | use gcodekit5_designer::shapes::{Shape, Point};
+  |                                         ^^^^^
+
+warning: unused imports: `Stack` and `Widget`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:2:72
+  |
+2 | use gtk4::{Box, Button, Label, Orientation, ScrolledWindow, Separator, Stack, Widget};
+  |                                                                        ^^^^^  ^^^^^^
+
+warning: unused import: `std::cell::RefCell`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:3:5
+  |
+3 | use std::cell::RefCell;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `std::rc::Rc`
+ --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:4:5
+  |
+4 | use std::rc::Rc;
+  |     ^^^^^^^^^^^
+
+warning: unnecessary trailing semicolon
+  --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:19:125
+   |
+19 |         sidebar.set_margin_top(15); sidebar.set_margin_bottom(15); sidebar.set_margin_start(15); sidebar.set_margin_end(15);;
+   |                                                                                                                             ^ help: remove this semicolon
+   |
+   = note: `#[warn(redundant_semicolons)]` (part of `#[warn(unused)]`) on by default
+
+warning: unnecessary trailing semicolon
+  --> crates/gcodekit5-ui/src/ui/gtk/device_info.rs:51:145
+   |
+51 | ...t_margin_start(20); main_content.set_margin_end(20);;
+   |                                                        ^ help: remove this semicolon
+
+warning: unused imports: `SingleSelection` and `Widget`
+ --> crates/gcodekit5-ui/src/ui/gtk/config_settings.rs:2:127
+  |
+2 | ...n, ScrolledWindow, SearchEntry, SignalListItemFactory, SingleSelection, Widget};
+  |                                                           ^^^^^^^^^^^^^^^  ^^^^^^
+
+warning: unused import: `gtk4::gio`
+ --> crates/gcodekit5-ui/src/ui/gtk/config_settings.rs:3:5
+  |
+3 | use gtk4::gio;
+  |     ^^^^^^^^^
+
+warning: unused imports: `ToolId` and `ToolType`
+  --> crates/gcodekit5-ui/src/ui/gtk/tools_manager.rs:11:41
+   |
+11 | use gcodekit5_core::data::tools::{Tool, ToolId, ToolType};
+   |                                         ^^^^^^  ^^^^^^^^
+
+warning: unused import: `MaterialCategory`
+  --> crates/gcodekit5-ui/src/ui/gtk/materials_manager.rs:11:49
+   |
+11 | use gcodekit5_core::data::materials::{Material, MaterialCategory, MaterialId};
+   |                                                 ^^^^^^^^^^^^^^^^
+
+warning: use of deprecated associated function `gtk4::style_context::<impl gtk4::StyleContext>::add_provider_for_display`: Use gtk::style_context_add_provider_for_display instead.
+   --> crates/gcodekit5-ui/src/gtk_app.rs:370:19
+    |
+370 |     StyleContext::add_provider_for_display(
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+error[E0599]: no method named `add_css_class` found for struct `Paned` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:25:19
+    |
+ 25 |         container.add_css_class("visualizer-container");
+    |                   ^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:113:8
+    |
+113 |     fn add_css_class(&self, css_class: &str) {
+    |        ------------- the method is available for `Paned` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_css_class` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+help: there is a method `has_css_class` with a similar name
+    |
+ 25 -         container.add_css_class("visualizer-container");
+ 25 +         container.has_css_class("visualizer-container");
+    |
+
+error[E0599]: no method named `set_hexpand` found for struct `Paned` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:26:19
+     |
+  26 |         container.set_hexpand(true);
+     |                   ^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1261:8
+     |
+1261 |     fn set_hexpand(&self, expand: bool) {
+     |        ----------- the method is available for `Paned` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `set_hexpand` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+help: there is a method `set_vexpand` with a similar name
+     |
+  26 -         container.set_hexpand(true);
+  26 +         container.set_vexpand(true);
+     |
+
+error[E0599]: no method named `set_vexpand` found for struct `Paned` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:27:19
+     |
+  27 |         container.set_vexpand(true);
+     |                   ^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1432:8
+     |
+1432 |     fn set_vexpand(&self, expand: bool) {
+     |        ----------- the method is available for `Paned` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `set_vexpand` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+help: there is a method `set_hexpand` with a similar name
+     |
+  27 -         container.set_vexpand(true);
+  27 +         container.set_hexpand(true);
+     |
+
+error[E0599]: no method named `set_width_request` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:31:17
+     |
+  31 |         sidebar.set_width_request(200);
+     |                 ^^^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1573:8
+     |
+1573 |     fn set_width_request(&self, width_request: i32) {
+     |        ----------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `width_request` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1568:5
+     |
+1568 |     fn width_request(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_width_request` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `add_css_class` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:32:17
+    |
+ 32 |         sidebar.add_css_class("visualizer-sidebar");
+    |                 ^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:113:8
+    |
+113 |     fn add_css_class(&self, css_class: &str) {
+    |        ------------- the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_css_class` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+help: there is a method `has_css_class` with a similar name
+    |
+ 32 -         sidebar.add_css_class("visualizer-sidebar");
+ 32 +         sidebar.has_css_class("visualizer-sidebar");
+    |
+
+error[E0599]: no method named `set_margin_start` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:33:17
+     |
+  33 |         sidebar.set_margin_start(12);
+     |                 ^^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1317:8
+     |
+1317 |     fn set_margin_start(&self, margin: i32) {
+     |        ---------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_start` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:601:5
+     |
+ 601 |     fn margin_start(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_start` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `set_margin_end` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:34:17
+     |
+  34 |         sidebar.set_margin_end(12);
+     |                 ^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1309:8
+     |
+1309 |     fn set_margin_end(&self, margin: i32) {
+     |        -------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_end` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:594:5
+     |
+ 594 |     fn margin_end(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_end` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `set_margin_top` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:35:17
+     |
+  35 |         sidebar.set_margin_top(12);
+     |                 ^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1325:8
+     |
+1325 |     fn set_margin_top(&self, margin: i32) {
+     |        -------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_top` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:608:5
+     |
+ 608 |     fn margin_top(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_top` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `set_margin_bottom` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:36:17
+     |
+  36 |         sidebar.set_margin_bottom(12);
+     |                 ^^^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1301:8
+     |
+1301 |     fn set_margin_bottom(&self, margin: i32) {
+     |        ----------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_bottom` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:587:5
+     |
+ 587 |     fn margin_bottom(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_bottom` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:44:17
+    |
+ 44 |         sidebar.append(&view_label);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:56:23
+    |
+ 56 |         view_controls.append(&fit_btn);
+    |                       ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:57:23
+    |
+ 57 |         view_controls.append(&reset_btn);
+    |                       ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:58:17
+    |
+ 58 |         sidebar.append(&view_controls);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:67:17
+    |
+ 67 |         sidebar.append(&vis_label);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:82:17
+    |
+ 82 |         sidebar.append(&show_rapid);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:83:17
+    |
+ 83 |         sidebar.append(&show_cut);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:84:17
+    |
+ 84 |         sidebar.append(&show_grid);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:93:17
+    |
+ 93 |         sidebar.append(&bounds_label);
+    |                 ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `add_css_class` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:113:22
+    |
+113 |         floating_box.add_css_class("osd");
+    |                      ^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:113:8
+    |
+113 |     fn add_css_class(&self, css_class: &str) {
+    |        ------------- the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_css_class` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+help: there is a method `has_css_class` with a similar name
+    |
+113 -         floating_box.add_css_class("osd");
+113 +         floating_box.has_css_class("osd");
+    |
+
+error[E0599]: no method named `add_css_class` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:114:22
+    |
+114 |         floating_box.add_css_class("linked");
+    |                      ^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:113:8
+    |
+113 |     fn add_css_class(&self, css_class: &str) {
+    |        ------------- the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_css_class` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+help: there is a method `has_css_class` with a similar name
+    |
+114 -         floating_box.add_css_class("linked");
+114 +         floating_box.has_css_class("linked");
+    |
+
+error[E0599]: no method named `set_halign` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:115:22
+     |
+ 115 |         floating_box.set_halign(gtk4::Align::End);
+     |                      ^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1242:8
+     |
+1242 |     fn set_halign(&self, align: Align) {
+     |        ---------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `set_halign` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+help: there is a method `set_valign` with a similar name
+     |
+ 115 -         floating_box.set_halign(gtk4::Align::End);
+ 115 +         floating_box.set_valign(gtk4::Align::End);
+     |
+
+error[E0599]: no method named `set_valign` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:116:22
+     |
+ 116 |         floating_box.set_valign(gtk4::Align::End);
+     |                      ^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1424:8
+     |
+1424 |     fn set_valign(&self, align: Align) {
+     |        ---------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `set_valign` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+help: there is a method `set_halign` with a similar name
+     |
+ 116 -         floating_box.set_valign(gtk4::Align::End);
+ 116 +         floating_box.set_halign(gtk4::Align::End);
+     |
+
+error[E0599]: no method named `set_margin_bottom` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:117:22
+     |
+ 117 |         floating_box.set_margin_bottom(20);
+     |                      ^^^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1301:8
+     |
+1301 |     fn set_margin_bottom(&self, margin: i32) {
+     |        ----------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_bottom` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:587:5
+     |
+ 587 |     fn margin_bottom(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_bottom` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `set_margin_end` found for struct `gtk4::Box` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:118:22
+     |
+ 118 |         floating_box.set_margin_end(20);
+     |                      ^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1309:8
+     |
+1309 |     fn set_margin_end(&self, margin: i32) {
+     |        -------------- the method is available for `gtk4::Box` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `margin_end` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:594:5
+     |
+ 594 |     fn margin_end(&self) -> i32 {
+     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `WidgetExt` which provides `set_margin_end` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:124:22
+    |
+124 |         floating_box.append(&float_zoom_out);
+    |                      ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:125:22
+    |
+125 |         floating_box.append(&float_fit);
+    |                      ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `append` found for struct `gtk4::Box` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:126:22
+    |
+126 |         floating_box.append(&float_zoom_in);
+    |                      ^^^^^^ method not found in `gtk4::Box`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/box_.rs:309:8
+    |
+309 |     fn append(&self, child: &impl IsA<Widget>) {
+    |        ------ the method is available for `gtk4::Box` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `BoxExt` which provides `append` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::BoxExt;
+    |
+
+error[E0599]: no method named `connect_clicked` found for struct `gtk4::Button` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:135:24
+     |
+ 135 |         float_zoom_out.connect_clicked(move |_| {
+     |         ---------------^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/button.rs:501:8
+     |
+ 501 |     fn connect_clicked<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `gtk4::Button` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_id` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1882:5
+     |
+1882 | /     fn connect_id<F>(
+1883 | |         &self,
+1884 | |         signal_id: SignalId,
+1885 | |         details: Option<Quark>,
+...    |
+1889 | |     where
+1890 | |         F: Fn(&[Value]) -> Option<Value> + Send + Sync + 'static;
+     | |_________________________________________________________________^
+help: trait `ButtonExt` which provides `connect_clicked` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::ButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:137:26
+     |
+ 137 |             da_float_out.queue_draw();
+     |                          ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_clicked` found for struct `gtk4::Button` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:142:23
+     |
+ 142 |         float_zoom_in.connect_clicked(move |_| {
+     |         --------------^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/button.rs:501:8
+     |
+ 501 |     fn connect_clicked<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `gtk4::Button` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_id` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1882:5
+     |
+1882 | /     fn connect_id<F>(
+1883 | |         &self,
+1884 | |         signal_id: SignalId,
+1885 | |         details: Option<Quark>,
+...    |
+1889 | |     where
+1890 | |         F: Fn(&[Value]) -> Option<Value> + Send + Sync + 'static;
+     | |_________________________________________________________________^
+help: trait `ButtonExt` which provides `connect_clicked` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::ButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:144:25
+     |
+ 144 |             da_float_in.queue_draw();
+     |                         ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_clicked` found for struct `gtk4::Button` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:149:19
+     |
+ 149 |         float_fit.connect_clicked(move |_| {
+     |         ----------^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/button.rs:501:8
+     |
+ 501 |     fn connect_clicked<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `gtk4::Button` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_id` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1882:5
+     |
+1882 | /     fn connect_id<F>(
+1883 | |         &self,
+1884 | |         signal_id: SignalId,
+1885 | |         details: Option<Quark>,
+...    |
+1889 | |     where
+1890 | |         F: Fn(&[Value]) -> Option<Value> + Send + Sync + 'static;
+     | |_________________________________________________________________^
+help: trait `ButtonExt` which provides `connect_clicked` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::ButtonExt;
+     |
+
+error[E0599]: no method named `width` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:150:38
+    |
+150 |             let width = da_float_fit.width() as f32;
+    |                                      ^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:854:8
+    |
+854 |     fn width(&self) -> i32 {
+    |        ----- the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `width` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `height` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:151:39
+    |
+151 |             let height = da_float_fit.height() as f32;
+    |                                       ^^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:521:8
+    |
+521 |     fn height(&self) -> i32 {
+    |        ------ the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `height` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:154:30
+     |
+ 154 |                 da_float_fit.queue_draw();
+     |                              ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `add_tick_callback` found for struct `Paned` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:158:19
+    |
+158 |         container.add_tick_callback(|paned, _clock| {
+    |         ----------^^^^^^^^^^^^^^^^^ method not found in `Paned`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/widget.rs:16:8
+    |
+ 16 |     fn add_tick_callback<P: Fn(&Self, &gdk::FrameClock) -> ControlFlow + 'static>(
+    |        ----------------- the method is available for `Paned` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExtManual` which provides `add_tick_callback` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExtManual;
+    |
+
+error[E0599]: no method named `set_draw_func` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:173:22
+    |
+173 |         drawing_area.set_draw_func(move |_, cr, width, height| {
+    |         -------------^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/drawing_area.rs:32:8
+    |
+ 32 |     fn set_draw_func<P: FnMut(&DrawingArea, &cairo::Context, i32, i32) + 'static>(
+    |        ------------- the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `unset_draw_func` with a similar name, but with different arguments
+   --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/drawing_area.rs:20:5
+    |
+ 20 |     fn unset_draw_func(&self) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `DrawingAreaExtManual` which provides `set_draw_func` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::DrawingAreaExtManual;
+    |
+
+error[E0599]: no method named `is_active` found for struct `CheckButton` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:180:33
+    |
+180 |                 show_rapid_draw.is_active(),
+    |                                 ^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:350:8
+    |
+350 |     fn is_active(&self) -> bool {
+    |        --------- the method is available for `CheckButton` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `set_active` with a similar name, but with different arguments
+   --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:404:5
+    |
+404 |     fn set_active(&self, setting: bool) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `CheckButtonExt` which provides `is_active` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::CheckButtonExt;
+    |
+
+error[E0599]: no method named `is_active` found for struct `CheckButton` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:181:31
+    |
+181 |                 show_cut_draw.is_active(),
+    |                               ^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:350:8
+    |
+350 |     fn is_active(&self) -> bool {
+    |        --------- the method is available for `CheckButton` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `set_active` with a similar name, but with different arguments
+   --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:404:5
+    |
+404 |     fn set_active(&self, setting: bool) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `CheckButtonExt` which provides `is_active` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::CheckButtonExt;
+    |
+
+error[E0599]: no method named `is_active` found for struct `CheckButton` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:182:32
+    |
+182 |                 show_grid_draw.is_active(),
+    |                                ^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:350:8
+    |
+350 |     fn is_active(&self) -> bool {
+    |        --------- the method is available for `CheckButton` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: there is a method `set_active` with a similar name, but with different arguments
+   --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:404:5
+    |
+404 |     fn set_active(&self, setting: bool) {
+    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: trait `CheckButtonExt` which provides `is_active` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::CheckButtonExt;
+    |
+
+error[E0599]: no method named `connect_clicked` found for struct `gtk4::Button` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:189:17
+     |
+ 189 |         fit_btn.connect_clicked(move |_| {
+     |         --------^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/button.rs:501:8
+     |
+ 501 |     fn connect_clicked<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `gtk4::Button` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_id` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1882:5
+     |
+1882 | /     fn connect_id<F>(
+1883 | |         &self,
+1884 | |         signal_id: SignalId,
+1885 | |         details: Option<Quark>,
+...    |
+1889 | |     where
+1890 | |         F: Fn(&[Value]) -> Option<Value> + Send + Sync + 'static;
+     | |_________________________________________________________________^
+help: trait `ButtonExt` which provides `connect_clicked` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::ButtonExt;
+     |
+
+error[E0599]: no method named `width` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:190:32
+    |
+190 |             let width = da_fit.width() as f32;
+    |                                ^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:854:8
+    |
+854 |     fn width(&self) -> i32 {
+    |        ----- the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `width` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `height` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:191:33
+    |
+191 |             let height = da_fit.height() as f32;
+    |                                 ^^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:521:8
+    |
+521 |     fn height(&self) -> i32 {
+    |        ------ the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `height` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:193:20
+     |
+ 193 |             da_fit.queue_draw();
+     |                    ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_clicked` found for struct `gtk4::Button` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:198:19
+     |
+ 198 |         reset_btn.connect_clicked(move |_| {
+     |         ----------^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/button.rs:501:8
+     |
+ 501 |     fn connect_clicked<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `gtk4::Button` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_id` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1882:5
+     |
+1882 | /     fn connect_id<F>(
+1883 | |         &self,
+1884 | |         signal_id: SignalId,
+1885 | |         details: Option<Quark>,
+...    |
+1889 | |     where
+1890 | |         F: Fn(&[Value]) -> Option<Value> + Send + Sync + 'static;
+     | |_________________________________________________________________^
+help: trait `ButtonExt` which provides `connect_clicked` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::ButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:202:22
+     |
+ 202 |             da_reset.queue_draw();
+     |                      ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_toggled` found for struct `CheckButton` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:206:20
+     |
+ 206 |         show_rapid.connect_toggled(move |_| da_update.queue_draw());
+     |                    ^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:495:8
+     |
+ 495 |     fn connect_toggled<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `CheckButton` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_local` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1904:5
+     |
+1904 | /     fn connect_local<F>(&self, signal_name: &str, after: bool, callback: F) -> SignalHandlerId
+1905 | |     where
+1906 | |         F: Fn(&[Value]) -> Option<Value> + 'static;
+     | |___________________________________________________^
+help: trait `CheckButtonExt` which provides `connect_toggled` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::CheckButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:206:55
+     |
+ 206 |         show_rapid.connect_toggled(move |_| da_update.queue_draw());
+     |                                                       ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_toggled` found for struct `CheckButton` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:208:18
+     |
+ 208 |         show_cut.connect_toggled(move |_| da_update.queue_draw());
+     |                  ^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:495:8
+     |
+ 495 |     fn connect_toggled<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `CheckButton` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_local` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1904:5
+     |
+1904 | /     fn connect_local<F>(&self, signal_name: &str, after: bool, callback: F) -> SignalHandlerId
+1905 | |     where
+1906 | |         F: Fn(&[Value]) -> Option<Value> + 'static;
+     | |___________________________________________________^
+help: trait `CheckButtonExt` which provides `connect_toggled` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::CheckButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:208:53
+     |
+ 208 |         show_cut.connect_toggled(move |_| da_update.queue_draw());
+     |                                                     ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_toggled` found for struct `CheckButton` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:210:19
+     |
+ 210 |         show_grid.connect_toggled(move |_| da_update.queue_draw());
+     |                   ^^^^^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/check_button.rs:495:8
+     |
+ 495 |     fn connect_toggled<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        --------------- the method is available for `CheckButton` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: there is a method `connect_local` with a similar name, but with different arguments
+    --> /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/glib-0.20.12/src/object.rs:1904:5
+     |
+1904 | /     fn connect_local<F>(&self, signal_name: &str, after: bool, callback: F) -> SignalHandlerId
+1905 | |     where
+1906 | |         F: Fn(&[Value]) -> Option<Value> + 'static;
+     | |___________________________________________________^
+help: trait `CheckButtonExt` which provides `connect_toggled` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::CheckButtonExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:210:54
+     |
+ 210 |         show_grid.connect_toggled(move |_| da_update.queue_draw());
+     |                                                      ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `connect_map` found for struct `Paned` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:218:19
+     |
+ 218 |         container.connect_map(move |_| {
+     |         ----------^^^^^^^^^^^
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1687:8
+     |
+1687 |     fn connect_map<F: Fn(&Self) + 'static>(&self, f: F) -> SignalHandlerId {
+     |        ----------- the method is available for `Paned` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `connect_map` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+help: there is a method `connect_unmap` with a similar name
+     |
+ 218 |         container.connect_unmap(move |_| {
+     |                           ++
+
+error[E0599]: no method named `width` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:222:32
+    |
+222 |                 let width = da.width() as f32;
+    |                                ^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:854:8
+    |
+854 |     fn width(&self) -> i32 {
+    |        ----- the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `width` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `height` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:223:33
+    |
+223 |                 let height = da.height() as f32;
+    |                                 ^^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:521:8
+    |
+521 |     fn height(&self) -> i32 {
+    |        ------ the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `height` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:226:24
+     |
+ 226 |                     da.queue_draw();
+     |                        ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:256:23
+     |
+ 256 |             da_scroll.queue_draw();
+     |                       ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `add_controller` found for reference `&DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:259:12
+    |
+259 |         da.add_controller(scroll);
+    |            ^^^^^^^^^^^^^^ method not found in `&DrawingArea`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_controller` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `connect_drag_begin` found for struct `GestureDrag` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:268:14
+    |
+268 |         drag.connect_drag_begin(move |_, _, _| {
+    |         -----^^^^^^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/gesture_drag.rs:163:8
+    |
+163 |     fn connect_drag_begin<F: Fn(&Self, f64, f64) + 'static>(&self, f: F) -> SignalHandlerId {
+    |        ------------------ the method is available for `GestureDrag` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `GestureDragExt` which provides `connect_drag_begin` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::GestureDragExt;
+    |
+help: there is a method `connect_begin` with a similar name
+    |
+268 -         drag.connect_drag_begin(move |_, _, _| {
+268 +         drag.connect_begin(move |_, _, _| {
+    |
+
+error[E0599]: no method named `connect_drag_update` found for struct `GestureDrag` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:277:14
+    |
+277 |         drag.connect_drag_update(move |_, dx, dy| {
+    |         -----^^^^^^^^^^^^^^^^^^^
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/gesture_drag.rs:225:8
+    |
+225 |     fn connect_drag_update<F: Fn(&Self, f64, f64) + 'static>(&self, f: F) -> SignalHandlerId {
+    |        ------------------- the method is available for `GestureDrag` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `GestureDragExt` which provides `connect_drag_update` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::GestureDragExt;
+    |
+help: there is a method `connect_update` with a similar name
+    |
+277 -         drag.connect_drag_update(move |_, dx, dy| {
+277 +         drag.connect_update(move |_, dx, dy| {
+    |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:283:28
+     |
+ 283 |             da_drag_update.queue_draw();
+     |                            ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+error[E0599]: no method named `add_controller` found for reference `&DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:285:12
+    |
+285 |         da.add_controller(drag);
+    |            ^^^^^^^^^^^^^^ method not found in `&DrawingArea`
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `add_controller` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `width` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:300:39
+    |
+300 |         let width = self.drawing_area.width() as f32;
+    |                                       ^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:854:8
+    |
+854 |     fn width(&self) -> i32 {
+    |        ----- the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `width` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `height` found for struct `DrawingArea` in the current scope
+   --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:301:40
+    |
+301 |         let height = self.drawing_area.height() as f32;
+    |                                        ^^^^^^ method not found in `DrawingArea`
+    |
+   ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:521:8
+    |
+521 |     fn height(&self) -> i32 {
+    |        ------ the method is available for `DrawingArea` here
+    |
+    = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `height` is implemented but not in scope; perhaps you want to import it
+    |
+  1 + use gtk4::prelude::WidgetExt;
+    |
+
+error[E0599]: no method named `queue_draw` found for struct `DrawingArea` in the current scope
+    --> crates/gcodekit5-ui/src/ui/gtk/visualizer.rs:306:27
+     |
+ 306 |         self.drawing_area.queue_draw();
+     |                           ^^^^^^^^^^ method not found in `DrawingArea`
+     |
+    ::: /home/thawkins/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gtk4-0.9.7/src/auto/widget.rs:1077:8
+     |
+1077 |     fn queue_draw(&self) {
+     |        ---------- the method is available for `DrawingArea` here
+     |
+     = help: items from traits can only be used if the trait is in scope
+help: trait `WidgetExt` which provides `queue_draw` is implemented but not in scope; perhaps you want to import it
+     |
+   1 + use gtk4::prelude::WidgetExt;
+     |
+
+warning: unused variable: `state_click`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:30:13
+   |
+30 |         let state_click = state.clone();
+   |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_state_click`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `widget_click`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:31:13
+   |
+31 |         let widget_click = widget.clone();
+   |             ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_widget_click`
+
+warning: unused variable: `state_drag`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:42:13
+   |
+42 |         let state_drag = state.clone();
+   |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_state_drag`
+
+warning: unused variable: `widget_drag`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:43:13
+   |
+43 |         let widget_drag = widget.clone();
+   |             ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_widget_drag`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:32:45
+   |
+32 |         click_gesture.connect_pressed(move |gesture, n_press, x, y| {
+   |                                             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `n_press`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:32:54
+   |
+32 |         click_gesture.connect_pressed(move |gesture, n_press, x, y| {
+   |                                                      ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_n_press`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:44:47
+   |
+44 |         drag_gesture.connect_drag_begin(move |gesture, x, y| {
+   |                                               ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:47:48
+   |
+47 |         drag_gesture.connect_drag_update(move |gesture, offset_x, offset_y| {
+   |                                                ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `gesture`
+  --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:50:45
+   |
+50 |         drag_gesture.connect_drag_end(move |gesture, offset_x, offset_y| {
+   |                                             ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_gesture`
+
+warning: unused variable: `width`
+   --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:187:45
+    |
+187 |     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
+    |                                             ^^^^^ help: if this is intentional, prefix it with an underscore: `_width`
+
+warning: unused variable: `height`
+   --> crates/gcodekit5-ui/src/ui/gtk/designer.rs:187:57
+    |
+187 |     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
+    |                                                         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_height`
+
+For more information about this error, try `rustc --explain E0599`.
+warning: `gcodekit5-ui` (lib) generated 34 warnings
+error: could not compile `gcodekit5-ui` (lib) due to 65 previous errors; 34 warnings emitted
