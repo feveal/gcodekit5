@@ -1,4 +1,4 @@
-## [0.1.0-alpha.0] - 2025-12-08
+## [0.2.0-alpha.0] - 2025-12-08
 
 ### Added
 - **CAM Tools**: Migrated BitmapEngraving tool from Slint to GTK4 with preview, Load/Save/Cancel buttons, progress bar, and spinner overlay.
