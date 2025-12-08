@@ -56,7 +56,7 @@ This document compares the functionality of the Designer in `gcodekit4` (Slint) 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Native** | New, Open, Save (.gckd) | New, Open, Save (.gckd) | ✅ Complete | - | - |
 | **Import** | DXF, SVG Import | DXF, SVG Import implemented | ✅ Complete | T-601 | 6h |
-| **Export** | G-Code, SVG Export | **Missing** | ❌ Missing | T-602 | 4h |
+| **Export** | G-Code, SVG Export | G-Code, SVG Export implemented | ✅ Complete | T-602 | 4h |
 
 ## 7. Toolpath & Simulation
 

@@ -2558,9 +2558,208 @@ impl DesignerView {
         }
     }
 
-    pub fn export_file(&self) {
-        // TODO: Export
-        println!("Designer: Export File");
+    pub fn export_gcode(&self) {
+        let window = self.widget.root().and_then(|w| w.downcast::<gtk4::Window>().ok());
+        let dialog = FileChooserNative::new(
+            Some("Export G-Code"),
+            window.as_ref(),
+            FileChooserAction::Save,
+            Some("Export"),
+            Some("Cancel"),
+        );
+
+        let filter = gtk4::FileFilter::new();
+        filter.set_name(Some("G-Code Files"));
+        filter.add_pattern("*.nc");
+        filter.add_pattern("*.gcode");
+        filter.add_pattern("*.gc");
+        dialog.add_filter(&filter);
+
+        let canvas = self.canvas.clone();
+        let status_label = self.status_label.clone();
+
+        dialog.connect_response(move |dialog, response| {
+            if response == ResponseType::Accept {
+                if let Some(file) = dialog.file() {
+                    if let Some(mut path) = file.path() {
+                        if path.extension().is_none() {
+                            path.set_extension("nc");
+                        }
+
+                        // Generate G-code
+                        let mut state = canvas.state.borrow_mut();
+                        
+                        // Copy settings to avoid borrow issues
+                        let feed_rate = state.tool_settings.feed_rate;
+                        let spindle_speed = state.tool_settings.spindle_speed;
+                        let tool_diameter = state.tool_settings.tool_diameter;
+                        let cut_depth = state.tool_settings.cut_depth;
+                        
+                        // Update toolpath generator settings from state
+                        state.toolpath_generator.set_feed_rate(feed_rate);
+                        state.toolpath_generator.set_spindle_speed(spindle_speed);
+                        state.toolpath_generator.set_tool_diameter(tool_diameter);
+                        state.toolpath_generator.set_cut_depth(cut_depth);
+                        state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
+                        
+                        let gcode = state.generate_gcode();
+                        
+                        match std::fs::write(&path, gcode) {
+                            Ok(_) => {
+                                status_label.set_text(&format!("Exported G-Code: {}", path.display()));
+                            }
+                            Err(e) => {
+                                eprintln!("Error exporting G-Code: {}", e);
+                                status_label.set_text(&format!("Error exporting G-Code: {}", e));
+                            }
+                        }
+                    }
+                }
+            }
+            dialog.destroy();
+        });
+        
+        dialog.show();
+    }
+
+    pub fn export_svg(&self) {
+        let window = self.widget.root().and_then(|w| w.downcast::<gtk4::Window>().ok());
+        let dialog = FileChooserNative::new(
+            Some("Export SVG"),
+            window.as_ref(),
+            FileChooserAction::Save,
+            Some("Export"),
+            Some("Cancel"),
+        );
+
+        let filter = gtk4::FileFilter::new();
+        filter.set_name(Some("SVG Files"));
+        filter.add_pattern("*.svg");
+        dialog.add_filter(&filter);
+
+        let canvas = self.canvas.clone();
+        let status_label = self.status_label.clone();
+
+        dialog.connect_response(move |dialog, response| {
+            if response == ResponseType::Accept {
+                if let Some(file) = dialog.file() {
+                    if let Some(mut path) = file.path() {
+                        if path.extension().is_none() {
+                            path.set_extension("svg");
+                        }
+
+                        let state = canvas.state.borrow();
+                        
+                        // Calculate bounds
+                        let mut min_x = f64::INFINITY;
+                        let mut min_y = f64::INFINITY;
+                        let mut max_x = f64::NEG_INFINITY;
+                        let mut max_y = f64::NEG_INFINITY;
+                        
+                        let shapes: Vec<_> = state.canvas.shapes().collect();
+                        if shapes.is_empty() {
+                            status_label.set_text("Nothing to export");
+                            dialog.destroy();
+                            return;
+                        }
+
+                        for obj in &shapes {
+                            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+                            min_x = min_x.min(x1);
+                            min_y = min_y.min(y1);
+                            max_x = max_x.max(x2);
+                            max_y = max_y.max(y2);
+                        }
+                        
+                        // Add some padding
+                        let padding = 10.0;
+                        min_x -= padding;
+                        min_y -= padding;
+                        max_x += padding;
+                        max_y += padding;
+                        
+                        let width = max_x - min_x;
+                        let height = max_y - min_y;
+                        
+                        let mut svg = String::new();
+                        svg.push_str(&format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="{:.2}mm" height="{:.2}mm" viewBox="{:.2} {:.2} {:.2} {:.2}" xmlns="http://www.w3.org/2000/svg">
+"#, width, height, min_x, min_y, width, height));
+
+                        for obj in &shapes {
+                            let style = "fill:none;stroke:black;stroke-width:0.5";
+                            match &obj.shape {
+                                Shape::Rectangle(r) => {
+                                    svg.push_str(&format!(r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" rx="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
+                                        r.x, r.y, r.width, r.height, r.corner_radius, style,
+                                        r.rotation, r.x + r.width/2.0, r.y + r.height/2.0
+                                    ));
+                                }
+                                Shape::Circle(c) => {
+                                    svg.push_str(&format!(r#"<circle cx="{:.2}" cy="{:.2}" r="{:.2}" style="{}" />"#,
+                                        c.center.x, c.center.y, c.radius, style
+                                    ));
+                                }
+                                Shape::Line(l) => {
+                                    svg.push_str(&format!(r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
+                                        l.start.x, l.start.y, l.end.x, l.end.y, style,
+                                        l.rotation, (l.start.x+l.end.x)/2.0, (l.start.y+l.end.y)/2.0
+                                    ));
+                                }
+                                Shape::Ellipse(e) => {
+                                    svg.push_str(&format!(r#"<ellipse cx="{:.2}" cy="{:.2}" rx="{:.2}" ry="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
+                                        e.center.x, e.center.y, e.rx, e.ry, style,
+                                        e.rotation, e.center.x, e.center.y
+                                    ));
+                                }
+                                Shape::Path(p) => {
+                                    let mut d = String::new();
+                                    for event in p.path.iter() {
+                                        match event {
+                                            lyon::path::Event::Begin { at } => d.push_str(&format!("M {:.2} {:.2} ", at.x, at.y)),
+                                            lyon::path::Event::Line { from: _, to } => d.push_str(&format!("L {:.2} {:.2} ", to.x, to.y)),
+                                            lyon::path::Event::Quadratic { from: _, ctrl, to } => d.push_str(&format!("Q {:.2} {:.2} {:.2} {:.2} ", ctrl.x, ctrl.y, to.x, to.y)),
+                                            lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => d.push_str(&format!("C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} ", ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, to.x, to.y)),
+                                            lyon::path::Event::End { last: _, first: _, close } => if close { d.push_str("Z "); },
+                                        }
+                                    }
+                                    let rect = lyon::algorithms::aabb::bounding_box(&p.path);
+                                    let cx = (rect.min.x + rect.max.x) / 2.0;
+                                    let cy = (rect.min.y + rect.max.y) / 2.0;
+                                    
+                                    svg.push_str(&format!(r#"<path d="{}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
+                                        d, style, p.rotation, cx, cy
+                                    ));
+                                }
+                                Shape::Text(t) => {
+                                    svg.push_str(&format!(r#"<text x="{:.2}" y="{:.2}" font-size="{:.2}" style="fill:black;stroke:none" transform="rotate({:.2} {:.2} {:.2})">{}</text>"#,
+                                        t.x, t.y, t.font_size,
+                                        t.rotation, t.x, t.y,
+                                        t.text
+                                    ));
+                                }
+                            }
+                            svg.push('\n');
+                        }
+                        
+                        svg.push_str("</svg>");
+                        
+                        match std::fs::write(&path, svg) {
+                            Ok(_) => {
+                                status_label.set_text(&format!("Exported SVG: {}", path.display()));
+                            }
+                            Err(e) => {
+                                eprintln!("Error exporting SVG: {}", e);
+                                status_label.set_text(&format!("Error exporting SVG: {}", e));
+                            }
+                        }
+                    }
+                }
+            }
+            dialog.destroy();
+        });
+        
+        dialog.show();
     }
     
     // File operations - TODO: Implement once shape structures are aligned

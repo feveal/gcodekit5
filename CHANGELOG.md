@@ -17,6 +17,10 @@
   - Supports importing DXF lines, circles, arcs, and polylines.
   - Automatically scales and positions imported shapes.
   - Supports SVG group transforms and matrix transformations.
+- **Designer**: Implemented Export functionality for G-Code and SVG files (T-602).
+  - Added "Export G-Code..." and "Export SVG..." options to File menu.
+  - Generates G-code based on current tool settings and shape properties.
+  - Exports design to SVG format preserving dimensions.
 
 ### Fixed
 - **Designer**: Made toolbox scrollable to prevent layout issues on smaller screens.

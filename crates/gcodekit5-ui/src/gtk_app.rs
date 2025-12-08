@@ -82,7 +82,8 @@ pub fn main() {
         file_menu.append(Some("Save"), Some("app.file_save"));
         file_menu.append(Some("Save As..."), Some("app.file_save_as"));
         file_menu.append(Some("Import"), Some("app.file_import"));
-        file_menu.append(Some("Export"), Some("app.file_export"));
+        file_menu.append(Some("Export G-Code..."), Some("app.file_export_gcode"));
+        file_menu.append(Some("Export SVG..."), Some("app.file_export_svg"));
         file_menu.append(Some("Run"), Some("app.file_run"));
         file_menu.append(Some("Quit"), Some("app.quit"));
         menu_bar_model.append_submenu(Some("File"), &file_menu);
@@ -402,18 +403,31 @@ pub fn main() {
         });
         app.add_action(&import_action);
 
-        let stack_clone = stack.clone();
-        let designer_clone = designer.clone();
-        let export_action = gio::SimpleAction::new("file_export", None);
-        export_action.connect_activate(move |_, _| {
-            if let Some(name) = stack_clone.visible_child_name() {
+        let export_gcode_action = gio::SimpleAction::new("file_export_gcode", None);
+        let designer_clone_gcode = designer.clone();
+        let stack_clone_gcode = stack.clone();
+        export_gcode_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone_gcode.visible_child_name() {
                 match name.as_str() {
-                    "designer" => designer_clone.export_file(),
+                    "designer" => designer_clone_gcode.export_gcode(),
                     _ => {}
                 }
             }
         });
-        app.add_action(&export_action);
+        app.add_action(&export_gcode_action);
+
+        let export_svg_action = gio::SimpleAction::new("file_export_svg", None);
+        let designer_clone_svg = designer.clone();
+        let stack_clone_svg = stack.clone();
+        export_svg_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone_svg.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone_svg.export_svg(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&export_svg_action);
 
         // About Dialog Action
         let app_clone = app.clone();
@@ -561,7 +575,8 @@ pub fn main() {
                 set_enabled("file_save", is_designer || is_editor);
                 set_enabled("file_save_as", is_designer || is_editor);
                 set_enabled("file_import", is_designer);
-                set_enabled("file_export", is_designer);
+                set_enabled("file_export_gcode", is_designer);
+                set_enabled("file_export_svg", is_designer);
             }
         });
         
