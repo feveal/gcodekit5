@@ -20,7 +20,7 @@ This document compares the functionality of the Designer in `gcodekit4` (Slint) 
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Basic Tools** | Select, Rect, Circle, Line, Ellipse, Polyline, Text | Same set of tools | ✅ Complete | - | - |
 | **Tool Setup** | Feed, Speed, Tool Dia, Depth, Step inputs in sidebar | Added to Toolbox | ✅ Complete | T-201 | 4h |
-| **Polyline** | Click-click creation | **Missing** (Placeholder only) | ❌ Missing | T-202 | 6h |
+| **Polyline** | Click-click creation | Click-click creation implemented | ✅ Complete | T-202 | 6h |
 | **Text** | Text creation & editing | Basic text creation | ⚠️ Partial | T-203 | 3h |
 
 ## 3. Properties Panel

@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
 use gcodekit5_designer::designer_state::DesignerState;
-use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse};
+use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse, PathShape};
 use gcodekit5_designer::canvas::DrawingObject;
 use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, PasteShapes};
 use gcodekit5_designer::serialization::DesignFile;
@@ -45,6 +45,8 @@ pub struct DesignerCanvas {
     vadjustment: Rc<RefCell<Option<gtk4::Adjustment>>>,
     // Keyboard state
     shift_pressed: Rc<RefCell<bool>>,
+    // Polyline state
+    polyline_points: Rc<RefCell<Vec<Point>>>,
 }
 
 pub struct DesignerView {
@@ -71,11 +73,13 @@ impl DesignerCanvas {
         let creation_current = Rc::new(RefCell::new(None));
         let last_drag_offset = Rc::new(RefCell::new((0.0, 0.0)));
         let did_drag = Rc::new(RefCell::new(false));
+        let polyline_points = Rc::new(RefCell::new(Vec::new()));
 
         let state_clone = state.clone();
         let mouse_pos_clone = mouse_pos.clone();
         let creation_start_clone = creation_start.clone();
         let creation_current_clone = creation_current.clone();
+        let polyline_points_clone = polyline_points.clone();
         
         let state_draw = state_clone.clone();
         widget.set_draw_func(move |_, cr, width, height| {
@@ -83,7 +87,8 @@ impl DesignerCanvas {
             let mouse = *mouse_pos_clone.borrow();
             let preview_start = *creation_start_clone.borrow();
             let preview_current = *creation_current_clone.borrow();
-            Self::draw(cr, &state, width as f64, height as f64, mouse, preview_start, preview_current);
+            let poly_points = polyline_points_clone.borrow();
+            Self::draw(cr, &state, width as f64, height as f64, mouse, preview_start, preview_current, &poly_points);
         });
 
         let canvas = Rc::new(Self {
@@ -102,6 +107,7 @@ impl DesignerCanvas {
             hadjustment: Rc::new(RefCell::new(None)),
             vadjustment: Rc::new(RefCell::new(None)),
             shift_pressed: Rc::new(RefCell::new(false)),
+            polyline_points: polyline_points.clone(),
         });
 
         // Mouse motion tracking
@@ -157,10 +163,10 @@ impl DesignerCanvas {
         let click_gesture = GestureClick::new();
         click_gesture.set_button(1); // Left click only
         let canvas_click = canvas.clone();
-        click_gesture.connect_pressed(move |gesture, _n_press, x, y| {
+        click_gesture.connect_pressed(move |gesture, n_press, x, y| {
             let modifiers = gesture.current_event_state();
             let ctrl_pressed = modifiers.contains(ModifierType::CONTROL_MASK);
-            canvas_click.handle_click(x, y, ctrl_pressed);
+            canvas_click.handle_click(x, y, ctrl_pressed, n_press);
         });
         
         let canvas_release = canvas.clone();
@@ -203,6 +209,8 @@ impl DesignerCanvas {
         let state_key = state.clone();
         let widget_key = widget.clone();
         let shift_pressed_key = canvas.shift_pressed.clone();
+        let polyline_points_key = canvas.polyline_points.clone();
+        let layers_key = canvas.layers.clone();
         
         key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _modifier| {
             if keyval == gtk4::gdk::Key::Shift_L || keyval == gtk4::gdk::Key::Shift_R {
@@ -218,16 +226,62 @@ impl DesignerCanvas {
                     if designer_state.canvas.selection_manager.selected_id().is_some() {
                         designer_state.canvas.remove_selected();
                         drop(designer_state);
+                        
+                        // Refresh layers
+                        if let Some(layers) = layers_key.borrow().as_ref() {
+                            layers.refresh(&state_key);
+                        }
+                        
                         widget_key.queue_draw();
                         return glib::Propagation::Stop;
                     }
                 }
                 gtk4::gdk::Key::Escape => {
+                    // Cancel polyline creation
+                    let mut points = polyline_points_key.borrow_mut();
+                    if !points.is_empty() {
+                        points.clear();
+                        drop(points);
+                        drop(designer_state);
+                        widget_key.queue_draw();
+                        return glib::Propagation::Stop;
+                    }
+                    drop(points);
+
                     // Deselect all
                     designer_state.canvas.deselect_all();
                     drop(designer_state);
+                    
+                    // Refresh layers
+                    if let Some(layers) = layers_key.borrow().as_ref() {
+                        layers.refresh(&state_key);
+                    }
+                    
                     widget_key.queue_draw();
                     return glib::Propagation::Stop;
+                }
+                gtk4::gdk::Key::Return | gtk4::gdk::Key::KP_Enter => {
+                    // Finish polyline creation
+                    let mut points = polyline_points_key.borrow_mut();
+                    if !points.is_empty() {
+                        if points.len() >= 2 {
+                            // Create polyline
+                            let path_shape = PathShape::from_points(&points, false);
+                            let shape = Shape::Path(path_shape);
+                            
+                            designer_state.canvas.add_shape(shape);
+                            
+                            // Refresh layers
+                            if let Some(layers) = layers_key.borrow().as_ref() {
+                                layers.refresh(&state_key);
+                            }
+                        }
+                        points.clear();
+                        drop(points);
+                        drop(designer_state);
+                        widget_key.queue_draw();
+                        return glib::Propagation::Stop;
+                    }
                 }
                 _ => {}
             }
@@ -347,6 +401,30 @@ impl DesignerCanvas {
     }
 
     fn handle_right_click(&self, x: f64, y: f64) {
+        // Check if we are building a polyline
+        {
+            let mut points = self.polyline_points.borrow_mut();
+            if !points.is_empty() {
+                if points.len() >= 2 {
+                    // Create polyline
+                    let path_shape = PathShape::from_points(&points, false); // Open polyline
+                    let shape = Shape::Path(path_shape);
+                    
+                    let mut state = self.state.borrow_mut();
+                    state.canvas.add_shape(shape);
+                    drop(state);
+                    
+                    // Refresh layers panel
+                    if let Some(layers_panel) = self.layers.borrow().as_ref() {
+                        layers_panel.refresh(&self.state);
+                    }
+                }
+                points.clear();
+                self.widget.queue_draw();
+                return;
+            }
+        }
+
         let state = self.state.borrow();
         let has_selection = state.canvas.selection_manager.selected_id().is_some();
         let can_paste = !state.clipboard.is_empty();
@@ -407,7 +485,7 @@ impl DesignerCanvas {
         menu.popup();
     }
 
-    fn handle_click(&self, x: f64, y: f64, ctrl_pressed: bool) {
+    fn handle_click(&self, x: f64, y: f64, ctrl_pressed: bool, n_press: i32) {
         // Reset drag flag
         *self.did_drag.borrow_mut() = false;
 
@@ -478,6 +556,33 @@ impl DesignerCanvas {
                 // Update layers panel
                 if let Some(ref layers) = *self.layers.borrow() {
                     layers.refresh(&self.state);
+                }
+            }
+            DesignerTool::Polyline => {
+                if n_press == 2 {
+                    // Double click - finish
+                    let mut points = self.polyline_points.borrow_mut();
+                    if points.len() >= 2 {
+                        // Create polyline
+                        let path_shape = PathShape::from_points(&points, false);
+                        let shape = Shape::Path(path_shape);
+                        
+                        let mut state = self.state.borrow_mut();
+                        state.canvas.add_shape(shape);
+                        drop(state);
+                        
+                        // Refresh layers panel
+                        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+                            layers_panel.refresh(&self.state);
+                        }
+                    }
+                    points.clear();
+                    self.widget.queue_draw();
+                } else {
+                    let mut points = self.polyline_points.borrow_mut();
+                    points.push(Point::new(canvas_x, canvas_y));
+                    drop(points);
+                    self.widget.queue_draw();
                 }
             }
             _ => {
@@ -1042,7 +1147,7 @@ impl DesignerCanvas {
         self.widget.queue_draw();
     }
 
-    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, _mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>) {
+    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>, polyline_points: &[Point]) {
         // Clear background
         cr.set_source_rgb(0.95, 0.95, 0.95); // Light grey background
         cr.paint().expect("Invalid cairo surface state");
@@ -1073,9 +1178,33 @@ impl DesignerCanvas {
         // Draw Origin Crosshair
         Self::draw_origin_crosshair(cr);
         
-        // Draw creation preview (if creating)
-        // Note: We can't access self here, so preview will be drawn separately
-        // This is a limitation of the current draw_func approach
+        // Draw polyline in progress
+        if !polyline_points.is_empty() {
+            cr.save().unwrap();
+            cr.set_source_rgb(0.0, 0.0, 1.0); // Blue for creation
+            cr.set_line_width(1.5);
+            
+            // Draw existing segments
+            if let Some(first) = polyline_points.first() {
+                cr.move_to(first.x, first.y);
+                for p in polyline_points.iter().skip(1) {
+                    cr.line_to(p.x, p.y);
+                }
+                
+                // Draw rubber band to mouse
+                cr.line_to(mouse_pos.0, mouse_pos.1);
+            }
+            
+            cr.stroke().unwrap();
+            
+            // Draw points
+            for p in polyline_points {
+                cr.arc(p.x, p.y, 3.0, 0.0, 2.0 * std::f64::consts::PI);
+                cr.fill().unwrap();
+            }
+            
+            cr.restore().unwrap();
+        }
 
         // Draw Shapes
         for obj in state.canvas.shape_store.iter() {

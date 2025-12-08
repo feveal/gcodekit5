@@ -15,6 +15,11 @@
 ## [0.2.5-alpha.1] - 2025-12-08
 
 ### Added
+- **Designer**: Implemented Polyline tool with click-click creation.
+  - Left-click to add points.
+  - Double-click or Right-click or Enter to finish.
+  - Escape to cancel.
+  - Live preview of the next segment (rubber band).
 - **Visualizer**: Added horizontal and vertical scrollbars for better navigation.
 - **Designer**: Added floating status panel (Zoom, Pan, Grid) to bottom-left corner matching Visualizer style.
 - **Status Bar**: Added progress bar and time estimation (Elapsed/Remaining) during job streaming.
