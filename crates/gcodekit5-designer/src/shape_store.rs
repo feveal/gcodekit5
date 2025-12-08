@@ -211,6 +211,56 @@ impl ShapeStore {
     pub fn contains(&self, id: u64) -> bool {
         self.shapes.contains_key(&id)
     }
+
+    /// Brings a shape to the front (top of draw order).
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the shape to bring to front
+    pub fn bring_to_front(&mut self, id: u64) {
+        if let Some(pos) = self.draw_order.iter().position(|&x| x == id) {
+            self.draw_order.remove(pos);
+            self.draw_order.push(id);
+        }
+    }
+
+    /// Sends a shape to the back (bottom of draw order).
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the shape to send to back
+    pub fn send_to_back(&mut self, id: u64) {
+        if let Some(pos) = self.draw_order.iter().position(|&x| x == id) {
+            self.draw_order.remove(pos);
+            self.draw_order.insert(0, id);
+        }
+    }
+
+    /// Moves a shape forward one position in draw order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the shape to move forward
+    pub fn bring_forward(&mut self, id: u64) {
+        if let Some(pos) = self.draw_order.iter().position(|&x| x == id) {
+            if pos < self.draw_order.len() - 1 {
+                self.draw_order.swap(pos, pos + 1);
+            }
+        }
+    }
+
+    /// Moves a shape backward one position in draw order.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The ID of the shape to move backward
+    pub fn send_backward(&mut self, id: u64) {
+        if let Some(pos) = self.draw_order.iter().position(|&x| x == id) {
+            if pos > 0 {
+                self.draw_order.swap(pos, pos - 1);
+            }
+        }
+    }
 }
 
 impl Default for ShapeStore {

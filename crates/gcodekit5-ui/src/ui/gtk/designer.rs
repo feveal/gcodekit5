@@ -1,12 +1,15 @@
 use gtk4::prelude::*;
-use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, Box, Label, Orientation};
+use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation};
+use gtk4::gdk::{Key, ModifierType};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse};
 use gcodekit5_designer::canvas::DrawingObject;
+use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, MoveShapes, PasteShapes};
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
 use crate::ui::gtk::designer_properties::PropertiesPanel;
+use crate::ui::gtk::designer_layers::LayersPanel;
 
 pub struct DesignerCanvas {
     pub widget: DrawingArea,
@@ -14,6 +17,7 @@ pub struct DesignerCanvas {
     mouse_pos: Rc<RefCell<(f64, f64)>>, // Canvas coordinates
     toolbox: Option<Rc<DesignerToolbox>>,
     properties: Rc<RefCell<Option<Rc<PropertiesPanel>>>>,
+    layers: Rc<RefCell<Option<Rc<LayersPanel>>>>,
     // Shape creation state
     creation_start: Rc<RefCell<Option<(f64, f64)>>>,
     creation_current: Rc<RefCell<Option<(f64, f64)>>>,
@@ -26,6 +30,7 @@ pub struct DesignerView {
     canvas: Rc<DesignerCanvas>,
     toolbox: Rc<DesignerToolbox>,
     properties: Rc<PropertiesPanel>,
+    layers: Rc<LayersPanel>,
     status_label: Label,
     coord_label: Label,
 }
@@ -61,6 +66,7 @@ impl DesignerCanvas {
             mouse_pos: mouse_pos.clone(),
             toolbox: toolbox.clone(),
             properties: Rc::new(RefCell::new(None)),
+            layers: Rc::new(RefCell::new(None)),
             creation_start: creation_start.clone(),
             creation_current: creation_current.clone(),
             last_drag_offset: last_drag_offset.clone(),
@@ -146,6 +152,10 @@ impl DesignerCanvas {
     
     pub fn set_properties_panel(&self, panel: Rc<PropertiesPanel>) {
         *self.properties.borrow_mut() = Some(panel);
+    }
+    
+    pub fn set_layers_panel(&self, panel: Rc<LayersPanel>) {
+        *self.layers.borrow_mut() = Some(panel);
     }
     
     fn handle_click(&self, x: f64, y: f64) {
@@ -346,6 +356,150 @@ impl DesignerCanvas {
                 state.canvas.add_shape(shape);
             }
         } // Drop the mutable borrow here
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+    }
+    
+    pub fn delete_selected(&self) {
+        let mut state = self.state.borrow_mut();
+        let selected_ids: Vec<u64> = state.canvas.shapes()
+            .filter(|s| s.selected)
+            .map(|s| s.id)
+            .collect();
+        
+        for id in selected_ids {
+            let cmd = DesignerCommand::RemoveShape(RemoveShape { id, object: None });
+            state.push_command(cmd);
+        }
+        
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
+    
+    pub fn duplicate_selected(&self) {
+        let mut state = self.state.borrow_mut();
+        let selected: Vec<DrawingObject> = state.canvas.shapes()
+            .filter(|s| s.selected)
+            .cloned()
+            .collect();
+        
+        if selected.is_empty() {
+            return;
+        }
+        
+        // Deselect all current shapes
+        for obj in state.canvas.shapes_mut() {
+            obj.selected = false;
+        }
+        
+        // Create duplicates with offset
+        let offset = 10.0;
+        let mut new_objects = Vec::new();
+        for mut obj in selected {
+            obj.id = state.canvas.generate_id();
+            obj.shape.translate(offset, offset);
+            obj.selected = true;
+            new_objects.push(obj);
+        }
+        
+        let cmd = DesignerCommand::PasteShapes(PasteShapes {
+            ids: new_objects.iter().map(|o| o.id).collect(),
+            objects: new_objects.into_iter().map(Some).collect(),
+        });
+        state.push_command(cmd);
+        
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
+    
+    pub fn copy_selected(&self) {
+        let mut state = self.state.borrow_mut();
+        state.clipboard = state.canvas.shapes()
+            .filter(|s| s.selected)
+            .cloned()
+            .collect();
+    }
+    
+    pub fn paste(&self) {
+        let mut state = self.state.borrow_mut();
+        if state.clipboard.is_empty() {
+            return;
+        }
+        
+        // Clone clipboard before using it
+        let clipboard = state.clipboard.clone();
+        
+        // Deselect all current shapes
+        for obj in state.canvas.shapes_mut() {
+            obj.selected = false;
+        }
+        
+        // Create copies with offset
+        let offset = 10.0;
+        let mut new_objects = Vec::new();
+        for obj in &clipboard {
+            let mut new_obj = obj.clone();
+            new_obj.id = state.canvas.generate_id();
+            new_obj.shape.translate(offset, offset);
+            new_obj.selected = true;
+            new_objects.push(new_obj);
+        }
+        
+        let cmd = DesignerCommand::PasteShapes(PasteShapes {
+            ids: new_objects.iter().map(|o| o.id).collect(),
+            objects: new_objects.into_iter().map(Some).collect(),
+        });
+        state.push_command(cmd);
+        
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
+    
+    pub fn undo(&self) {
+        let mut state = self.state.borrow_mut();
+        state.undo();
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
+    
+    pub fn redo(&self) {
+        let mut state = self.state.borrow_mut();
+        state.redo();
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
     }
 
     fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>) {
@@ -636,8 +790,14 @@ impl DesignerView {
         canvas.widget.set_vexpand(true);
         main_box.append(&canvas.widget);
         
+        // Create right sidebar with properties and layers
+        let right_sidebar = Box::new(Orientation::Vertical, 5);
+        right_sidebar.set_width_request(250);
+        
         // Create properties panel
         let properties = PropertiesPanel::new(state.clone());
+        properties.widget.set_vexpand(true);
+        properties.widget.set_valign(gtk4::Align::Fill);
         
         // Set up redraw callback for properties
         let canvas_redraw = canvas.clone();
@@ -645,10 +805,19 @@ impl DesignerView {
             canvas_redraw.widget.queue_draw();
         });
         
-        // Give canvas a reference to properties panel so it can clear focus on interaction
-        canvas.set_properties_panel(properties.clone());
+        right_sidebar.append(&properties.widget);
         
-        main_box.append(&properties.widget);
+        // Create layers panel below properties
+        let layers = Rc::new(LayersPanel::new(state.clone()));
+        layers.widget.set_vexpand(true);
+        layers.widget.set_valign(gtk4::Align::Fill);
+        right_sidebar.append(&layers.widget);
+        
+        // Give canvas references to panels
+        canvas.set_properties_panel(properties.clone());
+        canvas.set_layers_panel(layers.clone());
+        
+        main_box.append(&right_sidebar);
         
         container.append(&main_box);
         
@@ -698,6 +867,7 @@ impl DesignerView {
             canvas: canvas.clone(),
             toolbox,
             properties: properties.clone(),
+            layers: layers.clone(),
             status_label,
             coord_label,
         });
@@ -710,6 +880,63 @@ impl DesignerView {
             props_update.update_from_selection();
             gtk4::glib::ControlFlow::Continue
         });
+        
+        // Setup keyboard shortcuts
+        let key_controller = EventControllerKey::new();
+        let canvas_keys = canvas.clone();
+        key_controller.connect_key_pressed(move |_, key, _code, modifiers| {
+            let ctrl = modifiers.contains(ModifierType::CONTROL_MASK);
+            
+            match (key, ctrl) {
+                // Ctrl+Z - Undo
+                (Key::z, true) | (Key::Z, true) => {
+                    canvas_keys.undo();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+Y or Ctrl+Shift+Z - Redo
+                (Key::y, true) | (Key::Y, true) => {
+                    canvas_keys.redo();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+C - Copy
+                (Key::c, true) | (Key::C, true) => {
+                    canvas_keys.copy_selected();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+V - Paste
+                (Key::v, true) | (Key::V, true) => {
+                    canvas_keys.paste();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+D - Duplicate
+                (Key::d, true) | (Key::D, true) => {
+                    canvas_keys.duplicate_selected();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Delete or Backspace - Delete selected
+                (Key::Delete, _) | (Key::BackSpace, _) => {
+                    canvas_keys.delete_selected();
+                    gtk4::glib::Propagation::Stop
+                }
+                _ => gtk4::glib::Propagation::Proceed
+            }
+        });
+        
+        // Add keyboard controller to canvas so it receives focus
+        canvas.widget.set_focusable(true);
+        canvas.widget.set_can_focus(true);
+        canvas.widget.add_controller(key_controller);
+        
+        // Grab focus on canvas when clicked
+        let canvas_focus = canvas.clone();
+        let click_for_focus = GestureClick::new();
+        click_for_focus.connect_pressed(move |_, _, _, _| {
+            canvas_focus.widget.grab_focus();
+        });
+        canvas.widget.add_controller(click_for_focus);
+        
+        // Grab focus initially
+        canvas.widget.grab_focus();
         
         view
     }

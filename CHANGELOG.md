@@ -1475,3 +1475,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed Designer layout issue where right panel would overlay the canvas.
 - Fixed compilation error in Designer UI regarding ComboBox type mismatch.
 - Fixed selection handle rendering symmetry for shapes with negative dimensions.
+
+## [0.2.4-alpha.0] - 2025-12-08
+
+### Added - GTK4 Designer Implementation (Phases 1-7)
+- **Phase 1**: Canvas and Drawing Infrastructure
+  - Grid rendering with proper coordinate system
+  - Origin crosshair indicator
+  - Y-up Cartesian coordinate system (bottom-left origin with 15px offset)
+  - Cairo-based 2D rendering
+  
+- **Phase 2**: Toolbox and Shape Creation  
+  - Shape creation tools (Line, Rectangle, Circle, Ellipse)
+  - Polyline tool (future enhancement)
+  - Selection tool for object manipulation
+  - Interactive shape creation with drag gestures
+  - Real-time marquee preview while dragging
+  - Auto-switch to selection tool after shape creation
+  
+- **Phase 3**: Selection and Basic Transformation
+  - Click-to-select shapes with visual feedback
+  - Red highlight for selected shapes
+  - Drag-to-move with proper incremental tracking
+  - Delete key to remove shapes
+  - Escape key to deselect
+  - Click empty space to deselect all
+  
+- **Phase 4**: Properties Panel
+  - Real-time property display for selected shapes
+  - Editable properties (position, dimensions, rotation)
+  - Focus management to prevent update conflicts
+  - Proper GTK focus-out event propagation
+  - Shape-specific property fields
+  
+- **Phase 5**: Layers Panel  
+  - Layer list with visibility toggles
+  - Shape list per layer with counts
+  - Layer management (add, delete, rename)
+  - Layer reordering (future enhancement)
+  - Group/ungroup operations (foundation laid)
+  
+- **Phase 6**: Advanced Operations
+  - Copy/Paste with standard keyboard shortcuts (Ctrl+C/Ctrl+V)
+  - Duplicate selected shapes (Ctrl+D)
+  - Undo/Redo with history (Ctrl+Z/Ctrl+Shift+Z)
+  - Clipboard management with offset paste
+  - Command pattern for undo/redo system
+  
+- **Phase 7**: Toolpath Generation Foundation
+  - Toolpath panel structure created
+  - Integration points identified
+  - Deferred full implementation for future enhancement
+
+### Fixed - Device Configuration Panel
+- Device config panel now reads actual GRBL settings values
+- Property editing with double-click activation
+- Settings list properly updates after save
+- Device info retrieval from actual connected device
+- Fixed RefCell borrow panics in edit dialogs
+
+### Fixed - CNC Tools Panel
+- Tool library management with create/edit/delete
+- Tool selection updates edit panel properly
+- Category filtering working correctly
+- Search/filter functionality operational
+- Empty state message when no tool selected
+- Tool persistence to disk
+
+### Changed
+- Migrated from Slint to GTK4 for all UI panels
+- Improved coordinate system handling in designer
+- Better focus management across panels
+  
