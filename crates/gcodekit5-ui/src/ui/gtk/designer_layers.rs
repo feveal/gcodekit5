@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Button, Label, ListBox, Orientation, ScrolledWindow};
+use gtk4::{Box, Button, Label, ListBox, Orientation, ScrolledWindow, Entry};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -156,16 +156,58 @@ impl LayersPanel {
 
             // Shape type icon/label
             let shape_type = match &shape_obj.shape {
-                gcodekit5_designer::shapes::Shape::Rectangle(_) => "Rectangle",
-                gcodekit5_designer::shapes::Shape::Circle(_) => "Circle",
+                gcodekit5_designer::shapes::Shape::Rectangle(_) => "Rect",
+                gcodekit5_designer::shapes::Shape::Circle(_) => "Circ",
                 gcodekit5_designer::shapes::Shape::Line(_) => "Line",
-                gcodekit5_designer::shapes::Shape::Ellipse(_) => "Ellipse",
+                gcodekit5_designer::shapes::Shape::Ellipse(_) => "Ellip",
                 gcodekit5_designer::shapes::Shape::Path(_) => "Path",
                 gcodekit5_designer::shapes::Shape::Text(_) => "Text",
             };
-            let shape_label = Label::new(Some(&format!("{} #{}", shape_type, shape_obj.id)));
-            shape_label.set_halign(gtk4::Align::Start);
-            row_box.append(&shape_label);
+            let type_label = Label::new(Some(shape_type));
+            type_label.set_width_chars(5);
+            type_label.set_xalign(0.0);
+            row_box.append(&type_label);
+
+            // ID Label
+            let id_label = Label::new(Some(&format!("#{}", shape_obj.id)));
+            id_label.set_width_chars(4);
+            id_label.set_xalign(0.0);
+            row_box.append(&id_label);
+
+            // Name Entry
+            let name_entry = Entry::new();
+            name_entry.set_text(&shape_obj.name);
+            name_entry.set_hexpand(true);
+            
+            let state_clone = state.clone();
+            let shape_id = shape_obj.id;
+            name_entry.connect_changed(move |entry| {
+                let text = entry.text();
+                let mut state_mut = state_clone.borrow_mut();
+                if let Some(obj) = state_mut.canvas.get_shape_mut(shape_id) {
+                    obj.name = text.to_string();
+                }
+            });
+            
+            // Stop propagation of click events to prevent row selection when clicking entry
+            let gesture = gtk4::GestureClick::new();
+            gesture.connect_pressed(|gesture, _, _, _| {
+                gesture.set_state(gtk4::EventSequenceState::Claimed);
+            });
+            name_entry.add_controller(gesture);
+
+            row_box.append(&name_entry);
+
+            // Group ID Label
+            let group_text = if let Some(gid) = shape_obj.group_id {
+                format!("G:{}", gid)
+            } else {
+                "-".to_string()
+            };
+            let group_label = Label::new(Some(&group_text));
+            group_label.set_width_chars(6);
+            group_label.set_xalign(1.0);
+            row_box.append(&group_label);
 
             // Create a list row and set its name to the shape ID
             let list_row = gtk4::ListBoxRow::new();

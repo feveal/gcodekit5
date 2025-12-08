@@ -36,6 +36,9 @@
   - Visualizes rapid moves (red dashed) and cutting moves (green solid).
   - Automatically updates preview when design changes if enabled.
 - **Designer**: Grouped shapes are now rendered in green to distinguish them from ungrouped shapes.
+- **Designer**: Added group ID column and editable name to Layer List.
+  - Layer list now shows shape type, ID, editable name, and group ID.
+  - Clicking the name entry allows renaming the shape without selecting the row.
 
 ### Fixed
 - **Designer**: Made toolbox scrollable to prevent layout issues on smaller screens.
