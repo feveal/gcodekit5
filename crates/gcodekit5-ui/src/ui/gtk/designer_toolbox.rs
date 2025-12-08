@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Button, Orientation, Image, SpinButton, Label, Adjustment, Expander, Align};
+use gtk4::{Box, Button, Orientation, Image, SpinButton, Label, Adjustment, Expander, Align, ScrolledWindow, PolicyType};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -57,18 +57,27 @@ pub struct DesignerToolbox {
     pub widget: Box,
     current_tool: Rc<RefCell<DesignerTool>>,
     buttons: Vec<Button>,
-    state: Rc<RefCell<DesignerState>>,
+    _state: Rc<RefCell<DesignerState>>,
 }
 
 impl DesignerToolbox {
     pub fn new(state: Rc<RefCell<DesignerState>>) -> Rc<Self> {
-        let container = Box::new(Orientation::Vertical, 2);
-        container.set_width_request(60);
-        container.add_css_class("designer-toolbox");
-        container.set_margin_top(5);
-        container.set_margin_bottom(5);
-        container.set_margin_start(5);
-        container.set_margin_end(5);
+        let main_container = Box::new(Orientation::Vertical, 0);
+        main_container.set_width_request(60);
+        main_container.add_css_class("designer-toolbox");
+        main_container.set_margin_top(5);
+        main_container.set_margin_bottom(5);
+        main_container.set_margin_start(5);
+        main_container.set_margin_end(5);
+
+        let scrolled = ScrolledWindow::builder()
+            .hscrollbar_policy(PolicyType::Never)
+            .vscrollbar_policy(PolicyType::Automatic)
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+
+        let content_box = Box::new(Orientation::Vertical, 2);
         
         let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
         let mut buttons: Vec<Button> = Vec::new();
@@ -107,7 +116,7 @@ impl DesignerToolbox {
                 btn.add_css_class("selected-tool");
             }
             
-            container.append(&btn);
+            content_box.append(&btn);
         }
         
         // Now wire up click handlers after all buttons are collected
@@ -133,7 +142,7 @@ impl DesignerToolbox {
         let separator = gtk4::Separator::new(Orientation::Horizontal);
         separator.set_margin_top(10);
         separator.set_margin_bottom(10);
-        container.append(&separator);
+        content_box.append(&separator);
 
         // Tool Settings
         let settings_box = Box::new(Orientation::Vertical, 5);
@@ -215,13 +224,16 @@ impl DesignerToolbox {
             .expanded(true)
             .build();
         
-        container.append(&expander);
+        content_box.append(&expander);
+
+        scrolled.set_child(Some(&content_box));
+        main_container.append(&scrolled);
         
         Rc::new(Self {
-            widget: container,
+            widget: main_container,
             current_tool,
             buttons,
-            state,
+            _state: state,
         })
     }
     

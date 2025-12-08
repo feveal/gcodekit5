@@ -114,6 +114,7 @@ pub fn main() {
 
         // Content Area
         let content_box = Box::new(Orientation::Vertical, 0);
+        content_box.set_vexpand(true);
         let stack_switcher = StackSwitcher::new();
         let stack = Stack::new();
         stack.set_transition_type(gtk4::StackTransitionType::SlideLeftRight);
