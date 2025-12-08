@@ -1,3 +1,12 @@
+## [0.2.5-alpha.0] - 2025-12-08
+
+### Added
+- **Visualizer**: Added horizontal and vertical scrollbars for better navigation.
+- **Designer**: Added floating status panel (Zoom, Pan, Grid) to bottom-left corner matching Visualizer style.
+
+### Fixed
+- **Designer**: Fixed panic in "Fit to View" caused by RefCell borrowing conflict during scrollbar update.
+
 ## [0.2.4-alpha.0] - 2025-12-08
 
 ### Summary

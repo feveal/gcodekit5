@@ -261,6 +261,13 @@ impl ShapeStore {
             }
         }
     }
+    /// Sets the next ID to be generated.
+    ///
+    /// This is useful when loading shapes from a file to ensure new IDs
+    /// don't conflict with loaded IDs.
+    pub fn set_next_id(&mut self, id: u64) {
+        self.next_id = id;
+    }
 }
 
 impl Default for ShapeStore {

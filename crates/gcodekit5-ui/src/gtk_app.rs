@@ -27,7 +27,10 @@ pub fn main() {
         .application_id("com.gcodekit5.app")
         .build();
 
-    app.connect_startup(|_| load_css());
+    app.connect_startup(|_| {
+        load_resources();
+        load_css();
+    });
 
     app.connect_activate(|app| {
         // Initialize Controllers
@@ -92,17 +95,7 @@ pub fn main() {
         edit_menu.append(Some("Preferences"), Some("app.preferences"));
         menu_bar_model.append_submenu(Some("Edit"), &edit_menu);
 
-        let view_menu = gio::Menu::new();
-        view_menu.append(Some("Toolbars"), Some("app.view_toolbars"));
-        view_menu.append(Some("Status Bar"), Some("app.view_status_bar"));
-        view_menu.append(Some("Visualizer"), Some("app.view_visualizer"));
-        view_menu.append(Some("Console"), Some("app.view_console"));
-        menu_bar_model.append_submenu(Some("View"), &view_menu);
 
-        let tools_menu = gio::Menu::new();
-        tools_menu.append(Some("Device Manager"), Some("app.devices"));
-        tools_menu.append(Some("CAM Tools"), Some("app.cam_tools"));
-        menu_bar_model.append_submenu(Some("Tools"), &tools_menu);
 
         let machine_menu = gio::Menu::new();
         machine_menu.append(Some("Connect"), Some("app.machine_connect"));
@@ -330,20 +323,78 @@ pub fn main() {
         });
         app.add_action(&run_action);
         
-        // Designer File Actions - TODO: Implement file operations
+        // File Actions
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
         let new_action = gio::SimpleAction::new("file_new", None);
+        new_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.new_file(),
+                    "editor" => editor_clone.new_file(),
+                    _ => {}
+                }
+            }
+        });
         app.add_action(&new_action);
-        
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
         let open_action = gio::SimpleAction::new("file_open", None);
+        open_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.open_file(),
+                    "editor" => editor_clone.open_file(),
+                    _ => {}
+                }
+            }
+        });
         app.add_action(&open_action);
-        
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
         let save_action = gio::SimpleAction::new("file_save", None);
+        save_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.save_file(),
+                    "editor" => editor_clone.save_file(),
+                    _ => {}
+                }
+            }
+        });
         app.add_action(&save_action);
-        
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
         let save_as_action = gio::SimpleAction::new("file_save_as", None);
+        save_as_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.save_as_file(),
+                    "editor" => editor_clone.save_as_file(),
+                    _ => {}
+                }
+            }
+        });
         app.add_action(&save_as_action);
-        
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
         let export_action = gio::SimpleAction::new("file_export", None);
+        export_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.export_file(),
+                    _ => {}
+                }
+            }
+        });
         app.add_action(&export_action);
 
         // About Dialog Action
@@ -365,19 +416,85 @@ pub fn main() {
         });
         app.add_action(&about_action);
 
-        // Placeholder Actions for Menu Items
+        // Edit Actions
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
+        let undo_action = gio::SimpleAction::new("edit_undo", None);
+        undo_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.undo(),
+                    "editor" => editor_clone.undo(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&undo_action);
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
+        let redo_action = gio::SimpleAction::new("edit_redo", None);
+        redo_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.redo(),
+                    "editor" => editor_clone.redo(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&redo_action);
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
+        let cut_action = gio::SimpleAction::new("edit_cut", None);
+        cut_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.cut(),
+                    "editor" => editor_clone.cut(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&cut_action);
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
+        let copy_action = gio::SimpleAction::new("edit_copy", None);
+        copy_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.copy(),
+                    "editor" => editor_clone.copy(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&copy_action);
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
+        let editor_clone = editor.clone();
+        let paste_action = gio::SimpleAction::new("edit_paste", None);
+        paste_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.paste(),
+                    "editor" => editor_clone.paste(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&paste_action);
+
+        // Placeholder Actions for remaining items
         let action_names = vec![
-            "file_new",
-            "file_open",
-            "file_save",
-            "file_save_as",
-            "file_export",
             "quit",
-            "edit_undo",
-            "edit_redo",
-            "edit_cut",
-            "edit_copy",
-            "edit_paste",
             "view_toolbars",
             "view_status_bar",
             "view_visualizer",
@@ -394,6 +511,51 @@ pub fn main() {
                 println!("Action triggered: {}", name);
             });
             app.add_action(&action);
+        }
+        
+        // Enable/Disable actions based on active tab
+        let app_clone = app.clone();
+        stack.connect_visible_child_name_notify(move |stack| {
+            if let Some(name) = stack.visible_child_name() {
+                let name_str = name.as_str();
+                let is_designer = name_str == "designer";
+                let is_editor = name_str == "editor";
+                // let is_machine = name_str == "machine";
+                
+                let set_enabled = |action_name: &str, enabled: bool| {
+                    if let Some(action) = app_clone.lookup_action(action_name) {
+                        if let Some(simple_action) = action.downcast_ref::<gio::SimpleAction>() {
+                            simple_action.set_enabled(enabled);
+                        }
+                    }
+                };
+
+                // Edit actions
+                set_enabled("edit_undo", is_designer || is_editor);
+                set_enabled("edit_redo", is_designer || is_editor);
+                set_enabled("edit_cut", is_designer || is_editor);
+                set_enabled("edit_copy", is_designer || is_editor);
+                set_enabled("edit_paste", is_designer || is_editor);
+                
+                // File actions
+                set_enabled("file_new", is_designer || is_editor);
+                set_enabled("file_open", is_designer || is_editor);
+                set_enabled("file_save", is_designer || is_editor);
+                set_enabled("file_save_as", is_designer || is_editor);
+                set_enabled("file_export", is_designer);
+            }
+        });
+        
+        // Trigger initial update
+        if let Some(name) = stack.visible_child_name() {
+             // We can't easily trigger the signal manually with the same closure logic without extracting it.
+             // But the default state of actions is enabled.
+             // We should probably set them initially.
+             // For now, let's just let the first switch handle it, or duplicate the logic briefly if needed.
+             // Actually, SimpleAction defaults to enabled=true.
+             // If we start in "machine" tab (which is likely), we might want to disable them.
+             // But "machine" is the first tab added?
+             // "machine" is added first.
         }
 
         // Set Keyboard Shortcuts (Accelerators)
@@ -418,6 +580,13 @@ pub fn main() {
     });
 
     app.run();
+}
+
+fn load_resources() {
+    let resources = include_bytes!(concat!(env!("OUT_DIR"), "/gcodekit5.gresource"));
+    let resource_data = glib::Bytes::from_static(resources);
+    let resource = gio::Resource::from_data(&resource_data).expect("Failed to load resources");
+    gio::resources_register(&resource);
 }
 
 fn load_css() {

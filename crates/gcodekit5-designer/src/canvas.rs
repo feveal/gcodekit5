@@ -187,6 +187,11 @@ impl Canvas {
         self.shape_store.generate_id()
     }
 
+    /// Sets the next ID to be generated.
+    pub fn set_next_id(&mut self, id: u64) {
+        self.shape_store.set_next_id(id);
+    }
+
     /// Gets a reference to a shape by ID.
     pub fn get_shape(&self, id: u64) -> Option<&DrawingObject> {
         self.shape_store.get(id)

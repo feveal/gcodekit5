@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/com/gcodekit5/icons">
+    <file compressed="true" alias="circle.svg">icons/circle.svg</file>
+    <file compressed="true" alias="ellipse.svg">icons/ellipse.svg</file>
+    <file compressed="true" alias="line.svg">icons/line.svg</file>
+    <file compressed="true" alias="polyline.svg">icons/polyline.svg</file>
+    <file compressed="true" alias="rectangle.svg">icons/rectangle.svg</file>
+    <file compressed="true" alias="select.svg">icons/select.svg</file>
+    <file compressed="true" alias="text.svg">icons/text.svg</file>
+  </gresource>
+</gresources>

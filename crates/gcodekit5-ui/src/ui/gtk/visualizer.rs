@@ -5,7 +5,7 @@ use gtk4::prelude::*;
 use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
     Box, Button, CheckButton, DrawingArea, EventControllerScroll, EventControllerScrollFlags,
-    GestureDrag, Label, Orientation, Overlay, Paned,
+    GestureDrag, Grid, Adjustment, Scrollbar, Label, Orientation, Overlay, Paned,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -60,6 +60,9 @@ pub struct GcodeVisualizer {
     show_grid: CheckButton,
     show_bounds: CheckButton,
     show_intensity: CheckButton,
+    // Scrollbars
+    hadjustment: Adjustment,
+    vadjustment: Adjustment,
     // Info labels
     bounds_label: Label,
     status_label: Label,
@@ -67,6 +70,45 @@ pub struct GcodeVisualizer {
 }
 
 impl GcodeVisualizer {
+    fn apply_fit_to_device(
+        vis: &mut Visualizer2D,
+        device_manager: &Option<Arc<DeviceManager>>,
+        width: f32,
+        height: f32,
+    ) {
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+
+        if let Some(manager) = device_manager {
+            if let Some(profile) = manager.get_active_profile() {
+                // Get working area dimensions from axis limits
+                let work_width = (profile.x_axis.max - profile.x_axis.min) as f32;
+                let work_height = (profile.y_axis.max - profile.y_axis.min) as f32;
+
+                if work_width > 0.0 && work_height > 0.0 {
+                    // Apply 10% margin like fit_to_view does
+                    let margin_percent = 0.1;
+                    let available_width = width * (1.0 - margin_percent * 2.0);
+                    let available_height = height * (1.0 - margin_percent * 2.0);
+
+                    // Calculate scale to fit device working area in viewport
+                    let scale_x = available_width / work_width;
+                    let scale_y = available_height / work_height;
+                    let scale = scale_x.min(scale_y);
+
+                    // Center on working area - offsets are NEGATIVE of center point
+                    let center_x = (profile.x_axis.min as f32) + work_width / 2.0;
+                    let center_y = (profile.y_axis.min as f32) + work_height / 2.0;
+
+                    vis.zoom_scale = scale;
+                    vis.x_offset = -center_x;
+                    vis.y_offset = -center_y;
+                }
+            }
+        }
+    }
+
     pub fn new(device_manager: Option<Arc<DeviceManager>>) -> Self {
         let container = Paned::new(Orientation::Horizontal);
         container.add_css_class("visualizer-container");
@@ -168,12 +210,36 @@ impl GcodeVisualizer {
             .css_classes(vec!["visualizer-canvas"])
             .build();
 
+        // Scrollbars
+        let hadjustment = Adjustment::new(0.0, 0.0, 100.0, 1.0, 10.0, 10.0);
+        let vadjustment = Adjustment::new(0.0, 0.0, 100.0, 1.0, 10.0, 10.0);
+
+        let hscrollbar = Scrollbar::builder()
+            .orientation(Orientation::Horizontal)
+            .adjustment(&hadjustment)
+            .build();
+
+        let vscrollbar = Scrollbar::builder()
+            .orientation(Orientation::Vertical)
+            .adjustment(&vadjustment)
+            .build();
+
+        // Grid for DrawingArea + Scrollbars
+        let grid = Grid::builder()
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+
+        grid.attach(&drawing_area, 0, 0, 1, 1);
+        grid.attach(&vscrollbar, 1, 0, 1, 1);
+        grid.attach(&hscrollbar, 0, 1, 1, 1);
+
         // Initialize Visualizer logic
         let visualizer = Rc::new(RefCell::new(Visualizer2D::new()));
 
         // Overlay for floating controls
         let overlay = Overlay::new();
-        overlay.set_child(Some(&drawing_area));
+        overlay.set_child(Some(&grid));
 
         // Floating Controls (Bottom Right)
         let floating_box = Box::new(Orientation::Horizontal, 4);
@@ -233,10 +299,98 @@ impl GcodeVisualizer {
             }
         };
 
+        // Helper to update scrollbars
+        let is_updating = Rc::new(RefCell::new(false));
+        let update_scrollbars_fn = {
+            let vis = visualizer.clone();
+            let hadj = hadjustment.clone();
+            let vadj = vadjustment.clone();
+            let da = drawing_area.clone();
+            let is_updating = is_updating.clone();
+            move || {
+                let v = vis.borrow();
+                let width = da.width() as f64;
+                let height = da.height() as f64;
+                
+                if width <= 0.0 || height <= 0.0 {
+                    return;
+                }
+
+                let zoom = v.zoom_scale as f64;
+                let page_size_x = width / zoom;
+                let page_size_y = height / zoom;
+                
+                let center_x = -v.x_offset as f64;
+                let center_y = -v.y_offset as f64;
+                
+                let val_x = center_x - page_size_x / 2.0;
+                let val_y = center_y - page_size_y / 2.0;
+                
+                let (min_x, max_x, min_y, max_y) = v.get_bounds();
+                let margin = 10.0;
+                
+                let lower_x = (min_x as f64 - margin).min(val_x);
+                let upper_x = (max_x as f64 + margin).max(val_x + page_size_x);
+                let lower_y = (min_y as f64 - margin).min(val_y);
+                let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
+                
+                *is_updating.borrow_mut() = true;
+                hadj.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
+                vadj.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
+                *is_updating.borrow_mut() = false;
+            }
+        };
+
+        let update_ui = {
+            let u1 = update_status_fn.clone();
+            let u2 = update_scrollbars_fn.clone();
+            move || {
+                u1();
+                u2();
+            }
+        };
+
+        // Connect Scrollbars
+        let vis_h = visualizer.clone();
+        let da_h = drawing_area.clone();
+        let is_updating_h = is_updating.clone();
+        let update_status_h = update_status_fn.clone();
+        hadjustment.connect_value_changed(move |adj| {
+            if *is_updating_h.borrow() { return; }
+            let val = adj.value();
+            let page_size = adj.page_size();
+            let center_x = val + page_size / 2.0;
+            
+            let mut v = vis_h.borrow_mut();
+            v.x_offset = -center_x as f32;
+            drop(v);
+            
+            update_status_h();
+            da_h.queue_draw();
+        });
+
+        let vis_v = visualizer.clone();
+        let da_v = drawing_area.clone();
+        let is_updating_v = is_updating.clone();
+        let update_status_v = update_status_fn.clone();
+        vadjustment.connect_value_changed(move |adj| {
+            if *is_updating_v.borrow() { return; }
+            let val = adj.value();
+            let page_size = adj.page_size();
+            let center_y = val + page_size / 2.0;
+            
+            let mut v = vis_v.borrow_mut();
+            v.y_offset = -center_y as f32;
+            drop(v);
+            
+            update_status_v();
+            da_v.queue_draw();
+        });
+
         // Connect Floating Controls
         let vis_float_out = visualizer.clone();
         let da_float_out = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
         float_zoom_out.connect_clicked(move |_| {
             vis_float_out.borrow_mut().zoom_out();
             update_status();
@@ -245,7 +399,7 @@ impl GcodeVisualizer {
 
         let vis_float_in = visualizer.clone();
         let da_float_in = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
         float_zoom_in.connect_clicked(move |_| {
             vis_float_in.borrow_mut().zoom_in();
             update_status();
@@ -254,7 +408,7 @@ impl GcodeVisualizer {
 
         let vis_float_fit = visualizer.clone();
         let da_float_fit = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
         float_fit.connect_clicked(move |_| {
             let width = da_float_fit.width() as f32;
             let height = da_float_fit.height() as f32;
@@ -305,7 +459,7 @@ impl GcodeVisualizer {
         // Connect Controls
         let vis_fit = visualizer.clone();
         let da_fit = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
         fit_btn.connect_clicked(move |_| {
             let width = da_fit.width() as f32;
             let height = da_fit.height() as f32;
@@ -318,50 +472,25 @@ impl GcodeVisualizer {
         if let Some(device_mgr) = device_manager.clone() {
             let vis_fit_dev = visualizer.clone();
             let da_fit_dev = drawing_area.clone();
-            let update_status = update_status_fn.clone();
+            let update_status = update_ui.clone();
+            let device_mgr_clone = device_mgr.clone();
             fit_device_btn.connect_clicked(move |_| {
                 let width = da_fit_dev.width() as f32;
                 let height = da_fit_dev.height() as f32;
                 
-                if width > 0.0 && height > 0.0 {
-                    // Get active device profile
-                    if let Some(profile) = device_mgr.get_active_profile() {
-                        // Get working area dimensions from axis limits
-                        let work_width = (profile.x_axis.max - profile.x_axis.min) as f32;
-                        let work_height = (profile.y_axis.max - profile.y_axis.min) as f32;
-                        
-                        if work_width > 0.0 && work_height > 0.0 {
-                            // Apply 10% margin like fit_to_view does
-                            let margin_percent = 0.1;
-                            let available_width = width * (1.0 - margin_percent * 2.0);
-                            let available_height = height * (1.0 - margin_percent * 2.0);
-                            
-                            // Calculate scale to fit device working area in viewport
-                            let scale_x = available_width / work_width;
-                            let scale_y = available_height / work_height;
-                            let scale = scale_x.min(scale_y);
-                            
-                            // Center on working area - offsets are NEGATIVE of center point
-                            let center_x = (profile.x_axis.min as f32) + work_width / 2.0;
-                            let center_y = (profile.y_axis.min as f32) + work_height / 2.0;
-                            
-                            let mut vis = vis_fit_dev.borrow_mut();
-                            vis.zoom_scale = scale;
-                            vis.x_offset = -center_x;
-                            vis.y_offset = -center_y;
-                            
-                            drop(vis);
-                            update_status();
-                            da_fit_dev.queue_draw();
-                        }
-                    }
-                }
+                let mut vis = vis_fit_dev.borrow_mut();
+                let mgr_opt = Some(device_mgr_clone.clone());
+                Self::apply_fit_to_device(&mut vis, &mgr_opt, width, height);
+                drop(vis);
+                
+                update_status();
+                da_fit_dev.queue_draw();
             });
         }
 
         let vis_reset = visualizer.clone();
         let da_reset = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
         reset_btn.connect_clicked(move |_| {
             {
                 let mut vis = vis_reset.borrow_mut();
@@ -384,21 +513,29 @@ impl GcodeVisualizer {
         show_intensity.connect_toggled(move |_| da_update.queue_draw());
 
         // Mouse Interaction
-        Self::setup_interaction(&drawing_area, &visualizer, &status_label);
+        Self::setup_interaction(&drawing_area, &visualizer, update_ui.clone());
 
         // Auto-fit when mapped (visible/focused) with a slight delay to allow layout
         let vis_map = visualizer.clone();
         let da_map = drawing_area.clone();
-        let update_status = update_status_fn.clone();
+        let update_status = update_ui.clone();
+        let device_manager_map = device_manager.clone();
         container.connect_map(move |_| {
             let vis = vis_map.clone();
             let da = da_map.clone();
             let update = update_status.clone();
+            let dev_mgr = device_manager_map.clone();
             gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                 let width = da.width() as f32;
                 let height = da.height() as f32;
                 if width > 0.0 && height > 0.0 {
-                    vis.borrow_mut().fit_to_view(width, height);
+                    let mut v = vis.borrow_mut();
+                    if v.get_command_count() > 0 {
+                        v.fit_to_view(width, height);
+                    } else {
+                        Self::apply_fit_to_device(&mut v, &dev_mgr, width, height);
+                    }
+                    drop(v);
                     update();
                     da.queue_draw();
                 }
@@ -416,19 +553,22 @@ impl GcodeVisualizer {
             show_grid,
             show_bounds,
             show_intensity,
+            hadjustment,
+            vadjustment,
             bounds_label,
             status_label,
             device_manager,
         }
     }
 
-    fn setup_interaction(da: &DrawingArea, vis: &Rc<RefCell<Visualizer2D>>, status_label: &Label) {
+    fn setup_interaction<F: Fn() + 'static>(da: &DrawingArea, vis: &Rc<RefCell<Visualizer2D>>, update_ui: F) {
         // Scroll to Zoom
         let scroll = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
         let vis_scroll = vis.clone();
         let da_scroll = da.clone();
-        let label_scroll = status_label.clone();
+        let update_scroll = Rc::new(update_ui);
 
+        let update_scroll_clone = update_scroll.clone();
         scroll.connect_scroll(move |_, _, dy| {
             let mut vis = vis_scroll.borrow_mut();
             if dy > 0.0 {
@@ -437,12 +577,7 @@ impl GcodeVisualizer {
                 vis.zoom_in();
             }
 
-            label_scroll.set_text(&format!(
-                "{:.0}%   X: {:.1}   Y: {:.1}   10.0mm",
-                vis.zoom_scale * 100.0,
-                -vis.x_offset,
-                -vis.y_offset
-            ));
+            update_scroll_clone();
 
             da_scroll.queue_draw();
             gtk4::glib::Propagation::Stop
@@ -455,7 +590,7 @@ impl GcodeVisualizer {
 
         let start_pan = Rc::new(RefCell::new((0.0f32, 0.0f32)));
         let da_drag = da.clone();
-        let label_drag = status_label.clone();
+        let update_drag = update_scroll.clone();
 
         let start_pan_begin = start_pan.clone();
         drag.connect_drag_begin(move |_, _, _| {
@@ -474,16 +609,42 @@ impl GcodeVisualizer {
             vis.x_offset = sx + dx as f32;
             vis.y_offset = sy - dy as f32;
 
-            label_drag.set_text(&format!(
-                "{:.0}%   X: {:.1}   Y: {:.1}   10.0mm",
-                vis.zoom_scale * 100.0,
-                -vis.x_offset,
-                -vis.y_offset
-            ));
+            update_drag();
 
             da_drag_update.queue_draw();
         });
         da.add_controller(drag);
+    }
+
+    fn update_scrollbars(&self) {
+        let width = self.drawing_area.width() as f64;
+        let height = self.drawing_area.height() as f64;
+        
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+
+        let v = self.visualizer.borrow();
+        let zoom = v.zoom_scale as f64;
+        let page_size_x = width / zoom;
+        let page_size_y = height / zoom;
+        
+        let center_x = -v.x_offset as f64;
+        let center_y = -v.y_offset as f64;
+        
+        let val_x = center_x - page_size_x / 2.0;
+        let val_y = center_y - page_size_y / 2.0;
+        
+        let (min_x, max_x, min_y, max_y) = v.get_bounds();
+        let margin = 10.0;
+        
+        let lower_x = (min_x as f64 - margin).min(val_x);
+        let upper_x = (max_x as f64 + margin).max(val_x + page_size_x);
+        let lower_y = (min_y as f64 - margin).min(val_y);
+        let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
+        
+        self.hadjustment.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
+        self.vadjustment.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
     }
 
     pub fn set_gcode(&self, gcode: &str) {
@@ -507,9 +668,14 @@ impl GcodeVisualizer {
         let width = self.drawing_area.width() as f32;
         let height = self.drawing_area.height() as f32;
         if width > 0.0 && height > 0.0 {
-            vis.fit_to_view(width, height);
+            if vis.get_command_count() > 0 {
+                vis.fit_to_view(width, height);
+            } else {
+                Self::apply_fit_to_device(&mut vis, &self.device_manager, width, height);
+            }
         }
 
+        self.update_scrollbars();
         self.drawing_area.queue_draw();
     }
 

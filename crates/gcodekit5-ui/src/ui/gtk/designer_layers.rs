@@ -47,9 +47,8 @@ impl LayersPanel {
 
         // Scrolled list of shapes
         let scrolled = ScrolledWindow::new();
-        scrolled.set_vexpand(false);
+        scrolled.set_vexpand(true);
         scrolled.set_height_request(150);
-        scrolled.set_max_content_height(200);
 
         let list_box = ListBox::new();
         list_box.set_selection_mode(gtk4::SelectionMode::Multiple);

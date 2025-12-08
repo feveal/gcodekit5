@@ -29,13 +29,13 @@ impl DesignerTool {
     
     pub fn icon(&self) -> &'static str {
         match self {
-            DesignerTool::Select => "object-select-symbolic",
-            DesignerTool::Rectangle => "insert-object-symbolic",
-            DesignerTool::Circle => "draw-circle-symbolic",
-            DesignerTool::Line => "draw-line-symbolic",
-            DesignerTool::Ellipse => "draw-ellipse-symbolic",
-            DesignerTool::Polyline => "draw-polygon-symbolic",
-            DesignerTool::Text => "insert-text-symbolic",
+            DesignerTool::Select => "select.svg",
+            DesignerTool::Rectangle => "rectangle.svg",
+            DesignerTool::Circle => "circle.svg",
+            DesignerTool::Line => "line.svg",
+            DesignerTool::Ellipse => "ellipse.svg",
+            DesignerTool::Polyline => "polyline.svg",
+            DesignerTool::Text => "text.svg",
         }
     }
     
@@ -86,18 +86,17 @@ impl DesignerToolbox {
             btn.set_size_request(50, 50);
             btn.set_tooltip_text(Some(tool.tooltip()));
             
-            // Try to use icon, fall back to label if icon not available
-            let icon_name = tool.icon();
-            if gtk4::IconTheme::for_display(&gtk4::gdk::Display::default().unwrap())
-                .has_icon(icon_name) 
-            {
-                let icon = Image::from_icon_name(icon_name);
-                btn.set_child(Some(&icon));
-            } else {
-                // Fallback: use text label
-                let label = Label::new(Some(tool.name()));
-                btn.set_child(Some(&label));
-            }
+            // Use icon from compiled resources
+            let icon_filename = tool.icon();
+            let resource_path = format!("/com/gcodekit5/icons/{}", icon_filename);
+            
+            let icon = Image::from_resource(&resource_path);
+            icon.set_pixel_size(24);
+            btn.set_child(Some(&icon));
+            
+            // Fallback logic is removed as we expect resources to be present.
+            // If we wanted to be safe, we could check if the icon loaded properly, 
+            // but Image::from_resource doesn't return a Result.
             
             let tool_clone = *tool;
             let current_tool_clone = current_tool.clone();
@@ -136,23 +135,6 @@ impl DesignerToolbox {
         separator.set_margin_top(10);
         separator.set_margin_bottom(10);
         container.append(&separator);
-        
-        // Add zoom controls (placeholder for Phase 1 viewport)
-        let zoom_label = Label::new(Some("Zoom"));
-        zoom_label.add_css_class("dim-label");
-        container.append(&zoom_label);
-        
-        let zoom_in = Button::with_label("+");
-        zoom_in.set_tooltip_text(Some("Zoom in"));
-        container.append(&zoom_in);
-        
-        let zoom_out = Button::with_label("-");
-        zoom_out.set_tooltip_text(Some("Zoom out"));
-        container.append(&zoom_out);
-        
-        let zoom_fit = Button::with_label("Fit");
-        zoom_fit.set_tooltip_text(Some("Fit to view"));
-        container.append(&zoom_fit);
         
         Rc::new(Self {
             widget: container,
