@@ -1,4 +1,4 @@
-## [0.2.5-alpha.0] - 2025-12-08
+## [0.2.5-alpha.1] - 2025-12-08
 
 ### Added
 - **Visualizer**: Added horizontal and vertical scrollbars for better navigation.

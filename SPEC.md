@@ -1,10 +1,22 @@
 # GCodeKit5 - Specification Document
 
-**Version**: 0.1.0-alpha.0
-**Last Updated**: 2025-12-06
+**Version**: 0.2.5-alpha.1
+**Last Updated**: 2025-12-08
 **Status**: Feature Release
 
-### Latest Release (v0.1.0-alpha.0) - Minor Version Bump
+### Latest Release (v0.2.5-alpha.1) - Visualizer & CAM Enhancements
+- ✅ **Visualizer**
+  - Added horizontal and vertical scrollbars.
+  - Added "Show Laser/Spindle" position indicator (red dot).
+  - Added statistics panel (Min/Max/Avg S-value).
+- ✅ **Designer**
+  - Added floating status panel (Zoom, Pan, Grid).
+- ✅ **CAM Tools**
+  - Added "Home device before starting" option to all generators.
+- ✅ **Status Bar**
+  - Added job progress bar and time estimation.
+
+### Previous Release (v0.1.0-alpha.0) - Minor Version Bump
 - ✅ **Version**
   - Bumped version to 0.1.0-alpha.0.
 

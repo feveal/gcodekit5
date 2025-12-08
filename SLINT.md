@@ -10,3 +10,9 @@ This file is maintained as per agent instructions, but primary UI development is
 - **Drawing**: Use `DrawingArea` with `Cairo` for custom 2D rendering (Visualizer, Designer).
 - **Styling**: Use CSS classes (e.g., `visualizer-osd`, `heading`) for consistent styling.
 - **Events**: Use `EventController` (Motion, Scroll, Key, Click, Drag) for input handling.
+
+## Visualizer Implementation (GTK4)
+- **Performance**: Use `RenderCache` to store expensive calculations (e.g., intensity buckets) and rebuild only when G-code changes.
+- **LOD**: Implement Level of Detail (LOD) rendering based on zoom level to maintain performance with large files.
+- **Interaction**: Use `GestureDrag` for panning and `EventControllerScroll` for zooming.
+- **Overlays**: Use `Overlay` widget to place floating controls (buttons, status labels) on top of the `DrawingArea`.
