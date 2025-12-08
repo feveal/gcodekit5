@@ -1,6 +1,8 @@
 ## [0.2.5-alpha.2] - 2025-12-08
 
 ### Fixed
+- **Designer**: Made toolbox scrollable to prevent layout issues on smaller screens.
+- **UI**: Fixed window maximization and status bar visibility issues by ensuring main content expands correctly.
 - **Code Quality**: Cleared compiler warnings across all crates (`gcodekit5-ui`, `gcodekit5-visualizer`, `gcodekit5-designer`, `gcodekit5-camtools`, `gcodekit5-communication`).
   - Fixed unused variables, fields, and imports.
   - Fixed unused constants and functions.
