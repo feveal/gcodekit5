@@ -6,6 +6,7 @@
 - **Status Bar**: Added progress bar and time estimation (Elapsed/Remaining) during job streaming.
 - **CAM Tools**: Added "Home device before starting" checkbox to all G-code generators.
 - **Visualizer**: Added "Show Laser/Spindle" option to display current machine position as a red dot.
+- **Visualizer**: Added statistics panel showing Min, Max, and Average S (spindle/laser power) values.
 
 ### Fixed
 - **Designer**: Fixed panic in "Fit to View" caused by RefCell borrowing conflict during scrollbar update.
