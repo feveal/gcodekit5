@@ -334,6 +334,8 @@ impl GcodeVisualizer {
                 let lower_y = (min_y as f64 - margin).min(val_y);
                 let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
                 
+                drop(v);
+
                 *is_updating.borrow_mut() = true;
                 hadj.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
                 vadj.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
@@ -645,6 +647,8 @@ impl GcodeVisualizer {
         let lower_y = (min_y as f64 - margin).min(val_y);
         let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
         
+        drop(v);
+
         self.hadjustment.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
         self.vadjustment.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
     }
