@@ -440,9 +440,11 @@ impl DesignerCanvas {
 
         let state = self.state.borrow();
         let has_selection = state.canvas.selection_manager.selected_id().is_some();
+        let selected_count = state.canvas.shapes().filter(|s| s.selected).count();
         let can_paste = !state.clipboard.is_empty();
         let can_group = state.can_group();
         let can_ungroup = state.can_ungroup();
+        let can_align = selected_count >= 2;
         drop(state);
 
         let menu = Popover::new();
@@ -495,6 +497,66 @@ impl DesignerCanvas {
         
         vbox.append(&create_item("Group", "group", can_group));
         vbox.append(&create_item("Ungroup", "ungroup", can_ungroup));
+
+        if can_align {
+            let align_btn = gtk4::Button::builder()
+                .label("Align ▸")
+                .has_frame(false)
+                .halign(gtk4::Align::Start)
+                .build();
+            
+            let align_menu = Popover::new();
+            align_menu.set_parent(&align_btn);
+            align_menu.set_has_arrow(false);
+            align_menu.set_position(gtk4::PositionType::Right);
+            
+            let align_vbox = Box::new(Orientation::Vertical, 0);
+            align_vbox.add_css_class("context-menu");
+            
+            // Helper for align items
+            let create_align_item = |label: &str, action: &str| {
+                let btn = gtk4::Button::builder()
+                    .label(label)
+                    .has_frame(false)
+                    .halign(gtk4::Align::Start)
+                    .build();
+                
+                let canvas = self.clone();
+                let menu_clone = menu.clone(); // Main menu
+                let align_menu_clone = align_menu.clone();
+                let action_name = action.to_string();
+                
+                btn.connect_clicked(move |_| {
+                    align_menu_clone.popdown();
+                    menu_clone.popdown();
+                    match action_name.as_str() {
+                        "align_left" => canvas.align_left(),
+                        "align_right" => canvas.align_right(),
+                        "align_top" => canvas.align_top(),
+                        "align_bottom" => canvas.align_bottom(),
+                        "align_center_x" => canvas.align_center_horizontal(),
+                        "align_center_y" => canvas.align_center_vertical(),
+                        _ => {}
+                    }
+                });
+                btn
+            };
+
+            align_vbox.append(&create_align_item("Align Left", "align_left"));
+            align_vbox.append(&create_align_item("Align Right", "align_right"));
+            align_vbox.append(&create_align_item("Align Top", "align_top"));
+            align_vbox.append(&create_align_item("Align Bottom", "align_bottom"));
+            align_vbox.append(&create_align_item("Align Center X", "align_center_x"));
+            align_vbox.append(&create_align_item("Align Center Y", "align_center_y"));
+            
+            align_menu.set_child(Some(&align_vbox));
+            
+            align_btn.connect_clicked(move |_| {
+                align_menu.popup();
+            });
+            
+            vbox.append(&align_btn);
+        }
 
         vbox.append(&Separator::new(Orientation::Horizontal));
         vbox.append(&create_item("Convert to Path", "convert_to_path", has_selection));
