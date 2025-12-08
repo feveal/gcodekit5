@@ -162,6 +162,7 @@ impl DesignerState {
             4 => DrawingMode::Ellipse,
             5 => DrawingMode::Polyline,
             6 => DrawingMode::Text,
+            7 => DrawingMode::Pan,
             _ => DrawingMode::Select,
         };
         self.canvas.set_mode(drawing_mode);
@@ -695,6 +696,7 @@ impl DesignerState {
                 let cmd = DesignerCommand::AddShape(AddShape { id, object: Some(obj) });
                 self.push_command(cmd);
             }
+            DrawingMode::Pan => {}
         }
     }
 

@@ -13,6 +13,7 @@ pub enum DesignerTool {
     Ellipse = 4,
     Polyline = 5,
     Text = 6,
+    Pan = 7,
 }
 
 impl DesignerTool {
@@ -25,6 +26,7 @@ impl DesignerTool {
             DesignerTool::Ellipse => "Ellipse",
             DesignerTool::Polyline => "Polyline",
             DesignerTool::Text => "Text",
+            DesignerTool::Pan => "Pan",
         }
     }
     
@@ -37,6 +39,7 @@ impl DesignerTool {
             DesignerTool::Ellipse => "ellipse.svg",
             DesignerTool::Polyline => "polyline.svg",
             DesignerTool::Text => "text.svg",
+            DesignerTool::Pan => "pan.svg",
         }
     }
     
@@ -49,6 +52,7 @@ impl DesignerTool {
             DesignerTool::Ellipse => "Draw ellipse (E)",
             DesignerTool::Polyline => "Draw polyline/polygon (P)",
             DesignerTool::Text => "Add text (T)",
+            DesignerTool::Pan => "Pan canvas (Space)",
         }
     }
 }
@@ -64,7 +68,7 @@ pub struct DesignerToolbox {
 impl DesignerToolbox {
     pub fn new(state: Rc<RefCell<DesignerState>>) -> Rc<Self> {
         let main_container = Box::new(Orientation::Vertical, 0);
-        main_container.set_width_request(60);
+        main_container.set_width_request(160); // Increased width for 3 columns
         main_container.set_hexpand(false);
         main_container.add_css_class("designer-toolbox");
         main_container.set_margin_top(5);
@@ -86,6 +90,7 @@ impl DesignerToolbox {
         
         let tools = [
             DesignerTool::Select,
+            DesignerTool::Pan,
             DesignerTool::Rectangle,
             DesignerTool::Circle,
             DesignerTool::Line,
@@ -94,9 +99,15 @@ impl DesignerToolbox {
             DesignerTool::Text,
         ];
         
-        for tool in tools.iter() {
+        let grid = gtk4::Grid::builder()
+            .column_spacing(2)
+            .row_spacing(2)
+            .halign(Align::Center)
+            .build();
+        
+        for (i, tool) in tools.iter().enumerate() {
             let btn = Button::new();
-            btn.set_size_request(50, 50);
+            btn.set_size_request(40, 40); // Slightly smaller for 3 columns
             btn.set_halign(Align::Center);
             btn.set_tooltip_text(Some(tool.tooltip()));
             
@@ -105,12 +116,8 @@ impl DesignerToolbox {
             let resource_path = format!("/com/gcodekit5/icons/{}", icon_filename);
             
             let icon = Image::from_resource(&resource_path);
-            icon.set_pixel_size(24);
+            icon.set_pixel_size(20);
             btn.set_child(Some(&icon));
-            
-            // Fallback logic is removed as we expect resources to be present.
-            // If we wanted to be safe, we could check if the icon loaded properly, 
-            // but Image::from_resource doesn't return a Result.
             
             buttons.push(btn.clone());
             
@@ -119,8 +126,10 @@ impl DesignerToolbox {
                 btn.add_css_class("selected-tool");
             }
             
-            content_box.append(&btn);
+            grid.attach(&btn, (i % 3) as i32, (i / 3) as i32, 1, 1);
         }
+        
+        content_box.append(&grid);
         
         // Now wire up click handlers after all buttons are collected
         for (i, btn) in buttons.iter().enumerate() {

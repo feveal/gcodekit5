@@ -54,6 +54,7 @@ pub enum DrawingMode {
     Ellipse,
     Polyline,
     Text,
+    Pan,
 }
 
 /// Drawing object on the canvas that can be selected and manipulated.

@@ -1,6 +1,10 @@
 ## [0.2.5-alpha.2] - 2025-12-08
 
 ### Added
+- **Designer**: Added Pan tool to toolbox.
+  - Allows panning the canvas by dragging with the mouse.
+  - Changes cursor to hand/grabbing icon.
+  - Updated toolbox layout to use 3 columns.
 - **Designer**: Implemented alignment tools (Left, Right, Top, Bottom, Center Horizontal, Center Vertical).
   - Accessible via keyboard shortcuts (Alt+L, Alt+R, Alt+T, Alt+B, Alt+H, Alt+V).
   - Aligns selected shapes relative to the selection bounding box.

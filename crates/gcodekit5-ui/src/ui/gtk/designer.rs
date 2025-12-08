@@ -123,6 +123,8 @@ impl DesignerCanvas {
         let mouse_pos_motion = mouse_pos.clone();
         let widget_motion = widget.clone();
         let state_motion = state_clone.clone();
+        let canvas_motion = canvas.clone();
+
         motion_ctrl.connect_motion(move |_, x, y| {
             // Convert screen coords to canvas coords
             let _width = widget_motion.width() as f64;
@@ -135,21 +137,24 @@ impl DesignerCanvas {
             drop(state);
 
             // Screen (x, y) -> Canvas (cx, cy)
-            // Screen Y is top-down.
-            // We translated to (0, height) and scaled (1, -1).
-            // Then translated (pan_x, pan_y).
-            // Then scaled (zoom, zoom).
-            
-            // Reverse transformation:
-            // 1. Screen Y to Bottom-Up Y: y_flipped = height - y
-            // 2. Remove Pan: x_panned = x - pan_x, y_panned = y_flipped - pan_y
-            // 3. Remove Zoom: cx = x_panned / zoom, cy = y_panned / zoom
-            
             let y_flipped = height - y;
             let canvas_x = (x - pan_x) / zoom;
             let canvas_y = (y_flipped - pan_y) / zoom;
             
             *mouse_pos_motion.borrow_mut() = (canvas_x, canvas_y);
+            
+            // Update cursor based on tool
+            let tool = canvas_motion.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
+            if tool == DesignerTool::Pan {
+                if *canvas_motion.did_drag.borrow() {
+                     widget_motion.set_cursor_from_name(Some("grabbing"));
+                } else {
+                     widget_motion.set_cursor_from_name(Some("grab"));
+                }
+            } else {
+                widget_motion.set_cursor(None);
+            }
+
             widget_motion.queue_draw();
         });
         widget.add_controller(motion_ctrl);
@@ -736,6 +741,11 @@ impl DesignerCanvas {
                     *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
                 }
             }
+            DesignerTool::Pan => {
+                *self.creation_start.borrow_mut() = Some((x, y)); // Screen coords for pan
+                *self.last_drag_offset.borrow_mut() = (x, y); // Use last offset to track previous position
+                self.widget.set_cursor_from_name(Some("grabbing"));
+            }
             _ => {
                 // Start shape creation
                 *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
@@ -806,27 +816,7 @@ impl DesignerCanvas {
                             let total_dy = current_y - start.1;
                             
                             if total_dx.abs() > total_dy.abs() {
-                                // Constrain to X axis: cancel Y movement
-                                // We need to cancel the accumulated Y movement.
-                                // But we only control the incremental delta here.
-                                // This is tricky because we've already applied previous deltas.
-                                // Ideally we would reset position to start + constrained total delta.
-                                // But `move_selected` is relative.
-                                
-                                // Workaround: If shift is pressed, we only allow movement in the dominant axis.
-                                // But this only works if shift was pressed from the start.
-                                // If shift is pressed mid-drag, we might want to snap back.
-                                
-                                // For now, let's just zero out the minor axis delta.
-                                // This gives "Manhattan" movement but doesn't snap back if you drift.
-                                // To do it properly, we'd need to store original positions of all selected items.
-                                
-                                // Let's stick to simple axis locking for now.
-                                if total_dx.abs() > total_dy.abs() {
-                                    delta_y = 0.0;
-                                } else {
-                                    delta_x = 0.0;
-                                }
+                                delta_y = 0.0;
                             } else {
                                 delta_x = 0.0;
                             }
@@ -840,6 +830,74 @@ impl DesignerCanvas {
                     }
                     // Marquee selection is shown by the preview rectangle (handled in draw)
                 }
+            } else if tool == DesignerTool::Pan {
+                // Handle panning
+                // offset_x/y are total offsets from drag start.
+                // We need incremental change from last frame.
+                // But wait, handle_drag_update gives total offset from start.
+                // In handle_drag_begin for Pan, I set last_drag_offset to (x, y) (start pos).
+                // But offset_x/y here are relative to start.
+                // So current screen pos = start + offset.
+                // Previous screen pos = start + previous_offset.
+                // Delta = current - previous.
+                
+                // Actually, let's use last_drag_offset to store the *previous offset value*.
+                // In begin, offset is 0. So last_drag_offset = (0,0).
+                
+                let last_offset = *self.last_drag_offset.borrow();
+                let delta_x = offset_x - last_offset.0;
+                let delta_y = offset_y - last_offset.1;
+                
+                let mut state = self.state.borrow_mut();
+                // Drag right (+x) -> move content right -> pan_x increases
+                // Drag down (+y) -> move content down -> pan_y increases (because Y is flipped)
+                // Wait, if I drag down, y increases.
+                // Screen Y increases.
+                // Content should move down on screen.
+                // Content Y (world) is up.
+                // Moving content down on screen means moving it to lower Y in world? No.
+                // Screen Y = height - (world Y * zoom + pan Y).
+                // If I want Screen Y to increase (move down), I can decrease pan Y?
+                // height - (wy*z + (py - d)) = height - wy*z - py + d = old_sy + d.
+                // So decreasing pan_y moves content down on screen.
+                // So drag down (+dy) -> pan_y -= dy.
+                
+                // Let's verify with scrollbars.
+                // Scrollbar down -> value increases.
+                // v_adj value -> state.canvas.set_pan(px, val).
+                // So pan_y increases.
+                // If pan_y increases, Screen Y = height - (wy*z + py).
+                // Screen Y decreases. Content moves UP.
+                // So scrollbar down moves content UP. This is standard scrolling (view moves down).
+                
+                // Panning with hand: Drag UP -> content moves UP.
+                // Drag UP means dy is negative.
+                // If dy is negative, we want content to move UP (Screen Y decreases).
+                // So pan_y should increase.
+                // So pan_y -= dy (since dy is negative, -= is +=).
+                
+                // Drag DOWN means dy is positive.
+                // We want content to move DOWN (Screen Y increases).
+                // So pan_y should decrease.
+                // So pan_y -= dy.
+                
+                // Drag RIGHT means dx is positive.
+                // We want content to move RIGHT (Screen X increases).
+                // Screen X = (wx * z + px).
+                // So pan_x should increase.
+                // So pan_x += dx.
+                
+                state.canvas.pan_by(delta_x, -delta_y);
+                
+                // Update scrollbars
+                if let Some(adj) = self.hadjustment.borrow().as_ref() {
+                    adj.set_value(-state.canvas.pan_x());
+                }
+                if let Some(adj) = self.vadjustment.borrow().as_ref() {
+                    adj.set_value(state.canvas.pan_y());
+                }
+                
+                *self.last_drag_offset.borrow_mut() = (offset_x, offset_y);
             }
             
             self.widget.queue_draw();
@@ -848,6 +906,13 @@ impl DesignerCanvas {
     
     fn handle_drag_end(&self, offset_x: f64, offset_y: f64) {
         let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
+        
+        if tool == DesignerTool::Pan {
+            *self.creation_start.borrow_mut() = None;
+            *self.last_drag_offset.borrow_mut() = (0.0, 0.0);
+            self.widget.set_cursor_from_name(Some("grab"));
+            return;
+        }
         
         // Get start point and release the borrow immediately
         let start_opt = *self.creation_start.borrow();
