@@ -641,7 +641,8 @@ impl DesignerState {
         match self.canvas.mode() {
             DrawingMode::Select => {
                 // Select mode - just select shape at position
-                self.canvas.select_at(&Point::new(x, y), multi_select);
+                let tolerance = 3.0 / self.canvas.zoom();
+                self.canvas.select_at(&Point::new(x, y), tolerance, multi_select);
             }
             DrawingMode::Rectangle => {
                 let id = self.canvas.generate_id();

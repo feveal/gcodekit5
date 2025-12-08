@@ -99,14 +99,14 @@ impl Shape {
         }
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         match self {
-            Shape::Rectangle(s) => s.contains_point(point),
-            Shape::Circle(s) => s.contains_point(point),
-            Shape::Line(s) => s.contains_point(point),
-            Shape::Ellipse(s) => s.contains_point(point),
-            Shape::Path(s) => s.contains_point(point),
-            Shape::Text(s) => s.contains_point(point),
+            Shape::Rectangle(s) => s.contains_point(point, tolerance),
+            Shape::Circle(s) => s.contains_point(point, tolerance),
+            Shape::Line(s) => s.contains_point(point, tolerance),
+            Shape::Ellipse(s) => s.contains_point(point, tolerance),
+            Shape::Path(s) => s.contains_point(point, tolerance),
+            Shape::Text(s) => s.contains_point(point, tolerance),
         }
     }
 
@@ -283,13 +283,13 @@ impl Rectangle {
         (self.x, self.y, self.x + self.width, self.y + self.height)
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         let center = Point::new(self.x + self.width / 2.0, self.y + self.height / 2.0);
         let p = rotate_point(*point, center, -self.rotation);
-        p.x >= self.x
-            && p.x <= self.x + self.width
-            && p.y >= self.y
-            && p.y <= self.y + self.height
+        p.x >= self.x - tolerance
+            && p.x <= self.x + self.width + tolerance
+            && p.y >= self.y - tolerance
+            && p.y <= self.y + self.height + tolerance
     }
 
     pub fn translate(&mut self, dx: f64, dy: f64) {
@@ -405,8 +405,8 @@ impl Circle {
         self.bounding_box()
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
-        self.center.distance_to(point) <= self.radius
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
+        self.center.distance_to(point) <= self.radius + tolerance
     }
 
     pub fn translate(&mut self, dx: f64, dy: f64) {
@@ -513,8 +513,7 @@ impl Line {
         )
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
-        let tolerance = 2.0;
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         let dist_to_start = self.start.distance_to(point);
         let dist_to_end = self.end.distance_to(point);
         let line_length = self.length();
@@ -641,10 +640,12 @@ impl Ellipse {
         )
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         let dx = point.x - self.center.x;
         let dy = point.y - self.center.y;
-        (dx * dx) / (self.rx * self.rx) + (dy * dy) / (self.ry * self.ry) <= 1.0
+        let rx = self.rx + tolerance;
+        let ry = self.ry + tolerance;
+        (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1.0
     }
 
     pub fn translate(&mut self, dx: f64, dy: f64) {
@@ -791,12 +792,12 @@ impl PathShape {
         (aabb.min.x as f64, aabb.min.y as f64, aabb.max.x as f64, aabb.max.y as f64)
     }
 
-    pub fn contains_point(&self, p: &Point) -> bool {
+    pub fn contains_point(&self, p: &Point, tolerance: f64) -> bool {
         hit_test_path(
             &point(p.x as f32, p.y as f32),
             self.path.iter(),
             FillRule::NonZero,
-            0.1
+            tolerance as f32
         )
     }
 
@@ -1365,7 +1366,7 @@ impl TextShape {
         }
     }
 
-    pub fn contains_point(&self, point: &Point) -> bool {
+    pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         // For hit testing, we need unrotated bounding box
         // So we rotate point backwards around center of unrotated box
         // But we need to calculate unrotated box first.
@@ -1407,7 +1408,7 @@ impl TextShape {
         
         let center = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
         let p = rotate_point(*point, center, -self.rotation);
-        p.x >= min_x && p.x <= max_x && p.y >= min_y && p.y <= max_y
+        p.x >= min_x - tolerance && p.x <= max_x + tolerance && p.y >= min_y - tolerance && p.y <= max_y + tolerance
     }
 
     pub fn translate(&mut self, dx: f64, dy: f64) {

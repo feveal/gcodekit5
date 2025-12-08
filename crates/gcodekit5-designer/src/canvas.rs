@@ -297,8 +297,8 @@ impl Canvas {
     /// Selects a shape at the given point.
     /// If multi is true, toggles selection of the shape at point while keeping others.
     /// If multi is false, clears other selections and selects the shape at point.
-    pub fn select_at(&mut self, point: &Point, multi: bool) -> Option<u64> {
-        self.selection_manager.select_at(&mut self.shape_store, self.spatial_manager.inner(), point, multi)
+    pub fn select_at(&mut self, point: &Point, tolerance: f64, multi: bool) -> Option<u64> {
+        self.selection_manager.select_at(&mut self.shape_store, self.spatial_manager.inner(), point, tolerance, multi)
     }
 
     /// Selects shapes within or intersecting the given rectangle.
@@ -395,7 +395,7 @@ impl Canvas {
     pub fn is_point_in_selected(&self, point: &Point) -> bool {
         if let Some(id) = self.selection_manager.selected_id() {
             if let Some(obj) = self.shape_store.get(id) {
-                return obj.shape.contains_point(point);
+                return obj.shape.contains_point(point, 3.0);
             }
         }
         false
