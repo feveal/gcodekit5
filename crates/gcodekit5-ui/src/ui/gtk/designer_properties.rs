@@ -481,79 +481,96 @@ impl PropertiesPanel {
             return;
         }
         
-        let designer_state = self.state.borrow();
-        
-        if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-            if let Some(obj) = designer_state.canvas.shape_store.get(id) {
-                // Set flag to prevent feedback loop during updates
-                *self.updating.borrow_mut() = true;
-
-                // Update spin buttons based on shape type
-                match &obj.shape {
-                    Shape::Rectangle(rect) => {
-                        self.pos_x_spin.set_value(rect.x);
-                        self.pos_y_spin.set_value(rect.y);
-                        self.width_spin.set_value(rect.width);
-                        self.height_spin.set_value(rect.height);
-                        self.rotation_spin.set_value(rect.rotation.to_degrees());
-                    }
-                    Shape::Circle(circle) => {
-                        self.pos_x_spin.set_value(circle.center.x);
-                        self.pos_y_spin.set_value(circle.center.y);
-                        self.width_spin.set_value(circle.radius * 2.0);
-                        self.height_spin.set_value(circle.radius * 2.0);
-                        self.rotation_spin.set_value(circle.rotation.to_degrees());
-                    }
-                    Shape::Ellipse(ellipse) => {
-                        self.pos_x_spin.set_value(ellipse.center.x);
-                        self.pos_y_spin.set_value(ellipse.center.y);
-                        self.width_spin.set_value(ellipse.rx * 2.0);
-                        self.height_spin.set_value(ellipse.ry * 2.0);
-                        self.rotation_spin.set_value(ellipse.rotation.to_degrees());
-                    }
-                    Shape::Line(line) => {
-                        self.pos_x_spin.set_value(line.start.x);
-                        self.pos_y_spin.set_value(line.start.y);
-                        self.width_spin.set_value(line.end.x - line.start.x);
-                        self.height_spin.set_value(line.end.y - line.start.y);
-                        self.rotation_spin.set_value(0.0);
-                    }
-                    _ => {
-                        // Other shapes
-                    }
+        // Extract data first to avoid holding the borrow while updating widgets
+        let selection_data = {
+            let designer_state = self.state.borrow();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                if let Some(obj) = designer_state.canvas.shape_store.get(id) {
+                    Some((
+                        obj.shape.clone(),
+                        obj.operation_type,
+                        obj.pocket_depth,
+                        obj.step_down,
+                        obj.step_in,
+                        obj.pocket_strategy,
+                    ))
+                } else {
+                    None
                 }
-
-                // Clear flag
-                *self.updating.borrow_mut() = false;
-
-                // Enable all controls
-                self.pos_x_spin.set_sensitive(true);
-                self.pos_y_spin.set_sensitive(true);
-                self.width_spin.set_sensitive(true);
-                self.height_spin.set_sensitive(true);
-                self.rotation_spin.set_sensitive(true);
-                
-                // Update CAM properties
-                self.op_type_combo.set_selected(match obj.operation_type {
-                    OperationType::Profile => 0,
-                    OperationType::Pocket => 1,
-                });
-                self.depth_spin.set_value(obj.pocket_depth);
-                self.step_down_spin.set_value(obj.step_down as f64);
-                self.step_in_spin.set_value(obj.step_in as f64);
-                self.strategy_combo.set_selected(match obj.pocket_strategy {
-                    PocketStrategy::Raster { .. } => 0,
-                    PocketStrategy::ContourParallel => 1,
-                    PocketStrategy::Adaptive => 2,
-                });
-
-                // Enable CAM controls
-                self.op_type_combo.set_sensitive(true);
-                self.depth_spin.set_sensitive(true);
-                self.step_down_spin.set_sensitive(true);
-                self.step_in_spin.set_sensitive(true);
-                self.strategy_combo.set_sensitive(true);
+            } else {
+                None
             }
+        };
+
+        if let Some((shape, op_type, depth, step_down, step_in, strategy)) = selection_data {
+            // Set flag to prevent feedback loop during updates
+            *self.updating.borrow_mut() = true;
+
+            // Update spin buttons based on shape type
+            match shape {
+                Shape::Rectangle(rect) => {
+                    self.pos_x_spin.set_value(rect.x);
+                    self.pos_y_spin.set_value(rect.y);
+                    self.width_spin.set_value(rect.width);
+                    self.height_spin.set_value(rect.height);
+                    self.rotation_spin.set_value(rect.rotation.to_degrees());
+                }
+                Shape::Circle(circle) => {
+                    self.pos_x_spin.set_value(circle.center.x);
+                    self.pos_y_spin.set_value(circle.center.y);
+                    self.width_spin.set_value(circle.radius * 2.0);
+                    self.height_spin.set_value(circle.radius * 2.0);
+                    self.rotation_spin.set_value(circle.rotation.to_degrees());
+                }
+                Shape::Ellipse(ellipse) => {
+                    self.pos_x_spin.set_value(ellipse.center.x);
+                    self.pos_y_spin.set_value(ellipse.center.y);
+                    self.width_spin.set_value(ellipse.rx * 2.0);
+                    self.height_spin.set_value(ellipse.ry * 2.0);
+                    self.rotation_spin.set_value(ellipse.rotation.to_degrees());
+                }
+                Shape::Line(line) => {
+                    self.pos_x_spin.set_value(line.start.x);
+                    self.pos_y_spin.set_value(line.start.y);
+                    self.width_spin.set_value(line.end.x - line.start.x);
+                    self.height_spin.set_value(line.end.y - line.start.y);
+                    self.rotation_spin.set_value(0.0);
+                }
+                _ => {
+                    // Other shapes
+                }
+            }
+
+            // Enable all controls
+            self.pos_x_spin.set_sensitive(true);
+            self.pos_y_spin.set_sensitive(true);
+            self.width_spin.set_sensitive(true);
+            self.height_spin.set_sensitive(true);
+            self.rotation_spin.set_sensitive(true);
+            
+            // Update CAM properties
+            self.op_type_combo.set_selected(match op_type {
+                OperationType::Profile => 0,
+                OperationType::Pocket => 1,
+            });
+            self.depth_spin.set_value(depth);
+            self.step_down_spin.set_value(step_down as f64);
+            self.step_in_spin.set_value(step_in as f64);
+            self.strategy_combo.set_selected(match strategy {
+                PocketStrategy::Raster { .. } => 0,
+                PocketStrategy::ContourParallel => 1,
+                PocketStrategy::Adaptive => 2,
+            });
+
+            // Enable CAM controls
+            self.op_type_combo.set_sensitive(true);
+            self.depth_spin.set_sensitive(true);
+            self.step_down_spin.set_sensitive(true);
+            self.step_in_spin.set_sensitive(true);
+            self.strategy_combo.set_sensitive(true);
+
+            // Clear flag
+            *self.updating.borrow_mut() = false;
         } else {
             // No selection - disable controls
             self.pos_x_spin.set_sensitive(false);
