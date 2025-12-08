@@ -13,6 +13,7 @@ pub struct DesignerCanvas {
     state: Rc<RefCell<DesignerState>>,
     mouse_pos: Rc<RefCell<(f64, f64)>>, // Canvas coordinates
     toolbox: Option<Rc<DesignerToolbox>>,
+    properties: Rc<RefCell<Option<Rc<PropertiesPanel>>>>,
     // Shape creation state
     creation_start: Rc<RefCell<Option<(f64, f64)>>>,
     creation_current: Rc<RefCell<Option<(f64, f64)>>>,
@@ -44,10 +45,14 @@ impl DesignerCanvas {
 
         let state_clone = state.clone();
         let mouse_pos_clone = mouse_pos.clone();
+        let creation_start_clone = creation_start.clone();
+        let creation_current_clone = creation_current.clone();
         widget.set_draw_func(move |_, cr, width, height| {
             let state = state_clone.borrow();
             let mouse = *mouse_pos_clone.borrow();
-            Self::draw(cr, &state, width as f64, height as f64, mouse);
+            let preview_start = *creation_start_clone.borrow();
+            let preview_current = *creation_current_clone.borrow();
+            Self::draw(cr, &state, width as f64, height as f64, mouse, preview_start, preview_current);
         });
 
         let canvas = Rc::new(Self {
@@ -55,6 +60,7 @@ impl DesignerCanvas {
             state: state.clone(),
             mouse_pos: mouse_pos.clone(),
             toolbox: toolbox.clone(),
+            properties: Rc::new(RefCell::new(None)),
             creation_start: creation_start.clone(),
             creation_current: creation_current.clone(),
             last_drag_offset: last_drag_offset.clone(),
@@ -69,9 +75,9 @@ impl DesignerCanvas {
             let width = widget_motion.width() as f64;
             let height = widget_motion.height() as f64;
             
-            // Transform to canvas coordinates (centered origin, Y-up)
-            let canvas_x = x - width / 2.0;
-            let canvas_y = -(y - height / 2.0); // Flip Y
+            // Transform to canvas coordinates (origin at bottom-left with 15px offset, Y-up)
+            let canvas_x = x - 15.0;
+            let canvas_y = (height - y) - 15.0; // Flip Y, origin at bottom-left + offset
             
             *mouse_pos_motion.borrow_mut() = (canvas_x, canvas_y);
             widget_motion.queue_draw();
@@ -138,14 +144,23 @@ impl DesignerCanvas {
         canvas
     }
     
+    pub fn set_properties_panel(&self, panel: Rc<PropertiesPanel>) {
+        *self.properties.borrow_mut() = Some(panel);
+    }
+    
     fn handle_click(&self, x: f64, y: f64) {
+        // Clear properties panel focus when user clicks on canvas
+        if let Some(ref props) = *self.properties.borrow() {
+            props.clear_focus();
+        }
+        
         let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
         
         // Convert screen coords to canvas coords
         let width = self.widget.width() as f64;
         let height = self.widget.height() as f64;
-        let canvas_x = x - width / 2.0;
-        let canvas_y = -(y - height / 2.0);
+        let canvas_x = x - 15.0;
+        let canvas_y = (height - y) - 15.0;
         
         match tool {
             DesignerTool::Select => {
@@ -171,13 +186,18 @@ impl DesignerCanvas {
     }
     
     fn handle_drag_begin(&self, x: f64, y: f64) {
+        // Clear properties panel focus when user drags on canvas
+        if let Some(ref props) = *self.properties.borrow() {
+            props.clear_focus();
+        }
+        
         let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
         
         // Convert screen coords to canvas coords
         let width = self.widget.width() as f64;
         let height = self.widget.height() as f64;
-        let canvas_x = x - width / 2.0;
-        let canvas_y = -(y - height / 2.0);
+        let canvas_x = x - 15.0;
+        let canvas_y = (height - y) - 15.0;
         
         match tool {
             DesignerTool::Select => {
@@ -328,18 +348,17 @@ impl DesignerCanvas {
         } // Drop the mutable borrow here
     }
 
-    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64)) {
+    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>) {
         // Clear background
         cr.set_source_rgb(0.95, 0.95, 0.95); // Light grey background
         cr.paint().expect("Invalid cairo surface state");
 
         // Setup coordinate system
         // Designer uses Y-up (Cartesian), Cairo uses Y-down
-        // We need to flip Y and translate origin
-        // TODO: Use Viewport from state
+        // We need to flip Y and translate origin to bottom-left with 15px offset
         
-        // For now, center (0,0) in the middle and flip Y
-        cr.translate(width / 2.0, height / 2.0);
+        // Translate to bottom-left with 15px offset, then flip Y
+        cr.translate(15.0, height - 15.0);
         cr.scale(1.0, -1.0);
 
         // Draw Grid
@@ -459,6 +478,27 @@ impl DesignerCanvas {
             
             cr.restore().unwrap();
         }
+        
+        // Draw preview marquee if creating a shape
+        if let (Some(start), Some(current)) = (preview_start, preview_current) {
+            cr.save().unwrap();
+            
+            // Draw dashed preview outline
+            cr.set_source_rgba(0.5, 0.7, 1.0, 0.7); // Light blue semi-transparent
+            cr.set_line_width(1.5);
+            cr.set_dash(&[5.0, 5.0], 0.0); // Dashed line
+            
+            // Draw bounding box for the preview
+            let x1 = start.0.min(current.0);
+            let y1 = start.1.min(current.1);
+            let x2 = start.0.max(current.0);
+            let y2 = start.1.max(current.1);
+            
+            cr.rectangle(x1, y1, x2 - x1, y2 - y1);
+            cr.stroke().unwrap();
+            
+            cr.restore().unwrap();
+        }
     }
 
     fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64) {
@@ -468,71 +508,78 @@ impl DesignerCanvas {
         let grid_spacing = 10.0;
         let minor_spacing = grid_spacing / 5.0; // 2mm minor grid
         
-        // Calculate visible range
-        let half_w = width / 2.0;
-        let half_h = height / 2.0;
+        // Get current transform to find canvas bounds
+        let matrix = cr.matrix();
+        let x0 = -matrix.x0() / matrix.xx();
+        let x1 = (width - matrix.x0()) / matrix.xx();
+        let y0 = -matrix.y0() / matrix.yy();
+        let y1 = (height - matrix.y0()) / matrix.yy();
         
         // Minor grid lines (lighter)
         cr.set_source_rgba(0.85, 0.85, 0.85, 0.5);
         cr.set_line_width(0.5);
         
-        let mut x = 0.0;
-        while x < half_w {
-            if (x / grid_spacing).round() != x / grid_spacing {
-                cr.move_to(x, -half_h);
-                cr.line_to(x, half_h);
-                cr.move_to(-x, -half_h);
-                cr.line_to(-x, half_h);
+        // Vertical minor grid lines
+        let start_x = (x0 / minor_spacing).floor() * minor_spacing;
+        let mut x = start_x;
+        while x <= x1 {
+            if ((x / grid_spacing).round() - x / grid_spacing).abs() > 0.01 {
+                cr.move_to(x, y1);
+                cr.line_to(x, y0);
+                cr.stroke().unwrap();
             }
             x += minor_spacing;
         }
         
-        let mut y = 0.0;
-        while y < half_h {
-            if (y / grid_spacing).round() != y / grid_spacing {
-                cr.move_to(-half_w, y);
-                cr.line_to(half_w, y);
-                cr.move_to(-half_w, -y);
-                cr.line_to(half_w, -y);
+        // Horizontal minor grid lines
+        let start_y = (y1 / minor_spacing).floor() * minor_spacing;
+        let mut y = start_y;
+        while y <= y0 {
+            if ((y / grid_spacing).round() - y / grid_spacing).abs() > 0.01 {
+                cr.move_to(x0, y);
+                cr.line_to(x1, y);
+                cr.stroke().unwrap();
             }
             y += minor_spacing;
         }
-        cr.stroke().unwrap();
         
         // Major grid lines (darker)
         cr.set_source_rgba(0.7, 0.7, 0.7, 0.6);
         cr.set_line_width(1.0);
         
-        x = 0.0;
-        while x < half_w {
-            cr.move_to(x, -half_h);
-            cr.line_to(x, half_h);
-            if x != 0.0 {
-                cr.move_to(-x, -half_h);
-                cr.line_to(-x, half_h);
-            }
+        // Vertical major grid lines
+        x = (x0 / grid_spacing).floor() * grid_spacing;
+        while x <= x1 {
+            cr.move_to(x, y1);
+            cr.line_to(x, y0);
+            cr.stroke().unwrap();
             x += grid_spacing;
         }
         
-        y = 0.0;
-        while y < half_h {
-            cr.move_to(-half_w, y);
-            cr.line_to(half_w, y);
-            if y != 0.0 {
-                cr.move_to(-half_w, -y);
-                cr.line_to(half_w, -y);
-            }
+        // Horizontal major grid lines
+        y = (y1 / grid_spacing).floor() * grid_spacing;
+        while y <= y0 {
+            cr.move_to(x0, y);
+            cr.line_to(x1, y);
+            cr.stroke().unwrap();
             y += grid_spacing;
         }
-        cr.stroke().unwrap();
         
-        // Draw axes (thicker, darker)
+        // Draw axes (thicker, darker) - only if they're visible
         cr.set_source_rgba(0.3, 0.3, 0.3, 0.8);
         cr.set_line_width(2.0);
-        cr.move_to(-half_w, 0.0);
-        cr.line_to(half_w, 0.0);
-        cr.move_to(0.0, -half_h);
-        cr.line_to(0.0, half_h);
+        
+        // X-axis (y=0)
+        if y1 <= 0.0 && y0 >= 0.0 {
+            cr.move_to(x0, 0.0);
+            cr.line_to(x1, 0.0);
+        }
+        
+        // Y-axis (x=0)
+        if x0 <= 0.0 && x1 >= 0.0 {
+            cr.move_to(0.0, y1);
+            cr.line_to(0.0, y0);
+        }
         cr.stroke().unwrap();
 
         cr.restore().unwrap();
@@ -585,6 +632,8 @@ impl DesignerView {
         
         // Create canvas
         let canvas = DesignerCanvas::new(state.clone(), Some(toolbox.clone()));
+        canvas.widget.set_hexpand(true);
+        canvas.widget.set_vexpand(true);
         main_box.append(&canvas.widget);
         
         // Create properties panel
@@ -595,6 +644,9 @@ impl DesignerView {
         properties.set_redraw_callback(move || {
             canvas_redraw.widget.queue_draw();
         });
+        
+        // Give canvas a reference to properties panel so it can clear focus on interaction
+        canvas.set_properties_panel(properties.clone());
         
         main_box.append(&properties.widget);
         

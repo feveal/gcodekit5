@@ -101,17 +101,8 @@ impl DesignerToolbox {
             
             let tool_clone = *tool;
             let current_tool_clone = current_tool.clone();
-            let buttons_clone = buttons.clone();
-            let btn_clone = btn.clone();
             
-            btn.connect_clicked(move |_| {
-                *current_tool_clone.borrow_mut() = tool_clone;
-                // Update button styles
-                for b in &buttons_clone {
-                    b.remove_css_class("selected-tool");
-                }
-                btn_clone.add_css_class("selected-tool");
-            });
+            buttons.push(btn.clone());
             
             // Select tool is initially selected
             if *tool == DesignerTool::Select {
@@ -119,7 +110,25 @@ impl DesignerToolbox {
             }
             
             container.append(&btn);
-            buttons.push(btn);
+        }
+        
+        // Now wire up click handlers after all buttons are collected
+        for (i, btn) in buttons.iter().enumerate() {
+            let current_tool_clone = current_tool.clone();
+            let buttons_clone = buttons.clone();
+            let tool = tools[i];
+            
+            btn.connect_clicked(move |_| {
+                *current_tool_clone.borrow_mut() = tool;
+                // Update button styles
+                for (j, b) in buttons_clone.iter().enumerate() {
+                    if j == tool as usize {
+                        b.add_css_class("selected-tool");
+                    } else {
+                        b.remove_css_class("selected-tool");
+                    }
+                }
+            });
         }
         
         // Add separator
@@ -158,6 +167,15 @@ impl DesignerToolbox {
     
     pub fn set_tool(&self, tool: DesignerTool) {
         *self.current_tool.borrow_mut() = tool;
+        
+        // Update button styles
+        for (i, btn) in self.buttons.iter().enumerate() {
+            if i == tool as usize {
+                btn.add_css_class("selected-tool");
+            } else {
+                btn.remove_css_class("selected-tool");
+            }
+        }
         // Update button styles
         for (i, btn) in self.buttons.iter().enumerate() {
             btn.remove_css_class("selected-tool");

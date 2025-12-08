@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Label, Entry, SpinButton, Orientation, Frame, ScrolledWindow};
+use gtk4::{Box, Label, Entry, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -19,6 +19,8 @@ pub struct PropertiesPanel {
     redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
     // Flag to prevent feedback loops during updates
     updating: Rc<RefCell<bool>>,
+    // Flag to track if any widget has focus (being edited)
+    has_focus: Rc<RefCell<bool>>,
 }
 
 impl PropertiesPanel {
@@ -27,6 +29,7 @@ impl PropertiesPanel {
             .hscrollbar_policy(gtk4::PolicyType::Never)
             .vscrollbar_policy(gtk4::PolicyType::Automatic)
             .width_request(280)
+            .hexpand(false)
             .build();
 
         let content = Box::new(Orientation::Vertical, 12);
@@ -146,10 +149,14 @@ impl PropertiesPanel {
             rotation_spin: rotation_spin.clone(),
             redraw_callback: Rc::new(RefCell::new(None)),
             updating: Rc::new(RefCell::new(false)),
+            has_focus: Rc::new(RefCell::new(false)),
         });
 
         // Connect value change handlers
         panel.setup_handlers();
+        
+        // Setup focus tracking for all spin buttons
+        panel.setup_focus_tracking();
 
         panel
     }
@@ -337,6 +344,11 @@ impl PropertiesPanel {
     }
 
     pub fn update_from_selection(&self) {
+        // Don't update if any widget has focus (user is editing)
+        if *self.has_focus.borrow() {
+            return;
+        }
+        
         let designer_state = self.state.borrow();
         
         if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
@@ -397,5 +409,36 @@ impl PropertiesPanel {
             self.height_spin.set_sensitive(false);
             self.rotation_spin.set_sensitive(false);
         }
+    }
+    
+    fn setup_focus_tracking(&self) {
+        // Track focus for all spin buttons to prevent updates while user is editing
+        let spinners = vec![
+            &self.pos_x_spin,
+            &self.pos_y_spin,
+            &self.width_spin,
+            &self.height_spin,
+            &self.rotation_spin,
+        ];
+        
+        for spinner in spinners {
+            let focus_controller = EventControllerFocus::new();
+            let has_focus_enter = self.has_focus.clone();
+            focus_controller.connect_enter(move |_| {
+                *has_focus_enter.borrow_mut() = true;
+            });
+            
+            let has_focus_leave = self.has_focus.clone();
+            focus_controller.connect_leave(move |_| {
+                *has_focus_leave.borrow_mut() = false;
+            });
+            
+            spinner.add_controller(focus_controller);
+        }
+    }
+    
+    /// Clear the focus flag - call this when user interacts with the canvas
+    pub fn clear_focus(&self) {
+        *self.has_focus.borrow_mut() = false;
     }
 }
