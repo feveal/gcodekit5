@@ -11,6 +11,12 @@
   - Added "Convert to Path" and "Convert to Rectangle" to context menu.
   - Allows converting any shape to a generic path for node editing (future).
   - Allows converting shapes back to bounding rectangles.
+- **Designer**: Implemented Import functionality for DXF and SVG files.
+  - Added "Import" option to File menu.
+  - Supports importing SVG paths, rectangles, circles, ellipses, lines, polylines, and polygons.
+  - Supports importing DXF lines, circles, arcs, and polylines.
+  - Automatically scales and positions imported shapes.
+  - Supports SVG group transforms and matrix transformations.
 
 ### Fixed
 - **Designer**: Made toolbox scrollable to prevent layout issues on smaller screens.

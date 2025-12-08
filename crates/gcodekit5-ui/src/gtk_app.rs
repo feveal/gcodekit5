@@ -81,6 +81,7 @@ pub fn main() {
         file_menu.append(Some("Open"), Some("app.file_open"));
         file_menu.append(Some("Save"), Some("app.file_save"));
         file_menu.append(Some("Save As..."), Some("app.file_save_as"));
+        file_menu.append(Some("Import"), Some("app.file_import"));
         file_menu.append(Some("Export"), Some("app.file_export"));
         file_menu.append(Some("Run"), Some("app.file_run"));
         file_menu.append(Some("Quit"), Some("app.quit"));
@@ -390,6 +391,19 @@ pub fn main() {
 
         let stack_clone = stack.clone();
         let designer_clone = designer.clone();
+        let import_action = gio::SimpleAction::new("file_import", None);
+        import_action.connect_activate(move |_, _| {
+            if let Some(name) = stack_clone.visible_child_name() {
+                match name.as_str() {
+                    "designer" => designer_clone.import_file(),
+                    _ => {}
+                }
+            }
+        });
+        app.add_action(&import_action);
+
+        let stack_clone = stack.clone();
+        let designer_clone = designer.clone();
         let export_action = gio::SimpleAction::new("file_export", None);
         export_action.connect_activate(move |_, _| {
             if let Some(name) = stack_clone.visible_child_name() {
@@ -546,6 +560,7 @@ pub fn main() {
                 set_enabled("file_open", is_designer || is_editor);
                 set_enabled("file_save", is_designer || is_editor);
                 set_enabled("file_save_as", is_designer || is_editor);
+                set_enabled("file_import", is_designer);
                 set_enabled("file_export", is_designer);
             }
         });

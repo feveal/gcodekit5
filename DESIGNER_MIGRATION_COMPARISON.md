@@ -55,7 +55,7 @@ This document compares the functionality of the Designer in `gcodekit4` (Slint) 
 | Feature | Slint Implementation | GTK4 Implementation | Status | Task ID | Est. Time |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Native** | New, Open, Save (.gckd) | New, Open, Save (.gckd) | ✅ Complete | - | - |
-| **Import** | DXF, SVG Import | **Missing** | ❌ Missing | T-601 | 6h |
+| **Import** | DXF, SVG Import | DXF, SVG Import implemented | ✅ Complete | T-601 | 6h |
 | **Export** | G-Code, SVG Export | **Missing** | ❌ Missing | T-602 | 4h |
 
 ## 7. Toolpath & Simulation

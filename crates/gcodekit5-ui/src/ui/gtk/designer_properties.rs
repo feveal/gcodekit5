@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Label, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus, DropDown, StringList, Expression};
+use gtk4::{Box, Label, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus, DropDown, StringList, Expression, Entry};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -16,6 +16,9 @@ pub struct PropertiesPanel {
     width_spin: SpinButton,
     height_spin: SpinButton,
     rotation_spin: SpinButton,
+    // Text widgets
+    text_entry: Entry,
+    font_size_spin: SpinButton,
     // CAM widgets
     op_type_combo: DropDown,
     depth_spin: SpinButton,
@@ -136,6 +139,36 @@ impl PropertiesPanel {
         rot_frame.set_child(Some(&rot_grid));
         content.append(&rot_frame);
 
+        // Text Section
+        let text_frame = Self::create_section("Text");
+        let text_grid = gtk4::Grid::builder()
+            .row_spacing(8)
+            .column_spacing(8)
+            .margin_start(8)
+            .margin_end(8)
+            .margin_top(8)
+            .margin_bottom(8)
+            .build();
+
+        let text_content_label = Label::new(Some("Content:"));
+        text_content_label.set_halign(gtk4::Align::Start);
+        let text_entry = Entry::new();
+        text_entry.set_hexpand(true);
+
+        let font_size_label = Label::new(Some("Size:"));
+        font_size_label.set_halign(gtk4::Align::Start);
+        let font_size_spin = SpinButton::with_range(1.0, 1000.0, 1.0);
+        font_size_spin.set_digits(1);
+        font_size_spin.set_hexpand(true);
+
+        text_grid.attach(&text_content_label, 0, 0, 1, 1);
+        text_grid.attach(&text_entry, 1, 0, 1, 1);
+        text_grid.attach(&font_size_label, 0, 1, 1, 1);
+        text_grid.attach(&font_size_spin, 1, 1, 1, 1);
+
+        text_frame.set_child(Some(&text_grid));
+        content.append(&text_frame);
+
         // CAM Properties Section
         let cam_frame = Self::create_section("CAM Properties");
         let cam_grid = gtk4::Grid::builder()
@@ -214,6 +247,8 @@ impl PropertiesPanel {
             width_spin: width_spin.clone(),
             height_spin: height_spin.clone(),
             rotation_spin: rotation_spin.clone(),
+            text_entry: text_entry.clone(),
+            font_size_spin: font_size_spin.clone(),
             op_type_combo: op_type_combo.clone(),
             depth_spin: depth_spin.clone(),
             step_down_spin: step_down_spin.clone(),
@@ -387,11 +422,57 @@ impl PropertiesPanel {
         });
 
         let state = self.state.clone();
+        let redraw6 = self.redraw_callback.clone();
         let updating6 = self.updating.clone();
+
+        // Text Content changed
+        self.text_entry.connect_changed(move |entry| {
+            if *updating6.borrow() { return; }
+            let mut designer_state = state.borrow_mut();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                let text = entry.text().to_string();
+                
+                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                    if let Shape::Text(text_shape) = &mut obj.shape {
+                        text_shape.text = text;
+                    }
+                }
+            }
+            drop(designer_state);
+            if let Some(ref cb) = *redraw6.borrow() {
+                cb();
+            }
+        });
+
+        let state = self.state.clone();
+        let redraw7 = self.redraw_callback.clone();
+        let updating7 = self.updating.clone();
+
+        // Font Size changed
+        self.font_size_spin.connect_value_changed(move |spin| {
+            if *updating7.borrow() { return; }
+            let mut designer_state = state.borrow_mut();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                let size = spin.value();
+                
+                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                    if let Shape::Text(text_shape) = &mut obj.shape {
+                        text_shape.font_size = size;
+                    }
+                }
+            }
+            drop(designer_state);
+            if let Some(ref cb) = *redraw7.borrow() {
+                cb();
+            }
+        });
+
+        let state = self.state.clone();
+        let updating8 = self.updating.clone();
         
         // Operation Type changed
         self.op_type_combo.connect_selected_notify(move |combo| {
-            if *updating6.borrow() { return; }
+            if *updating8.borrow() { return; }
             let mut designer_state = state.borrow_mut();
             let is_pocket = combo.selected() == 1;
             let depth = designer_state.canvas.shapes().find(|s| s.selected).map(|s| s.pocket_depth).unwrap_or(0.0);
@@ -399,43 +480,43 @@ impl PropertiesPanel {
         });
 
         let state = self.state.clone();
-        let updating7 = self.updating.clone();
+        let updating9 = self.updating.clone();
         let op_combo = self.op_type_combo.clone();
 
         // Pocket Depth changed
         self.depth_spin.connect_value_changed(move |spin| {
-            if *updating7.borrow() { return; }
+            if *updating9.borrow() { return; }
             let mut designer_state = state.borrow_mut();
             let is_pocket = op_combo.selected() == 1;
             designer_state.set_selected_pocket_properties(is_pocket, spin.value());
         });
 
         let state = self.state.clone();
-        let updating8 = self.updating.clone();
+        let updating10 = self.updating.clone();
 
         // Step Down changed
         self.step_down_spin.connect_value_changed(move |spin| {
-            if *updating8.borrow() { return; }
+            if *updating10.borrow() { return; }
             let mut designer_state = state.borrow_mut();
             designer_state.set_selected_step_down(spin.value());
         });
 
         let state = self.state.clone();
-        let updating9 = self.updating.clone();
+        let updating11 = self.updating.clone();
 
         // Step In changed
         self.step_in_spin.connect_value_changed(move |spin| {
-            if *updating9.borrow() { return; }
+            if *updating11.borrow() { return; }
             let mut designer_state = state.borrow_mut();
             designer_state.set_selected_step_in(spin.value());
         });
 
         let state = self.state.clone();
-        let updating10 = self.updating.clone();
+        let updating12 = self.updating.clone();
 
         // Strategy changed
         self.strategy_combo.connect_selected_notify(move |combo| {
-            if *updating10.borrow() { return; }
+            if *updating12.borrow() { return; }
             let mut designer_state = state.borrow_mut();
             let strategy = match combo.selected() {
                 0 => PocketStrategy::Raster { angle: 0.0, bidirectional: true },
@@ -468,6 +549,12 @@ impl PropertiesPanel {
                 // For line, x,y is start point, width/height define end point
                 line.start = Point::new(x, y);
                 line.end = Point::new(x + width, y + height);
+            }
+            Shape::Text(text) => {
+                text.x = x;
+                text.y = y;
+                // Width/Height are derived from font size and content, so we don't update them here
+                // unless we want to implement scaling via width/height
             }
             _ => {
                 // Other shapes not yet implemented
@@ -506,6 +593,13 @@ impl PropertiesPanel {
             // Set flag to prevent feedback loop during updates
             *self.updating.borrow_mut() = true;
 
+            // Enable all controls by default
+            self.pos_x_spin.set_sensitive(true);
+            self.pos_y_spin.set_sensitive(true);
+            self.width_spin.set_sensitive(true);
+            self.height_spin.set_sensitive(true);
+            self.rotation_spin.set_sensitive(true);
+
             // Update spin buttons based on shape type
             match shape {
                 Shape::Rectangle(rect) => {
@@ -514,6 +608,11 @@ impl PropertiesPanel {
                     self.width_spin.set_value(rect.width);
                     self.height_spin.set_value(rect.height);
                     self.rotation_spin.set_value(rect.rotation.to_degrees());
+                    
+                    self.text_entry.set_text("");
+                    self.text_entry.set_sensitive(false);
+                    self.font_size_spin.set_value(0.0);
+                    self.font_size_spin.set_sensitive(false);
                 }
                 Shape::Circle(circle) => {
                     self.pos_x_spin.set_value(circle.center.x);
@@ -521,6 +620,11 @@ impl PropertiesPanel {
                     self.width_spin.set_value(circle.radius * 2.0);
                     self.height_spin.set_value(circle.radius * 2.0);
                     self.rotation_spin.set_value(circle.rotation.to_degrees());
+                    
+                    self.text_entry.set_text("");
+                    self.text_entry.set_sensitive(false);
+                    self.font_size_spin.set_value(0.0);
+                    self.font_size_spin.set_sensitive(false);
                 }
                 Shape::Ellipse(ellipse) => {
                     self.pos_x_spin.set_value(ellipse.center.x);
@@ -528,6 +632,11 @@ impl PropertiesPanel {
                     self.width_spin.set_value(ellipse.rx * 2.0);
                     self.height_spin.set_value(ellipse.ry * 2.0);
                     self.rotation_spin.set_value(ellipse.rotation.to_degrees());
+                    
+                    self.text_entry.set_text("");
+                    self.text_entry.set_sensitive(false);
+                    self.font_size_spin.set_value(0.0);
+                    self.font_size_spin.set_sensitive(false);
                 }
                 Shape::Line(line) => {
                     self.pos_x_spin.set_value(line.start.x);
@@ -535,18 +644,37 @@ impl PropertiesPanel {
                     self.width_spin.set_value(line.end.x - line.start.x);
                     self.height_spin.set_value(line.end.y - line.start.y);
                     self.rotation_spin.set_value(0.0);
+                    
+                    self.text_entry.set_text("");
+                    self.text_entry.set_sensitive(false);
+                    self.font_size_spin.set_value(0.0);
+                    self.font_size_spin.set_sensitive(false);
+                }
+                Shape::Text(text) => {
+                    self.pos_x_spin.set_value(text.x);
+                    self.pos_y_spin.set_value(text.y);
+                    // Width/Height are derived, maybe show bounding box size?
+                    let (x1, y1, x2, y2) = text.bounding_box();
+                    self.width_spin.set_value(x2 - x1);
+                    self.height_spin.set_value(y2 - y1);
+                    self.rotation_spin.set_value(text.rotation.to_degrees());
+                    
+                    self.width_spin.set_sensitive(false);
+                    self.height_spin.set_sensitive(false);
+                    
+                    self.text_entry.set_text(&text.text);
+                    self.text_entry.set_sensitive(true);
+                    self.font_size_spin.set_value(text.font_size);
+                    self.font_size_spin.set_sensitive(true);
                 }
                 _ => {
                     // Other shapes
+                    self.text_entry.set_text("");
+                    self.text_entry.set_sensitive(false);
+                    self.font_size_spin.set_value(0.0);
+                    self.font_size_spin.set_sensitive(false);
                 }
             }
-
-            // Enable all controls
-            self.pos_x_spin.set_sensitive(true);
-            self.pos_y_spin.set_sensitive(true);
-            self.width_spin.set_sensitive(true);
-            self.height_spin.set_sensitive(true);
-            self.rotation_spin.set_sensitive(true);
             
             // Update CAM properties
             self.op_type_combo.set_selected(match op_type {
@@ -579,6 +707,9 @@ impl PropertiesPanel {
             self.height_spin.set_sensitive(false);
             self.rotation_spin.set_sensitive(false);
             
+            self.text_entry.set_sensitive(false);
+            self.font_size_spin.set_sensitive(false);
+            
             self.op_type_combo.set_sensitive(false);
             self.depth_spin.set_sensitive(false);
             self.step_down_spin.set_sensitive(false);
@@ -595,6 +726,7 @@ impl PropertiesPanel {
             &self.width_spin,
             &self.height_spin,
             &self.rotation_spin,
+            &self.font_size_spin,
             &self.depth_spin,
             &self.step_down_spin,
             &self.step_in_spin,
@@ -614,6 +746,19 @@ impl PropertiesPanel {
             
             spinner.add_controller(focus_controller);
         }
+
+        // Track focus for text entry
+        let focus_controller = EventControllerFocus::new();
+        let has_focus_enter = self.has_focus.clone();
+        focus_controller.connect_enter(move |_| {
+            *has_focus_enter.borrow_mut() = true;
+        });
+        
+        let has_focus_leave = self.has_focus.clone();
+        focus_controller.connect_leave(move |_| {
+            *has_focus_leave.borrow_mut() = false;
+        });
+        self.text_entry.add_controller(focus_controller);
     }
     
     /// Clear the focus flag - call this when user interacts with the canvas

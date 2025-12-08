@@ -2371,6 +2371,93 @@ impl DesignerView {
         dialog.show();
     }
 
+    pub fn import_file(&self) {
+        let dialog = FileChooserNative::builder()
+            .title("Import Design File")
+            .action(FileChooserAction::Open)
+            .modal(true)
+            .build();
+            
+        if let Some(root) = self.widget.root() {
+            if let Some(window) = root.downcast_ref::<gtk4::Window>() {
+                dialog.set_transient_for(Some(window));
+            }
+        }
+        
+        let filter = gtk4::FileFilter::new();
+        filter.set_name(Some("Supported Files"));
+        filter.add_pattern("*.svg");
+        filter.add_pattern("*.dxf");
+        dialog.add_filter(&filter);
+        
+        let svg_filter = gtk4::FileFilter::new();
+        svg_filter.set_name(Some("SVG Files"));
+        svg_filter.add_pattern("*.svg");
+        dialog.add_filter(&svg_filter);
+
+        let dxf_filter = gtk4::FileFilter::new();
+        dxf_filter.set_name(Some("DXF Files"));
+        dxf_filter.add_pattern("*.dxf");
+        dialog.add_filter(&dxf_filter);
+        
+        let canvas = self.canvas.clone();
+        let layers = self.layers.clone();
+        let status_label = self.status_label.clone();
+        
+        dialog.connect_response(move |dialog, response| {
+            if response == ResponseType::Accept {
+                if let Some(file) = dialog.file() {
+                    if let Some(path) = file.path() {
+                        let result = if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                            match ext.to_lowercase().as_str() {
+                                "svg" => {
+                                    match std::fs::read_to_string(&path) {
+                                        Ok(content) => {
+                                            let importer = gcodekit5_designer::import::SvgImporter::new(1.0, 0.0, 0.0);
+                                            importer.import_string(&content)
+                                        },
+                                        Err(e) => Err(anyhow::anyhow!("Failed to read file: {}", e)),
+                                    }
+                                },
+                                "dxf" => {
+                                    let importer = gcodekit5_designer::import::DxfImporter::new(1.0, 0.0, 0.0);
+                                    importer.import_file(path.to_str().unwrap_or(""))
+                                },
+                                _ => Err(anyhow::anyhow!("Unsupported file format")),
+                            }
+                        } else {
+                            Err(anyhow::anyhow!("Unknown file extension"))
+                        };
+
+                        match result {
+                            Ok(design) => {
+                                let mut state = canvas.state.borrow_mut();
+                                
+                                // Add imported shapes to canvas
+                                for shape in design.shapes {
+                                    state.canvas.add_shape(shape);
+                                }
+                                
+                                drop(state);
+                                
+                                layers.refresh(&canvas.state);
+                                canvas.widget.queue_draw();
+                                status_label.set_text(&format!("Imported: {}", path.display()));
+                            }
+                            Err(e) => {
+                                eprintln!("Error importing file: {}", e);
+                                status_label.set_text(&format!("Error importing file: {}", e));
+                            }
+                        }
+                    }
+                }
+            }
+            dialog.destroy();
+        });
+        
+        dialog.show();
+    }
+
     pub fn save_file(&self) {
         let current_path = self.current_file.borrow().clone();
         
