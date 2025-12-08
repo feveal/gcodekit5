@@ -64,6 +64,7 @@ impl DesignerToolbox {
     pub fn new(state: Rc<RefCell<DesignerState>>) -> Rc<Self> {
         let main_container = Box::new(Orientation::Vertical, 0);
         main_container.set_width_request(60);
+        main_container.set_hexpand(false);
         main_container.add_css_class("designer-toolbox");
         main_container.set_margin_top(5);
         main_container.set_margin_bottom(5);
@@ -73,7 +74,7 @@ impl DesignerToolbox {
         let scrolled = ScrolledWindow::builder()
             .hscrollbar_policy(PolicyType::Never)
             .vscrollbar_policy(PolicyType::Automatic)
-            .hexpand(true)
+            .hexpand(false)
             .vexpand(true)
             .build();
 
@@ -95,6 +96,7 @@ impl DesignerToolbox {
         for tool in tools.iter() {
             let btn = Button::new();
             btn.set_size_request(50, 50);
+            btn.set_halign(Align::Center);
             btn.set_tooltip_text(Some(tool.tooltip()));
             
             // Use icon from compiled resources
