@@ -856,7 +856,9 @@ impl DesignerCanvas {
                 }
             }
 
-            *self.creation_current.borrow_mut() = Some((current_x, current_y));
+            if tool != DesignerTool::Pan {
+                *self.creation_current.borrow_mut() = Some((current_x, current_y));
+            }
             
             // If in select mode, handle resizing or moving
             if tool == DesignerTool::Select {
