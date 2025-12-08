@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation, FileChooserAction, FileChooserNative, ResponseType, Grid, Scrollbar, Adjustment, Overlay};
+use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation, FileChooserAction, FileChooserNative, ResponseType, Grid, Scrollbar, Adjustment, Overlay, Popover, Separator};
 use gtk4::gdk::{Key, ModifierType};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -22,6 +22,7 @@ enum ResizeHandle {
     BottomRight,
 }
 
+#[derive(Clone)]
 pub struct DesignerCanvas {
     pub widget: DrawingArea,
     state: Rc<RefCell<DesignerState>>,
@@ -151,6 +152,7 @@ impl DesignerCanvas {
 
         // Interaction controllers
         let click_gesture = GestureClick::new();
+        click_gesture.set_button(1); // Left click only
         let canvas_click = canvas.clone();
         click_gesture.connect_pressed(move |gesture, _n_press, x, y| {
             let modifiers = gesture.current_event_state();
@@ -166,6 +168,15 @@ impl DesignerCanvas {
         });
         
         widget.add_controller(click_gesture);
+
+        // Right click gesture
+        let right_click_gesture = GestureClick::new();
+        right_click_gesture.set_button(3); // Right click
+        let canvas_right_click = canvas.clone();
+        right_click_gesture.connect_pressed(move |_gesture, _n_press, x, y| {
+            canvas_right_click.handle_right_click(x, y);
+        });
+        widget.add_controller(right_click_gesture);
 
         let drag_gesture = GestureDrag::new();
         let canvas_drag = canvas.clone();
@@ -316,6 +327,67 @@ impl DesignerCanvas {
         }
         
         self.widget.queue_draw();
+    }
+
+    fn handle_right_click(&self, x: f64, y: f64) {
+        let state = self.state.borrow();
+        let has_selection = state.canvas.selection_manager.selected_id().is_some();
+        let can_paste = !state.clipboard.is_empty();
+        let can_group = state.can_group();
+        let can_ungroup = state.can_ungroup();
+        drop(state);
+
+        let menu = Popover::new();
+        menu.set_parent(&self.widget);
+        menu.set_has_arrow(false);
+        // Set position
+        let rect = gtk4::gdk::Rectangle::new(x as i32, y as i32, 1, 1);
+        menu.set_pointing_to(Some(&rect));
+
+        let vbox = Box::new(Orientation::Vertical, 0);
+        vbox.add_css_class("context-menu");
+
+        // Helper to create menu items
+        let create_item = |label: &str, action: &str, enabled: bool| {
+            let btn = gtk4::Button::builder()
+                .label(label)
+                .has_frame(false)
+                .halign(gtk4::Align::Start)
+                .build();
+            btn.set_sensitive(enabled);
+            
+            let canvas = self.clone();
+            let menu_clone = menu.clone();
+            let action_name = action.to_string();
+            
+            btn.connect_clicked(move |_| {
+                menu_clone.popdown();
+                match action_name.as_str() {
+                    "cut" => canvas.cut(),
+                    "copy" => canvas.copy_selected(),
+                    "paste" => canvas.paste(),
+                    "delete" => canvas.delete_selected(),
+                    "group" => canvas.group_selected(),
+                    "ungroup" => canvas.ungroup_selected(),
+                    _ => {}
+                }
+            });
+            
+            btn
+        };
+
+        vbox.append(&create_item("Cut", "cut", has_selection));
+        vbox.append(&create_item("Copy", "copy", has_selection));
+        vbox.append(&create_item("Paste", "paste", can_paste));
+        vbox.append(&create_item("Delete", "delete", has_selection));
+        
+        vbox.append(&Separator::new(Orientation::Horizontal));
+        
+        vbox.append(&create_item("Group", "group", can_group));
+        vbox.append(&create_item("Ungroup", "ungroup", can_ungroup));
+
+        menu.set_child(Some(&vbox));
+        menu.popup();
     }
 
     fn handle_click(&self, x: f64, y: f64, ctrl_pressed: bool) {
@@ -793,6 +865,32 @@ impl DesignerCanvas {
         
         self.widget.queue_draw();
     }
+
+    pub fn group_selected(&self) {
+        let mut state = self.state.borrow_mut();
+        state.group_selected();
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
+
+    pub fn ungroup_selected(&self) {
+        let mut state = self.state.borrow_mut();
+        state.ungroup_selected();
+        drop(state);
+        
+        // Refresh layers panel
+        if let Some(layers_panel) = self.layers.borrow().as_ref() {
+            layers_panel.refresh(&self.state);
+        }
+        
+        self.widget.queue_draw();
+    }
     
     pub fn copy_selected(&self) {
         let mut state = self.state.borrow_mut();
@@ -800,6 +898,11 @@ impl DesignerCanvas {
             .filter(|s| s.selected)
             .cloned()
             .collect();
+    }
+
+    pub fn cut(&self) {
+        self.copy_selected();
+        self.delete_selected();
     }
     
     pub fn paste(&self) {
@@ -1590,6 +1693,20 @@ impl DesignerView {
                 // Ctrl+D - Duplicate
                 (Key::d, true) | (Key::D, true) => {
                     canvas_keys.duplicate_selected();
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+G - Group (Shift+G for Ungroup)
+                (Key::g, true) | (Key::G, true) => {
+                    if modifiers.contains(ModifierType::SHIFT_MASK) {
+                        canvas_keys.ungroup_selected();
+                    } else {
+                        canvas_keys.group_selected();
+                    }
+                    gtk4::glib::Propagation::Stop
+                }
+                // Ctrl+U - Ungroup
+                (Key::u, true) | (Key::U, true) => {
+                    canvas_keys.ungroup_selected();
                     gtk4::glib::Propagation::Stop
                 }
                 // Delete or Backspace - Delete selected
