@@ -1,0 +1,487 @@
+//! File operations for the Designer panel
+//!
+//! Handles save, load, export, and import operations for design files.
+
+use gtk4::prelude::*;
+use gtk4::{FileDialog, FileFilter, Window};
+use std::path::PathBuf;
+use anyhow::{Context, Result};
+
+use gcodekit5_designer::serialization::{DesignFile, DesignMetadata, ViewportState, ShapeData};
+use chrono::Utc;
+
+/// File operation type
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FileOperation {
+    New,
+    Open,
+    Save,
+    SaveAs,
+    ExportGCode,
+    ExportSvg,
+    ExportDxf,
+    ImportSvg,
+    ImportDxf,
+}
+
+/// Result of a file operation
+pub struct FileOpResult {
+    pub success: bool,
+    pub path: Option<PathBuf>,
+    pub message: Option<String>,
+}
+
+/// Creates file dialog for designer operations
+pub fn create_file_dialog(operation: FileOperation) -> FileDialog {
+    let dialog = FileDialog::new();
+    
+    match operation {
+        FileOperation::Open => {
+            dialog.set_title(Some("Open Design"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("GCodeKit Design Files"));
+            filter.add_pattern("*.gckd");
+            filter.add_pattern("*.gck5");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::Save | FileOperation::SaveAs => {
+            dialog.set_title(Some("Save Design"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("GCodeKit Design Files"));
+            filter.add_pattern("*.gckd");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::ExportGCode => {
+            dialog.set_title(Some("Export G-Code"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("G-Code Files"));
+            filter.add_pattern("*.gcode");
+            filter.add_pattern("*.nc");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::ExportSvg => {
+            dialog.set_title(Some("Export SVG"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("SVG Files"));
+            filter.add_pattern("*.svg");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::ExportDxf => {
+            dialog.set_title(Some("Export DXF"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("DXF Files"));
+            filter.add_pattern("*.dxf");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::ImportSvg => {
+            dialog.set_title(Some("Import SVG"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("SVG Files"));
+            filter.add_pattern("*.svg");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::ImportDxf => {
+            dialog.set_title(Some("Import DXF"));
+            let filter = FileFilter::new();
+            filter.set_name(Some("DXF Files"));
+            filter.add_pattern("*.dxf");
+            let filters = gio::ListStore::new::<FileFilter>();
+            filters.append(&filter);
+            dialog.set_filters(Some(&filters));
+        }
+        FileOperation::New => {
+            // New doesn't need a dialog
+        }
+    }
+    
+    dialog
+}
+
+/// Save design to file
+pub fn save_design_to_file(
+    shapes: &[gcodekit5_designer::shapes::Shape],
+    zoom: f64,
+    pan_x: f64,
+    pan_y: f64,
+    path: &PathBuf,
+) -> Result<()> {
+    let shape_data: Vec<ShapeData> = shapes.iter().map(|s| shape_to_data(s)).collect();
+    
+    let design_file = DesignFile {
+        version: "1.0".to_string(),
+        metadata: DesignMetadata {
+            name: path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("Untitled")
+                .to_string(),
+            created: Utc::now(),
+            modified: Utc::now(),
+            author: whoami::username(),
+            description: String::new(),
+        },
+        viewport: ViewportState { zoom, pan_x, pan_y },
+        shapes: shape_data,
+        default_properties: None,
+        toolpath_params: Default::default(),
+    };
+    
+    let json = serde_json::to_string_pretty(&design_file)
+        .context("Failed to serialize design")?;
+    
+    std::fs::write(path, json)
+        .context("Failed to write design file")?;
+    
+    Ok(())
+}
+
+/// Load design from file
+pub fn load_design_from_file(path: &PathBuf) -> Result<(Vec<gcodekit5_designer::shapes::Shape>, f64, f64, f64)> {
+    let json = std::fs::read_to_string(path)
+        .context("Failed to read design file")?;
+    
+    let design_file: DesignFile = serde_json::from_str(&json)
+        .context("Failed to parse design file")?;
+    
+    let shapes: Vec<gcodekit5_designer::shapes::Shape> = design_file
+        .shapes
+        .iter()
+        .map(|d| data_to_shape(d))
+        .collect();
+    
+    Ok((
+        shapes,
+        design_file.viewport.zoom,
+        design_file.viewport.pan_x,
+        design_file.viewport.pan_y,
+    ))
+}
+
+/// Convert Shape to ShapeData for serialization
+fn shape_to_data(shape: &gcodekit5_designer::shapes::Shape) -> ShapeData {
+    use gcodekit5_designer::shapes::Shape;
+    
+    match shape {
+        Shape::Rectangle(rect) => ShapeData {
+            id: 0, // Will be assigned by canvas
+            shape_type: "rectangle".to_string(),
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            points: vec![],
+            selected: false,
+            use_custom_values: false,
+            operation_type: String::new(),
+            pocket_depth: 0.0,
+            step_down: 0.0,
+            step_in: 0.0,
+            text_content: String::new(),
+            font_size: 12.0,
+            path_data: String::new(),
+            group_id: None,
+            corner_radius: rect.corner_radius,
+            is_slot: rect.is_slot,
+            rotation: rect.rotation,
+        },
+        Shape::Circle(circle) => ShapeData {
+            id: 0,
+            shape_type: "circle".to_string(),
+            x: circle.cx,
+            y: circle.cy,
+            width: circle.radius * 2.0,
+            height: circle.radius * 2.0,
+            points: vec![],
+            selected: false,
+            use_custom_values: false,
+            operation_type: String::new(),
+            pocket_depth: 0.0,
+            step_down: 0.0,
+            step_in: 0.0,
+            text_content: String::new(),
+            font_size: 12.0,
+            path_data: String::new(),
+            group_id: None,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        },
+        Shape::Line(line) => ShapeData {
+            id: 0,
+            shape_type: "line".to_string(),
+            x: line.x1,
+            y: line.y1,
+            width: line.x2 - line.x1,
+            height: line.y2 - line.y1,
+            points: vec![],
+            selected: false,
+            use_custom_values: false,
+            operation_type: String::new(),
+            pocket_depth: 0.0,
+            step_down: 0.0,
+            step_in: 0.0,
+            text_content: String::new(),
+            font_size: 12.0,
+            path_data: String::new(),
+            group_id: None,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        },
+        Shape::Ellipse(ellipse) => ShapeData {
+            id: 0,
+            shape_type: "ellipse".to_string(),
+            x: ellipse.cx,
+            y: ellipse.cy,
+            width: ellipse.rx * 2.0,
+            height: ellipse.ry * 2.0,
+            points: vec![],
+            selected: false,
+            use_custom_values: false,
+            operation_type: String::new(),
+            pocket_depth: 0.0,
+            step_down: 0.0,
+            step_in: 0.0,
+            text_content: String::new(),
+            font_size: 12.0,
+            path_data: String::new(),
+            group_id: None,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        },
+        _ => ShapeData {
+            id: 0,
+            shape_type: "rectangle".to_string(),
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+            points: vec![],
+            selected: false,
+            use_custom_values: false,
+            operation_type: String::new(),
+            pocket_depth: 0.0,
+            step_down: 0.0,
+            step_in: 0.0,
+            text_content: String::new(),
+            font_size: 12.0,
+            path_data: String::new(),
+            group_id: None,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        },
+    }
+}
+
+/// Convert ShapeData to Shape for deserialization
+fn data_to_shape(data: &ShapeData) -> gcodekit5_designer::shapes::Shape {
+    use gcodekit5_designer::shapes::{Shape, Rectangle, Circle, Line, Ellipse};
+    
+    match data.shape_type.as_str() {
+        "rectangle" => Shape::Rectangle(Rectangle {
+            x: data.x,
+            y: data.y,
+            width: data.width,
+            height: data.height,
+            corner_radius: data.corner_radius,
+            is_slot: data.is_slot,
+            rotation: data.rotation,
+        }),
+        "circle" => Shape::Circle(Circle {
+            cx: data.x,
+            cy: data.y,
+            radius: data.width / 2.0,
+        }),
+        "line" => Shape::Line(Line {
+            x1: data.x,
+            y1: data.y,
+            x2: data.x + data.width,
+            y2: data.y + data.height,
+        }),
+        "ellipse" => Shape::Ellipse(Ellipse {
+            cx: data.x,
+            cy: data.y,
+            rx: data.width / 2.0,
+            ry: data.height / 2.0,
+            rotation: data.rotation,
+        }),
+        _ => Shape::Rectangle(Rectangle {
+            x: data.x,
+            y: data.y,
+            width: 10.0,
+            height: 10.0,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        }),
+    }
+}
+
+/// Export design to SVG
+pub fn export_to_svg(
+    shapes: &[gcodekit5_designer::shapes::Shape],
+    path: &PathBuf,
+) -> Result<()> {
+    use gcodekit5_designer::shapes::Shape;
+    
+    // Calculate bounding box
+    let mut min_x = f64::MAX;
+    let mut min_y = f64::MAX;
+    let mut max_x = f64::MIN;
+    let mut max_y = f64::MIN;
+    
+    for shape in shapes {
+        match shape {
+            Shape::Rectangle(rect) => {
+                min_x = min_x.min(rect.x);
+                min_y = min_y.min(rect.y);
+                max_x = max_x.max(rect.x + rect.width);
+                max_y = max_y.max(rect.y + rect.height);
+            }
+            Shape::Circle(circle) => {
+                min_x = min_x.min(circle.cx - circle.radius);
+                min_y = min_y.min(circle.cy - circle.radius);
+                max_x = max_x.max(circle.cx + circle.radius);
+                max_y = max_y.max(circle.cy + circle.radius);
+            }
+            Shape::Line(line) => {
+                min_x = min_x.min(line.x1.min(line.x2));
+                min_y = min_y.min(line.y1.min(line.y2));
+                max_x = max_x.max(line.x1.max(line.x2));
+                max_y = max_y.max(line.y1.max(line.y2));
+            }
+            Shape::Ellipse(ellipse) => {
+                min_x = min_x.min(ellipse.cx - ellipse.rx);
+                min_y = min_y.min(ellipse.cy - ellipse.ry);
+                max_x = max_x.max(ellipse.cx + ellipse.rx);
+                max_y = max_y.max(ellipse.cy + ellipse.ry);
+            }
+            _ => {}
+        }
+    }
+    
+    let width = (max_x - min_x).max(100.0);
+    let height = (max_y - min_y).max(100.0);
+    
+    let mut svg = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}" viewBox="{} {} {} {}">
+"#,
+        width, height, min_x, min_y, width, height
+    );
+    
+    // Add shapes
+    for shape in shapes {
+        match shape {
+            Shape::Rectangle(rect) => {
+                svg.push_str(&format!(
+                    r#"  <rect x="{}" y="{}" width="{}" height="{}" fill="none" stroke="black" stroke-width="1"/>
+"#,
+                    rect.x, rect.y, rect.width, rect.height
+                ));
+            }
+            Shape::Circle(circle) => {
+                svg.push_str(&format!(
+                    r#"  <circle cx="{}" cy="{}" r="{}" fill="none" stroke="black" stroke-width="1"/>
+"#,
+                    shape.x, shape.y, radius
+                ));
+            }
+            Shape::Line(line) => {
+                svg.push_str(&format!(
+                    r#"  <line x1="{}" y1="{}" x2="{}" y2="{}" stroke="black" stroke-width="1"/>
+"#,
+                    line.x1, line.y1, line.x2, line.y2
+                ));
+            }
+            Shape::Ellipse(ellipse) => {
+                svg.push_str(&format!(
+                    r#"  <ellipse cx="{}" cy="{}" rx="{}" ry="{}" fill="none" stroke="black" stroke-width="1"/>
+"#,
+                    ellipse.cx, ellipse.cy, ellipse.rx, ellipse.ry
+                ));
+            }
+            _ => {}
+        }
+    }
+    
+    svg.push_str("</svg>\n");
+    
+    std::fs::write(path, svg)
+        .context("Failed to write SVG file")?;
+    
+    Ok(())
+}
+
+/// Export design to G-Code
+pub fn export_to_gcode(
+    shapes: &[gcodekit5_designer::shapes::Shape],
+    path: &PathBuf,
+) -> Result<()> {
+    use gcodekit5_designer::shapes::Shape;
+    
+    let mut gcode = String::new();
+    
+    // Header
+    gcode.push_str("G21 ; Set units to millimeters\n");
+    gcode.push_str("G90 ; Absolute positioning\n");
+    gcode.push_str("G17 ; XY plane selection\n");
+    gcode.push_str("M3 S1000 ; Spindle on\n");
+    gcode.push_str("G0 Z5.0 ; Safe height\n\n");
+    
+    // Process each shape
+    for shape in shapes {
+        gcode.push_str("; Shape\n");
+        
+        match shape {
+            Shape::Rectangle(rect) => {
+                gcode.push_str(&format!("G0 X{:.3} Y{:.3}\n", rect.x, rect.y));
+                gcode.push_str("G0 Z0.0\n");
+                gcode.push_str(&format!("G1 X{:.3} Y{:.3} F300\n", rect.x + rect.width, rect.y));
+                gcode.push_str(&format!("G1 X{:.3} Y{:.3}\n", rect.x + rect.width, rect.y + rect.height));
+                gcode.push_str(&format!("G1 X{:.3} Y{:.3}\n", rect.x, rect.y + rect.height));
+                gcode.push_str(&format!("G1 X{:.3} Y{:.3}\n", rect.x, rect.y));
+                gcode.push_str("G0 Z5.0\n\n");
+            }
+            Shape::Circle(circle) => {
+                gcode.push_str(&format!("G0 X{:.3} Y{:.3}\n", circle.cx + circle.radius, circle.cy));
+                gcode.push_str("G0 Z0.0\n");
+                gcode.push_str(&format!("G2 X{:.3} Y{:.3} I{:.3} J{:.3} F300\n", 
+                    circle.cx + circle.radius, circle.cy, -circle.radius, 0.0));
+                gcode.push_str("G0 Z5.0\n\n");
+            }
+            Shape::Line(line) => {
+                gcode.push_str(&format!("G0 X{:.3} Y{:.3}\n", line.x1, line.y1));
+                gcode.push_str("G0 Z0.0\n");
+                gcode.push_str(&format!("G1 X{:.3} Y{:.3} F300\n", line.x2, line.y2));
+                gcode.push_str("G0 Z5.0\n\n");
+            }
+            _ => {}
+        }
+    }
+    
+    // Footer
+    gcode.push_str("M5 ; Spindle off\n");
+    gcode.push_str("G0 Z10.0 ; Safe height\n");
+    gcode.push_str("G0 X0 Y0 ; Return to origin\n");
+    gcode.push_str("M2 ; Program end\n");
+    
+    std::fs::write(path, gcode)
+        .context("Failed to write G-Code file")?;
+    
+    Ok(())
+}

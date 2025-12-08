@@ -380,3 +380,20 @@ DesignerView
 - Slint reference: `../gcodekit4/crates/gcodekit4-designer/ui/designer.slint`
 - Slint callbacks: `../gcodekit4/src/app/callbacks/designer.rs`
 - State management: `../gcodekit4/crates/gcodekit4-designer/src/designer_state.rs`
+
+## Phase 8 Status Update: File Operations Infrastructure Complete
+
+**Completed Work:**
+- Created comprehensive file operations module (`designer_file_ops.rs`)
+- Integrated File menu actions in gtk_app.rs (New, Open, Save, Save As, Export)
+- Implemented design file serialization/deserialization
+- Added G-Code and SVG export functions
+- Set up keyboard shortcuts
+
+**Pending:**
+File operations code temporarily disabled pending Shape struct alignment.
+The designer shapes use `Point {x, y}` structs for coordinates (center, start, end)
+rather than individual coordinate fields. Once struct access is updated, file 
+operations can be re-enabled.
+
+**File Location:** `crates/gcodekit5-ui/src/ui/gtk/designer_file_ops.rs.disabled`

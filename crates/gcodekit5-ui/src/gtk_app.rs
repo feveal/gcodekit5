@@ -329,6 +329,22 @@ pub fn main() {
             machine_control_clone.send_btn.emit_clicked();
         });
         app.add_action(&run_action);
+        
+        // Designer File Actions - TODO: Implement file operations
+        let new_action = gio::SimpleAction::new("file_new", None);
+        app.add_action(&new_action);
+        
+        let open_action = gio::SimpleAction::new("file_open", None);
+        app.add_action(&open_action);
+        
+        let save_action = gio::SimpleAction::new("file_save", None);
+        app.add_action(&save_action);
+        
+        let save_as_action = gio::SimpleAction::new("file_save_as", None);
+        app.add_action(&save_as_action);
+        
+        let export_action = gio::SimpleAction::new("file_export", None);
+        app.add_action(&export_action);
 
         // About Dialog Action
         let app_clone = app.clone();

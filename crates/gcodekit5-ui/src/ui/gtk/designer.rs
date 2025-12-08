@@ -10,6 +10,7 @@ use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, MoveShapes, Pas
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
 use crate::ui::gtk::designer_properties::PropertiesPanel;
 use crate::ui::gtk::designer_layers::LayersPanel;
+//use crate::ui::gtk::designer_file_ops; // Temporarily disabled
 
 pub struct DesignerCanvas {
     pub widget: DrawingArea,
@@ -952,4 +953,7 @@ impl DesignerView {
     pub fn set_status(&self, message: &str) {
         self.status_label.set_text(message);
     }
+    
+    // File operations - TODO: Implement once shape structures are aligned
+    // Phase 8 infrastructure is in place but needs shape struct updates
 }
