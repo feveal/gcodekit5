@@ -11,7 +11,7 @@ pub struct GcodeEditor {
     pub widget: Overlay,
     pub view: View,
     pub buffer: Buffer,
-    line_counter_label: Label,
+    _line_counter_label: Label,
     current_file: Rc<RefCell<Option<PathBuf>>>,
 }
 
@@ -71,7 +71,7 @@ impl GcodeEditor {
             widget: overlay,
             view: view.clone(),
             buffer: buffer.clone(),
-            line_counter_label: line_counter_label.clone(),
+            _line_counter_label: line_counter_label.clone(),
             current_file: Rc::new(RefCell::new(None)),
         };
 
@@ -206,7 +206,7 @@ impl GcodeEditor {
                                 buffer.set_text(&content);
                                 *current_file.borrow_mut() = Some(path);
                                 // Move cursor to start
-                                let mut start_iter = buffer.start_iter();
+                                let start_iter = buffer.start_iter();
                                 buffer.place_cursor(&start_iter);
                             }
                             Err(e) => {

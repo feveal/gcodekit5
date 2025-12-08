@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Button, Orientation, Image, Label};
+use gtk4::{Box, Button, Orientation, Image};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -97,9 +97,6 @@ impl DesignerToolbox {
             // Fallback logic is removed as we expect resources to be present.
             // If we wanted to be safe, we could check if the icon loaded properly, 
             // but Image::from_resource doesn't return a Result.
-            
-            let tool_clone = *tool;
-            let current_tool_clone = current_tool.clone();
             
             buttons.push(btn.clone());
             

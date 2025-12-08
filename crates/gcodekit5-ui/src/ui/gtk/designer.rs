@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse};
 use gcodekit5_designer::canvas::DrawingObject;
-use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, MoveShapes, PasteShapes};
+use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, PasteShapes};
 use gcodekit5_designer::serialization::DesignFile;
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
 use crate::ui::gtk::designer_properties::PropertiesPanel;
@@ -48,10 +48,10 @@ pub struct DesignerView {
     pub widget: Box,
     canvas: Rc<DesignerCanvas>,
     toolbox: Rc<DesignerToolbox>,
-    properties: Rc<PropertiesPanel>,
+    _properties: Rc<PropertiesPanel>,
     layers: Rc<LayersPanel>,
     status_label: Label,
-    coord_label: Label,
+    _coord_label: Label,
     current_file: Rc<RefCell<Option<PathBuf>>>,
 }
 
@@ -107,7 +107,7 @@ impl DesignerCanvas {
         let state_motion = state_clone.clone();
         motion_ctrl.connect_motion(move |_, x, y| {
             // Convert screen coords to canvas coords
-            let width = widget_motion.width() as f64;
+            let _width = widget_motion.width() as f64;
             let height = widget_motion.height() as f64;
             
             let state = state_motion.borrow();
@@ -152,14 +152,14 @@ impl DesignerCanvas {
         // Interaction controllers
         let click_gesture = GestureClick::new();
         let canvas_click = canvas.clone();
-        click_gesture.connect_pressed(move |gesture, n_press, x, y| {
+        click_gesture.connect_pressed(move |gesture, _n_press, x, y| {
             let modifiers = gesture.current_event_state();
             let ctrl_pressed = modifiers.contains(ModifierType::CONTROL_MASK);
             canvas_click.handle_click(x, y, ctrl_pressed);
         });
         
         let canvas_release = canvas.clone();
-        click_gesture.connect_released(move |gesture, n_press, x, y| {
+        click_gesture.connect_released(move |gesture, _n_press, x, y| {
             let modifiers = gesture.current_event_state();
             let ctrl_pressed = modifiers.contains(ModifierType::CONTROL_MASK);
             canvas_release.handle_release(x, y, ctrl_pressed);
@@ -169,17 +169,17 @@ impl DesignerCanvas {
 
         let drag_gesture = GestureDrag::new();
         let canvas_drag = canvas.clone();
-        drag_gesture.connect_drag_begin(move |gesture, x, y| {
+        drag_gesture.connect_drag_begin(move |_gesture, x, y| {
             canvas_drag.handle_drag_begin(x, y);
         });
         
         let canvas_drag_update = canvas.clone();
-        drag_gesture.connect_drag_update(move |gesture, offset_x, offset_y| {
+        drag_gesture.connect_drag_update(move |_gesture, offset_x, offset_y| {
             canvas_drag_update.handle_drag_update(offset_x, offset_y);
         });
         
         let canvas_drag_end = canvas.clone();
-        drag_gesture.connect_drag_end(move |gesture, offset_x, offset_y| {
+        drag_gesture.connect_drag_end(move |_gesture, offset_x, offset_y| {
             canvas_drag_end.handle_drag_end(offset_x, offset_y);
         });
         widget.add_controller(drag_gesture);
@@ -1544,10 +1544,10 @@ impl DesignerView {
             widget: container,
             canvas: canvas.clone(),
             toolbox,
-            properties: properties.clone(),
+            _properties: properties.clone(),
             layers: layers.clone(),
             status_label,
-            coord_label,
+            _coord_label: coord_label,
             current_file,
         });
         

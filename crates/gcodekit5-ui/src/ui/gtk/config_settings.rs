@@ -21,14 +21,6 @@ pub struct ConfigSettingRow {
     pub read_only: bool,
 }
 
-#[derive(Clone)]
-struct ConfigSettingsViewInner {
-    settings_manager: Rc<RefCell<SettingsManager>>,
-    settings_list: ListBox,
-    search_entry: SearchEntry,
-    category_filter: ComboBoxText,
-}
-
 impl From<&Setting> for ConfigSettingRow {
     fn from(s: &Setting) -> Self {
         let category = match s.number {
@@ -256,7 +248,7 @@ impl ConfigSettingsView {
         
         // Connect ListBox row-activated signal to handle editing
         let view_clone = view.clone();
-        settings_list.connect_row_activated(move |listbox, row| {
+        settings_list.connect_row_activated(move |_listbox, row| {
             // Get the row index
             let index = row.index();
             if index >= 0 {
@@ -580,7 +572,7 @@ impl ConfigSettingsView {
         }
     }
 
-    fn create_setting_row_static(setting: &ConfigSettingRow, parent: &Box, communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>) -> ListBoxRow {
+    fn create_setting_row_static(setting: &ConfigSettingRow, _parent: &Box, _communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>) -> ListBoxRow {
         let row = ListBoxRow::new();
         let hbox = Box::new(Orientation::Horizontal, 5);
         hbox.set_margin_start(5);
@@ -645,69 +637,6 @@ impl ConfigSettingsView {
 
     fn create_setting_row(&self, setting: &ConfigSettingRow) -> ListBoxRow {
         Self::create_setting_row_static(setting, &self.container, self.communicator.clone())
-    }
-
-    fn create_setting_row_old(&self, setting: &ConfigSettingRow) -> ListBoxRow {
-        let row = ListBoxRow::new();
-        let hbox = Box::new(Orientation::Horizontal, 5);
-        hbox.set_margin_start(5);
-        hbox.set_margin_end(5);
-        hbox.set_margin_top(8);
-        hbox.set_margin_bottom(8);
-
-        let id_lbl = Label::new(Some(&format!("${}", setting.number)));
-        id_lbl.set_width_request(50);
-        id_lbl.set_xalign(0.0);
-        if setting.read_only {
-            id_lbl.add_css_class("dim-label");
-        }
-        hbox.append(&id_lbl);
-
-        let name_lbl = Label::new(Some(&setting.name));
-        name_lbl.set_width_request(200);
-        name_lbl.set_xalign(0.0);
-        name_lbl.add_css_class("accent");
-        if setting.read_only {
-            name_lbl.add_css_class("dim-label");
-        }
-        hbox.append(&name_lbl);
-
-        let value_lbl = Label::new(Some(&setting.value));
-        value_lbl.set_width_request(100);
-        value_lbl.set_xalign(0.0);
-        value_lbl.add_css_class("success");
-        hbox.append(&value_lbl);
-
-        let unit_lbl = Label::new(Some(&setting.unit));
-        unit_lbl.set_width_request(80);
-        unit_lbl.set_xalign(0.0);
-        unit_lbl.add_css_class("dim-label");
-        hbox.append(&unit_lbl);
-
-        let cat_lbl = Label::new(Some(&setting.category));
-        cat_lbl.set_width_request(150);
-        cat_lbl.set_xalign(0.0);
-        cat_lbl.add_css_class("dim-label");
-        hbox.append(&cat_lbl);
-
-        let desc_lbl = Label::new(Some(&setting.description));
-        desc_lbl.set_hexpand(true);
-        desc_lbl.set_xalign(0.0);
-        desc_lbl.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-        desc_lbl.add_css_class("dim-label");
-        hbox.append(&desc_lbl);
-
-        row.set_child(Some(&hbox));
-
-        if !setting.read_only {
-            row.set_activatable(true);
-            // Note: Individual row activation is handled by ListBox signal instead
-            row.set_activatable(true);
-        } else {
-            row.set_activatable(false);
-        }
-
-        row
     }
 
     fn show_edit_dialog(

@@ -1,3 +1,12 @@
+## [0.2.5-alpha.2] - 2025-12-08
+
+### Fixed
+- **Code Quality**: Cleared compiler warnings across all crates (`gcodekit5-ui`, `gcodekit5-visualizer`, `gcodekit5-designer`, `gcodekit5-camtools`, `gcodekit5-communication`).
+  - Fixed unused variables, fields, and imports.
+  - Fixed unused constants and functions.
+  - Fixed mutable variable warnings.
+  - Resolved `RefCell` borrowing issues in `visualizer.rs`.
+
 ## [0.2.5-alpha.1] - 2025-12-08
 
 ### Added

@@ -637,7 +637,7 @@ impl ToolsManagerView {
             self.edit_flutes.set_value(tool.flutes as f64);
             
             // Optional fields
-            if let Some(ref coating) = tool.coating {
+            if let Some(ref _coating) = tool.coating {
                 // Set coating combobox
                 self.edit_coating.set_active(Some(0));
             }

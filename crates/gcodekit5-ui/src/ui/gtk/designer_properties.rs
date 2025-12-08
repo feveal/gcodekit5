@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Label, Entry, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus};
+use gtk4::{Box, Label, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -8,7 +8,7 @@ use gcodekit5_designer::shapes::{Shape, Point};
 pub struct PropertiesPanel {
     pub widget: ScrolledWindow,
     state: Rc<RefCell<DesignerState>>,
-    content: Box,
+    _content: Box,
     // Property widgets
     pos_x_spin: SpinButton,
     pos_y_spin: SpinButton,
@@ -141,7 +141,7 @@ impl PropertiesPanel {
         let panel = Rc::new(Self {
             widget: scrolled,
             state: state.clone(),
-            content,
+            _content: content,
             pos_x_spin: pos_x_spin.clone(),
             pos_y_spin: pos_y_spin.clone(),
             width_spin: width_spin.clone(),
@@ -175,7 +175,7 @@ impl PropertiesPanel {
 
     fn setup_handlers(&self) {
         let state = self.state.clone();
-        let pos_x = self.pos_x_spin.clone();
+        let _pos_x = self.pos_x_spin.clone();
         let pos_y = self.pos_y_spin.clone();
         let width = self.width_spin.clone();
         let height = self.height_spin.clone();
@@ -205,7 +205,7 @@ impl PropertiesPanel {
 
         let state = self.state.clone();
         let pos_x = self.pos_x_spin.clone();
-        let pos_y = self.pos_y_spin.clone();
+        let _pos_y = self.pos_y_spin.clone();
         let width = self.width_spin.clone();
         let height = self.height_spin.clone();
         let redraw2 = self.redraw_callback.clone();
@@ -234,7 +234,7 @@ impl PropertiesPanel {
         let state = self.state.clone();
         let pos_x = self.pos_x_spin.clone();
         let pos_y = self.pos_y_spin.clone();
-        let width = self.width_spin.clone();
+        let _width = self.width_spin.clone();
         let height = self.height_spin.clone();
         let redraw3 = self.redraw_callback.clone();
         let updating3 = self.updating.clone();
@@ -263,7 +263,7 @@ impl PropertiesPanel {
         let pos_x = self.pos_x_spin.clone();
         let pos_y = self.pos_y_spin.clone();
         let width = self.width_spin.clone();
-        let height = self.height_spin.clone();
+        let _height = self.height_spin.clone();
         let redraw4 = self.redraw_callback.clone();
         let updating4 = self.updating.clone();
 

@@ -1,11 +1,11 @@
 use gcodekit5_communication::{
-    Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator, SerialParity,
+    Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator,
 };
 use gcodekit5_communication::firmware::grbl::status_parser::StatusParser;
 use gtk4::prelude::*;
 use gtk4::{
     Align, Box, Button, ComboBoxText, Frame, Grid, Label, Orientation, Paned, Picture,
-    PolicyType, ScrolledWindow, TextView, ToggleButton,
+    ToggleButton,
 };
 use gtk4::glib;
 use std::sync::{Arc, Mutex};

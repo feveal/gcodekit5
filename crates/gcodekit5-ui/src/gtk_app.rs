@@ -550,7 +550,7 @@ pub fn main() {
         });
         
         // Trigger initial update
-        if let Some(name) = stack.visible_child_name() {
+        if let Some(_name) = stack.visible_child_name() {
              // We can't easily trigger the signal manually with the same closure logic without extracting it.
              // But the default state of actions is enabled.
              // We should probably set them initially.

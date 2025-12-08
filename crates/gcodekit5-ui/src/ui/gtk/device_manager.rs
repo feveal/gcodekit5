@@ -1,6 +1,6 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, Frame, Grid, Label, ListBox, Orientation,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, Grid, Label, ListBox, Orientation,
     Paned, PolicyType, ScrolledWindow, Stack, StackSwitcher,
 };
 use std::cell::RefCell;

@@ -25,7 +25,7 @@ struct RenderCache {
     
     // Statistics
     total_lines: usize,
-    rapid_lines: usize,
+    _rapid_lines: usize,
     cut_lines: usize,
 }
 
@@ -36,7 +36,7 @@ impl Default for RenderCache {
             intensity_buckets: vec![Vec::new(); 20],
             cutting_bounds: None,
             total_lines: 0,
-            rapid_lines: 0,
+            _rapid_lines: 0,
             cut_lines: 0,
         }
     }
@@ -55,11 +55,11 @@ pub struct GcodeVisualizer {
     // Phase 4: Render cache
     render_cache: Rc<RefCell<RenderCache>>,
     // Visibility toggles
-    show_rapid: CheckButton,
-    show_cut: CheckButton,
-    show_grid: CheckButton,
-    show_bounds: CheckButton,
-    show_intensity: CheckButton,
+    _show_rapid: CheckButton,
+    _show_cut: CheckButton,
+    _show_grid: CheckButton,
+    _show_bounds: CheckButton,
+    _show_intensity: CheckButton,
     show_laser: CheckButton,
     // Scrollbars
     hadjustment: Adjustment,
@@ -69,7 +69,7 @@ pub struct GcodeVisualizer {
     min_s_label: Label,
     max_s_label: Label,
     avg_s_label: Label,
-    status_label: Label,
+    _status_label: Label,
     device_manager: Option<Arc<DeviceManager>>,
     current_pos: Rc<RefCell<(f32, f32)>>,
 }
@@ -601,11 +601,11 @@ impl GcodeVisualizer {
             drawing_area,
             visualizer,
             render_cache: Rc::new(RefCell::new(RenderCache::default())),
-            show_rapid,
-            show_cut,
-            show_grid,
-            show_bounds,
-            show_intensity,
+            _show_rapid: show_rapid,
+            _show_cut: show_cut,
+            _show_grid: show_grid,
+            _show_bounds: show_bounds,
+            _show_intensity: show_intensity,
             show_laser,
             hadjustment,
             vadjustment,
@@ -613,7 +613,7 @@ impl GcodeVisualizer {
             min_s_label,
             max_s_label,
             avg_s_label,
-            status_label,
+            _status_label: status_label,
             device_manager,
             current_pos,
         }
@@ -648,7 +648,7 @@ impl GcodeVisualizer {
         let vis_drag = vis.clone();
 
         let start_pan = Rc::new(RefCell::new((0.0f32, 0.0f32)));
-        let da_drag = da.clone();
+        let _da_drag = da.clone();
         let update_drag = update_scroll.clone();
 
         let start_pan_begin = start_pan.clone();
@@ -990,7 +990,7 @@ impl GcodeVisualizer {
                     cr.set_source_rgb(gray, gray, gray);
                     cr.new_path();
                     
-                    line_counter = 0;
+                    // line_counter = 0;
                     for (fx, fy, tx, ty) in lines {
                         // Phase 2: Viewport culling (on cached data)
                         let line_min_x = (*fx as f32).min(*tx as f32);
@@ -1157,7 +1157,7 @@ impl GcodeVisualizer {
                             bounds_max_y = bounds_max_y.max(from.y).max(to.y);
                             has_bounds = true;
                         }
-                        GCodeCommand::Arc { from, to, center, .. } => {
+                        GCodeCommand::Arc { from, to: _, center, .. } => {
                             let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
                             bounds_min_x = bounds_min_x.min(center.x - radius);
                             bounds_max_x = bounds_max_x.max(center.x + radius);

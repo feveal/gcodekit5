@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Button, Label, ListBox, Orientation, ScrolledWindow, IconSize};
+use gtk4::{Box, Button, Label, ListBox, Orientation, ScrolledWindow};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -176,12 +176,12 @@ impl LayersPanel {
         }
     }
 
-    fn group_selected_shapes(state: &Rc<RefCell<DesignerState>>) {
+    fn group_selected_shapes(_state: &Rc<RefCell<DesignerState>>) {
         // TODO: Implement grouping logic when group support is added
         println!("Group selected shapes - not yet implemented");
     }
 
-    fn ungroup_selected_shapes(state: &Rc<RefCell<DesignerState>>) {
+    fn ungroup_selected_shapes(_state: &Rc<RefCell<DesignerState>>) {
         // TODO: Implement ungrouping logic when group support is added
         println!("Ungroup selected shapes - not yet implemented");
     }

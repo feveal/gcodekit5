@@ -8,7 +8,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::ui::materials_manager_backend::MaterialsManagerBackend;
-use gcodekit5_core::data::materials::{Material, MaterialCategory, MaterialId};
+use gcodekit5_core::data::materials::{Material, MaterialId};
 
 #[derive(Clone)]
 pub struct MaterialsManagerView {

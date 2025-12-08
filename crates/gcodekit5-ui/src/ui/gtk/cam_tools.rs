@@ -12,7 +12,7 @@ use std::rc::Rc;
 
 use gcodekit5_camtools::jigsaw_puzzle::{JigsawPuzzleMaker, PuzzleParameters};
 use gcodekit5_camtools::tabbed_box::{
-    BoxParameters, BoxType, FingerJointSettings, FingerStyle, KeyDividerType,
+    BoxParameters, BoxType, KeyDividerType,
     TabbedBoxMaker as Generator,
 };
 use gcodekit5_camtools::laser_engraver::{
@@ -265,91 +265,6 @@ impl CamToolsView {
         });
 
         button
-    }
-
-    fn create_placeholder(title: &str, stack: &Stack) -> Box {
-        let container = Box::new(Orientation::Vertical, 0);
-
-        // Header
-        let header = Box::new(Orientation::Horizontal, 12);
-        header.set_margin_top(12);
-        header.set_margin_bottom(12);
-        header.set_margin_start(12);
-        header.set_margin_end(12);
-
-        let back_btn = Button::builder().icon_name("go-previous-symbolic").build();
-
-        let stack_clone = stack.clone();
-        back_btn.connect_clicked(move |_| {
-            stack_clone.set_visible_child_name("dashboard");
-        });
-
-        let title_lbl = Label::builder()
-            .label(title)
-            .css_classes(vec!["title-2"])
-            .build();
-
-        header.append(&back_btn);
-        header.append(&title_lbl);
-        container.append(&header);
-
-        // Paned Layout
-        let paned = Paned::new(Orientation::Horizontal);
-        paned.set_hexpand(true);
-        paned.set_vexpand(true);
-
-        // Sidebar (40%)
-        let sidebar = Box::new(Orientation::Vertical, 12);
-        sidebar.add_css_class("sidebar");
-        sidebar.set_margin_top(24);
-        sidebar.set_margin_bottom(24);
-        sidebar.set_margin_start(24);
-        sidebar.set_margin_end(24);
-
-        let sidebar_title = Label::builder()
-            .label(title)
-            .css_classes(vec!["title-3"])
-            .halign(Align::Start)
-            .build();
-        sidebar.append(&sidebar_title);
-
-        let description = match title {
-            "Speeds & Feeds Calculator" => "Calculate optimal cutting speeds and feed rates based on material properties and tool specifications.",
-            "Spoilboard Surfacing" => "Generate G-code for surfacing your CNC spoilboard to ensure a flat, level work surface.",
-            "Spoilboard Grid" => "Create a grid pattern on your spoilboard for easy workpiece alignment and fixturing.",
-            _ => "This tool is under construction."
-        };
-
-        let desc_label = Label::builder()
-            .label(description)
-            .css_classes(vec!["body"])
-            .wrap(true)
-            .halign(Align::Start)
-            .build();
-        sidebar.append(&desc_label);
-
-        // Content Area
-        let content = Box::new(Orientation::Vertical, 0);
-        content.set_valign(Align::Center);
-        content.set_halign(Align::Center);
-        content.set_vexpand(true);
-        content.append(&Label::new(Some("This tool is under construction.")));
-
-        paned.set_start_child(Some(&sidebar));
-        paned.set_end_child(Some(&content));
-
-        // Sidebar sizing (40%)
-        paned.add_tick_callback(|paned, _clock| {
-            let width = paned.width();
-            let target = (width as f64 * 0.40) as i32;
-            if paned.position() != target {
-                paned.set_position(target);
-            }
-            glib::ControlFlow::Continue
-        });
-
-        container.append(&paned);
-        container
     }
 }
 
