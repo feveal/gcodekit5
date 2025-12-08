@@ -39,7 +39,7 @@ impl DesignerTool {
             DesignerTool::Ellipse => "ellipse.svg",
             DesignerTool::Polyline => "polyline.svg",
             DesignerTool::Text => "text.svg",
-            DesignerTool::Pan => "pan.svg",
+            DesignerTool::Pan => "grab.svg",
         }
     }
     
@@ -61,6 +61,7 @@ pub struct DesignerToolbox {
     pub widget: Box,
     current_tool: Rc<RefCell<DesignerTool>>,
     buttons: Vec<Button>,
+    tools: Vec<DesignerTool>,
     generate_btn: Button,
     _state: Rc<RefCell<DesignerState>>,
 }
@@ -88,7 +89,7 @@ impl DesignerToolbox {
         let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
         let mut buttons: Vec<Button> = Vec::new();
         
-        let tools = [
+        let tools = vec![
             DesignerTool::Select,
             DesignerTool::Pan,
             DesignerTool::Rectangle,
@@ -135,13 +136,14 @@ impl DesignerToolbox {
         for (i, btn) in buttons.iter().enumerate() {
             let current_tool_clone = current_tool.clone();
             let buttons_clone = buttons.clone();
+            let tools_clone = tools.clone();
             let tool = tools[i];
             
             btn.connect_clicked(move |_| {
                 *current_tool_clone.borrow_mut() = tool;
                 // Update button styles
                 for (j, b) in buttons_clone.iter().enumerate() {
-                    if j == tool as usize {
+                    if tools_clone[j] == tool {
                         b.add_css_class("selected-tool");
                     } else {
                         b.remove_css_class("selected-tool");
@@ -254,6 +256,7 @@ impl DesignerToolbox {
             widget: main_container,
             current_tool,
             buttons,
+            tools,
             generate_btn,
             _state: state,
         })
@@ -272,17 +275,10 @@ impl DesignerToolbox {
         
         // Update button styles
         for (i, btn) in self.buttons.iter().enumerate() {
-            if i == tool as usize {
+            if self.tools[i] == tool {
                 btn.add_css_class("selected-tool");
             } else {
                 btn.remove_css_class("selected-tool");
-            }
-        }
-        // Update button styles
-        for (i, btn) in self.buttons.iter().enumerate() {
-            btn.remove_css_class("selected-tool");
-            if i == tool as usize {
-                btn.add_css_class("selected-tool");
             }
         }
     }

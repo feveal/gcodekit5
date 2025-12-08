@@ -40,6 +40,7 @@
 ### Fixed
 - **Designer**: Made toolbox scrollable to prevent layout issues on smaller screens.
 - **Designer**: Fixed toolbox width issue where it would expand unnecessarily.
+- **Designer**: Fixed toolbox icon selection highlighting issue where selecting an icon would highlight the wrong one due to column layout change.
 - **Designer**: Fixed panic in properties panel when updating selection due to RefCell borrowing conflict.
 - **Designer**: Fixed panic when using Pan tool (RefCell borrow error).
 - **Designer**: Fixed marquee appearing when using Pan tool.
