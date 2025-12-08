@@ -96,6 +96,38 @@ impl DesignerCanvas {
             canvas_drag_end.handle_drag_end(offset_x, offset_y);
         });
         widget.add_controller(drag_gesture);
+        
+        // Keyboard controller for Delete, Escape, etc.
+        let key_controller = gtk4::EventControllerKey::new();
+        let state_key = state.clone();
+        let widget_key = widget.clone();
+        
+        key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _modifier| {
+            let mut designer_state = state_key.borrow_mut();
+            
+            match keyval {
+                gtk4::gdk::Key::Delete | gtk4::gdk::Key::BackSpace => {
+                    // Delete selected shapes
+                    if designer_state.canvas.selection_manager.selected_id().is_some() {
+                        designer_state.canvas.remove_selected();
+                        drop(designer_state);
+                        widget_key.queue_draw();
+                        return glib::Propagation::Stop;
+                    }
+                }
+                gtk4::gdk::Key::Escape => {
+                    // Deselect all
+                    designer_state.canvas.deselect_all();
+                    drop(designer_state);
+                    widget_key.queue_draw();
+                    return glib::Propagation::Stop;
+                }
+                _ => {}
+            }
+            
+            glib::Propagation::Proceed
+        });
+        widget.add_controller(key_controller);
 
         canvas
     }
@@ -111,7 +143,20 @@ impl DesignerCanvas {
         
         match tool {
             DesignerTool::Select => {
-                // TODO: Phase 3 - Handle selection
+                // Handle selection
+                let mut state = self.state.borrow_mut();
+                let point = Point::new(canvas_x, canvas_y);
+                
+                // Try to select shape at click point
+                if let Some(_selected_id) = state.canvas.select_at(&point, false) {
+                    // Shape selected
+                } else {
+                    // Click on empty space - deselect all
+                    state.canvas.deselect_all();
+                }
+                
+                drop(state);
+                self.widget.queue_draw();
             }
             _ => {
                 // Other tools handled by drag
@@ -130,7 +175,21 @@ impl DesignerCanvas {
         
         match tool {
             DesignerTool::Select => {
-                // TODO: Phase 3 - Start drag move or selection rectangle
+                // Check if we're starting to drag a selected shape
+                let state = self.state.borrow();
+                let point = Point::new(canvas_x, canvas_y);
+                
+                // Check if clicking on a selected shape
+                let has_selected = state.canvas.selection_manager.selected_id().is_some();
+                drop(state);
+                
+                if has_selected {
+                    // Start dragging selected shapes
+                    *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
+                } else {
+                    // Start selection rectangle (future implementation)
+                    *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
+                }
             }
             _ => {
                 // Start shape creation
@@ -141,7 +200,7 @@ impl DesignerCanvas {
     }
     
     fn handle_drag_update(&self, offset_x: f64, offset_y: f64) {
-        let _tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
+        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
         
         // Get start point without holding the borrow
         let start_opt = *self.creation_start.borrow();
@@ -152,6 +211,16 @@ impl DesignerCanvas {
             let current_y = start.1 - offset_y; // Flip Y offset
             
             *self.creation_current.borrow_mut() = Some((current_x, current_y));
+            
+            // If in select mode and dragging, move selected shapes
+            if tool == DesignerTool::Select {
+                let mut state = self.state.borrow_mut();
+                if state.canvas.selection_manager.selected_id().is_some() {
+                    // Move selected shapes by offset
+                    state.canvas.move_selected(offset_x, -offset_y);
+                }
+            }
+            
             self.widget.queue_draw();
         }
     }
@@ -166,8 +235,16 @@ impl DesignerCanvas {
             let end_x = start.0 + offset_x;
             let end_y = start.1 - offset_y; // Flip Y offset
             
-            // Create the shape
-            self.create_shape(tool, start, (end_x, end_y));
+            match tool {
+                DesignerTool::Select => {
+                    // Drag ended in select mode - movement already applied incrementally
+                    // Nothing more to do
+                }
+                _ => {
+                    // Create the shape for drawing tools
+                    self.create_shape(tool, start, (end_x, end_y));
+                }
+            }
             
             // Clear creation state (now safe - no borrows held)
             *self.creation_start.borrow_mut() = None;

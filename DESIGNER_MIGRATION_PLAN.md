@@ -222,6 +222,16 @@ Migrate the Designer tool from Slint to GTK4, following the same pattern used fo
 ## Implementation Notes
 
 ### Current Status
+**Phase 3: ✅ COMPLETE (2025-12-08)**
+- Click-to-select shapes at point
+- Selected shapes shown in red with 2px stroke
+- Drag-to-move selected shapes
+- Delete key removes selected shapes
+- Escape key deselects all
+- Click empty space deselects
+- Smooth incremental movement during drag
+- Proper coordinate transformation for selection
+
 **Phase 2: ✅ COMPLETE (2025-12-08)**
 - Toolbox with 7 tools (Select, Rectangle, Circle, Line, Ellipse, Polyline, Text)
 - Tool selection with visual feedback
@@ -285,15 +295,16 @@ DesignerView
 - Created phased migration plan
 - Decided on 8 phases to spread complexity
 - **Phase 1 COMPLETED** - Canvas and Drawing Infrastructure
-- **Phase 2 COMPLETED** - Toolbox and Shape Creation:
-  - Vertical toolbox with 7 drawing tools
-  - Tool selection state management
-  - Click-drag shape creation for Rectangle, Circle, Line, Ellipse
-  - Shapes persist to canvas state
-  - Visual tool selection feedback
-  - Integrated zoom controls (UI only)
-  - Clean CSS styling for toolbox
-- Next: Phase 3 - Selection and Transformation
+- **Phase 2 COMPLETED** - Toolbox and Shape Creation
+- **Phase 3 COMPLETED** - Selection and Basic Transformation:
+  - Click-to-select shapes
+  - Visual selection feedback (red highlight)
+  - Drag-to-move selected shapes
+  - Delete key removes shapes
+  - Escape key deselects
+  - Click empty space deselects all
+  - Smooth incremental movement
+- Next: Phase 4 - Advanced Selection & Properties
 
 ---
 
