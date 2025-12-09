@@ -2,6 +2,12 @@
 
 ### Added
 - **Designer**: Added Pan tool to toolbox.
+  - **Editor**: Introduced `EditorBridgeBackend` in `gcodekit5-gcodeeditor` (non-UI editor bridge) and decoupled Slint legacy UI bridge.
+    - Provides a non-UI editor API for test and backend consumers.
+    - `gcodekit5-ui` retains the `EditorBridge` Slint UI bridge gated behind a `slint_legacy_tests` feature; a stub alias is provided when Slint isn't enabled.
+    - Added integration tests for `EditorBridgeBackend` and updated existing tests to use the backend alias.
+    - Moved Slint `.slint` UI assets to `ui/legacy/` in their respective crates and started a staged archival plan.
+
   - Allows panning the canvas by dragging with the mouse.
   - Changes cursor to hand/grabbing icon.
   - Updated toolbox layout to use 3 columns.

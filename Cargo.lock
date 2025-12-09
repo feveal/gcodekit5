@@ -1279,6 +1279,7 @@ dependencies = [
  "once_cell",
  "raw-window-handle",
  "rfd",
+ "ropey",
  "serde",
  "serde_json",
  "sourceview5",

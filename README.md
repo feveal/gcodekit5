@@ -18,6 +18,7 @@ GCodeKit5 is organized as a Cargo workspace with 7 crates for modular compilatio
 - **gcodekit5-camtools** - CAM tools and special G-code processing operations
 - **gcodekit5-designer** - Visual design tools and toolpath generation
 - **gcodekit5-gcodeeditor** - ✨ NEW - G-Code text editor and buffer management
+  - **Note**: The editor bridge has been decoupled from Slint UI as `EditorBridgeBackend`; Slint bridge remains available for legacy UI functionality and is gated under `slint_legacy_tests`.
 - **gcodekit5-communication** - Serial, TCP, WebSocket protocols and firmware implementations (5 firmware types)
 - **gcodekit5-ui** - Slint-based UI components, visualizer, settings, and editor integration
 - **gcodekit5-devicedb** - Device profile management
