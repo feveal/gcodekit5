@@ -1,6 +1,5 @@
 //! SVG-based canvas renderer for designer shapes
-//! Renders shapes as SVG path commands for display using Slint Path elements
-//!
+//! Renders shapes as SVG path commands for display
 //! Features:
 //! - Bright yellow crosshair at world origin (0,0)
 //! - Shape rendering with selection indicators

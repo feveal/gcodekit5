@@ -78,10 +78,10 @@ fn test_shift_key_snapping_scenario() {
 fn test_shift_key_callback_infrastructure() {
     // This test verifies that:
     // 1. The shift_pressed flag exists in designer_state.rs
-    // 2. The set_shift_pressed callback exists in designer.slint
+    // 2. The set_shift_pressed callback exists in designer.
     // 3. The callback is connected in main.rs
 
-    // The actual callback invocation happens at the Slint level
+    // The actual callback invocation happens at the level
     // but we can verify the underlying snapping mechanism works
 
     let mut canvas = Canvas::new();

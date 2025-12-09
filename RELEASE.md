@@ -1,4 +1,6 @@
-# 0.2.5-alpha.4
+Version: 0.2.5-alpha.5
+
+## [0.2.5-alpha.5] - 2025-12-09
 
 ### Fixed
 - **Visualizer**: Fixed "Fit to Device" functionality to correctly center the device working area in the view.
@@ -8,6 +10,10 @@
 - **Designer**: Fixed Origin markers to extend to world extent (Red/Green).
 
 ### Added
+- **GCode Editor**: Implemented G-Code syntax highlighting with a custom "Bright" color scheme.
+- **GCode Editor**: Added a floating Search/Replace panel with "n of m" match counting and navigation controls.
+- **GCode Editor**: Implemented logic to enable Replace/Replace All buttons only when search matches exist and replacement text is provided.
+- **GCode Editor**: Moved "Replace All" operation to a background thread to prevent UI freezing, with progress updates in the status bar.
 - **Designer**: Added Device Bounds rendering (Blue, 2px wide) to visualize the working area.
 - **Designer/Visualizer**: Ensured both views initialize to "Fit to Device" on startup.
 

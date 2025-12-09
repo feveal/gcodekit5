@@ -22,7 +22,7 @@
 //!
 //! ## UI Components
 //!
-//! - **Advanced Features Panel**: Slint UI panel for controlling CAM tools
+//! - **Advanced Features Panel**: UI panel for controlling CAM tools
 
 pub mod advanced_features;
 pub mod arc_expander;

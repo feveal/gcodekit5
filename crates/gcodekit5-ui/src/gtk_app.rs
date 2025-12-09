@@ -129,14 +129,15 @@ pub fn main() {
         // 1. Device Console
         let device_console = DeviceConsoleView::new();
 
+        let status_bar = StatusBar::new();
+
         // 3. G-Code Editor (Moved up to be available for MachineControl)
-        let editor = Rc::new(GcodeEditor::new());
+        let editor = Rc::new(GcodeEditor::new(Some(status_bar.clone())));
 
         // 4. Visualizer (Created early for MachineControl dependency)
         let visualizer = Rc::new(GcodeVisualizer::new(Some(device_manager.clone())));
 
         // 2. Machine Control
-        let status_bar = StatusBar::new();
         let machine_control = MachineControlView::new(
             Some(status_bar.clone()),
             Some(device_console.clone()),
