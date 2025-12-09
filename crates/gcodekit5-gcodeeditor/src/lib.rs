@@ -61,10 +61,12 @@
 mod text_buffer;
 mod undo_manager;
 mod viewport;
+mod editor_bridge;
 
 pub use text_buffer::TextBuffer;
 pub use undo_manager::{TextChange, UndoManager};
 pub use viewport::Viewport;
+pub use editor_bridge::EditorBridgeBackend;
 
 // Re-export for Slint UI
 #[derive(Clone, Debug)]

@@ -65,6 +65,12 @@
 
 ### Previous Release (v0.68.0-alpha.0) - UI Refactor & Tests
 - ✅ **UI Refactoring**
+  ### Editor Bridge Changes (v0.2.5-alpha.3)
+  - **Editor**: Introduced `EditorBridgeBackend` into `gcodekit5-gcodeeditor` as a non-UI editor bridge.
+    - Decouples the editor core from Slint UI dependencies.
+    - Slint legacy bridge is gated behind `slint_legacy_tests`. A stub alias (`EditorBridge`) is available when Slint is disabled.
+    - Ensures backend tests do not require UI dependencies and improves portability.
+
   - Refactored UI for unit conversion to ensure consistent display across all panels.
   - Improved layout and responsiveness in Designer and CAM tools.
 - ✅ **Testing**

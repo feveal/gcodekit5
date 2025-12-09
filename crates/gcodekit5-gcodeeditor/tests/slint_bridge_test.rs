@@ -1,8 +1,7 @@
 #![cfg(feature = "slint_legacy_tests")]
-use gcodekit5_gcodeeditor::EditorBridge;
+use gcodekit5_gcodeeditor::EditorBridgeBackend as EditorBridge;
 
 #[test]
-#[ignore = "Slint legacy: ignored until port to GTK-based EditorBridge or equivalent"]
 fn test_bridge_load_text() {
     let bridge = EditorBridge::new(400.0, 20.0);
     bridge.load_text("Hello\nWorld");
@@ -10,7 +9,6 @@ fn test_bridge_load_text() {
 }
 
 #[test]
-#[ignore = "Slint legacy: ignored until port to GTK-based EditorBridge or equivalent"]
 fn test_bridge_undo_redo() {
     let bridge = EditorBridge::new(400.0, 20.0);
     bridge.load_text("");
@@ -26,7 +24,6 @@ fn test_bridge_undo_redo() {
 }
 
 #[test]
-#[ignore = "Slint legacy: ignored until port to GTK-based EditorBridge or equivalent"]
 fn test_bridge_line_count() {
     let bridge = EditorBridge::new(400.0, 20.0);
     bridge.load_text("Line 1\nLine 2\nLine 3");
@@ -34,7 +31,6 @@ fn test_bridge_line_count() {
 }
 
 #[test]
-#[ignore = "Slint legacy: ignored until port to GTK-based EditorBridge or equivalent"]
 fn test_bridge_modified_state() {
     let bridge = EditorBridge::new(400.0, 20.0);
     bridge.load_text("Test");

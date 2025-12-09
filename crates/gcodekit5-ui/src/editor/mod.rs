@@ -3,12 +3,40 @@
 //! This module provides a high-performance text editor implementation optimized
 //! for large G-code files with efficient text manipulation and rendering.
 
+#[cfg(feature = "slint_legacy_tests")]
 mod slint_bridge;
 mod text_buffer;
 mod undo_manager;
 mod viewport;
 
+#[cfg(feature = "slint_legacy_tests")]
 pub use slint_bridge::{EditorBridge, SlintTextLine};
+
+// When the slint legacy feature is disabled, provide a lightweight backend alias
+// so other parts of the UI can import `gcodekit5_ui::EditorBridge` without requiring Slint.
+#[cfg(not(feature = "slint_legacy_tests"))]
+mod slint_bridge_stub {
+    pub use gcodekit5_gcodeeditor::EditorBridgeBackend as EditorBridge;
+
+    #[derive(Clone, Debug)]
+    pub struct SlintTextLine {
+        pub line_number: i32,
+        pub content: String,
+        pub is_dirty: bool,
+    }
+    impl SlintTextLine {
+        pub fn new(line_number: usize, content: String, is_dirty: bool) -> Self {
+            Self {
+                line_number: line_number as i32,
+                content,
+                is_dirty,
+            }
+        }
+    }
+}
+
+#[cfg(not(feature = "slint_legacy_tests"))]
+pub use slint_bridge_stub::{EditorBridge, SlintTextLine};
 pub use text_buffer::TextBuffer;
 pub use undo_manager::{TextChange, UndoManager};
 pub use viewport::Viewport;

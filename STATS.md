@@ -31,3 +31,4 @@ Last Updated: 2025-12-08
 ## Release Log
 - **2025-12-08**: v0.2.5-alpha.3 - Designer migration complete (Pan, Arrays, Import/Export, Toolpaths, Alignment).
 - **2025-12-08**: v0.2.5-alpha.1 - Added Visualizer scrollbars, stats, laser dot; CAM homing; Status bar progress.
+ - **2025-12-08**: EditorBridgeBackend introduced and Slint UI gated behind `slint_legacy_tests` (tracked as archival progress)
