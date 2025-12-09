@@ -2,18 +2,19 @@
 //! Parses G-Code toolpaths for canvas-based visualization
 
 use super::toolpath_cache::ToolpathCache;
+use gcodekit5_core::constants as core_constants;
 use super::viewport::{Bounds, ViewportTransform};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
-const CANVAS_PADDING: f32 = 20.0;
+const CANVAS_PADDING: f32 = core_constants::CANVAS_PADDING_PX as f32;
 const _CANVAS_PADDING_2X: f32 = 40.0;
 const MIN_ZOOM: f32 = 0.1;
 const MAX_ZOOM: f32 = 50.0;
 const ZOOM_STEP: f32 = 1.1;
 const PAN_PERCENTAGE: f32 = 0.1;
-const BOUNDS_PADDING_FACTOR: f32 = 0.1;
+const BOUNDS_PADDING_FACTOR: f32 = core_constants::VIEW_PADDING as f32;
 const _FIT_MARGIN_FACTOR: f32 = 0.05;
 const _ORIGIN_CROSS_SIZE: i32 = 5;
 const _MARKER_RADIUS: i32 = 4;
@@ -135,10 +136,10 @@ impl Visualizer2D {
     /// Create new 2D visualizer
     pub fn new() -> Self {
         Self {
-            min_x: -1000.0,
-            max_x: 1000.0,
-            min_y: -1000.0,
-            max_y: 1000.0,
+            min_x: -(core_constants::WORLD_EXTENT_MM as f32),
+            max_x: core_constants::WORLD_EXTENT_MM as f32,
+            min_y: -(core_constants::WORLD_EXTENT_MM as f32),
+            max_y: core_constants::WORLD_EXTENT_MM as f32,
             current_pos: Point2D::new(0.0, 0.0),
             current_intensity: 0.0,
             zoom_scale: 1.0,
@@ -608,8 +609,8 @@ impl Visualizer2D {
         let content_width = bounds.max_x - bounds.min_x;
         let content_height = bounds.max_y - bounds.min_y;
 
-        // Apply 10% margin
-        let margin_percent = 0.1;
+        // Apply 5% margin
+        let margin_percent = core_constants::VIEW_PADDING as f32;
         let available_width = canvas_width * (1.0 - margin_percent * 2.0);
         let available_height = canvas_height * (1.0 - margin_percent * 2.0);
 

@@ -1,34 +1,27 @@
 # Project Statistics
-Last Updated: 2025-12-08
+Last Updated: 2025-12-09
 
 ===============================================================================
  Language            Files        Lines         Code     Comments       Blanks
 ===============================================================================
  CSS                     1          234          180           11           43
- JSON                   11          922          922            0            0
+ JSON                   10          855          855            0            0
  SVG                    25          682          657            8           17
- Plain Text             12         4536            0         4160          376
- TOML                   10          312          279            2           31
- XML                     2           37           37            0            0
+ Plain Text              1         1000            0         1000            0
+ TOML                   10          287          251            2           34
+ XML                     2           40           40            0            0
  YAML                    1           30           30            0            0
 -------------------------------------------------------------------------------
- Markdown               91        21379            0        16507         4872
- |- BASH                22          168           96           45           27
- |- Java                 2           28           26            2            0
- |- JSON                 7          147          147            0            0
- |- Rust                42         3003         2188          408          407
- |- TOML                 3           54           33           11           10
- |- XML                  1            8            8            0            0
- (Total)                          24787         2498        16973         5316
+ Markdown               21         6957            0         5636         1321
+ |- BASH                 5           92           53           23           16
+ |- JSON                 1            6            6            0            0
+ |- Rust                 3           62           48            8            6
+ |- TOML                 2           53           32           11           10
+ (Total)                           7170          139         5678         1353
 -------------------------------------------------------------------------------
- Rust                  390       102637        83524         4121        14992
- |- Markdown           259        10002            9         9445          548
- (Total)                         112639        83533        13566        15540
+ Rust                  364        90999        73650         3986        13363
+ |- Markdown           231         8291            9         7769          513
+ (Total)                          99290        73659        11755        13876
 ===============================================================================
- Total                 543       130769        85629        24809        20331
+ Total                 435       101084        75663        10643        14778
 ===============================================================================
-
-## Release Log
-- **2025-12-08**: v0.2.5-alpha.3 - Designer migration complete (Pan, Arrays, Import/Export, Toolpaths, Alignment).
-- **2025-12-08**: v0.2.5-alpha.1 - Added Visualizer scrollbars, stats, laser dot; CAM homing; Status bar progress.
- - **2025-12-08**: EditorBridgeBackend introduced and Slint UI gated behind `slint_legacy_tests` (tracked as archival progress)

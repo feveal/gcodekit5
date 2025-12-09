@@ -6,6 +6,7 @@
 pub mod visualizer;
 pub mod gcode;
 pub mod utils;
+pub mod helpers;
 
 pub use visualizer::{
     Visualizer, Visualizer2D, VisualizerControls, Scene, Camera, Renderer,

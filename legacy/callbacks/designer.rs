@@ -1,5 +1,5 @@
 use crate::app::designer::update_designer_ui;
-use crate::app::helpers::snap_to_mm;
+use gcodekit5_designer::helpers::snap_to_mm;
 use crate::MainWindow;
 use gcodekit5::{DesignerState, SettingsPersistence};
 use gcodekit5_core::units::{MeasurementSystem, to_display_string, parse_from_string, get_unit_label};

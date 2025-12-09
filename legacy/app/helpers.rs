@@ -1,3 +1,8 @@
+// Archived helpers from `src/app/helpers.rs` moved here for historical reasons during helper migration.
+// These helpers were migrated into crate-local helper modules (e.g., `gcodekit5-ui::helpers`,
+// `gcodekit5-designer::helpers`, `gcodekit5-visualizer::helpers`).
+// Keep this file for reference. Do not modify unless reinstating functionality.
+
 use crate::{CapabilityItem, ConfigSetting, MainWindow};
 use gcodekit5::{CapabilityManager, list_ports};
 use gcodekit5_ui::EditorBridge;

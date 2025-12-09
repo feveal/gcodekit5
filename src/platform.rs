@@ -1,33 +1,7 @@
 //! Platform-specific utilities
 use std::path::PathBuf;
 
-#[cfg(target_os = "windows")]
-use raw_window_handle::{
-    DisplayHandle, HandleError, HasDisplayHandle, HasWindowHandle, RawDisplayHandle,
-    RawWindowHandle, Win32WindowHandle, WindowHandle, WindowsDisplayHandle,
-};
 
-/// Wrapper for Win32 RawWindowHandle
-#[cfg(target_os = "windows")]
-pub struct Win32ParentHandle(pub std::num::NonZeroIsize);
-
-#[cfg(target_os = "windows")]
-impl HasWindowHandle for Win32ParentHandle {
-    fn window_handle(&self) -> Result<WindowHandle<'_>, HandleError> {
-        let handle = Win32WindowHandle::new(self.0);
-        let raw = RawWindowHandle::Win32(handle);
-        unsafe { Ok(WindowHandle::borrow_raw(raw)) }
-    }
-}
-
-#[cfg(target_os = "windows")]
-impl HasDisplayHandle for Win32ParentHandle {
-    fn display_handle(&self) -> Result<DisplayHandle<'_>, HandleError> {
-        let handle = WindowsDisplayHandle::new();
-        let raw = RawDisplayHandle::Windows(handle);
-        unsafe { Ok(DisplayHandle::borrow_raw(raw)) }
-    }
-}
 
 /// Initialize the window (maximize and focus)
 ///

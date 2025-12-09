@@ -185,9 +185,9 @@ impl Viewport {
     }
 
     /// Fits the viewport to show all content with optional padding.
-    /// Equivalent to fit_to_bounds with 10% padding.
+    /// Equivalent to fit_to_bounds with 5% padding.
     pub fn fit_to_view(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64) {
-        self.fit_to_bounds(min_x, min_y, max_x, max_y, 0.1);
+        self.fit_to_bounds(min_x, min_y, max_x, max_y, gcodekit5_core::constants::VIEW_PADDING);
     }
 
     /// Zooms to a point, maintaining that point's screen position.

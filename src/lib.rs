@@ -87,6 +87,10 @@ pub use gcodekit5_ui::{
     MachineSettings, SettingsManager, UiSettings,
 };
 
+pub mod types;
+
+pub use types::GcodeSendState;
+
 /// Library version
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

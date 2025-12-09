@@ -84,7 +84,8 @@ impl VisualizationBounds {
 
 impl Default for VisualizationBounds {
     fn default() -> Self {
-        Self::new(-100.0, -100.0, -10.0, 100.0, 100.0, 10.0)
+        let extent = gcodekit5_core::constants::WORLD_EXTENT_MM;
+        Self::new(-extent, -extent, -10.0, extent, extent, 10.0)
     }
 }
 

@@ -5,8 +5,8 @@ use crate::slint_generatedMainWindow::MainWindow;
 use crate::ErrorDialog;
 use gcodekit5::{SerialCommunicator, ConnectionParams, ConnectionDriver, SerialParity};
 use gcodekit5::{DeviceConsoleManager as ConsoleManager, DeviceMessageType, ConsoleListener, CapabilityManager, Communicator};
-use crate::app::types::GcodeSendState;
-use crate::app::helpers::{update_device_info_panel, sync_capabilities_to_ui, get_available_ports};
+use crate::types::GcodeSendState;
+use gcodekit5_ui::helpers::{update_device_info_panel, sync_capabilities_to_ui, get_available_ports};
 use gcodekit5_communication::firmware::grbl::error_decoder::format_error;
 use tracing::warn;
 

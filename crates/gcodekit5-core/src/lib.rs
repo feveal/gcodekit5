@@ -8,6 +8,7 @@ pub mod core;
 pub mod data;
 pub mod error;
 pub mod units;
+pub mod constants;
 
 pub use core::{
     event::{ControllerEvent, EventDispatcher},

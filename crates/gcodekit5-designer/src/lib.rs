@@ -78,6 +78,7 @@ pub mod render_optimizer;
 pub mod renderer;
 pub mod serialization;
 pub mod font_manager;
+pub mod helpers;
 pub mod shapes;
 pub mod shape_store;
 pub mod selection_manager;

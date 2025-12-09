@@ -325,7 +325,6 @@ impl Default for StatusBar {
 }
 
 /// Main application window
-#[derive(Debug)]
 pub struct MainWindow {
     /// Window title
     pub title: String,
@@ -430,35 +429,35 @@ impl MainWindow {
         self.height = height;
     }
 
-        pub fn set_device_firmware_type(&mut self, _ft: impl Into<String>) {
+        pub fn set_device_firmware_type(&self, _ft: impl Into<String>) {
             // No-op for now; GTK implementation may expose this via DeviceInfoView
         }
 
-        pub fn set_device_firmware_version(&mut self, _version: impl Into<String>) {
+        pub fn set_device_firmware_version(&self, _version: impl Into<String>) {
             // No-op for now
         }
 
-        pub fn set_device_name(&mut self, _name: impl Into<String>) {
+        pub fn set_device_name(&self, _name: impl Into<String>) {
             // No-op for now
         }
 
-        pub fn set_device_capabilities(&mut self, _caps: Vec<crate::gtk::device_info::CapabilityItem>) {
+        pub fn set_device_capabilities(&self, _caps: Vec<crate::ui::gtk::device_info::CapabilityItem>) {
             // No-op; UI will update capabilities through dedicated view
         }
 
-        pub fn set_visible_lines(&mut self, _lines: Vec<gcodekit5_gcodeeditor::TextLine>) {
+        pub fn set_visible_lines(&self, _lines: Vec<gcodekit5_gcodeeditor::TextLine>) {
             // No-op visible lines for headless tests
         }
 
-        pub fn set_designer_shapes(&mut self, _shapes: Vec<crate::DesignerShape>) {
+        pub fn set_designer_shapes(&self, _shapes: Vec<gcodekit5_designer::canvas::DrawingObject>) {
             // No-op for now; GTK implementation will update canvas
         }
 
-        pub fn set_designer_state(&mut self, _state: crate::DesignerState) {
+        pub fn set_designer_state(&self, _state: gcodekit5_designer::DesignerState) {
             // No-op: used by tests and backend to update designer UI state
         }
 
-        pub fn set_current_settings(&mut self, _settings: Vec<crate::gtk::settings::Setting>) {
+        pub fn set_current_settings(&self, _settings: Vec<gcodekit5_settings::controller::SettingUiModel>) {
             // No-op
         }
 

@@ -1,3 +1,12 @@
+## [0.2.5-alpha.4] - 2025-12-09
+
+### Changed
+- **Refactor**: Major refactor of Designer and Visualizer integration to improve coordinate handling and rendering performance.
+- **Designer**: Updated `DesignerCanvas` and `Viewport` to use improved coordinate transformation logic.
+- **UI**: Updated GTK UI components (`designer.rs`, `visualizer.rs`, `main_window.rs`) to align with the new backend architecture.
+- **Visualizer**: Enhanced 2D visualizer logic and coordinate transforms in `crates/gcodekit5-visualizer`.
+- **Cleanup**: Removed unused helper functions in `src/app/helpers.rs` and refactored `src/app/mod.rs`.
+
 ## [0.2.5-alpha.3] - 2025-12-08
 
 ### Added

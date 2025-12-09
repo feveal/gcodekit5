@@ -68,7 +68,8 @@ impl RenderOptimizer {
 
 impl Default for RenderOptimizer {
     fn default() -> Self {
-        Self::new(Bounds::new(-1000.0, -1000.0, 1000.0, 1000.0))
+        let extent = gcodekit5_core::constants::WORLD_EXTENT_MM;
+        Self::new(Bounds::new(-extent, -extent, extent, extent))
     }
 }
 

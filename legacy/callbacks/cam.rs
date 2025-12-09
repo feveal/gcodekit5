@@ -10,7 +10,7 @@ use crate::slint_generatedMainWindow::{
 use gcodekit5_ui::GcodeEditor;
 use gcodekit5::{DeviceConsoleManager as ConsoleManager, DeviceMessageType};
 use gcodekit5_ui::EditorBridge;
-use crate::app::types::{BitmapEngravingParams, VectorEngravingParams, TabbedBoxParams, JigsawPuzzleParams};
+use gcodekit5_ui::types::{BitmapEngravingParams, VectorEngravingParams, TabbedBoxParams, JigsawPuzzleParams};
 use gcodekit5::{
     TabbedBoxMaker, JigsawPuzzleMaker, SpoilboardSurfacingGenerator,
     BoxParameters, BoxType, FingerJointSettings, FingerStyle,

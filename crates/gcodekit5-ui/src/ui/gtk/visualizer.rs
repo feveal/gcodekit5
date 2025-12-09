@@ -1,4 +1,5 @@
 use gcodekit5_devicedb::DeviceManager;
+use gcodekit5_core::constants as core_constants;
 use gcodekit5_visualizer::visualizer::GCodeCommand;
 use gcodekit5_visualizer::Visualizer2D;
 use gtk4::prelude::*;
@@ -91,33 +92,72 @@ impl GcodeVisualizer {
         if width <= 0.0 || height <= 0.0 {
             return;
         }
+        // Default device working area fallback from shared constants
+        const DEFAULT_WORK_WIDTH: f32 = core_constants::DEFAULT_WORK_WIDTH_MM as f32;
+        const DEFAULT_WORK_HEIGHT: f32 = core_constants::DEFAULT_WORK_HEIGHT_MM as f32;
 
-        if let Some(manager) = device_manager {
+        let (work_width, work_height, center_x, center_y) = if let Some(manager) = device_manager {
             if let Some(profile) = manager.get_active_profile() {
-                // Get working area dimensions from axis limits
-                let work_width = (profile.x_axis.max - profile.x_axis.min) as f32;
-                let work_height = (profile.y_axis.max - profile.y_axis.min) as f32;
-
-                if work_width > 0.0 && work_height > 0.0 {
-                    // Apply 10% margin like fit_to_view does
-                    let margin_percent = 0.1;
-                    let available_width = width * (1.0 - margin_percent * 2.0);
-                    let available_height = height * (1.0 - margin_percent * 2.0);
-
-                    // Calculate scale to fit device working area in viewport
-                    let scale_x = available_width / work_width;
-                    let scale_y = available_height / work_height;
-                    let scale = scale_x.min(scale_y);
-
-                    // Center on working area - offsets are NEGATIVE of center point
-                    let center_x = (profile.x_axis.min as f32) + work_width / 2.0;
-                    let center_y = (profile.y_axis.min as f32) + work_height / 2.0;
-
-                    vis.zoom_scale = scale;
-                    vis.x_offset = -center_x;
-                    vis.y_offset = -center_y;
-                }
+                let w = (profile.x_axis.max - profile.x_axis.min) as f32;
+                let h = (profile.y_axis.max - profile.y_axis.min) as f32;
+                (
+                    w,
+                    h,
+                    (profile.x_axis.min as f32) + w / 2.0,
+                    (profile.y_axis.min as f32) + h / 2.0,
+                )
+            } else {
+                (
+                    DEFAULT_WORK_WIDTH,
+                    DEFAULT_WORK_HEIGHT,
+                    DEFAULT_WORK_WIDTH / 2.0,
+                    DEFAULT_WORK_HEIGHT / 2.0,
+                )
             }
+        } else {
+            (
+                DEFAULT_WORK_WIDTH,
+                DEFAULT_WORK_HEIGHT,
+                DEFAULT_WORK_WIDTH / 2.0,
+                DEFAULT_WORK_HEIGHT / 2.0,
+            )
+        };
+
+        if work_width > 0.0 && work_height > 0.0 {
+            // Use the same math as Viewport::fit_to_bounds (in designer::viewport)
+            let padding: f32 = core_constants::VIEW_PADDING as f32;
+            let padding_factor = 1.0 - (padding * 2.0);
+
+            let zoom_x = (width * padding_factor) / work_width;
+            let zoom_y = (height * padding_factor) / work_height;
+            let new_zoom = zoom_x.min(zoom_y).max(0.1).min(50.0);
+
+            let content_pixel_width = work_width * new_zoom;
+            let content_pixel_height = work_height * new_zoom;
+
+            let center_pixel_x = width / 2.0 - content_pixel_width / 2.0;
+            let center_pixel_y = height / 2.0 - content_pixel_height / 2.0;
+
+            // Compute pan_x/pan_y to match Viewport's mapping
+            let min_x = center_x - work_width / 2.0;
+            let min_y = center_y - work_height / 2.0;
+
+            let pan_x = center_pixel_x - min_x * new_zoom;
+            let pan_y = height - center_pixel_y - content_pixel_height - min_y * new_zoom;
+
+            vis.zoom_scale = new_zoom;
+
+            // Convert pan_x/pan_y into Visualizer x_offset/y_offset metrics
+            // Visualizer world-to-screen is: (x - min_x) * zoom + CANVAS_PADDING + x_offset
+            // We want that to equal viewport: x * zoom + pan_x
+            // Solving: x_offset = pan_x + min_x * zoom - CANVAS_PADDING
+            let canvas_padding = core_constants::CANVAS_PADDING_PX as f32; // matches Visualizer2D::CANVAS_PADDING
+            vis.x_offset = pan_x + min_x * new_zoom - canvas_padding;
+
+            // Visualizer screen_y = height - ((y - min_y) * zoom + CANVAS_PADDING - y_offset)
+            // Set y_offset such that this equals viewport screen_y = height - (y * zoom + pan_y)
+            // Solving: y_offset = -pan_y - min_y * zoom + CANVAS_PADDING
+            vis.y_offset = -pan_y - min_y * new_zoom + canvas_padding;
         }
     }
 
@@ -894,7 +934,7 @@ impl GcodeVisualizer {
         let half_width_world = (width as f32 / 2.0) / vis.zoom_scale;
         let half_height_world = (height as f32 / 2.0) / vis.zoom_scale;
         
-        // Add 10% margin to prevent popping at edges during pan
+        // Add 5% margin to prevent popping at edges during pan
         let margin = 0.1;
         let margin_x = half_width_world * margin;
         let margin_y = half_height_world * margin;
@@ -1218,7 +1258,7 @@ impl GcodeVisualizer {
 
         // Calculate visible area in world coordinates
         // This is a simplification, ideally we'd project the viewport corners
-        let range = 1000.0; // Draw a large enough grid for now
+        let range = core_constants::WORLD_EXTENT_MM as f64; // Draw a large enough grid to match world extent
 
         cr.set_source_rgba(grid_color.0, grid_color.1, grid_color.2, grid_color.3);
         cr.set_line_width(1.0 / vis.zoom_scale as f64);
@@ -1238,5 +1278,29 @@ impl GcodeVisualizer {
         }
 
         cr.stroke().unwrap();
+    }
+}
+
+#[cfg(test)]
+mod tests_visualizer {
+    use super::*;
+    use gcodekit5_visualizer::visualizer::Visualizer2D;
+
+    #[test]
+    fn test_apply_fit_to_device_with_no_profile_uses_default_bbox() {
+        let mut vis = Visualizer2D::new();
+        let width = 1200.0f32;
+        let height = 800.0f32;
+
+        // Call apply_fit_to_device with no device manager
+        GcodeVisualizer::apply_fit_to_device(&mut vis, &None, width, height);
+
+        // Compute expected scale
+        let margin_percent = 0.05f32;
+        let available_width = width * (1.0 - margin_percent * 2.0);
+        let available_height = height * (1.0 - margin_percent * 2.0);
+        let expected_scale = (available_width / core_constants::DEFAULT_WORK_WIDTH_MM as f32).min(available_height / core_constants::DEFAULT_WORK_HEIGHT_MM as f32);
+
+        assert!((vis.zoom_scale - expected_scale).abs() < 1e-4, "zoom {} expected {}", vis.zoom_scale, expected_scale);
     }
 }

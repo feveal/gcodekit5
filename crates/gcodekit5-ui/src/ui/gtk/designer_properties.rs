@@ -67,13 +67,13 @@ impl PropertiesPanel {
 
         let x_label = Label::new(Some("X:"));
         x_label.set_halign(gtk4::Align::Start);
-        let pos_x_spin = SpinButton::with_range(-1000.0, 1000.0, 0.1);
+        let pos_x_spin = SpinButton::with_range(-gcodekit5_core::constants::WORLD_EXTENT_MM, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
         pos_x_spin.set_digits(2);
         pos_x_spin.set_hexpand(true);
 
         let y_label = Label::new(Some("Y:"));
         y_label.set_halign(gtk4::Align::Start);
-        let pos_y_spin = SpinButton::with_range(-1000.0, 1000.0, 0.1);
+        let pos_y_spin = SpinButton::with_range(-gcodekit5_core::constants::WORLD_EXTENT_MM, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
         pos_y_spin.set_digits(2);
         pos_y_spin.set_hexpand(true);
 
@@ -98,13 +98,13 @@ impl PropertiesPanel {
 
         let width_label = Label::new(Some("Width:"));
         width_label.set_halign(gtk4::Align::Start);
-        let width_spin = SpinButton::with_range(0.1, 1000.0, 0.1);
+        let width_spin = SpinButton::with_range(0.1, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
         width_spin.set_digits(2);
         width_spin.set_hexpand(true);
 
         let height_label = Label::new(Some("Height:"));
         height_label.set_halign(gtk4::Align::Start);
-        let height_spin = SpinButton::with_range(0.1, 1000.0, 0.1);
+        let height_spin = SpinButton::with_range(0.1, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
         height_spin.set_digits(2);
         height_spin.set_hexpand(true);
 

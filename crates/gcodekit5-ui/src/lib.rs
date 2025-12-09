@@ -6,6 +6,8 @@ pub mod gtk_app;
 pub mod ui;
 pub mod editor;
 pub mod device_status;
+pub mod helpers;
+pub mod types;
 
 // Re-export settings for convenience if needed
 pub use gcodekit5_settings::{
@@ -16,6 +18,10 @@ pub use gcodekit5_settings::{
 pub use gcodekit5_gcodeeditor::{
     EditorState, TextBuffer, TextChange, TextLine, UndoManager,
     Viewport,
+};
+
+pub use crate::types::{
+    VectorEngravingParams, BitmapEngravingParams, TabbedBoxParams, JigsawPuzzleParams,
 };
 
 // Re-export EditorBridge so UI and examples can continue importing from gcodekit5_ui

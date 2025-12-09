@@ -108,7 +108,7 @@ fn test_center_on_point() {
 #[test]
 fn test_fit_to_bounds() {
     let mut vp = Viewport::new(1200.0, 800.0);
-    vp.fit_to_bounds(0.0, 0.0, 100.0, 100.0, 0.1);
+    vp.fit_to_bounds(0.0, 0.0, 100.0, 100.0, 0.05);
 
     assert!(vp.zoom() > 1.0); // Should zoom in to fit small content
 }

@@ -11,6 +11,9 @@ use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, PasteShapes};
 use gcodekit5_designer::serialization::DesignFile;
 use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegmentType};
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
+use gcodekit5_devicedb::DeviceManager;
+use std::sync::Arc;
+use gcodekit5_core::constants as core_constants;
 use crate::ui::gtk::designer_properties::PropertiesPanel;
 use crate::ui::gtk::designer_layers::LayersPanel;
 //use crate::ui::gtk::designer_file_ops; // Temporarily disabled
@@ -21,6 +24,37 @@ enum ResizeHandle {
     TopRight,
     BottomLeft,
     BottomRight,
+}
+
+/// Helper to compute device bounding box from optional DeviceManager
+fn compute_device_bbox(device_manager: &Option<Arc<DeviceManager>>) -> (f64, f64, f64, f64) {
+    if let Some(dm) = device_manager {
+        if let Some(profile) = dm.get_active_profile() {
+            return (
+                profile.x_axis.min as f64,
+                profile.y_axis.min as f64,
+                profile.x_axis.max as f64,
+                profile.y_axis.max as f64,
+            );
+        }
+    }
+    (
+        0.0,
+        0.0,
+        core_constants::DEFAULT_WORK_WIDTH_MM,
+        core_constants::DEFAULT_WORK_HEIGHT_MM,
+    )
+}
+
+#[cfg(test)]
+mod tests_designer {
+    use super::*;
+
+    #[test]
+    fn test_compute_device_bbox_default() {
+        let bbox = compute_device_bbox(&None);
+        assert_eq!(bbox, (0.0, 0.0, gcodekit5_core::constants::DEFAULT_WORK_WIDTH_MM, gcodekit5_core::constants::DEFAULT_WORK_HEIGHT_MM));
+    }
 }
 
 #[derive(Clone)]
@@ -50,6 +84,7 @@ pub struct DesignerCanvas {
     polyline_points: Rc<RefCell<Vec<Point>>>,
     // Toolpath preview
     preview_toolpaths: Rc<RefCell<Vec<Toolpath>>>,
+    device_manager: Option<Arc<DeviceManager>>,
 }
 
 pub struct DesignerView {
@@ -65,7 +100,7 @@ pub struct DesignerView {
 }
 
 impl DesignerCanvas {
-    pub fn new(state: Rc<RefCell<DesignerState>>, toolbox: Option<Rc<DesignerToolbox>>) -> Rc<Self> {
+    pub fn new(state: Rc<RefCell<DesignerState>>, toolbox: Option<Rc<DesignerToolbox>>, device_manager: Option<Arc<DeviceManager>>) -> Rc<Self> {
         let widget = DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
@@ -116,6 +151,7 @@ impl DesignerCanvas {
             shift_pressed: Rc::new(RefCell::new(false)),
             polyline_points: polyline_points.clone(),
             preview_toolpaths: preview_toolpaths.clone(),
+            device_manager: device_manager.clone(),
         });
 
         // Mouse motion tracking
@@ -313,7 +349,13 @@ impl DesignerCanvas {
 
         canvas
     }
-    
+
+    /// Fit the canvas to the active device working area (or a 250x250 mm fallback)
+    pub fn fit_to_device_area(&self) {
+        let (min_x, min_y, max_x, max_y) = compute_device_bbox(&self.device_manager);
+
+        self.state.borrow_mut().canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
+    }
     pub fn set_properties_panel(&self, panel: Rc<PropertiesPanel>) {
         *self.properties.borrow_mut() = Some(panel);
     }
@@ -346,12 +388,13 @@ impl DesignerCanvas {
     pub fn zoom_fit(&self) {
         let (target_pan_x, target_pan_y) = {
             let mut state = self.state.borrow_mut();
+
             // Calculate bounds of all shapes
-            let mut min_x = f64::MAX;
-            let mut min_y = f64::MAX;
-            let mut max_x = f64::MIN;
-            let mut max_y = f64::MIN;
-            
+            let mut min_x = f64::INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+
             let mut has_shapes = false;
             for obj in state.canvas.shapes() {
                 has_shapes = true;
@@ -361,57 +404,46 @@ impl DesignerCanvas {
                 max_x = max_x.max(ex);
                 max_y = max_y.max(ey);
             }
-            
-            if !has_shapes {
-                // Reset to default
-                state.canvas.set_zoom(1.0);
-                state.canvas.set_pan(0.0, 0.0);
-                (0.0, 0.0)
+
+            if has_shapes {
+                // Fit content using the viewport fit-to-bounds (5% padding)
+                state.canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
             } else {
-                // Add margin
-                let margin = 20.0;
-                min_x -= margin;
-                min_y -= margin;
-                max_x += margin;
-                max_y += margin;
-                
-                let content_width = max_x - min_x;
-                let content_height = max_y - min_y;
-                
-                let view_width = self.widget.width() as f64;
-                let view_height = self.widget.height() as f64;
-                
-                if content_width > 0.0 && content_height > 0.0 {
-                    let zoom_x = view_width / content_width;
-                    let zoom_y = view_height / content_height;
-                    let new_zoom = zoom_x.min(zoom_y);
-                    
-                    state.canvas.set_zoom(new_zoom);
-                    
-                    let cx = (min_x + max_x) / 2.0;
-                    let cy = (min_y + max_y) / 2.0;
-                    
-                    let pan_x = (view_width / 2.0) - (cx * new_zoom);
-                    let pan_y = (view_height / 2.0) - (cy * new_zoom);
-                    
-                    state.canvas.set_pan(pan_x, pan_y);
-                    (pan_x, pan_y)
+                // No shapes: attempt device profile bounds, fallback to 250x250 mm
+                let (min_x, min_y, max_x, max_y) = if let Some(dm) = &self.device_manager {
+                    if let Some(profile) = dm.get_active_profile() {
+                        (
+                            profile.x_axis.min as f64,
+                            profile.y_axis.min as f64,
+                            profile.x_axis.max as f64,
+                            profile.y_axis.max as f64,
+                        )
+                    } else {
+                        (0.0, 0.0, 250.0, 250.0)
+                    }
                 } else {
-                    (state.canvas.pan_x(), state.canvas.pan_y())
-                }
+                    (0.0, 0.0, 250.0, 250.0)
+                };
+
+                state.canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
             }
-        }; // state borrow dropped here
+
+            (state.canvas.pan_x(), state.canvas.pan_y())
+        };
         
         // Update adjustments safely
         if let Some(adj) = self.hadjustment.borrow().as_ref() {
             adj.set_value(-target_pan_x);
         }
         if let Some(adj) = self.vadjustment.borrow().as_ref() {
-            adj.set_value(-target_pan_y);
+            adj.set_value(target_pan_y);
         }
         
         self.widget.queue_draw();
     }
+
+    /// Public method to fit to device working area from DesignerView
+    // removed; wrapper belongs on DesignerView
 
     fn handle_right_click(&self, x: f64, y: f64) {
         // Check if we are building a polyline
@@ -2229,7 +2261,7 @@ impl DesignerCanvas {
 }
 
 impl DesignerView {
-    pub fn new() -> Rc<Self> {
+    pub fn new(device_manager: Option<Arc<DeviceManager>>) -> Rc<Self> {
         let container = Box::new(Orientation::Vertical, 0);
         container.set_hexpand(true);
         container.set_vexpand(true);
@@ -2247,7 +2279,7 @@ impl DesignerView {
         main_box.append(&toolbox.widget);
         
         // Create canvas
-        let canvas = DesignerCanvas::new(state.clone(), Some(toolbox.clone()));
+        let canvas = DesignerCanvas::new(state.clone(), Some(toolbox.clone()), device_manager.clone());
         
         // Create Grid for Canvas + Scrollbars
         let canvas_grid = Grid::new();
@@ -2277,6 +2309,10 @@ impl DesignerView {
             .label("Fit")
             .tooltip_text("Fit to View")
             .build();
+        let float_fit_device = gtk4::Button::builder()
+            .icon_name("preferences-desktop-display-symbolic")
+            .tooltip_text("Fit to Device Working Area")
+            .build();
         let float_zoom_in = gtk4::Button::builder()
             .label("+")
             .tooltip_text("Zoom In")
@@ -2284,6 +2320,9 @@ impl DesignerView {
 
         floating_box.append(&float_zoom_out);
         floating_box.append(&float_fit);
+        if device_manager.is_some() {
+            floating_box.append(&float_fit_device);
+        }
         floating_box.append(&float_zoom_in);
 
         overlay.add_overlay(&floating_box);
@@ -2307,9 +2346,10 @@ impl DesignerView {
         canvas_grid.attach(&overlay, 0, 0, 1, 1);
         
         // Scrollbars
-        // Range: -5000 to 5000 seems reasonable for a start
-        let h_adjustment = Adjustment::new(0.0, -5000.0, 5000.0, 10.0, 100.0, 100.0);
-        let v_adjustment = Adjustment::new(0.0, -5000.0, 5000.0, 10.0, 100.0, 100.0);
+        // Range: use shared world extent (±WORLD_EXTENT_MM)
+        let world_extent = gcodekit5_core::constants::WORLD_EXTENT_MM as f64;
+        let h_adjustment = Adjustment::new(0.0, -world_extent, world_extent, 10.0, 100.0, 100.0);
+        let v_adjustment = Adjustment::new(0.0, -world_extent, world_extent, 10.0, 100.0, 100.0);
         
         let h_scrollbar = Scrollbar::new(Orientation::Horizontal, Some(&h_adjustment));
         let v_scrollbar = Scrollbar::new(Orientation::Vertical, Some(&v_adjustment));
@@ -2359,6 +2399,23 @@ impl DesignerView {
         let canvas_zoom = canvas.clone();
         float_fit.connect_clicked(move |_| {
             canvas_zoom.zoom_fit();
+        });
+
+        let canvas_fitdev = canvas.clone();
+        float_fit_device.connect_clicked(move |_| {
+            canvas_fitdev.fit_to_device_area();
+            canvas_fitdev.widget.queue_draw();
+        });
+
+        // Auto-fit when designer is mapped (visible) — schedule after layout like Visualizer
+        let canvas_map = canvas.clone();
+        container.connect_map(move |_| {
+            let canvas_run = canvas_map.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                canvas_run.zoom_fit();
+                canvas_run.widget.queue_draw();
+                gtk4::glib::ControlFlow::Break
+            });
         });
         
         // Create right sidebar with properties and layers
@@ -2644,6 +2701,11 @@ impl DesignerView {
 
     pub fn set_on_gcode_generated<F: Fn(String) + 'static>(&self, f: F) {
         *self.on_gcode_generated.borrow_mut() = Some(std::boxed::Box::new(f));
+    }
+
+    pub fn fit_to_device(&self) {
+        self.canvas.fit_to_device_area();
+        self.canvas.widget.queue_draw();
     }
 
     pub fn undo(&self) {

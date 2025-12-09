@@ -411,6 +411,11 @@ impl Canvas {
         self.viewport.zoom()
     }
 
+    /// Fit the viewport to the given world bounds using specified padding.
+    pub fn fit_to_bounds(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, padding: f64) {
+        self.viewport.fit_to_bounds(min_x, min_y, max_x, max_y, padding);
+    }
+
     /// Zooms in.
     pub fn zoom_in(&mut self) {
         self.viewport.zoom_in();
@@ -474,7 +479,9 @@ impl Canvas {
     /// Fits the canvas to show all shapes with padding.
     pub fn fit_all_shapes(&mut self) {
         if self.shape_store.is_empty() {
-            self.viewport.reset();
+            // If canvas is empty, fit_to_view should set zoom to 100% and offset origin by 30px X and -30px Y
+            self.viewport.set_zoom(1.0);
+            self.viewport.set_pan(30.0, -30.0);
             return;
         }
 
@@ -491,7 +498,8 @@ impl Canvas {
             max_y = max_y.max(y2);
         }
 
-        self.viewport.fit_to_view(min_x, min_y, max_x, max_y);
+        // Fit content to view with a VIEW_PADDING per-edge padding so that content has small margins
+        self.viewport.fit_to_bounds(min_x, min_y, max_x, max_y, gcodekit5_core::constants::VIEW_PADDING);
     }
 
     /// Zooms to a point with optional zoom level.

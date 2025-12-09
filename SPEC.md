@@ -1,11 +1,16 @@
 # GCodeKit5 - Specification Document
 
-**Version**: 0.2.5-alpha.3
-**Last Updated**: 2025-12-08
+**Version**: 0.2.5-alpha.4
+**Last Updated**: 2025-12-09
 **Status**: Feature Release
 
-### Latest Release (v0.2.5-alpha.3) - Designer & Workflow Enhancements
+### Latest Release (v0.2.5-alpha.4) - Refactoring & Integration
+- ✅ **Refactor**
+  - Major refactor of Designer and Visualizer integration.
+  - Improved coordinate handling and rendering performance.
+  - Updated GTK UI components to align with backend changes.
 - ✅ **Designer**
+
   - Added Pan tool (hand icon) for canvas navigation.
   - Implemented alignment tools (Left, Right, Top, Bottom, Center H/V) with context menu and shortcuts.
   - Added Array tools (Linear, Circular, Grid) with automatic grouping.

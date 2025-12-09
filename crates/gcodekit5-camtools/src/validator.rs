@@ -31,10 +31,10 @@ pub struct ValidatorConfig {
 impl Default for ValidatorConfig {
     fn default() -> Self {
         Self {
-            max_x: 1000.0,
-            min_x: -1000.0,
-            max_y: 1000.0,
-            min_y: -1000.0,
+            max_x: gcodekit5_core::constants::WORLD_EXTENT_MM,
+            min_x: -gcodekit5_core::constants::WORLD_EXTENT_MM,
+            max_y: gcodekit5_core::constants::WORLD_EXTENT_MM,
+            min_y: -gcodekit5_core::constants::WORLD_EXTENT_MM,
             max_z: 500.0,
             min_z: -500.0,
         }

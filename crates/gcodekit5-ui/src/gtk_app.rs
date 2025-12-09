@@ -209,7 +209,7 @@ pub fn main() {
         stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), "CAM Tools");
 
         // 6. Designer
-        let designer = DesignerView::new();
+        let designer = DesignerView::new(Some(device_manager.clone()));
         stack.add_titled(&designer.widget, Some("designer"), "Designer");
 
         // Connect Designer G-Code Generation to Editor
