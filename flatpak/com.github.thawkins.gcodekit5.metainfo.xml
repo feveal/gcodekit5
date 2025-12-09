@@ -11,6 +11,10 @@
     </p>
   </description>
   <launchable type="desktop-id">com.github.thawkins.gcodekit5.desktop</launchable>
+  <categories>
+    <category>Engineering</category>
+    <category>Graphics</category>
+  </categories>
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/thawkins/gcodekit5/master/assets/screenshots/jogging_control_panel.png</image>

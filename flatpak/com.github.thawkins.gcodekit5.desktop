@@ -5,6 +5,6 @@ Exec=gcodekit5
 Icon=com.github.thawkins.gcodekit5
 Terminal=false
 Type=Application
-Categories=Engineering,Graphics;
+Categories=Engineering;Graphics;
 Keywords=GCode;CNC;GRBL;
 StartupNotify=true
