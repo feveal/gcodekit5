@@ -419,10 +419,10 @@ impl DesignerCanvas {
                             profile.y_axis.max as f64,
                         )
                     } else {
-                        (0.0, 0.0, 250.0, 250.0)
+                        (0.0, 0.0, core_constants::DEFAULT_WORK_WIDTH_MM, core_constants::DEFAULT_WORK_HEIGHT_MM)
                     }
                 } else {
-                    (0.0, 0.0, 250.0, 250.0)
+                    (0.0, 0.0, core_constants::DEFAULT_WORK_WIDTH_MM, core_constants::DEFAULT_WORK_HEIGHT_MM)
                 };
 
                 state.canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);

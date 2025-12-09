@@ -2,6 +2,7 @@
 
 ### Fixed
 - **Visualizer**: Fixed "Fit to Device" functionality to correctly center the device working area in the view.
+- **Designer**: Aligned "Fit to Device" logic with Visualizer to use consistent padding (5%) and default bounds.
 
 ### Changed
 - **Refactor**: Major refactor of Designer and Visualizer integration to improve coordinate handling and rendering performance.
