@@ -5,9 +5,10 @@ The project has migrated from Slint to GTK4 for the UI framework.
 This file is maintained as per agent instructions, but primary UI development is now focused on GTK4 / gtk-rs.
 
 -## Slint archival notes
-- The `.slint` UI files have been removed from the repository as part of the migration away from Slint.
-- The Slint bridge types are gated under `slint_legacy_tests` feature flags to allow the codebase to build without Slint by default.
-- A non-UI editor bridge `EditorBridgeBackend` exists in `gcodekit5-gcodeeditor` to decouple core editor functionality from UI bridges.
+ - The `.slint` UI files and legacy Slint Rust UI modules (under `crates/gcodekit5-ui/ui`) have been removed.
+ - The Slint compatibility shim crate (previously `crates/slint`) and the Slint UI bridge (`editor_bridge.rs`) have been removed from the default workspace; the `slint_legacy_tests` feature remains to allow legacy tests if re-enabled in CI.
+ - A non-UI editor bridge `EditorBridgeBackend` exists in `gcodekit5-gcodeeditor` to decouple core editor functionality from UI bridges.
+ - The `src/app/callbacks` legacy callback modules were archived to `legacy/callbacks/` and the mainline `src/app/callbacks` directory was removed from the default workspace. These archived callbacks are kept for reference and restoration if needed.
 
 ## GTK4 Strategies
 - **Layouts**: Use `Box`, `Grid`, and `Overlay` for flexible layouts.
