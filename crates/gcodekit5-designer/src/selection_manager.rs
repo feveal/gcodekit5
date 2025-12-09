@@ -156,6 +156,8 @@ impl SelectionManager {
 
         // Find the shape at the point (topmost first)
         // We iterate in reverse draw order
+        let candidates_at_point = spatial_index.query_point(point.x, point.y);
+        eprintln!("DEBUG select_at: point=({},{}) candidates={:?}", point.x, point.y, candidates_at_point);
         for id in store.draw_order_iter().rev() {
             if let Some(obj) = store.get(id) {
                 if let Some(gid) = obj.group_id {
@@ -179,7 +181,9 @@ impl SelectionManager {
                 } else {
                     // Handle single shape selection: use precise hit test
                     if candidates.contains(&obj.id) {
-                        if obj.shape.contains_point(point, tolerance) {
+                        let hit = obj.shape.contains_point(point, tolerance);
+                        eprintln!("DEBUG select_at: testing id={} name={} hits={} bbox={:?}", obj.id, obj.name, hit, obj.shape.bounding_box());
+                        if hit {
                             found_id = Some(obj.id);
                             found_group_id = None;
                             break;
