@@ -152,7 +152,7 @@ impl CamToolsView {
             &Self::create_tool_card(
                 "Laser Vector Engraver",
                 "Convert SVG and DXF vector files to G-code",
-                "draw-bezier-curves-symbolic",
+                "insert-image",
                 "laser_vector",
                 stack,
             ),
@@ -234,7 +234,14 @@ impl CamToolsView {
         content.set_width_request(250);
         content.set_height_request(200);
 
-        let icon_img = Image::from_icon_name(icon);
+        // Support loading themed icon names and local resource icons.
+        // If `icon` is a resource path (e.g., `/com/gcodekit5/icons/whatever.svg`),
+        // load it via `Image::from_resource`, otherwise via `Image::from_icon_name`.
+        let icon_img = if icon.starts_with('/') {
+            Image::from_resource(icon)
+        } else {
+            Image::from_icon_name(icon)
+        };
         icon_img.set_pixel_size(64);
         icon_img.add_css_class("accent");
 

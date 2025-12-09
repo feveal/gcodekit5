@@ -7,6 +7,8 @@
     - `gcodekit5-ui` retains the `EditorBridge` Slint UI bridge gated behind a `slint_legacy_tests` feature; a stub alias is provided when Slint isn't enabled.
     - Added integration tests for `EditorBridgeBackend` and updated existing tests to use the backend alias.
     - Removed Slint `.slint` UI assets from the repository as part of Slint UI removal; code has non-Slint stubs and feature gating to maintain compatibility.
+     - Removed the Slint compatibility crate (`crates/slint`), Slint UI legacy Rust modules under `crates/gcodekit5-ui/ui/`, and the Slint editor bridge (`crates/gcodekit5-ui/src/editor_bridge.rs`). All of these were confirmed to be unused by the default GTK4-based build.
+     - Removed the Slint compatibility crate (`crates/slint`), Slint UI legacy Rust modules under `crates/gcodekit5-ui/ui/`, the Slint editor bridge (`crates/gcodekit5-ui/src/editor_bridge.rs`), and legacy callback modules under `src/app/callbacks/` that were unused by the default build (`cam.rs`, `designer.rs`, `editor.rs`, `machine.rs`, `settings.rs`).
 
   - Allows panning the canvas by dragging with the mouse.
   - Changes cursor to hand/grabbing icon.

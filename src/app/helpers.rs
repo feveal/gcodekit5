@@ -4,21 +4,21 @@ use gcodekit5_ui::EditorBridge;
 use crate::TextLine;
 
 /// Get list of available serial ports
-pub fn get_available_ports() -> anyhow::Result<Vec<slint::SharedString>> {
+pub fn get_available_ports() -> anyhow::Result<Vec<String>> {
     match list_ports() {
         Ok(ports) => {
-            let port_names: Vec<slint::SharedString> = ports
+            let port_names: Vec<String> = ports
                 .iter()
-                .map(|p| slint::SharedString::from(p.port_name.clone()))
+                .map(|p| p.port_name.clone())
                 .collect();
 
             if port_names.is_empty() {
-                Ok(vec![slint::SharedString::from("No ports available")])
+                Ok(vec!["No ports available".to_string()])
             } else {
                 Ok(port_names)
             }
         }
-        Err(_) => Ok(vec![slint::SharedString::from("Error reading ports")]),
+        Err(_) => Ok(vec!["Error reading ports".to_string()]),
     }
 }
 
@@ -90,11 +90,11 @@ pub fn parse_grbl_setting_line(line: &str) -> Option<ConfigSetting> {
 
     Some(ConfigSetting {
         number,
-        name: slint::SharedString::from(name),
-        value: slint::SharedString::from(value),
-        unit: slint::SharedString::from(unit),
-        description: slint::SharedString::from(desc),
-        category: slint::SharedString::from(category),
+        name: name.to_string(),
+        value: value.to_string(),
+        unit: unit.to_string(),
+        description: desc.to_string(),
+        category: category.to_string(),
         read_only: false,
     })
 }
@@ -234,7 +234,7 @@ pub fn get_grbl_setting_info(number: i32) -> (&'static str, &'static str, &'stat
 pub fn sync_capabilities_to_ui(window: &MainWindow, capability_manager: &CapabilityManager) {
     let state = capability_manager.get_state();
 
-    window.set_firmware_capabilities(slint::SharedString::from(state.get_summary()));
+    window.set_firmware_capabilities(state.get_summary());
     window.set_cap_supports_arcs(state.supports_arcs);
     window.set_cap_supports_probing(state.supports_probing);
     window.set_cap_supports_tool_change(state.supports_tool_change);
@@ -252,16 +252,15 @@ pub fn update_device_info_panel(
     version: gcodekit5::firmware::firmware_version::SemanticVersion,
     capability_manager: &CapabilityManager,
 ) {
-    use slint::{ModelRc, VecModel};
     use std::rc::Rc;
 
     // Update capability manager with detected firmware
     capability_manager.update_firmware(firmware_type, version.clone());
 
     // Set firmware type and version
-    window.set_device_firmware_type(slint::SharedString::from(format!("{:?}", firmware_type)));
-    window.set_device_firmware_version(slint::SharedString::from(version.to_string()));
-    window.set_device_name(slint::SharedString::from(format!(
+    window.set_device_firmware_type(format!("{:?}", firmware_type));
+    window.set_device_firmware_version(version.to_string());
+    window.set_device_name(format!(
         "{:?} Device",
         firmware_type
     )));
@@ -326,8 +325,8 @@ pub fn update_device_info_panel(
         notes: "Work coordinate systems (G54-G59)".into(),
     });
 
-    let capabilities_model = Rc::new(VecModel::from(capabilities));
-    window.set_device_capabilities(ModelRc::from(capabilities_model));
+    // Directly pass capabilities vector into the GTK UI MainWindow
+    window.set_device_capabilities(capabilities);
 }
 
 /// Update visible lines in the editor
@@ -336,14 +335,13 @@ pub fn update_visible_lines(window: &MainWindow, editor_bridge: &EditorBridge) {
     let mut visible_lines = Vec::new();
     for i in start_line..end_line {
         if let Some(content) = editor_bridge.get_line_at(i) {
-            visible_lines.push(TextLine {
+                visible_lines.push(TextLine {
                 line_number: (i + 1) as i32,
-                content: slint::SharedString::from(content),
+                content: content.clone(),
                 is_dirty: false,
             });
         }
     }
-    let model = std::rc::Rc::new(slint::VecModel::from(visible_lines));
-    window.set_visible_lines(slint::ModelRc::new(model));
+    window.set_visible_lines(visible_lines);
 }
 

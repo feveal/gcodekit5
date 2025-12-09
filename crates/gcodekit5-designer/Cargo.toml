@@ -9,7 +9,6 @@ repository.workspace = true
 
 [dependencies]
 gcodekit5-core = { path = "../gcodekit5-core" }
-gcodekit5-camtools = { path = "../gcodekit5-camtools" }
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -18,10 +17,7 @@ chrono = { version = "0.4", features = ["serde"] }
 anyhow = "1.0"
 tracing = "0.1"
 uuid = { version = "1.6", features = ["v4", "serde"] }
-svg = "0.18"
-dxf = "0.4"
 lyon = "1.0"
-regex = "1.10"
 rusttype = "0.9.3"
 cavalier_contours = "0.6.0"
 tiny-skia = "0.11.4"

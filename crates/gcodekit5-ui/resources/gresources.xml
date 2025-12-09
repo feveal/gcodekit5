@@ -10,4 +10,7 @@
     <file compressed="true" alias="text.svg">icons/text.svg</file>
     <file compressed="true" alias="grab.svg">icons/grab.svg</file>
   </gresource>
+   <gresource prefix="/com/gcodekit5/images">
+    <file compressed="true" alias="gcodekit5.png">images/gcodekit5.png</file>
+  </gresource>
 </gresources>

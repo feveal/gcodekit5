@@ -73,21 +73,20 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
     );
 
     // Update UI with SVG path data
-    window.set_designer_canvas_crosshair_data(slint::SharedString::from(crosshair_data));
-    window.set_designer_canvas_grid_data(slint::SharedString::from(grid_data));
-    window.set_designer_canvas_origin_data(slint::SharedString::from(origin_data));
+    window.set_designer_canvas_crosshair_data(crosshair_data);
+    window.set_designer_canvas_grid_data(grid_data);
+    window.set_designer_canvas_origin_data(origin_data);
     window.set_designer_show_grid(state.show_grid);
     if grid_size > 0.0 {
-        window.set_designer_grid_size(slint::SharedString::from(format!("{}{}", to_display_string(grid_size as f32, system), get_unit_label(system))));
+        window.set_designer_grid_size(format!("{}{}", to_display_string(grid_size as f32, system), get_unit_label(system)));
     }
-    window.set_designer_canvas_shapes_data(slint::SharedString::from(shapes_data));
-    window.set_designer_canvas_grouped_shapes_data(slint::SharedString::from(grouped_shapes_data));
-    window.set_designer_canvas_group_bounding_box_data(slint::SharedString::from(
+    window.set_designer_canvas_shapes_data(shapes_data);
+    window.set_designer_canvas_grouped_shapes_data(grouped_shapes_data);
+    window.set_designer_canvas_group_bounding_box_data(
         group_bounding_box_data,
     ));
-    window
-        .set_designer_canvas_selected_shapes_data(slint::SharedString::from(selected_shapes_data));
-    window.set_designer_canvas_handles_data(slint::SharedString::from(handles_data));
+    window.set_designer_canvas_selected_shapes_data(selected_shapes_data);
+    window.set_designer_canvas_handles_data(handles_data);
 
     // Still update shapes array for metadata (could be used for debugging/info)
     let shapes: Vec<crate::DesignerShape> = state
@@ -112,7 +111,7 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
             crate::DesignerShape {
                 id: obj.id as i32,
                 group_id: obj.group_id.map(|id| id as i32).unwrap_or(0),
-                name: slint::SharedString::from(obj.name.clone()),
+                name: obj.name.clone(),
                 x: x1 as f32,
                 y: y1 as f32,
                 width: (x2 - x1).abs() as f32,
@@ -158,12 +157,8 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
         .collect();
     for _ in &shapes {}
     // Force UI to recognize the change by clearing first
-    window.set_designer_shapes(slint::ModelRc::from(Rc::new(slint::VecModel::from(Vec::<
-        crate::DesignerShape,
-    >::new(
-    )))));
-    let shapes_model = Rc::new(slint::VecModel::from(shapes.clone()));
-    window.set_designer_shapes(slint::ModelRc::from(shapes_model));
+    window.set_designer_shapes(Vec::new());
+    window.set_designer_shapes(shapes.clone());
 
     // Update shape indicator with selected shape info
     let selected_count = state.canvas.selected_count();
@@ -216,8 +211,8 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
         window.set_designer_selected_shape_radius(to_display_string(0.0, system).into());
         window.set_designer_selected_shape_corner_radius(to_display_string(0.0, system).into());
         window.set_designer_selected_shape_is_slot(false);
-        window.set_designer_selected_shape_name(slint::SharedString::from("Multiple Selection"));
-        window.set_designer_selected_shape_text_content(slint::SharedString::from(""));
+        window.set_designer_selected_shape_name("Multiple Selection".to_string());
+        window.set_designer_selected_shape_text_content("".to_string());
         window.set_designer_selected_shape_font_size(to_display_string(0.0, system).into());
         window.set_designer_selected_shape_rotation(to_display_string(0.0, system).into());
         
@@ -294,18 +289,18 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
                 .as_any()
                 .downcast_ref::<gcodekit5::designer::shapes::TextShape>()
             {
-                window.set_designer_selected_shape_text_content(slint::SharedString::from(
+                window.set_designer_selected_shape_text_content(
                     &text.text,
                 ));
                 window.set_designer_selected_shape_font_size(to_display_string(text.font_size as f32, system).into());
             } else {
-                window.set_designer_selected_shape_text_content(slint::SharedString::from(""));
+                window.set_designer_selected_shape_text_content("".to_string());
                 window.set_designer_selected_shape_font_size(to_display_string(12.0, system).into());
             }
-            window.set_designer_selected_shape_name(slint::SharedString::from(obj.name.clone()));
+            window.set_designer_selected_shape_name(obj.name.clone());
         }
     } else {
-        window.set_designer_selected_shape_name(slint::SharedString::from(""));
+        window.set_designer_selected_shape_name("".to_string());
         
         // No selection - show default properties
         let obj = &state.default_properties_shape;
@@ -339,7 +334,7 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
         window.set_designer_selected_shape_raster_angle(to_display_string(angle, system).into());
         window.set_designer_selected_shape_bidirectional(bidir);
         
-        window.set_designer_selected_shape_text_content(slint::SharedString::from(""));
+        window.set_designer_selected_shape_text_content("".to_string());
         window.set_designer_selected_shape_font_size(to_display_string(12.0, system).into());
     }
 

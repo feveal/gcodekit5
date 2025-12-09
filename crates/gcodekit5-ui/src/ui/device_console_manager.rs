@@ -98,11 +98,10 @@ impl DeviceConsoleManager {
     }
 
     /// Get console output as model
-    pub fn get_model(&self) -> slint::ModelRc<slint::SharedString> {
+    pub fn get_model(&self) -> Vec<String> {
         let console = self.console.lock().unwrap();
         let messages = console.get_displayed_strings(1000);
-        let shared_messages: Vec<slint::SharedString> = messages.into_iter().map(|s| s.into()).collect();
-        slint::ModelRc::new(slint::VecModel::from(shared_messages))
+        messages
     }
 
     /// Get console output as string

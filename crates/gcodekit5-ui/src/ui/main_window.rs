@@ -343,6 +343,46 @@ pub struct MainWindow {
     pub fullscreen: bool,
     /// Is maximized
     pub maximized: bool,
+    // Store optional callbacks registered by the application (no-op if not used)
+    // Using Box<dyn Fn(...)> for simplicity; real UI will wire these to event handlers
+    #[allow(dead_code)]
+    on_refresh_ports_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_connect_cb: std::cell::RefCell<Option<Box<dyn Fn(String, i32)>>>,
+    #[allow(dead_code)]
+    on_disconnect_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_menu_view_machine_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_machine_zero_all_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_machine_emergency_stop_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_machine_jog_home_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_machine_jog_x_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_machine_jog_x_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_machine_jog_y_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_machine_jog_y_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_machine_jog_z_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_machine_jog_z_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    #[allow(dead_code)]
+    on_generate_tabbed_box_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_generate_jigsaw_puzzle_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_generate_spoilboard_surfacing_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_generate_spoilboard_grid_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_generate_laser_engraving_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    #[allow(dead_code)]
+    on_generate_vector_engraving_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
 }
 
 impl MainWindow {
@@ -357,6 +397,25 @@ impl MainWindow {
             status_bar: StatusBar::new(),
             fullscreen: false,
             maximized: false,
+            on_refresh_ports_cb: std::cell::RefCell::new(None),
+            on_connect_cb: std::cell::RefCell::new(None),
+            on_disconnect_cb: std::cell::RefCell::new(None),
+            on_menu_view_machine_cb: std::cell::RefCell::new(None),
+            on_machine_zero_all_cb: std::cell::RefCell::new(None),
+            on_machine_emergency_stop_cb: std::cell::RefCell::new(None),
+            on_machine_jog_home_cb: std::cell::RefCell::new(None),
+            on_machine_jog_x_positive_cb: std::cell::RefCell::new(None),
+            on_machine_jog_x_negative_cb: std::cell::RefCell::new(None),
+            on_machine_jog_y_positive_cb: std::cell::RefCell::new(None),
+            on_machine_jog_y_negative_cb: std::cell::RefCell::new(None),
+            on_machine_jog_z_positive_cb: std::cell::RefCell::new(None),
+            on_machine_jog_z_negative_cb: std::cell::RefCell::new(None),
+            on_generate_tabbed_box_cb: std::cell::RefCell::new(None),
+            on_generate_jigsaw_puzzle_cb: std::cell::RefCell::new(None),
+            on_generate_spoilboard_surfacing_cb: std::cell::RefCell::new(None),
+            on_generate_spoilboard_grid_cb: std::cell::RefCell::new(None),
+            on_generate_laser_engraving_cb: std::cell::RefCell::new(None),
+            on_generate_vector_engraving_cb: std::cell::RefCell::new(None),
         }
     }
 
@@ -371,6 +430,42 @@ impl MainWindow {
         self.height = height;
     }
 
+        pub fn set_device_firmware_type(&mut self, _ft: impl Into<String>) {
+            // No-op for now; GTK implementation may expose this via DeviceInfoView
+        }
+
+        pub fn set_device_firmware_version(&mut self, _version: impl Into<String>) {
+            // No-op for now
+        }
+
+        pub fn set_device_name(&mut self, _name: impl Into<String>) {
+            // No-op for now
+        }
+
+        pub fn set_device_capabilities(&mut self, _caps: Vec<crate::gtk::device_info::CapabilityItem>) {
+            // No-op; UI will update capabilities through dedicated view
+        }
+
+        pub fn set_visible_lines(&mut self, _lines: Vec<gcodekit5_gcodeeditor::TextLine>) {
+            // No-op visible lines for headless tests
+        }
+
+        pub fn set_designer_shapes(&mut self, _shapes: Vec<crate::DesignerShape>) {
+            // No-op for now; GTK implementation will update canvas
+        }
+
+        pub fn set_designer_state(&mut self, _state: crate::DesignerState) {
+            // No-op: used by tests and backend to update designer UI state
+        }
+
+        pub fn set_current_settings(&mut self, _settings: Vec<crate::gtk::settings::Setting>) {
+            // No-op
+        }
+
+        pub fn set_settings_category(&mut self, _category: impl Into<String>) {
+            // No-op
+        }
+
     /// Toggle fullscreen
     pub fn toggle_fullscreen(&mut self) {
         self.fullscreen = !self.fullscreen;
@@ -379,6 +474,83 @@ impl MainWindow {
     /// Toggle maximize
     pub fn toggle_maximize(&mut self) {
         self.maximized = !self.maximized;
+    }
+
+    // --- Event registration stubs (no-op storage) ---
+    pub fn on_refresh_ports<F: Fn() + 'static>(&self, cb: F) {
+        self.on_refresh_ports_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_connect<F: Fn(String, i32) + 'static>(&self, cb: F) {
+        self.on_connect_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_disconnect<F: Fn() + 'static>(&self, cb: F) {
+        self.on_disconnect_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_menu_view_machine<F: Fn() + 'static>(&self, cb: F) {
+        self.on_menu_view_machine_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_zero_all<F: Fn() + 'static>(&self, cb: F) {
+        self.on_machine_zero_all_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_emergency_stop<F: Fn() + 'static>(&self, cb: F) {
+        self.on_machine_emergency_stop_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_home<F: Fn() + 'static>(&self, cb: F) {
+        self.on_machine_jog_home_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_x_positive<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_x_positive_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_x_negative<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_x_negative_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_y_positive<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_y_positive_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_y_negative<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_y_negative_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_z_positive<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_z_positive_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_machine_jog_z_negative<F: Fn(f32) + 'static>(&self, cb: F) {
+        self.on_machine_jog_z_negative_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_tabbed_box<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_tabbed_box_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_jigsaw_puzzle<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_jigsaw_puzzle_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_spoilboard_surfacing<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_spoilboard_surfacing_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_spoilboard_grid<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_spoilboard_grid_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_laser_engraving<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_laser_engraving_cb.replace(Some(Box::new(cb)));
+    }
+
+    pub fn on_generate_vector_engraving<F: Fn() + 'static>(&self, cb: F) {
+        self.on_generate_vector_engraving_cb.replace(Some(Box::new(cb)));
     }
 
     /// Get configuration string

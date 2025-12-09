@@ -30,87 +30,37 @@ impl HasDisplayHandle for Win32ParentHandle {
 }
 
 /// Initialize the window (maximize and focus)
-pub fn initialize_window(_window: &slint::Window) {
-    #[cfg(target_os = "windows")]
-    {
-        // Ensure HasWindowHandle is in scope for slint::Window
-        let handle = _window.window_handle();
-        if let Ok(raw_handle) = handle.window_handle() {
-            if let RawWindowHandle::Win32(win32_handle) = raw_handle.as_raw() {
-                let hwnd = win32_handle.hwnd.get();
-                unsafe {
-                    use windows_sys::Win32::UI::WindowsAndMessaging::{
-                        ShowWindow, SetForegroundWindow, SW_MAXIMIZE
-                    };
-                    
-                    // Maximize window on startup
-                    ShowWindow(hwnd, SW_MAXIMIZE);
-                    SetForegroundWindow(hwnd);
-                }
-            }
-        }
-    }
-    
-    #[cfg(not(target_os = "windows"))]
-    {
-        // For other platforms, rely on Slint's preferred size or maximize if needed
-        // window.set_maximized(true); 
-    }
+///
+/// This is a no-op for non-GUI platforms; GUI-specific behavior is implemented
+/// in the UI crate's platform helpers (GTK/Win32 as appropriate).
+pub fn initialize_window() {
+    // For now, this helper does nothing; GUI crates should perform any
+    // platform-specific window manipulation as needed.
 }
 
 /// Helper to call FileDialog::pick_file with the current foreground window as parent on Windows
-pub fn pick_file_with_parent(dialog: rfd::FileDialog, _window: &slint::Window) -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        // Extract the HWND from the Slint window and use our wrapper
-        // This avoids issues where Slint's handle implementation might cause full-screen dialogs
-        if let Ok(handle) = _window.window_handle().window_handle() {
-            if let RawWindowHandle::Win32(win32_handle) = handle.as_raw() {
-                if let Some(hwnd) = std::num::NonZeroIsize::new(win32_handle.hwnd.get()) {
-                    let parent = Win32ParentHandle(hwnd);
-                    return dialog.set_parent(&parent).pick_file();
-                }
-            }
-        }
-        // Fallback if handle extraction fails
-        dialog.pick_file()
-    }
-    #[cfg(not(target_os = "windows"))]
+pub fn pick_file_with_parent(dialog: rfd::FileDialog) -> Option<PathBuf> {
+    // The UI crate will handle parent window associations if necessary. For
+    // the generic platform helper we simply call pick_file() directly.
     dialog.pick_file()
 }
 
 /// Helper to call FileDialog::save_file with the current foreground window as parent on Windows
-pub fn save_file_with_parent(dialog: rfd::FileDialog, _window: &slint::Window) -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(handle) = _window.window_handle().window_handle() {
-            if let RawWindowHandle::Win32(win32_handle) = handle.as_raw() {
-                if let Some(hwnd) = std::num::NonZeroIsize::new(win32_handle.hwnd.get()) {
-                    let parent = Win32ParentHandle(hwnd);
-                    return dialog.set_parent(&parent).save_file();
-                }
-            }
-        }
-        dialog.save_file()
-    }
-    #[cfg(not(target_os = "windows"))]
+pub fn save_file_with_parent(dialog: rfd::FileDialog) -> Option<PathBuf> {
     dialog.save_file()
 }
 
 /// Helper for folder picking with the foreground window as parent on Windows
-pub fn pick_folder_with_parent(dialog: rfd::FileDialog, _window: &slint::Window) -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        if let Ok(handle) = _window.window_handle().window_handle() {
-            if let RawWindowHandle::Win32(win32_handle) = handle.as_raw() {
-                if let Some(hwnd) = std::num::NonZeroIsize::new(win32_handle.hwnd.get()) {
-                    let parent = Win32ParentHandle(hwnd);
-                    return dialog.set_parent(&parent).pick_folder();
-                }
-            }
-        }
-        dialog.pick_folder()
-    }
-    #[cfg(not(target_os = "windows"))]
+pub fn pick_folder_with_parent(dialog: rfd::FileDialog) -> Option<PathBuf> {
     dialog.pick_folder()
+}
+
+/// Invoke a closure on the main thread / event loop.
+///
+/// Currently this is a no-op and executes the closure immediately to keep
+/// tests and non-GUI code simple. Replace this with a real main-loop
+/// scheduling call if switching to a GUI event loop (glib/gtk) later.
+pub fn invoke_from_event_loop<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
+    f();
+    Ok(())
 }
