@@ -124,40 +124,22 @@ impl GcodeVisualizer {
         };
 
         if work_width > 0.0 && work_height > 0.0 {
-            // Use the same math as Viewport::fit_to_bounds (in designer::viewport)
-            let padding: f32 = core_constants::VIEW_PADDING as f32;
-            let padding_factor = 1.0 - (padding * 2.0);
+            // Calculate zoom to fit device area with padding
+            let padding_percent = core_constants::VIEW_PADDING as f32;
+            let available_width = width * (1.0 - padding_percent * 2.0);
+            let available_height = height * (1.0 - padding_percent * 2.0);
 
-            let zoom_x = (width * padding_factor) / work_width;
-            let zoom_y = (height * padding_factor) / work_height;
+            let zoom_x = available_width / work_width;
+            let zoom_y = available_height / work_height;
             let new_zoom = zoom_x.min(zoom_y).max(0.1).min(50.0);
-
-            let content_pixel_width = work_width * new_zoom;
-            let content_pixel_height = work_height * new_zoom;
-
-            let center_pixel_x = width / 2.0 - content_pixel_width / 2.0;
-            let center_pixel_y = height / 2.0 - content_pixel_height / 2.0;
-
-            // Compute pan_x/pan_y to match Viewport's mapping
-            let min_x = center_x - work_width / 2.0;
-            let min_y = center_y - work_height / 2.0;
-
-            let pan_x = center_pixel_x - min_x * new_zoom;
-            let pan_y = height - center_pixel_y - content_pixel_height - min_y * new_zoom;
 
             vis.zoom_scale = new_zoom;
 
-            // Convert pan_x/pan_y into Visualizer x_offset/y_offset metrics
-            // Visualizer world-to-screen is: (x - min_x) * zoom + CANVAS_PADDING + x_offset
-            // We want that to equal viewport: x * zoom + pan_x
-            // Solving: x_offset = pan_x + min_x * zoom - CANVAS_PADDING
-            let canvas_padding = core_constants::CANVAS_PADDING_PX as f32; // matches Visualizer2D::CANVAS_PADDING
-            vis.x_offset = pan_x + min_x * new_zoom - canvas_padding;
-
-            // Visualizer screen_y = height - ((y - min_y) * zoom + CANVAS_PADDING - y_offset)
-            // Set y_offset such that this equals viewport screen_y = height - (y * zoom + pan_y)
-            // Solving: y_offset = -pan_y - min_y * zoom + CANVAS_PADDING
-            vis.y_offset = -pan_y - min_y * new_zoom + canvas_padding;
+            // Center the view on the device center
+            // The draw function applies: translate(screen_center) -> scale -> translate(offset)
+            // So offset needs to be the negative center of the target to bring it to (0,0) before scaling/centering on screen
+            vis.x_offset = -center_x;
+            vis.y_offset = -center_y;
         }
     }
 

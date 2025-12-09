@@ -1,5 +1,8 @@
 ## [0.2.5-alpha.4] - 2025-12-09
 
+### Fixed
+- **Visualizer**: Fixed "Fit to Device" functionality to correctly center the device working area in the view.
+
 ### Changed
 - **Refactor**: Major refactor of Designer and Visualizer integration to improve coordinate handling and rendering performance.
 - **Designer**: Updated `DesignerCanvas` and `Viewport` to use improved coordinate transformation logic.
