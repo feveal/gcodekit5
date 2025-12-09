@@ -140,6 +140,7 @@ fn test_canvas_multi_shapes() {
     let circle_id = canvas.add_circle(Point::new(25.0, 25.0), 5.0);
     let line_id = canvas.add_line(Point::new(50.0, 0.0), Point::new(50.0, 50.0));
 
+    // debug prints removed
     assert_eq!(canvas.shape_count(), 3);
 
     // Select each shape

@@ -156,6 +156,7 @@ impl SelectionManager {
 
         // Find the shape at the point (topmost first)
         // We iterate in reverse draw order
+        // candidates_at_point logged temporarily during debugging
         for id in store.draw_order_iter().rev() {
             if let Some(obj) = store.get(id) {
                 if let Some(gid) = obj.group_id {
