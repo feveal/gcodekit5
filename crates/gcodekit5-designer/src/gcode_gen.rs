@@ -142,17 +142,56 @@ impl ToolpathToGcode {
                         line_prefix, segment.end.x, segment.end.y, segment.feed_rate
                     ));
                 }
-                ToolpathSegmentType::ArcMove => {
-                    // Arc move (G02/G03) - for future use
+                ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
+                    // First plunge if needed (same as linear)
+                    if (current_z - self.safe_z).abs() > 0.01 {
+                        let line_prefix = if self.line_numbers_enabled {
+                            format!("N{} ", line_number)
+                        } else {
+                            String::new()
+                        };
+                        gcode.push_str(&format!(
+                            "{}G01 Z{:.3} F{:.0}\n",
+                            line_prefix, toolpath.depth, segment.feed_rate
+                        ));
+                        line_number += 10;
+                        current_z = toolpath.depth;
+                    } else if (current_z - self.safe_z).abs() < 0.01 {
+                        let line_prefix = if self.line_numbers_enabled {
+                            format!("N{} ", line_number)
+                        } else {
+                            String::new()
+                        };
+                        gcode.push_str(&format!(
+                            "{}G01 Z{:.3} F{:.0}\n",
+                            line_prefix, toolpath.depth, segment.feed_rate
+                        ));
+                        line_number += 10;
+                        current_z = toolpath.depth;
+                    }
+
                     let line_prefix = if self.line_numbers_enabled {
                         format!("N{} ", line_number)
                     } else {
                         String::new()
                     };
-                    gcode.push_str(&format!(
-                        "{}G01 X{:.3} Y{:.3} F{:.0}\n",
-                        line_prefix, segment.end.x, segment.end.y, segment.feed_rate
-                    ));
+                    
+                    let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW { "G02" } else { "G03" };
+                    
+                    if let Some(center) = segment.center {
+                        let i = center.x - segment.start.x;
+                        let j = center.y - segment.start.y;
+                        gcode.push_str(&format!(
+                            "{}{} X{:.3} Y{:.3} I{:.3} J{:.3} F{:.0}\n",
+                            line_prefix, cmd, segment.end.x, segment.end.y, i, j, segment.feed_rate
+                        ));
+                    } else {
+                        // Fallback to linear if no center provided (should not happen for arcs)
+                        gcode.push_str(&format!(
+                            "{}G01 X{:.3} Y{:.3} F{:.0}\n",
+                            line_prefix, segment.end.x, segment.end.y, segment.feed_rate
+                        ));
+                    }
                 }
             }
 

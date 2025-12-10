@@ -6,6 +6,7 @@
 //! - Interactive camera controls (controls)
 //! - Grid and axis rendering
 
+pub mod camera;
 pub mod canvas_renderer;
 pub mod controls;
 pub mod features;
@@ -13,8 +14,9 @@ pub mod setup;
 pub mod toolpath_cache;
 pub mod toolpath_rendering;
 pub mod viewport;
-pub mod visualizer_2d;
+pub mod visualizer;
 
+pub use camera::Camera as Camera3D;
 pub use canvas_renderer::{
     render_grid_to_path, render_origin_to_path, render_rapid_moves_to_path, render_toolpath_to_path,
     render_g1_to_path, render_g2_to_path, render_g3_to_path, render_g4_to_path,
@@ -30,46 +32,7 @@ pub use toolpath_rendering::{
     ArcSegment, LineSegment, MovementType, PathSegment, Toolpath, ToolpathStats,
 };
 pub use viewport::{Bounds, ViewportTransform};
-pub use visualizer_2d::{GCodeCommand, Point2D, Visualizer2D};
+pub use visualizer::{GCodeCommand, Point3D, Visualizer};
 
-/// 3D Visualizer - Task 80-82
-pub struct Visualizer {
-    /// Rendering context
-    pub renderer: Renderer,
-    /// Toolpath data
-    pub toolpath: Toolpath,
-    /// Controls
-    pub controls: VisualizerControls,
-}
+// Removed conflicting Visualizer struct definition as it is now imported from visualizer module
 
-impl Visualizer {
-    /// Create a new visualizer
-    pub fn new(width: u32, height: u32) -> Self {
-        let camera = Camera::new(Vector3::new(100.0, 100.0, 100.0), Vector3::zero());
-        let renderer = Renderer::new(width, height);
-        let controls = VisualizerControls::new(camera.clone());
-
-        Self {
-            renderer,
-            toolpath: Toolpath::default(),
-            controls,
-        }
-    }
-
-    /// Resize visualizer
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.renderer.resize(width, height);
-        self.controls.camera_controller.camera = self.renderer.camera.clone();
-    }
-
-    /// Get toolpath statistics
-    pub fn get_toolpath_stats(&self) -> toolpath_rendering::ToolpathStats {
-        self.toolpath.get_statistics()
-    }
-}
-
-impl Default for Visualizer {
-    fn default() -> Self {
-        Self::new(800, 600)
-    }
-}

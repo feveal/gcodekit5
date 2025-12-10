@@ -1194,7 +1194,7 @@ impl MachineControlView {
 
                                                         // Update Visualizer with position
                                                         if let Some(vis) = visualizer_poll.as_ref() {
-                                                            vis.set_current_position(mpos.x as f32, mpos.y as f32);
+                                                            vis.set_current_position(mpos.x as f32, mpos.y as f32, mpos.z as f32);
                                                         }
                                                     }
                                                     

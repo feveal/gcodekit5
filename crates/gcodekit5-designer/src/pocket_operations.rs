@@ -27,6 +27,7 @@ pub enum PocketStrategy {
 pub struct PocketOperation {
     pub id: String,
     pub depth: f64,
+    pub start_depth: f64,
     pub tool_diameter: f64,
     pub stepover: f64,
     pub feed_rate: f64,
@@ -41,6 +42,7 @@ impl PocketOperation {
         Self {
             id,
             depth,
+            start_depth: 0.0,
             tool_diameter,
             stepover: tool_diameter / 2.0,
             feed_rate: 100.0,
@@ -48,6 +50,11 @@ impl PocketOperation {
             climb_milling: false,
             strategy: PocketStrategy::ContourParallel,
         }
+    }
+
+    /// Sets the start depth (top of stock).
+    pub fn set_start_depth(&mut self, start_depth: f64) {
+        self.start_depth = start_depth;
     }
 
     /// Sets the cutting parameters for this pocket operation.
@@ -143,7 +150,7 @@ impl PocketGenerator {
             let z_passes = (total_depth / z_step).ceil() as u32;
             
             for z_pass in 1..=z_passes {
-                let current_z = -(z_step * z_pass as f64).min(total_depth);
+                let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
                 let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
                 
                 // Start from the outside (boundary) and work inwards
@@ -226,7 +233,7 @@ impl PocketGenerator {
             let z_passes = (total_depth / z_step).ceil() as u32;
             
             for z_pass in 1..=z_passes {
-                let current_z = -(z_step * z_pass as f64).min(total_depth);
+                let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
                 let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
                 
                 let mut current_offset = half_tool;
@@ -366,7 +373,7 @@ impl PocketGenerator {
         let tool_radius = self.operation.tool_diameter / 2.0;
 
         for z_pass in 1..=z_passes {
-            let current_z = -(z_step * z_pass as f64).min(total_depth);
+            let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
             
             let mut current_offset = tool_radius;
@@ -448,7 +455,7 @@ impl PocketGenerator {
         levels.reverse();
 
         for z_pass in 1..=z_passes {
-            let current_z = -(z_step * z_pass as f64).min(total_depth);
+            let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
             
             // Helical Entry for the first (innermost) level
@@ -574,7 +581,7 @@ impl PocketGenerator {
         let tool_radius = self.operation.tool_diameter / 2.0;
         
         for z_pass in 1..=z_passes {
-            let current_z = -(z_step * z_pass as f64).min(total_depth);
+            let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
             
             // Scanline fill

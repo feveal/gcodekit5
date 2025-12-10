@@ -1,12 +1,67 @@
 use gcodekit5_devicedb::DeviceManager;
 use gcodekit5_core::constants as core_constants;
 use gcodekit5_visualizer::visualizer::GCodeCommand;
-use gcodekit5_visualizer::Visualizer2D;
+use gcodekit5_visualizer::{Visualizer, Camera3D};
+use glam::Vec3;
+use crate::ui::gtk::nav_cube::NavCube;
+use crate::ui::gtk::renderer_3d::{RenderBuffers, generate_vertex_data, generate_grid_data, generate_axis_data, generate_tool_marker_data, generate_bounds_data};
+use crate::ui::gtk::shaders::ShaderProgram;
+use glow::HasContext;
 use gtk4::prelude::*;
+use libloading::Library;
+use std::sync::Once;
+
+static mut EPOXY_LIB: Option<Library> = None;
+static mut GL_LIB: Option<Library> = None;
+static EPOXY_INIT: Once = Once::new();
+
+fn load_gl_func(name: &str) -> *const std::ffi::c_void {
+    unsafe {
+        EPOXY_INIT.call_once(|| {
+            let lib = Library::new("libepoxy.so.0")
+                .or_else(|_| Library::new("libepoxy.so"))
+                .ok();
+            EPOXY_LIB = lib;
+
+            let gl_lib = Library::new("libGL.so.1")
+                .or_else(|_| Library::new("libGL.so"))
+                .ok();
+            GL_LIB = gl_lib;
+        });
+
+        // Try epoxy first
+        if let Some(lib) = (*(&raw const EPOXY_LIB)).as_ref() {
+            // Try epoxy_get_proc_addr
+            if let Ok(get_proc_addr) = lib.get::<unsafe extern "C" fn(*const i8) -> *const std::ffi::c_void>(b"epoxy_get_proc_addr") {
+                let c_name = std::ffi::CString::new(name).unwrap();
+                let ptr = get_proc_addr(c_name.as_ptr());
+                if !ptr.is_null() {
+                    return ptr;
+                }
+            }
+            // Fallback: try to load symbol directly from epoxy
+            let c_name = std::ffi::CString::new(name).unwrap();
+            if let Ok(sym) = lib.get::<*const std::ffi::c_void>(c_name.as_bytes()) {
+                return *sym;
+            }
+        }
+
+        // Try libGL as fallback
+        if let Some(lib) = (*(&raw const GL_LIB)).as_ref() {
+            let c_name = std::ffi::CString::new(name).unwrap();
+            if let Ok(sym) = lib.get::<*const std::ffi::c_void>(c_name.as_bytes()) {
+                return *sym;
+            }
+        }
+
+        std::ptr::null()
+    }
+}
 use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
     Box, Button, CheckButton, DrawingArea, EventControllerScroll, EventControllerScrollFlags,
     GestureDrag, Grid, Adjustment, Scrollbar, Label, Orientation, Overlay, Paned,
+    Stack, StackSwitcher, GLArea,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -22,12 +77,22 @@ struct RenderCache {
     intensity_buckets: Vec<Vec<(f64, f64, f64, f64)>>,
     
     // Cached cutting bounds (for LOD 3)
-    cutting_bounds: Option<(f32, f32, f32, f32)>, // (min_x, max_x, min_y, max_y)
+    cutting_bounds: Option<(f32, f32, f32, f32, f32, f32)>, // (min_x, max_x, min_y, max_y, min_z, max_z)
     
     // Statistics
     total_lines: usize,
     _rapid_lines: usize,
     cut_lines: usize,
+}
+
+struct RendererState {
+    shader: ShaderProgram,
+    rapid_buffers: RenderBuffers,
+    cut_buffers: RenderBuffers,
+    grid_buffers: RenderBuffers,
+    axis_buffers: RenderBuffers,
+    tool_buffers: RenderBuffers,
+    bounds_buffers: RenderBuffers,
 }
 
 impl Default for RenderCache {
@@ -51,8 +116,12 @@ impl RenderCache {
 
 pub struct GcodeVisualizer {
     pub widget: Paned,
+    stack: Stack,
     drawing_area: DrawingArea,
-    visualizer: Rc<RefCell<Visualizer2D>>,
+    gl_area: GLArea,
+    visualizer: Rc<RefCell<Visualizer>>,
+    camera: Rc<RefCell<Camera3D>>,
+    renderer_state: Rc<RefCell<Option<RendererState>>>,
     // Phase 4: Render cache
     render_cache: Rc<RefCell<RenderCache>>,
     // Visibility toggles
@@ -65,6 +134,8 @@ pub struct GcodeVisualizer {
     // Scrollbars
     hadjustment: Adjustment,
     vadjustment: Adjustment,
+    hadjustment_3d: Adjustment,
+    vadjustment_3d: Adjustment,
     // Info labels
     bounds_label: Label,
     min_s_label: Label,
@@ -72,19 +143,20 @@ pub struct GcodeVisualizer {
     avg_s_label: Label,
     _status_label: Label,
     device_manager: Option<Arc<DeviceManager>>,
-    current_pos: Rc<RefCell<(f32, f32)>>,
+    current_pos: Rc<RefCell<(f32, f32, f32)>>,
 }
 
 impl GcodeVisualizer {
-    pub fn set_current_position(&self, x: f32, y: f32) {
-        *self.current_pos.borrow_mut() = (x, y);
+    pub fn set_current_position(&self, x: f32, y: f32, z: f32) {
+        *self.current_pos.borrow_mut() = (x, y, z);
         if self.show_laser.is_active() {
             self.drawing_area.queue_draw();
+            self.gl_area.queue_render();
         }
     }
 
     fn apply_fit_to_device(
-        vis: &mut Visualizer2D,
+        vis: &mut Visualizer,
         device_manager: &Option<Arc<DeviceManager>>,
         width: f32,
         height: f32,
@@ -190,6 +262,20 @@ impl GcodeVisualizer {
         
         sidebar.append(&view_controls);
 
+        // View Mode Switcher
+        let mode_label = Label::builder()
+            .label("View Mode")
+            .css_classes(vec!["heading"])
+            .halign(gtk4::Align::Start)
+            .margin_top(12)
+            .build();
+        sidebar.append(&mode_label);
+
+        let stack_switcher = StackSwitcher::builder()
+            .halign(gtk4::Align::Fill)
+            .build();
+        sidebar.append(&stack_switcher);
+
         // Visibility
         let vis_label = Label::builder()
             .label("Visibility")
@@ -289,7 +375,13 @@ impl GcodeVisualizer {
             .adjustment(&vadjustment)
             .build();
 
-        // Grid for DrawingArea + Scrollbars
+        // Stack for 2D/3D
+        let stack = Stack::new();
+        stack.set_hexpand(true);
+        stack.set_vexpand(true);
+        stack_switcher.set_stack(Some(&stack));
+
+        // 2D Page (Grid with DrawingArea + Scrollbars)
         let grid = Grid::builder()
             .hexpand(true)
             .vexpand(true)
@@ -298,14 +390,56 @@ impl GcodeVisualizer {
         grid.attach(&drawing_area, 0, 0, 1, 1);
         grid.attach(&vscrollbar, 1, 0, 1, 1);
         grid.attach(&hscrollbar, 0, 1, 1, 1);
+        
+        stack.add_titled(&grid, Some("2d"), "2D View");
+
+        // 3D Page
+        let gl_area = GLArea::builder()
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+        gl_area.set_required_version(3, 3);
+        
+        // 3D Scrollbars
+        let extent = core_constants::WORLD_EXTENT_MM as f64;
+        let hadjustment_3d = Adjustment::new(0.0, -extent, extent, 10.0, 100.0, 100.0);
+        let vadjustment_3d = Adjustment::new(0.0, -extent, extent, 10.0, 100.0, 100.0);
+
+        let hscrollbar_3d = Scrollbar::builder()
+            .orientation(Orientation::Horizontal)
+            .adjustment(&hadjustment_3d)
+            .build();
+
+        let vscrollbar_3d = Scrollbar::builder()
+            .orientation(Orientation::Vertical)
+            .adjustment(&vadjustment_3d)
+            .build();
+
+        let grid_3d = Grid::builder()
+            .hexpand(true)
+            .vexpand(true)
+            .build();
+
+        grid_3d.attach(&gl_area, 0, 0, 1, 1);
+        grid_3d.attach(&vscrollbar_3d, 1, 0, 1, 1);
+        grid_3d.attach(&hscrollbar_3d, 0, 1, 1, 1);
+        
+        stack.add_titled(&grid_3d, Some("3d"), "3D View");
 
         // Initialize Visualizer logic
-        let visualizer = Rc::new(RefCell::new(Visualizer2D::new()));
-        let current_pos = Rc::new(RefCell::new((0.0f32, 0.0f32)));
+        let visualizer = Rc::new(RefCell::new(Visualizer::new()));
+        let current_pos = Rc::new(RefCell::new((0.0f32, 0.0f32, 0.0f32)));
+        let camera = Rc::new(RefCell::new(Camera3D::default()));
+        let renderer_state = Rc::new(RefCell::new(None));
+        let is_updating_3d = Rc::new(RefCell::new(false));
 
         // Overlay for floating controls
         let overlay = Overlay::new();
-        overlay.set_child(Some(&grid));
+        overlay.set_child(Some(&stack));
+
+        // Nav Cube (Top Right)
+        let nav_cube = NavCube::new(camera.clone(), gl_area.clone());
+        overlay.add_overlay(&nav_cube.widget);
 
         // Floating Controls (Bottom Right)
         let floating_box = Box::new(Orientation::Horizontal, 4);
@@ -349,6 +483,61 @@ impl GcodeVisualizer {
         overlay.add_overlay(&status_box);
 
         container.set_end_child(Some(&overlay));
+
+        // Connect NavCube Fit Button
+        let fit_btn_3d = nav_cube.fit_btn.clone();
+        let vis_fit_3d = visualizer.clone();
+        let cam_fit_3d = camera.clone();
+        let gl_area_fit_3d = gl_area.clone();
+        let hadj_fit_3d = hadjustment_3d.clone();
+        let vadj_fit_3d = vadjustment_3d.clone();
+        let is_updating_fit_3d = is_updating_3d.clone();
+        
+        fit_btn_3d.connect_clicked(move |_| {
+            let vis = vis_fit_3d.borrow();
+            let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
+                bounds
+            } else {
+                let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+            };
+            drop(vis);
+            
+            let mut cam = cam_fit_3d.borrow_mut();
+            cam.fit_to_bounds(
+                Vec3::new(min_x, min_y, min_z),
+                Vec3::new(max_x, max_y, max_z)
+            );
+            
+            // Update scrollbars
+            *is_updating_fit_3d.borrow_mut() = true;
+            hadj_fit_3d.set_value(cam.target.x as f64);
+            vadj_fit_3d.set_value(cam.target.y as f64);
+            *is_updating_fit_3d.borrow_mut() = false;
+            
+            gl_area_fit_3d.queue_render();
+        });
+
+        // Visibility Logic
+        let nav_widget = nav_cube.widget.clone();
+        let float_box = floating_box.clone();
+        let show_intensity_vis = show_intensity.clone();
+        
+        // Initial state
+        nav_widget.set_visible(false); // Start in 2D mode
+        
+        stack.connect_visible_child_name_notify(move |stack| {
+            if stack.visible_child_name().as_deref() == Some("3d") {
+                nav_widget.set_visible(true);
+                float_box.set_visible(false);
+                show_intensity_vis.set_active(false);
+                show_intensity_vis.set_sensitive(false);
+            } else {
+                nav_widget.set_visible(false);
+                float_box.set_visible(true);
+                show_intensity_vis.set_sensitive(true);
+            }
+        });
 
         // Helper to update status
         let update_status_fn = {
@@ -395,10 +584,14 @@ impl GcodeVisualizer {
                 let (min_x, max_x, min_y, max_y) = v.get_bounds();
                 let margin = 10.0;
                 
-                let lower_x = (min_x as f64 - margin).min(val_x);
-                let upper_x = (max_x as f64 + margin).max(val_x + page_size_x);
-                let lower_y = (min_y as f64 - margin).min(val_y);
-                let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
+                // Use World Extents for scrollbar range
+                let extent = core_constants::WORLD_EXTENT_MM as f64;
+                
+                // Ensure the range includes the current view and content
+                let lower_x = (-extent).min(min_x as f64 - margin).min(val_x);
+                let upper_x = (extent).max(max_x as f64 + margin).max(val_x + page_size_x);
+                let lower_y = (-extent).min(min_y as f64 - margin).min(val_y);
+                let upper_y = (extent).max(max_y as f64 + margin).max(val_y + page_size_y);
                 
                 drop(v);
 
@@ -532,13 +725,45 @@ impl GcodeVisualizer {
         // Connect Controls
         let vis_fit = visualizer.clone();
         let da_fit = drawing_area.clone();
+        let gl_area_fit = gl_area.clone();
+        let stack_fit = stack.clone();
+        let camera_fit = camera.clone();
         let update_status = update_ui.clone();
+        let hadj_fit_main_3d = hadjustment_3d.clone();
+        let vadj_fit_main_3d = vadjustment_3d.clone();
+        let is_updating_fit_main_3d = is_updating_3d.clone();
+        
         fit_btn.connect_clicked(move |_| {
-            let width = da_fit.width() as f32;
-            let height = da_fit.height() as f32;
-            vis_fit.borrow_mut().fit_to_view(width, height);
-            update_status();
-            da_fit.queue_draw();
+            if stack_fit.visible_child_name().as_deref() == Some("3d") {
+                let vis = vis_fit.borrow();
+                let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
+                    bounds
+                } else {
+                    let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                    (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+                };
+                drop(vis);
+                
+                let mut cam = camera_fit.borrow_mut();
+                cam.fit_to_bounds(
+                    Vec3::new(min_x, min_y, min_z),
+                    Vec3::new(max_x, max_y, max_z)
+                );
+                
+                // Update scrollbars
+                *is_updating_fit_main_3d.borrow_mut() = true;
+                hadj_fit_main_3d.set_value(cam.target.x as f64);
+                vadj_fit_main_3d.set_value(cam.target.y as f64);
+                *is_updating_fit_main_3d.borrow_mut() = false;
+                
+                gl_area_fit.queue_render();
+            } else {
+                let width = da_fit.width() as f32;
+                let height = da_fit.height() as f32;
+                vis_fit.borrow_mut().fit_to_view(width, height);
+                update_status();
+                da_fit.queue_draw();
+            }
         });
 
         // Fit to Device button
@@ -575,17 +800,23 @@ impl GcodeVisualizer {
         });
 
         let da_update = drawing_area.clone();
-        show_rapid.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_rapid.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
         let da_update = drawing_area.clone();
-        show_cut.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_cut.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
         let da_update = drawing_area.clone();
-        show_grid.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_grid.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
         let da_update = drawing_area.clone();
-        show_bounds.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_bounds.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
         let da_update = drawing_area.clone();
-        show_intensity.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_intensity.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
         let da_update = drawing_area.clone();
-        show_laser.connect_toggled(move |_| da_update.queue_draw());
+        let gl_update = gl_area.clone();
+        show_laser.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
 
         // Mouse Interaction
         Self::setup_interaction(&drawing_area, &visualizer, update_ui.clone());
@@ -615,10 +846,318 @@ impl GcodeVisualizer {
             });
         });
 
+        // 3D Renderer Setup
+        let renderer_state_clone = renderer_state.clone();
+        let visualizer_3d = visualizer.clone();
+        let camera_3d = camera.clone();
+        let current_pos_3d = current_pos.clone();
+        let device_manager_3d = device_manager.clone();
+        
+        // Capture checkbox states
+        let show_rapid_3d = show_rapid.clone();
+        let show_cut_3d = show_cut.clone();
+        let show_grid_3d = show_grid.clone();
+        let show_bounds_3d = show_bounds.clone();
+        let show_laser_3d = show_laser.clone();
+
+        gl_area.connect_render(move |area, _context| {
+            if let Some(err) = area.error() {
+                eprintln!("GLArea error: {}", err);
+                return gtk4::glib::Propagation::Stop;
+            }
+
+            let mut state_ref = renderer_state_clone.borrow_mut();
+            
+            if state_ref.is_none() {
+                let gl = unsafe {
+                    glow::Context::from_loader_function(|s| {
+                        load_gl_func(s)
+                    })
+                };
+                let gl = Rc::new(gl);
+                
+                let shader_res = ShaderProgram::new(gl.clone());
+                let rapid_res = RenderBuffers::new(gl.clone(), glow::LINES);
+                let cut_res = RenderBuffers::new(gl.clone(), glow::LINES);
+                let grid_res = RenderBuffers::new(gl.clone(), glow::LINES);
+                let axis_res = RenderBuffers::new(gl.clone(), glow::LINES);
+                let tool_res = RenderBuffers::new(gl.clone(), glow::TRIANGLES);
+                let bounds_res = RenderBuffers::new(gl.clone(), glow::LINES);
+
+                match (shader_res, rapid_res, cut_res, grid_res, axis_res, tool_res, bounds_res) {
+                    (Ok(shader), Ok(rapid_buffers), Ok(cut_buffers), Ok(mut grid_buffers), Ok(mut axis_buffers), Ok(mut tool_buffers), Ok(bounds_buffers)) => {
+                        let grid_data = generate_grid_data(4000.0, 10.0);
+                        grid_buffers.update(&grid_data);
+                        
+                        let axis_data = generate_axis_data(100.0);
+                        axis_buffers.update(&axis_data);
+                        
+                        let tool_data = generate_tool_marker_data();
+                        tool_buffers.update(&tool_data);
+
+                        *state_ref = Some(RendererState {
+                            shader,
+                            rapid_buffers,
+                            cut_buffers,
+                            grid_buffers,
+                            axis_buffers,
+                            tool_buffers,
+                            bounds_buffers,
+                        });
+                    }
+                    (shader, rapid, cut, grid, axis, tool, bounds) => {
+                        if let Err(e) = shader { eprintln!("Shader init failed: {}", e); }
+                        if let Err(e) = rapid { eprintln!("Rapid buffer init failed: {}", e); }
+                        if let Err(e) = cut { eprintln!("Cut buffer init failed: {}", e); }
+                        if let Err(e) = grid { eprintln!("Grid buffer init failed: {}", e); }
+                        if let Err(e) = axis { eprintln!("Axis buffer init failed: {}", e); }
+                        if let Err(e) = tool { eprintln!("Tool buffer init failed: {}", e); }
+                        if let Err(e) = bounds { eprintln!("Bounds buffer init failed: {}", e); }
+                        eprintln!("Failed to initialize 3D renderer");
+                        return gtk4::glib::Propagation::Stop;
+                    }
+                }
+            }
+            
+            if let Some(state) = state_ref.as_mut() {
+                let gl = &state.shader.gl;
+                
+                unsafe {
+                    gl.clear_color(0.15, 0.15, 0.15, 1.0);
+                    gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
+                    gl.enable(glow::DEPTH_TEST);
+                }
+                
+                // Update buffers
+                // TODO: Only update when dirty
+                let vis = visualizer_3d.borrow();
+                let (rapid_data, cut_data) = generate_vertex_data(&vis);
+                state.rapid_buffers.update(&rapid_data);
+                state.cut_buffers.update(&cut_data);
+                drop(vis);
+                
+                // Update bounds buffer
+                if let Some(manager) = &device_manager_3d {
+                    if let Some(profile) = manager.get_active_profile() {
+                        let min_x = profile.x_axis.min as f32;
+                        let max_x = profile.x_axis.max as f32;
+                        let min_y = profile.y_axis.min as f32;
+                        let max_y = profile.y_axis.max as f32;
+                        let min_z = profile.z_axis.min as f32;
+                        let max_z = profile.z_axis.max as f32;
+                        
+                        let bounds_data = generate_bounds_data(min_x, max_x, min_y, max_y, min_z, max_z);
+                        state.bounds_buffers.update(&bounds_data);
+                    }
+                }
+
+                // Matrices
+                let cam = camera_3d.borrow();
+                let view = cam.get_view_matrix();
+                let proj = cam.get_projection_matrix();
+                let mvp = proj * view;
+                
+                state.shader.bind();
+                
+                if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
+                    unsafe {
+                        gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp.to_cols_array());
+                    }
+                }
+                
+                // Draw Grid
+                if show_grid_3d.is_active() {
+                    state.grid_buffers.draw();
+                }
+                
+                // Draw Axes
+                state.axis_buffers.draw();
+                
+                // Draw Bounds
+                if show_bounds_3d.is_active() {
+                    state.bounds_buffers.draw();
+                }
+
+                // Draw Toolpath
+                if show_rapid_3d.is_active() {
+                    state.rapid_buffers.draw();
+                }
+                if show_cut_3d.is_active() {
+                    state.cut_buffers.draw();
+                }
+                
+                // Draw Tool Marker
+                if show_laser_3d.is_active() {
+                    let pos = *current_pos_3d.borrow();
+                    let model = glam::Mat4::from_translation(glam::Vec3::new(pos.0, pos.1, pos.2));
+                    let mvp_tool = proj * view * model;
+                    
+                    if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
+                        unsafe {
+                            gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp_tool.to_cols_array());
+                        }
+                    }
+                    
+                    unsafe {
+                        gl.enable(glow::BLEND);
+                        gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
+                    }
+                    state.tool_buffers.draw();
+                    unsafe {
+                        gl.disable(glow::BLEND);
+                    }
+                }
+                
+                state.shader.unbind();
+            }
+            
+            gtk4::glib::Propagation::Stop
+        });
+
+        // Resize Signal
+        let camera_resize = camera.clone();
+        gl_area.connect_resize(move |_area, width, height| {
+            let mut cam = camera_resize.borrow_mut();
+            cam.update_aspect_ratio(width as f32, height as f32);
+        });
+
+        // 3D Input Handling
+        let gesture_drag = GestureDrag::new();
+        let camera_drag = camera.clone();
+        let gl_area_drag = gl_area.clone();
+        
+        let last_drag_pos = Rc::new(RefCell::new((0.0f64, 0.0f64)));
+        let last_drag_pos_begin = last_drag_pos.clone();
+        
+        gesture_drag.connect_drag_begin(move |_, _, _| {
+            *last_drag_pos_begin.borrow_mut() = (0.0, 0.0);
+        });
+
+        let last_drag_pos_update = last_drag_pos.clone();
+        let hadj_3d_drag = hadjustment_3d.clone();
+        let vadj_3d_drag = vadjustment_3d.clone();
+        let is_updating_3d_drag = is_updating_3d.clone();
+
+        gesture_drag.connect_drag_update(move |gesture, dx, dy| {
+            let mut last_pos = last_drag_pos_update.borrow_mut();
+            let delta_x = dx - last_pos.0;
+            let delta_y = dy - last_pos.1;
+            *last_pos = (dx, dy);
+
+            let mut cam = camera_drag.borrow_mut();
+            
+            // Check for Shift key
+            let is_shift = if let Some(event) = gesture.current_event() {
+                event.modifier_state().contains(gtk4::gdk::ModifierType::SHIFT_MASK)
+            } else {
+                false
+            };
+
+            if is_shift {
+                // Pan
+                // Pass raw screen deltas, camera handles scaling by distance
+                // X is positive when dragging right.
+                // To move object right (pan right), we need to move camera left.
+                // Camera::pan(delta_x) moves target left by delta_x.
+                // So passing positive delta_x moves target left -> object right.
+                // Wait, if target moves left, camera moves left.
+                // If camera moves left, object appears to move right.
+                // So positive delta_x -> object moves right.
+                // User said "reversed", so currently it must be moving object left.
+                // Currently: cam.pan(-delta_x, ...)
+                // -delta_x is negative.
+                // Camera::pan(neg) -> target moves right -> camera moves right -> object moves left.
+                // So yes, remove the negation to make object move right.
+                cam.pan(delta_x as f32, delta_y as f32);
+            } else {
+                // Orbit
+                // Scale orbit speed by distance for finer control when zoomed in
+                let orbit_scale = (cam.distance / 100.0).clamp(0.2, 5.0);
+                let sensitivity = 0.005 * orbit_scale;
+                cam.orbit(-delta_x as f32 * sensitivity, -delta_y as f32 * sensitivity);
+            }
+            
+            // Update scrollbars
+            *is_updating_3d_drag.borrow_mut() = true;
+            hadj_3d_drag.set_value(cam.target.x as f64);
+            vadj_3d_drag.set_value(cam.target.y as f64);
+            *is_updating_3d_drag.borrow_mut() = false;
+
+            gl_area_drag.queue_render();
+        });
+        gl_area.add_controller(gesture_drag);
+        
+        // Connect 3D Scrollbars
+        let camera_h = camera.clone();
+        let gl_area_h = gl_area.clone();
+        let is_updating_h = is_updating_3d.clone();
+        hadjustment_3d.connect_value_changed(move |adj| {
+            if *is_updating_h.borrow() { return; }
+            let val = adj.value();
+            let mut cam = camera_h.borrow_mut();
+            cam.target.x = val as f32;
+            gl_area_h.queue_render();
+        });
+
+        let camera_v = camera.clone();
+        let gl_area_v = gl_area.clone();
+        let is_updating_v = is_updating_3d.clone();
+        vadjustment_3d.connect_value_changed(move |adj| {
+            if *is_updating_v.borrow() { return; }
+            let val = adj.value();
+            let mut cam = camera_v.borrow_mut();
+            cam.target.y = val as f32;
+            gl_area_v.queue_render();
+        });
+        
+        // Update 3D scrollbars on fit/reset
+        let update_3d_scrollbars = {
+            let hadj = hadjustment_3d.clone();
+            let vadj = vadjustment_3d.clone();
+            let cam = camera.clone();
+            let is_updating = is_updating_3d.clone();
+            move || {
+                let c = cam.borrow();
+                *is_updating.borrow_mut() = true;
+                hadj.set_value(c.target.x as f64);
+                vadj.set_value(c.target.y as f64);
+                
+                // Update page size based on view extent
+                let fov_rad = c.fov.to_radians();
+                let visible_height = 2.0 * c.distance * (fov_rad / 2.0).tan();
+                let visible_width = visible_height * c.aspect_ratio;
+                
+                hadj.set_page_size(visible_width as f64);
+                vadj.set_page_size(visible_height as f64);
+                
+                *is_updating.borrow_mut() = false;
+            }
+        };
+
+        let scroll_3d = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+        let camera_scroll = camera.clone();
+        let gl_area_scroll = gl_area.clone();
+        let update_scroll_3d = update_3d_scrollbars.clone();
+        
+        scroll_3d.connect_scroll(move |_controller, _dx, dy| {
+            let mut cam = camera_scroll.borrow_mut();
+            let sensitivity = 5.0;
+            cam.zoom(dy as f32 * sensitivity);
+            drop(cam);
+            update_scroll_3d();
+            gl_area_scroll.queue_render();
+            gtk4::glib::Propagation::Stop
+        });
+        gl_area.add_controller(scroll_3d);
+
         Self {
             widget: container,
+            stack,
             drawing_area,
+            gl_area,
             visualizer,
+            camera,
+            renderer_state,
             render_cache: Rc::new(RefCell::new(RenderCache::default())),
             _show_rapid: show_rapid,
             _show_cut: show_cut,
@@ -628,6 +1167,8 @@ impl GcodeVisualizer {
             show_laser,
             hadjustment,
             vadjustment,
+            hadjustment_3d,
+            vadjustment_3d,
             bounds_label,
             min_s_label,
             max_s_label,
@@ -638,7 +1179,7 @@ impl GcodeVisualizer {
         }
     }
 
-    fn setup_interaction<F: Fn() + 'static>(da: &DrawingArea, vis: &Rc<RefCell<Visualizer2D>>, update_ui: F) {
+    fn setup_interaction<F: Fn() + 'static>(da: &DrawingArea, vis: &Rc<RefCell<Visualizer>>, update_ui: F) {
         // Scroll to Zoom
         let scroll = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
         let vis_scroll = vis.clone();
@@ -787,6 +1328,45 @@ impl GcodeVisualizer {
             }
         }
 
+        // Auto-detect 3D content
+        let has_z_travel = if let Some((_, _, _, _, min_z, max_z)) = vis.get_cutting_bounds() {
+            (max_z - min_z).abs() > 0.001
+        } else {
+            false
+        };
+
+        if has_z_travel {
+            self.stack.set_visible_child_name("3d");
+            // Explicitly disable intensity for 3D view
+            self._show_intensity.set_active(false);
+            self._show_intensity.set_sensitive(false);
+            
+            // Fit 3D view
+            let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
+                bounds
+            } else {
+                let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+            };
+            
+            let (target_x, target_y) = {
+                let mut cam = self.camera.borrow_mut();
+                cam.fit_to_bounds(
+                    Vec3::new(min_x, min_y, min_z),
+                    Vec3::new(max_x, max_y, max_z)
+                );
+                (cam.target.x, cam.target.y)
+            };
+            
+            // Update 3D scrollbars
+            self.hadjustment_3d.set_value(target_x as f64);
+            self.vadjustment_3d.set_value(target_y as f64);
+            
+            self.gl_area.queue_render();
+        } else {
+            self.stack.set_visible_child_name("2d");
+        }
+
         drop(vis);
         self.update_scrollbars();
         self.drawing_area.queue_draw();
@@ -794,7 +1374,7 @@ impl GcodeVisualizer {
 
     fn draw(
         cr: &gtk4::cairo::Context,
-        vis: &Visualizer2D,
+        vis: &Visualizer,
         cache: &mut RenderCache,
         width: f64,
         height: f64,
@@ -804,7 +1384,7 @@ impl GcodeVisualizer {
         show_bounds: bool,
         show_intensity: bool,
         show_laser: bool,
-        current_pos: (f32, f32),
+        current_pos: (f32, f32, f32),
         device_manager: &Option<Arc<DeviceManager>>,
     ) {
         // Phase 4: Calculate cache hash from visualizer state
@@ -1169,6 +1749,8 @@ impl GcodeVisualizer {
                 let mut bounds_max_x = f32::MIN;
                 let mut bounds_min_y = f32::MAX;
                 let mut bounds_max_y = f32::MIN;
+                let mut bounds_min_z = f32::MAX;
+                let mut bounds_max_z = f32::MIN;
                 let mut has_bounds = false;
                 
                 for cmd in vis.commands() {
@@ -1178,6 +1760,8 @@ impl GcodeVisualizer {
                             bounds_max_x = bounds_max_x.max(from.x).max(to.x);
                             bounds_min_y = bounds_min_y.min(from.y).min(to.y);
                             bounds_max_y = bounds_max_y.max(from.y).max(to.y);
+                            bounds_min_z = bounds_min_z.min(from.z).min(to.z);
+                            bounds_max_z = bounds_max_z.max(from.z).max(to.z);
                             has_bounds = true;
                         }
                         GCodeCommand::Arc { from, to: _, center, .. } => {
@@ -1186,6 +1770,8 @@ impl GcodeVisualizer {
                             bounds_max_x = bounds_max_x.max(center.x + radius);
                             bounds_min_y = bounds_min_y.min(center.y - radius);
                             bounds_max_y = bounds_max_y.max(center.y + radius);
+                            bounds_min_z = bounds_min_z.min(from.z);
+                            bounds_max_z = bounds_max_z.max(from.z);
                             has_bounds = true;
                         }
                         _ => {}
@@ -1193,11 +1779,11 @@ impl GcodeVisualizer {
                 }
                 
                 if has_bounds {
-                    cache.cutting_bounds = Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y));
+                    cache.cutting_bounds = Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y, bounds_min_z, bounds_max_z));
                 }
             }
             
-            if let Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y)) = cache.cutting_bounds {
+            if let Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y, _, _)) = cache.cutting_bounds {
                 // Draw filled rectangle for toolpath bounds (using cached bounds)
                 cr.set_source_rgba(1.0, 1.0, 0.0, 0.5); // Semi-transparent yellow
                 cr.rectangle(
@@ -1235,7 +1821,7 @@ impl GcodeVisualizer {
         cr.restore().unwrap();
     }
 
-    fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer2D) {
+    fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer) {
         let grid_size = 10.0;
         let grid_color = (0.3, 0.3, 0.3, 0.5);
 
@@ -1267,11 +1853,11 @@ impl GcodeVisualizer {
 #[cfg(test)]
 mod tests_visualizer {
     use super::*;
-    use gcodekit5_visualizer::visualizer::Visualizer2D;
+    // Visualizer is already imported via super::*
 
     #[test]
     fn test_apply_fit_to_device_with_no_profile_uses_default_bbox() {
-        let mut vis = Visualizer2D::new();
+        let mut vis = Visualizer::new();
         let width = 1200.0f32;
         let height = 800.0f32;
 

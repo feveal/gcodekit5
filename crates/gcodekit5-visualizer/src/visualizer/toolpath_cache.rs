@@ -1,4 +1,4 @@
-use super::visualizer_2d::{GCodeCommand, Point2D};
+use super::visualizer::{GCodeCommand, Point3D};
 use std::fmt::Write;
 
 #[derive(Debug, Default, Clone)]
@@ -79,10 +79,10 @@ impl ToolpathCache {
         self.cached_g3_path.reserve(self.commands.len() * 15);
         self.cached_g4_path.reserve(self.commands.len() * 5);
 
-        let mut last_pos: Option<Point2D> = None;
-        let mut last_g1_pos: Option<Point2D> = None;
-        let mut last_g2_pos: Option<Point2D> = None;
-        let mut last_g3_pos: Option<Point2D> = None;
+        let mut last_pos: Option<Point3D> = None;
+        let mut last_g1_pos: Option<Point3D> = None;
+        let mut last_g2_pos: Option<Point3D> = None;
+        let mut last_g3_pos: Option<Point3D> = None;
 
         for cmd in &self.commands {
             match cmd {

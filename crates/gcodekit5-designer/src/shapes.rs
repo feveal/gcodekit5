@@ -5,6 +5,7 @@ use lyon::math::point;
 use lyon::algorithms::aabb::bounding_box;
 use lyon::algorithms::hit_test::hit_test_path;
 use lyon::path::FillRule;
+use lyon::path::iterator::PathIterator;
 use std::any::Any;
 use crate::font_manager;
 use rusttype::{Scale, point as rt_point};
@@ -41,6 +42,18 @@ pub fn rotate_point(p: Point, center: Point, angle_deg: f64) -> Point {
         x: center.x + dx * cos_a - dy * sin_a,
         y: center.y + dx * sin_a + dy * cos_a
     }
+}
+
+fn distance_sq_to_segment(p: lyon::math::Point, a: lyon::math::Point, b: lyon::math::Point) -> f64 {
+    let l2 = (a.x - b.x).powi(2) + (a.y - b.y).powi(2);
+    if l2 == 0.0 {
+        return ((p.x - a.x).powi(2) + (p.y - a.y).powi(2)) as f64;
+    }
+    let t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
+    let t = t.max(0.0).min(1.0);
+    let proj_x = a.x + t * (b.x - a.x);
+    let proj_y = a.y + t * (b.y - a.y);
+    ((p.x - proj_x).powi(2) + (p.y - proj_y).powi(2)) as f64
 }
 
 /// Types of shapes that can be drawn on the canvas.
@@ -793,12 +806,49 @@ impl PathShape {
     }
 
     pub fn contains_point(&self, p: &Point, tolerance: f64) -> bool {
-        hit_test_path(
-            &point(p.x as f32, p.y as f32),
+        // Calculate center for rotation
+        let aabb = bounding_box(self.path.iter());
+        let center_x = (aabb.min.x + aabb.max.x) as f64 / 2.0;
+        let center_y = (aabb.min.y + aabb.max.y) as f64 / 2.0;
+        let center = Point::new(center_x, center_y);
+
+        // Rotate point into local coordinates
+        let local_p = if self.rotation.abs() > 1e-6 {
+            rotate_point(*p, center, -self.rotation)
+        } else {
+            *p
+        };
+
+        let target = point(local_p.x as f32, local_p.y as f32);
+
+        // First check if it's inside (fill)
+        if hit_test_path(
+            &target,
             self.path.iter(),
             FillRule::NonZero,
             tolerance as f32
-        )
+        ) {
+            return true;
+        }
+
+        // If not inside, check distance to stroke (for open paths or edges)
+        let mut min_dist_sq = f64::INFINITY;
+        
+        // Flatten the path to line segments
+        let tolerance_flat = 0.1; // Flattening tolerance
+        for event in self.path.iter().flattened(tolerance_flat) {
+             match event {
+                 lyon::path::Event::Line { from, to } => {
+                     let dist_sq = distance_sq_to_segment(target, from, to);
+                     if dist_sq < min_dist_sq {
+                         min_dist_sq = dist_sq;
+                     }
+                 }
+                 _ => {}
+             }
+        }
+        
+        min_dist_sq <= (tolerance * tolerance)
     }
 
     pub fn translate(&mut self, dx: f64, dy: f64) {

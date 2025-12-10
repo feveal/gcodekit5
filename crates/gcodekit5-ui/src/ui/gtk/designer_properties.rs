@@ -1,5 +1,5 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Label, SpinButton, Orientation, Frame, ScrolledWindow, EventControllerFocus, DropDown, StringList, Expression, Entry};
+use gtk4::{Box, Label, Orientation, Frame, ScrolledWindow, EventControllerFocus, DropDown, StringList, Expression, Entry, CheckButton};
 use std::cell::RefCell;
 use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
@@ -11,19 +11,22 @@ pub struct PropertiesPanel {
     state: Rc<RefCell<DesignerState>>,
     _content: Box,
     // Property widgets
-    pos_x_spin: SpinButton,
-    pos_y_spin: SpinButton,
-    width_spin: SpinButton,
-    height_spin: SpinButton,
-    rotation_spin: SpinButton,
+    pos_x_entry: Entry,
+    pos_y_entry: Entry,
+    width_entry: Entry,
+    height_entry: Entry,
+    rotation_entry: Entry,
+    // Rectangle widgets
+    corner_radius_entry: Entry,
+    is_slot_check: CheckButton,
     // Text widgets
     text_entry: Entry,
-    font_size_spin: SpinButton,
+    font_size_entry: Entry,
     // CAM widgets
     op_type_combo: DropDown,
-    depth_spin: SpinButton,
-    step_down_spin: SpinButton,
-    step_in_spin: SpinButton,
+    depth_entry: Entry,
+    step_down_entry: Entry,
+    step_in_entry: Entry,
     strategy_combo: DropDown,
     // Redraw callback
     redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
@@ -67,20 +70,18 @@ impl PropertiesPanel {
 
         let x_label = Label::new(Some("X:"));
         x_label.set_halign(gtk4::Align::Start);
-        let pos_x_spin = SpinButton::with_range(-gcodekit5_core::constants::WORLD_EXTENT_MM, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
-        pos_x_spin.set_digits(2);
-        pos_x_spin.set_hexpand(true);
+        let pos_x_entry = Entry::new();
+        pos_x_entry.set_hexpand(true);
 
         let y_label = Label::new(Some("Y:"));
         y_label.set_halign(gtk4::Align::Start);
-        let pos_y_spin = SpinButton::with_range(-gcodekit5_core::constants::WORLD_EXTENT_MM, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
-        pos_y_spin.set_digits(2);
-        pos_y_spin.set_hexpand(true);
+        let pos_y_entry = Entry::new();
+        pos_y_entry.set_hexpand(true);
 
         pos_grid.attach(&x_label, 0, 0, 1, 1);
-        pos_grid.attach(&pos_x_spin, 1, 0, 1, 1);
+        pos_grid.attach(&pos_x_entry, 1, 0, 1, 1);
         pos_grid.attach(&y_label, 0, 1, 1, 1);
-        pos_grid.attach(&pos_y_spin, 1, 1, 1, 1);
+        pos_grid.attach(&pos_y_entry, 1, 1, 1, 1);
 
         pos_frame.set_child(Some(&pos_grid));
         content.append(&pos_frame);
@@ -98,20 +99,18 @@ impl PropertiesPanel {
 
         let width_label = Label::new(Some("Width:"));
         width_label.set_halign(gtk4::Align::Start);
-        let width_spin = SpinButton::with_range(0.1, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
-        width_spin.set_digits(2);
-        width_spin.set_hexpand(true);
+        let width_entry = Entry::new();
+        width_entry.set_hexpand(true);
 
         let height_label = Label::new(Some("Height:"));
         height_label.set_halign(gtk4::Align::Start);
-        let height_spin = SpinButton::with_range(0.1, gcodekit5_core::constants::WORLD_EXTENT_MM, 0.1);
-        height_spin.set_digits(2);
-        height_spin.set_hexpand(true);
+        let height_entry = Entry::new();
+        height_entry.set_hexpand(true);
 
         size_grid.attach(&width_label, 0, 0, 1, 1);
-        size_grid.attach(&width_spin, 1, 0, 1, 1);
+        size_grid.attach(&width_entry, 1, 0, 1, 1);
         size_grid.attach(&height_label, 0, 1, 1, 1);
-        size_grid.attach(&height_spin, 1, 1, 1, 1);
+        size_grid.attach(&height_entry, 1, 1, 1, 1);
 
         size_frame.set_child(Some(&size_grid));
         content.append(&size_frame);
@@ -129,15 +128,42 @@ impl PropertiesPanel {
 
         let rot_label = Label::new(Some("Angle:"));
         rot_label.set_halign(gtk4::Align::Start);
-        let rotation_spin = SpinButton::with_range(-360.0, 360.0, 1.0);
-        rotation_spin.set_digits(1);
-        rotation_spin.set_hexpand(true);
+        let rotation_entry = Entry::new();
+        rotation_entry.set_hexpand(true);
 
         rot_grid.attach(&rot_label, 0, 0, 1, 1);
-        rot_grid.attach(&rotation_spin, 1, 0, 1, 1);
+        rot_grid.attach(&rotation_entry, 1, 0, 1, 1);
 
         rot_frame.set_child(Some(&rot_grid));
         content.append(&rot_frame);
+
+        // Corner Section (Rectangle only)
+        let corner_frame = Self::create_section("Corner");
+        let corner_grid = gtk4::Grid::builder()
+            .row_spacing(8)
+            .column_spacing(8)
+            .margin_start(8)
+            .margin_end(8)
+            .margin_top(8)
+            .margin_bottom(8)
+            .build();
+
+        let radius_label = Label::new(Some("Radius:"));
+        radius_label.set_halign(gtk4::Align::Start);
+        let corner_radius_entry = Entry::new();
+        corner_radius_entry.set_hexpand(true);
+
+        let slot_label = Label::new(Some("Slot Mode:"));
+        slot_label.set_halign(gtk4::Align::Start);
+        let is_slot_check = CheckButton::new();
+
+        corner_grid.attach(&radius_label, 0, 0, 1, 1);
+        corner_grid.attach(&corner_radius_entry, 1, 0, 1, 1);
+        corner_grid.attach(&slot_label, 0, 1, 1, 1);
+        corner_grid.attach(&is_slot_check, 1, 1, 1, 1);
+
+        corner_frame.set_child(Some(&corner_grid));
+        content.append(&corner_frame);
 
         // Text Section
         let text_frame = Self::create_section("Text");
@@ -157,14 +183,13 @@ impl PropertiesPanel {
 
         let font_size_label = Label::new(Some("Size:"));
         font_size_label.set_halign(gtk4::Align::Start);
-        let font_size_spin = SpinButton::with_range(1.0, 1000.0, 1.0);
-        font_size_spin.set_digits(1);
-        font_size_spin.set_hexpand(true);
+        let font_size_entry = Entry::new();
+        font_size_entry.set_hexpand(true);
 
         text_grid.attach(&text_content_label, 0, 0, 1, 1);
         text_grid.attach(&text_entry, 1, 0, 1, 1);
         text_grid.attach(&font_size_label, 0, 1, 1, 1);
-        text_grid.attach(&font_size_spin, 1, 1, 1, 1);
+        text_grid.attach(&font_size_entry, 1, 1, 1, 1);
 
         text_frame.set_child(Some(&text_grid));
         content.append(&text_frame);
@@ -190,23 +215,20 @@ impl PropertiesPanel {
         // Pocket Depth
         let depth_label = Label::new(Some("Depth:"));
         depth_label.set_halign(gtk4::Align::Start);
-        let depth_spin = SpinButton::with_range(0.0, 100.0, 0.1);
-        depth_spin.set_digits(2);
-        depth_spin.set_hexpand(true);
+        let depth_entry = Entry::new();
+        depth_entry.set_hexpand(true);
 
         // Step Down
         let step_down_label = Label::new(Some("Step Down:"));
         step_down_label.set_halign(gtk4::Align::Start);
-        let step_down_spin = SpinButton::with_range(0.1, 20.0, 0.1);
-        step_down_spin.set_digits(2);
-        step_down_spin.set_hexpand(true);
+        let step_down_entry = Entry::new();
+        step_down_entry.set_hexpand(true);
 
         // Step In (for pockets)
         let step_in_label = Label::new(Some("Step In:"));
         step_in_label.set_halign(gtk4::Align::Start);
-        let step_in_spin = SpinButton::with_range(0.1, 20.0, 0.1);
-        step_in_spin.set_digits(2);
-        step_in_spin.set_hexpand(true);
+        let step_in_entry = Entry::new();
+        step_in_entry.set_hexpand(true);
 
         // Pocket Strategy
         let strategy_label = Label::new(Some("Strategy:"));
@@ -218,11 +240,11 @@ impl PropertiesPanel {
         cam_grid.attach(&op_label, 0, 0, 1, 1);
         cam_grid.attach(&op_type_combo, 1, 0, 1, 1);
         cam_grid.attach(&depth_label, 0, 1, 1, 1);
-        cam_grid.attach(&depth_spin, 1, 1, 1, 1);
+        cam_grid.attach(&depth_entry, 1, 1, 1, 1);
         cam_grid.attach(&step_down_label, 0, 2, 1, 1);
-        cam_grid.attach(&step_down_spin, 1, 2, 1, 1);
+        cam_grid.attach(&step_down_entry, 1, 2, 1, 1);
         cam_grid.attach(&step_in_label, 0, 3, 1, 1);
-        cam_grid.attach(&step_in_spin, 1, 3, 1, 1);
+        cam_grid.attach(&step_in_entry, 1, 3, 1, 1);
         cam_grid.attach(&strategy_label, 0, 4, 1, 1);
         cam_grid.attach(&strategy_combo, 1, 4, 1, 1);
 
@@ -242,17 +264,19 @@ impl PropertiesPanel {
             widget: scrolled,
             state: state.clone(),
             _content: content,
-            pos_x_spin: pos_x_spin.clone(),
-            pos_y_spin: pos_y_spin.clone(),
-            width_spin: width_spin.clone(),
-            height_spin: height_spin.clone(),
-            rotation_spin: rotation_spin.clone(),
+            pos_x_entry: pos_x_entry.clone(),
+            pos_y_entry: pos_y_entry.clone(),
+            width_entry: width_entry.clone(),
+            height_entry: height_entry.clone(),
+            rotation_entry: rotation_entry.clone(),
+            corner_radius_entry: corner_radius_entry.clone(),
+            is_slot_check: is_slot_check.clone(),
             text_entry: text_entry.clone(),
-            font_size_spin: font_size_spin.clone(),
+            font_size_entry: font_size_entry.clone(),
             op_type_combo: op_type_combo.clone(),
-            depth_spin: depth_spin.clone(),
-            step_down_spin: step_down_spin.clone(),
-            step_in_spin: step_in_spin.clone(),
+            depth_entry: depth_entry.clone(),
+            step_down_entry: step_down_entry.clone(),
+            step_in_entry: step_in_entry.clone(),
             strategy_combo: strategy_combo.clone(),
             redraw_callback: Rc::new(RefCell::new(None)),
             updating: Rc::new(RefCell::new(false)),
@@ -282,115 +306,123 @@ impl PropertiesPanel {
 
     fn setup_handlers(&self) {
         let state = self.state.clone();
-        let _pos_x = self.pos_x_spin.clone();
-        let pos_y = self.pos_y_spin.clone();
-        let width = self.width_spin.clone();
-        let height = self.height_spin.clone();
+        let _pos_x = self.pos_x_entry.clone();
+        let pos_y = self.pos_y_entry.clone();
+        let width = self.width_entry.clone();
+        let height = self.height_entry.clone();
         let redraw1 = self.redraw_callback.clone();
         let updating1 = self.updating.clone();
 
         // Position X changed
-        self.pos_x_spin.connect_value_changed(move |spin| {
+        self.pos_x_entry.connect_changed(move |entry| {
             if *updating1.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let y = pos_y.value();
-                let w = width.value();
-                let h = height.value();
-                let x = spin.value();
-                
-                // Update shape position
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let y = pos_y.text().parse::<f64>().unwrap_or(0.0);
+                    let w = width.text().parse::<f64>().unwrap_or(0.0);
+                    let h = height.text().parse::<f64>().unwrap_or(0.0);
+                    let x = val;
+                    
+                    // Update shape position
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+                    }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw1.borrow() {
-                cb();
+                drop(designer_state);
+                if let Some(ref cb) = *redraw1.borrow() {
+                    cb();
+                }
             }
         });
 
         let state = self.state.clone();
-        let pos_x = self.pos_x_spin.clone();
-        let _pos_y = self.pos_y_spin.clone();
-        let width = self.width_spin.clone();
-        let height = self.height_spin.clone();
+        let pos_x = self.pos_x_entry.clone();
+        let _pos_y = self.pos_y_entry.clone();
+        let width = self.width_entry.clone();
+        let height = self.height_entry.clone();
         let redraw2 = self.redraw_callback.clone();
         let updating2 = self.updating.clone();
 
         // Position Y changed
-        self.pos_y_spin.connect_value_changed(move |spin| {
+        self.pos_y_entry.connect_changed(move |entry| {
             if *updating2.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let x = pos_x.value();
-                let w = width.value();
-                let h = height.value();
-                let y = spin.value();
-                
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let x = pos_x.text().parse::<f64>().unwrap_or(0.0);
+                    let w = width.text().parse::<f64>().unwrap_or(0.0);
+                    let h = height.text().parse::<f64>().unwrap_or(0.0);
+                    let y = val;
+                    
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+                    }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw2.borrow() {
-                cb();
+                drop(designer_state);
+                if let Some(ref cb) = *redraw2.borrow() {
+                    cb();
+                }
             }
         });
 
         let state = self.state.clone();
-        let pos_x = self.pos_x_spin.clone();
-        let pos_y = self.pos_y_spin.clone();
-        let _width = self.width_spin.clone();
-        let height = self.height_spin.clone();
+        let pos_x = self.pos_x_entry.clone();
+        let pos_y = self.pos_y_entry.clone();
+        let _width = self.width_entry.clone();
+        let height = self.height_entry.clone();
         let redraw3 = self.redraw_callback.clone();
         let updating3 = self.updating.clone();
 
         // Width changed
-        self.width_spin.connect_value_changed(move |spin| {
+        self.width_entry.connect_changed(move |entry| {
             if *updating3.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let x = pos_x.value();
-                let y = pos_y.value();
-                let h = height.value();
-                let w = spin.value();
-                
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let x = pos_x.text().parse::<f64>().unwrap_or(0.0);
+                    let y = pos_y.text().parse::<f64>().unwrap_or(0.0);
+                    let h = height.text().parse::<f64>().unwrap_or(0.0);
+                    let w = val;
+                    
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+                    }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw3.borrow() {
-                cb();
+                drop(designer_state);
+                if let Some(ref cb) = *redraw3.borrow() {
+                    cb();
+                }
             }
         });
 
         let state = self.state.clone();
-        let pos_x = self.pos_x_spin.clone();
-        let pos_y = self.pos_y_spin.clone();
-        let width = self.width_spin.clone();
-        let _height = self.height_spin.clone();
+        let pos_x = self.pos_x_entry.clone();
+        let pos_y = self.pos_y_entry.clone();
+        let width = self.width_entry.clone();
+        let _height = self.height_entry.clone();
         let redraw4 = self.redraw_callback.clone();
         let updating4 = self.updating.clone();
 
         // Height changed
-        self.height_spin.connect_value_changed(move |spin| {
+        self.height_entry.connect_changed(move |entry| {
             if *updating4.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let x = pos_x.value();
-                let y = pos_y.value();
-                let w = width.value();
-                let h = spin.value();
-                
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let x = pos_x.text().parse::<f64>().unwrap_or(0.0);
+                    let y = pos_y.text().parse::<f64>().unwrap_or(0.0);
+                    let w = width.text().parse::<f64>().unwrap_or(0.0);
+                    let h = val;
+                    
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
+                    }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw4.borrow() {
-                cb();
+                drop(designer_state);
+                if let Some(ref cb) = *redraw4.borrow() {
+                    cb();
+                }
             }
         });
 
@@ -399,24 +431,58 @@ impl PropertiesPanel {
         let updating5 = self.updating.clone();
         
         // Rotation changed
-        self.rotation_spin.connect_value_changed(move |spin| {
+        self.rotation_entry.connect_changed(move |entry| {
             if *updating5.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let angle = spin.value();
-                
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    // Set rotation directly on shape variants that support it
-                    match &mut obj.shape {
-                        Shape::Rectangle(rect) => rect.rotation = angle.to_radians(),
-                        Shape::Circle(circle) => circle.rotation = angle.to_radians(),
-                        Shape::Ellipse(ellipse) => ellipse.rotation = angle.to_radians(),
-                        _ => {}
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let angle = val;
+                    
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        // Set rotation directly on shape variants that support it
+                        match &mut obj.shape {
+                            Shape::Rectangle(rect) => rect.rotation = angle.to_radians(),
+                            Shape::Circle(circle) => circle.rotation = angle.to_radians(),
+                            Shape::Ellipse(ellipse) => ellipse.rotation = angle.to_radians(),
+                            _ => {}
+                        }
                     }
                 }
+                drop(designer_state);
+                if let Some(ref cb) = *redraw5.borrow() {
+                    cb();
+                }
             }
+        });
+
+        let state = self.state.clone();
+        let redraw_cr = self.redraw_callback.clone();
+        let updating_cr = self.updating.clone();
+
+        // Corner Radius changed
+        self.corner_radius_entry.connect_changed(move |entry| {
+            if *updating_cr.borrow() { return; }
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                designer_state.set_selected_corner_radius(val);
+                drop(designer_state);
+                if let Some(ref cb) = *redraw_cr.borrow() {
+                    cb();
+                }
+            }
+        });
+
+        let state = self.state.clone();
+        let redraw_slot = self.redraw_callback.clone();
+        let updating_slot = self.updating.clone();
+
+        // Is Slot changed
+        self.is_slot_check.connect_toggled(move |check| {
+            if *updating_slot.borrow() { return; }
+            let mut designer_state = state.borrow_mut();
+            designer_state.set_selected_is_slot(check.is_active());
             drop(designer_state);
-            if let Some(ref cb) = *redraw5.borrow() {
+            if let Some(ref cb) = *redraw_slot.borrow() {
                 cb();
             }
         });
@@ -449,21 +515,23 @@ impl PropertiesPanel {
         let updating7 = self.updating.clone();
 
         // Font Size changed
-        self.font_size_spin.connect_value_changed(move |spin| {
+        self.font_size_entry.connect_changed(move |entry| {
             if *updating7.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                let size = spin.value();
-                
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    if let Shape::Text(text_shape) = &mut obj.shape {
-                        text_shape.font_size = size;
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    let size = val;
+                    
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        if let Shape::Text(text_shape) = &mut obj.shape {
+                            text_shape.font_size = size;
+                        }
                     }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw7.borrow() {
-                cb();
+                drop(designer_state);
+                if let Some(ref cb) = *redraw7.borrow() {
+                    cb();
+                }
             }
         });
 
@@ -484,31 +552,37 @@ impl PropertiesPanel {
         let op_combo = self.op_type_combo.clone();
 
         // Pocket Depth changed
-        self.depth_spin.connect_value_changed(move |spin| {
+        self.depth_entry.connect_changed(move |entry| {
             if *updating9.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            let is_pocket = op_combo.selected() == 1;
-            designer_state.set_selected_pocket_properties(is_pocket, spin.value());
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                let is_pocket = op_combo.selected() == 1;
+                designer_state.set_selected_pocket_properties(is_pocket, val);
+            }
         });
 
         let state = self.state.clone();
         let updating10 = self.updating.clone();
 
         // Step Down changed
-        self.step_down_spin.connect_value_changed(move |spin| {
+        self.step_down_entry.connect_changed(move |entry| {
             if *updating10.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            designer_state.set_selected_step_down(spin.value());
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                designer_state.set_selected_step_down(val);
+            }
         });
 
         let state = self.state.clone();
         let updating11 = self.updating.clone();
 
         // Step In changed
-        self.step_in_spin.connect_value_changed(move |spin| {
+        self.step_in_entry.connect_changed(move |entry| {
             if *updating11.borrow() { return; }
-            let mut designer_state = state.borrow_mut();
-            designer_state.set_selected_step_in(spin.value());
+            if let Ok(val) = entry.text().parse::<f64>() {
+                let mut designer_state = state.borrow_mut();
+                designer_state.set_selected_step_in(val);
+            }
         });
 
         let state = self.state.clone();
@@ -594,85 +668,106 @@ impl PropertiesPanel {
             *self.updating.borrow_mut() = true;
 
             // Enable all controls by default
-            self.pos_x_spin.set_sensitive(true);
-            self.pos_y_spin.set_sensitive(true);
-            self.width_spin.set_sensitive(true);
-            self.height_spin.set_sensitive(true);
-            self.rotation_spin.set_sensitive(true);
+            self.pos_x_entry.set_sensitive(true);
+            self.pos_y_entry.set_sensitive(true);
+            self.width_entry.set_sensitive(true);
+            self.height_entry.set_sensitive(true);
+            self.rotation_entry.set_sensitive(true);
 
             // Update spin buttons based on shape type
             match shape {
                 Shape::Rectangle(rect) => {
-                    self.pos_x_spin.set_value(rect.x);
-                    self.pos_y_spin.set_value(rect.y);
-                    self.width_spin.set_value(rect.width);
-                    self.height_spin.set_value(rect.height);
-                    self.rotation_spin.set_value(rect.rotation.to_degrees());
+                    self.pos_x_entry.set_text(&format!("{:.2}", rect.x));
+                    self.pos_y_entry.set_text(&format!("{:.2}", rect.y));
+                    self.width_entry.set_text(&format!("{:.2}", rect.width));
+                    self.height_entry.set_text(&format!("{:.2}", rect.height));
+                    self.rotation_entry.set_text(&format!("{:.1}", rect.rotation.to_degrees()));
+                    
+                    self.corner_radius_entry.set_text(&format!("{:.2}", rect.corner_radius));
+                    self.is_slot_check.set_active(rect.is_slot);
+                    
+                    self.corner_radius_entry.set_sensitive(!rect.is_slot);
+                    self.is_slot_check.set_sensitive(true);
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_spin.set_value(0.0);
-                    self.font_size_spin.set_sensitive(false);
+                    self.font_size_entry.set_text("0.0");
+                    self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Circle(circle) => {
-                    self.pos_x_spin.set_value(circle.center.x);
-                    self.pos_y_spin.set_value(circle.center.y);
-                    self.width_spin.set_value(circle.radius * 2.0);
-                    self.height_spin.set_value(circle.radius * 2.0);
-                    self.rotation_spin.set_value(circle.rotation.to_degrees());
+                    self.pos_x_entry.set_text(&format!("{:.2}", circle.center.x));
+                    self.pos_y_entry.set_text(&format!("{:.2}", circle.center.y));
+                    self.width_entry.set_text(&format!("{:.2}", circle.radius * 2.0));
+                    self.height_entry.set_text(&format!("{:.2}", circle.radius * 2.0));
+                    self.rotation_entry.set_text(&format!("{:.1}", circle.rotation.to_degrees()));
+                    
+                    self.corner_radius_entry.set_sensitive(false);
+                    self.is_slot_check.set_sensitive(false);
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_spin.set_value(0.0);
-                    self.font_size_spin.set_sensitive(false);
+                    self.font_size_entry.set_text("0.0");
+                    self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Ellipse(ellipse) => {
-                    self.pos_x_spin.set_value(ellipse.center.x);
-                    self.pos_y_spin.set_value(ellipse.center.y);
-                    self.width_spin.set_value(ellipse.rx * 2.0);
-                    self.height_spin.set_value(ellipse.ry * 2.0);
-                    self.rotation_spin.set_value(ellipse.rotation.to_degrees());
+                    self.pos_x_entry.set_text(&format!("{:.2}", ellipse.center.x));
+                    self.pos_y_entry.set_text(&format!("{:.2}", ellipse.center.y));
+                    self.width_entry.set_text(&format!("{:.2}", ellipse.rx * 2.0));
+                    self.height_entry.set_text(&format!("{:.2}", ellipse.ry * 2.0));
+                    self.rotation_entry.set_text(&format!("{:.1}", ellipse.rotation.to_degrees()));
+                    
+                    self.corner_radius_entry.set_sensitive(false);
+                    self.is_slot_check.set_sensitive(false);
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_spin.set_value(0.0);
-                    self.font_size_spin.set_sensitive(false);
+                    self.font_size_entry.set_text("0.0");
+                    self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Line(line) => {
-                    self.pos_x_spin.set_value(line.start.x);
-                    self.pos_y_spin.set_value(line.start.y);
-                    self.width_spin.set_value(line.end.x - line.start.x);
-                    self.height_spin.set_value(line.end.y - line.start.y);
-                    self.rotation_spin.set_value(0.0);
+                    self.pos_x_entry.set_text(&format!("{:.2}", line.start.x));
+                    self.pos_y_entry.set_text(&format!("{:.2}", line.start.y));
+                    self.width_entry.set_text(&format!("{:.2}", line.end.x - line.start.x));
+                    self.height_entry.set_text(&format!("{:.2}", line.end.y - line.start.y));
+                    self.rotation_entry.set_text("0.0");
+                    
+                    self.corner_radius_entry.set_sensitive(false);
+                    self.is_slot_check.set_sensitive(false);
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_spin.set_value(0.0);
-                    self.font_size_spin.set_sensitive(false);
+                    self.font_size_entry.set_text("0.0");
+                    self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Text(text) => {
-                    self.pos_x_spin.set_value(text.x);
-                    self.pos_y_spin.set_value(text.y);
+                    self.pos_x_entry.set_text(&format!("{:.2}", text.x));
+                    self.pos_y_entry.set_text(&format!("{:.2}", text.y));
                     // Width/Height are derived, maybe show bounding box size?
                     let (x1, y1, x2, y2) = text.bounding_box();
-                    self.width_spin.set_value(x2 - x1);
-                    self.height_spin.set_value(y2 - y1);
-                    self.rotation_spin.set_value(text.rotation.to_degrees());
+                    self.width_entry.set_text(&format!("{:.2}", x2 - x1));
+                    self.height_entry.set_text(&format!("{:.2}", y2 - y1));
+                    self.rotation_entry.set_text(&format!("{:.1}", text.rotation.to_degrees()));
                     
-                    self.width_spin.set_sensitive(false);
-                    self.height_spin.set_sensitive(false);
+                    self.width_entry.set_sensitive(false);
+                    self.height_entry.set_sensitive(false);
+                    
+                    self.corner_radius_entry.set_sensitive(false);
+                    self.is_slot_check.set_sensitive(false);
                     
                     self.text_entry.set_text(&text.text);
                     self.text_entry.set_sensitive(true);
-                    self.font_size_spin.set_value(text.font_size);
-                    self.font_size_spin.set_sensitive(true);
+                    self.font_size_entry.set_text(&format!("{:.1}", text.font_size));
+                    self.font_size_entry.set_sensitive(true);
                 }
                 _ => {
                     // Other shapes
+                    self.corner_radius_entry.set_sensitive(false);
+                    self.is_slot_check.set_sensitive(false);
+                    
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_spin.set_value(0.0);
-                    self.font_size_spin.set_sensitive(false);
+                    self.font_size_entry.set_text("0.0");
+                    self.font_size_entry.set_sensitive(false);
                 }
             }
             
@@ -681,9 +776,9 @@ impl PropertiesPanel {
                 OperationType::Profile => 0,
                 OperationType::Pocket => 1,
             });
-            self.depth_spin.set_value(depth);
-            self.step_down_spin.set_value(step_down as f64);
-            self.step_in_spin.set_value(step_in as f64);
+            self.depth_entry.set_text(&format!("{:.2}", depth));
+            self.step_down_entry.set_text(&format!("{:.2}", step_down));
+            self.step_in_entry.set_text(&format!("{:.2}", step_in));
             self.strategy_combo.set_selected(match strategy {
                 PocketStrategy::Raster { .. } => 0,
                 PocketStrategy::ContourParallel => 1,
@@ -692,47 +787,51 @@ impl PropertiesPanel {
 
             // Enable CAM controls
             self.op_type_combo.set_sensitive(true);
-            self.depth_spin.set_sensitive(true);
-            self.step_down_spin.set_sensitive(true);
-            self.step_in_spin.set_sensitive(true);
+            self.depth_entry.set_sensitive(true);
+            self.step_down_entry.set_sensitive(true);
+            self.step_in_entry.set_sensitive(true);
             self.strategy_combo.set_sensitive(true);
 
             // Clear flag
             *self.updating.borrow_mut() = false;
         } else {
             // No selection - disable controls
-            self.pos_x_spin.set_sensitive(false);
-            self.pos_y_spin.set_sensitive(false);
-            self.width_spin.set_sensitive(false);
-            self.height_spin.set_sensitive(false);
-            self.rotation_spin.set_sensitive(false);
+            self.pos_x_entry.set_sensitive(false);
+            self.pos_y_entry.set_sensitive(false);
+            self.width_entry.set_sensitive(false);
+            self.height_entry.set_sensitive(false);
+            self.rotation_entry.set_sensitive(false);
+            
+            self.corner_radius_entry.set_sensitive(false);
+            self.is_slot_check.set_sensitive(false);
             
             self.text_entry.set_sensitive(false);
-            self.font_size_spin.set_sensitive(false);
+            self.font_size_entry.set_sensitive(false);
             
             self.op_type_combo.set_sensitive(false);
-            self.depth_spin.set_sensitive(false);
-            self.step_down_spin.set_sensitive(false);
-            self.step_in_spin.set_sensitive(false);
+            self.depth_entry.set_sensitive(false);
+            self.step_down_entry.set_sensitive(false);
+            self.step_in_entry.set_sensitive(false);
             self.strategy_combo.set_sensitive(false);
         }
     }
     
     fn setup_focus_tracking(&self) {
-        // Track focus for all spin buttons to prevent updates while user is editing
-        let spinners = vec![
-            &self.pos_x_spin,
-            &self.pos_y_spin,
-            &self.width_spin,
-            &self.height_spin,
-            &self.rotation_spin,
-            &self.font_size_spin,
-            &self.depth_spin,
-            &self.step_down_spin,
-            &self.step_in_spin,
+        // Track focus for all entries to prevent updates while user is editing
+        let entries = vec![
+            &self.pos_x_entry,
+            &self.pos_y_entry,
+            &self.width_entry,
+            &self.height_entry,
+            &self.rotation_entry,
+            &self.corner_radius_entry,
+            &self.font_size_entry,
+            &self.depth_entry,
+            &self.step_down_entry,
+            &self.step_in_entry,
         ];
         
-        for spinner in spinners {
+        for entry in entries {
             let focus_controller = EventControllerFocus::new();
             let has_focus_enter = self.has_focus.clone();
             focus_controller.connect_enter(move |_| {
@@ -744,10 +843,10 @@ impl PropertiesPanel {
                 *has_focus_leave.borrow_mut() = false;
             });
             
-            spinner.add_controller(focus_controller);
+            entry.add_controller(focus_controller);
         }
 
-        // Track focus for text entry
+        // Track focus for text entry (content)
         let focus_controller = EventControllerFocus::new();
         let has_focus_enter = self.has_focus.clone();
         focus_controller.connect_enter(move |_| {

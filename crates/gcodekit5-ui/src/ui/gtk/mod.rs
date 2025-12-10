@@ -1,4 +1,6 @@
 pub mod settings;
+pub mod shaders;
+pub mod renderer_3d;
 pub mod device_console;
 pub mod device_manager;
 pub mod cam_tools;
@@ -6,6 +8,7 @@ pub mod status_bar;
 pub mod machine_control;
 pub mod editor;
 pub mod visualizer;
+pub mod nav_cube;
 pub mod designer;
 pub mod designer_toolbox;
 pub mod designer_properties;

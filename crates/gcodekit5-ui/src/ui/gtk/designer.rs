@@ -81,6 +81,7 @@ pub struct DesignerCanvas {
     vadjustment: Rc<RefCell<Option<gtk4::Adjustment>>>,
     // Keyboard state
     shift_pressed: Rc<RefCell<bool>>,
+    ctrl_pressed: Rc<RefCell<bool>>,
     // Polyline state
     polyline_points: Rc<RefCell<Vec<Point>>>,
     // Toolpath preview
@@ -157,6 +158,7 @@ impl DesignerCanvas {
             hadjustment: Rc::new(RefCell::new(None)),
             vadjustment: Rc::new(RefCell::new(None)),
             shift_pressed: Rc::new(RefCell::new(false)),
+            ctrl_pressed: Rc::new(RefCell::new(false)),
             polyline_points: polyline_points.clone(),
             preview_toolpaths: preview_toolpaths.clone(),
             device_manager: device_manager.clone(),
@@ -266,12 +268,17 @@ impl DesignerCanvas {
         let state_key = state.clone();
         let widget_key = widget.clone();
         let shift_pressed_key = canvas.shift_pressed.clone();
+        let ctrl_pressed_key = canvas.ctrl_pressed.clone();
         let polyline_points_key = canvas.polyline_points.clone();
         let layers_key = canvas.layers.clone();
         
         key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _modifier| {
             if keyval == gtk4::gdk::Key::Shift_L || keyval == gtk4::gdk::Key::Shift_R {
                 *shift_pressed_key.borrow_mut() = true;
+                return glib::Propagation::Proceed;
+            }
+            if keyval == gtk4::gdk::Key::Control_L || keyval == gtk4::gdk::Key::Control_R {
+                *ctrl_pressed_key.borrow_mut() = true;
                 return glib::Propagation::Proceed;
             }
 
@@ -347,9 +354,13 @@ impl DesignerCanvas {
         });
 
         let shift_released_key = canvas.shift_pressed.clone();
+        let ctrl_released_key = canvas.ctrl_pressed.clone();
         key_controller.connect_key_released(move |_controller, keyval, _keycode, _modifier| {
             if keyval == gtk4::gdk::Key::Shift_L || keyval == gtk4::gdk::Key::Shift_R {
                 *shift_released_key.borrow_mut() = false;
+            }
+            if keyval == gtk4::gdk::Key::Control_L || keyval == gtk4::gdk::Key::Control_R {
+                *ctrl_released_key.borrow_mut() = false;
             }
         });
 
@@ -606,7 +617,10 @@ impl DesignerCanvas {
         menu.popup();
     }
 
-    fn handle_click(&self, x: f64, y: f64, ctrl_pressed: bool, n_press: i32) {
+    fn handle_click(&self, x: f64, y: f64, ctrl_pressed_arg: bool, n_press: i32) {
+        // Combine gesture modifier state with tracked keyboard state for reliability
+        let ctrl_pressed = ctrl_pressed_arg || *self.ctrl_pressed.borrow();
+        
         // Reset drag flag
         *self.did_drag.borrow_mut() = false;
 
@@ -713,7 +727,9 @@ impl DesignerCanvas {
         }
     }
     
-    fn handle_release(&self, x: f64, y: f64, ctrl_pressed: bool) {
+    fn handle_release(&self, x: f64, y: f64, ctrl_pressed_arg: bool) {
+        let ctrl_pressed = ctrl_pressed_arg || *self.ctrl_pressed.borrow();
+
         if *self.did_drag.borrow() {
             return;
         }
@@ -1659,6 +1675,8 @@ impl DesignerCanvas {
         for shape in shapes {
             // Set strategy for this shape
             state.toolpath_generator.set_pocket_strategy(shape.pocket_strategy);
+            state.toolpath_generator.set_start_depth(shape.start_depth);
+            state.toolpath_generator.set_cut_depth(shape.pocket_depth);
 
             let shape_toolpaths = match &shape.shape {
                 Shape::Rectangle(rect) => {
@@ -1670,7 +1688,7 @@ impl DesignerCanvas {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![state.toolpath_generator.generate_rectangle_contour(rect)]
+                        state.toolpath_generator.generate_rectangle_contour(rect, shape.step_down as f64)
                     }
                 }
                 Shape::Circle(circle) => {
@@ -1682,11 +1700,11 @@ impl DesignerCanvas {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![state.toolpath_generator.generate_circle_contour(circle)]
+                        state.toolpath_generator.generate_circle_contour(circle, shape.step_down as f64)
                     }
                 }
                 Shape::Line(line) => {
-                    vec![state.toolpath_generator.generate_line_contour(line)]
+                    state.toolpath_generator.generate_line_contour(line, shape.step_down as f64)
                 }
                 Shape::Ellipse(ellipse) => {
                     let (x1, y1, x2, y2) = ellipse.bounding_box();
@@ -1694,7 +1712,7 @@ impl DesignerCanvas {
                     let cy = (y1 + y2) / 2.0;
                     let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
                     let circle = Circle::new(Point::new(cx, cy), radius);
-                    vec![state.toolpath_generator.generate_circle_contour(&circle)]
+                    state.toolpath_generator.generate_circle_contour(&circle, shape.step_down as f64)
                 }
                 Shape::Path(path_shape) => {
                     if shape.operation_type == OperationType::Pocket {
@@ -1705,11 +1723,11 @@ impl DesignerCanvas {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![state.toolpath_generator.generate_path_contour(path_shape)]
+                        state.toolpath_generator.generate_path_contour(path_shape, shape.step_down as f64)
                     }
                 }
                 Shape::Text(text) => {
-                    vec![state.toolpath_generator.generate_text_toolpath(text)]
+                    state.toolpath_generator.generate_text_toolpath(text, shape.step_down as f64)
                 }
             };
             toolpaths.extend(shape_toolpaths);
@@ -1766,7 +1784,7 @@ impl DesignerCanvas {
         // Draw Toolpaths (if enabled)
         if state.show_toolpaths {
             cr.save().unwrap();
-            cr.set_line_width(1.0 / zoom); // Constant screen width
+            cr.set_line_width(2.0 / zoom); // Constant screen width
             
             for toolpath in toolpaths {
                 for segment in &toolpath.segments {
@@ -1774,16 +1792,42 @@ impl DesignerCanvas {
                         ToolpathSegmentType::RapidMove => {
                             cr.set_source_rgba(1.0, 0.0, 0.0, 0.5); // Red for rapid
                             cr.set_dash(&[2.0 / zoom, 2.0 / zoom], 0.0);
+                            cr.move_to(segment.start.x, segment.start.y);
+                            cr.line_to(segment.end.x, segment.end.y);
+                            cr.stroke().unwrap();
                         }
-                        ToolpathSegmentType::LinearMove | ToolpathSegmentType::ArcMove => {
+                        ToolpathSegmentType::LinearMove => {
                             cr.set_source_rgba(0.0, 0.8, 0.0, 0.7); // Green for cut
                             cr.set_dash(&[], 0.0);
+                            cr.move_to(segment.start.x, segment.start.y);
+                            cr.line_to(segment.end.x, segment.end.y);
+                            cr.stroke().unwrap();
+                        }
+                        ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
+                            cr.set_source_rgba(0.0, 0.8, 0.0, 0.7); // Green for cut
+                            cr.set_dash(&[], 0.0);
+                            
+                            if let Some(center) = segment.center {
+                                let radius = center.distance_to(&segment.start);
+                                let angle1 = (segment.start.y - center.y).atan2(segment.start.x - center.x);
+                                let angle2 = (segment.end.y - center.y).atan2(segment.end.x - center.x);
+                                
+                                cr.move_to(segment.start.x, segment.start.y); // Ensure we start at correct point
+                                // Note: Cairo adds a line from current point to start of arc if they differ.
+                                // But we just moved there.
+                                
+                                if segment.segment_type == ToolpathSegmentType::ArcCW {
+                                    cr.arc_negative(center.x, center.y, radius, angle1, angle2);
+                                } else {
+                                    cr.arc(center.x, center.y, radius, angle1, angle2);
+                                }
+                            } else {
+                                cr.move_to(segment.start.x, segment.start.y);
+                                cr.line_to(segment.end.x, segment.end.y);
+                            }
+                            cr.stroke().unwrap();
                         }
                     }
-                    
-                    cr.move_to(segment.start.x, segment.start.y);
-                    cr.line_to(segment.end.x, segment.end.y);
-                    cr.stroke().unwrap();
                 }
             }
             
@@ -1794,7 +1838,7 @@ impl DesignerCanvas {
         if !polyline_points.is_empty() {
             cr.save().unwrap();
             cr.set_source_rgb(0.0, 0.0, 1.0); // Blue for creation
-            cr.set_line_width(1.5);
+            cr.set_line_width(2.0 / zoom);
             
             // Draw existing segments
             if let Some(first) = polyline_points.first() {
@@ -1811,7 +1855,7 @@ impl DesignerCanvas {
             
             // Draw points
             for p in polyline_points {
-                cr.arc(p.x, p.y, 3.0, 0.0, 2.0 * std::f64::consts::PI);
+                cr.arc(p.x, p.y, 3.0 / zoom, 0.0, 2.0 * std::f64::consts::PI);
                 cr.fill().unwrap();
             }
             
@@ -1824,30 +1868,37 @@ impl DesignerCanvas {
             
             if obj.selected {
                 cr.set_source_rgb(1.0, 0.0, 0.0); // Red for selected
-                cr.set_line_width(2.0);
+                cr.set_line_width(3.0 / zoom);
             } else if obj.group_id.is_some() {
                 cr.set_source_rgb(0.0, 0.5, 0.0); // Green for grouped
-                cr.set_line_width(1.0);
+                cr.set_line_width(2.0 / zoom);
             } else {
                 cr.set_source_rgb(0.0, 0.0, 0.0); // Black for normal
-                cr.set_line_width(1.0);
+                cr.set_line_width(2.0 / zoom);
             }
 
             match &obj.shape {
                 Shape::Rectangle(rect) => {
-                    // Rectangle center is x,y
-                    // Cairo rectangle is x,y,w,h (top-left)
-                    // But we are in Y-up, so top-left is x, y+h? No, Cairo rect is x,y,w,h.
-                    // If we scaled Y by -1, then +Y is up.
-                    // Rectangle struct has x,y as center? No, usually bottom-left or top-left.
-                    // Let's assume x,y is bottom-left for Cartesian.
-                    
-                    // Checking Rectangle definition:
-                    // pub struct Rectangle { pub x: f64, pub y: f64, pub width: f64, pub height: f64, ... }
-                    // Usually x,y is bottom-left in G-code context.
-                    
-                    cr.rectangle(rect.x, rect.y, rect.width, rect.height);
-                    cr.stroke().unwrap();
+                    if rect.corner_radius > 0.001 {
+                        let x = rect.x;
+                        let y = rect.y;
+                        let w = rect.width;
+                        let h = rect.height;
+                        let r = rect.corner_radius.min(w / 2.0).min(h / 2.0);
+                        let pi = std::f64::consts::PI;
+
+                        cr.new_sub_path();
+                        // Start at right edge, bottom of TR corner
+                        cr.arc(x + w - r, y + h - r, r, 0.0, 0.5 * pi); // TR
+                        cr.arc(x + r, y + h - r, r, 0.5 * pi, pi);      // TL
+                        cr.arc(x + r, y + r, r, pi, 1.5 * pi);          // BL
+                        cr.arc(x + w - r, y + r, r, 1.5 * pi, 2.0 * pi);// BR
+                        cr.close_path();
+                        cr.stroke().unwrap();
+                    } else {
+                        cr.rectangle(rect.x, rect.y, rect.width, rect.height);
+                        cr.stroke().unwrap();
+                    }
                 }
                 Shape::Circle(circle) => {
                     cr.arc(circle.center.x, circle.center.y, circle.radius, 0.0, 2.0 * std::f64::consts::PI);
@@ -1927,7 +1978,7 @@ impl DesignerCanvas {
             // Draw resize handles for selected shapes
             if obj.selected {
                 let bounds = obj.shape.bounding_box();
-                Self::draw_resize_handles(cr, &bounds);
+                Self::draw_resize_handles(cr, &bounds, zoom);
             }
             
             cr.restore().unwrap();
@@ -1939,8 +1990,8 @@ impl DesignerCanvas {
             
             // Draw dashed preview outline
             cr.set_source_rgba(0.5, 0.7, 1.0, 0.7); // Light blue semi-transparent
-            cr.set_line_width(1.5);
-            cr.set_dash(&[5.0, 5.0], 0.0); // Dashed line
+            cr.set_line_width(2.0 / zoom);
+            cr.set_dash(&[5.0 / zoom, 5.0 / zoom], 0.0); // Dashed line
             
             // Draw bounding box for the preview
             let x1 = start.0.min(current.0);
@@ -2243,9 +2294,9 @@ impl DesignerCanvas {
         }
     }
     
-    fn draw_resize_handles(cr: &gtk4::cairo::Context, bounds: &(f64, f64, f64, f64)) {
-        const HANDLE_SIZE: f64 = 8.0;
-        const HALF_SIZE: f64 = HANDLE_SIZE / 2.0;
+    fn draw_resize_handles(cr: &gtk4::cairo::Context, bounds: &(f64, f64, f64, f64), zoom: f64) {
+        let handle_size = 8.0 / zoom;
+        let half_size = handle_size / 2.0;
         
         let (min_x, min_y, max_x, max_y) = *bounds;
         
@@ -2262,13 +2313,13 @@ impl DesignerCanvas {
         for (cx, cy) in corners {
             // Draw white fill
             cr.set_source_rgb(1.0, 1.0, 1.0);
-            cr.rectangle(cx - HALF_SIZE, cy - HALF_SIZE, HANDLE_SIZE, HANDLE_SIZE);
+            cr.rectangle(cx - half_size, cy - half_size, handle_size, handle_size);
             cr.fill().unwrap();
             
             // Draw blue border
             cr.set_source_rgb(0.0, 0.5, 1.0);
-            cr.set_line_width(1.5);
-            cr.rectangle(cx - HALF_SIZE, cy - HALF_SIZE, HANDLE_SIZE, HANDLE_SIZE);
+            cr.set_line_width(2.0 / zoom);
+            cr.rectangle(cx - half_size, cy - half_size, handle_size, handle_size);
             cr.stroke().unwrap();
         }
         
@@ -2570,12 +2621,14 @@ impl DesignerView {
             let spindle_speed = state.tool_settings.spindle_speed;
             let tool_diameter = state.tool_settings.tool_diameter;
             let cut_depth = state.tool_settings.cut_depth;
+            let start_depth = state.tool_settings.start_depth;
             
             // Update toolpath generator settings from state
             state.toolpath_generator.set_feed_rate(feed_rate);
             state.toolpath_generator.set_spindle_speed(spindle_speed);
             state.toolpath_generator.set_tool_diameter(tool_diameter);
             state.toolpath_generator.set_cut_depth(cut_depth);
+            state.toolpath_generator.set_start_depth(start_depth);
             state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
             
             let gcode = state.generate_gcode();
@@ -3069,12 +3122,14 @@ impl DesignerView {
                         let spindle_speed = state.tool_settings.spindle_speed;
                         let tool_diameter = state.tool_settings.tool_diameter;
                         let cut_depth = state.tool_settings.cut_depth;
+                        let start_depth = state.tool_settings.start_depth;
                         
                         // Update toolpath generator settings from state
                         state.toolpath_generator.set_feed_rate(feed_rate);
                         state.toolpath_generator.set_spindle_speed(spindle_speed);
                         state.toolpath_generator.set_tool_diameter(tool_diameter);
                         state.toolpath_generator.set_cut_depth(cut_depth);
+                        state.toolpath_generator.set_start_depth(start_depth);
                         state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
                         
                         let gcode = state.generate_gcode();

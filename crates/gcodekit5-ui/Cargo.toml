@@ -34,6 +34,9 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 dirs = "5.0"
 arboard = "3.4"
+glam = "0.29"
+glow = "0.14"
+libloading = "0.8"
 
 [build-dependencies]
 chrono = "0.4"

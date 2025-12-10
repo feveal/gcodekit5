@@ -245,7 +245,7 @@ impl ToolpathAnalyzer {
             match segment.segment_type {
                 ToolpathSegmentType::RapidMove => rapid += 1,
                 ToolpathSegmentType::LinearMove => linear += 1,
-                ToolpathSegmentType::ArcMove => arc += 1,
+                ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => arc += 1,
             }
         }
 

@@ -67,6 +67,8 @@ pub struct ShapeData {
     #[serde(default)]
     pub pocket_depth: f64,
     #[serde(default)]
+    pub start_depth: f64,
+    #[serde(default)]
     pub step_down: f32,
     #[serde(default)]
     pub step_in: f32,
@@ -218,6 +220,7 @@ impl DesignFile {
                 OperationType::Pocket => "pocket".to_string(),
             },
             pocket_depth: obj.pocket_depth,
+            start_depth: obj.start_depth,
             step_down: obj.step_down,
             step_in: obj.step_in,
             text_content,
@@ -318,6 +321,7 @@ impl DesignFile {
             operation_type,
             use_custom_values: data.use_custom_values,
             pocket_depth: data.pocket_depth,
+            start_depth: data.start_depth,
             step_down: data.step_down,
             step_in: data.step_in,
             pocket_strategy: PocketStrategy::ContourParallel,

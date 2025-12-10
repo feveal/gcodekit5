@@ -1,3 +1,29 @@
+## [0.27.0-alpha.0] - 2025-12-10
+
+### Added
+- **Designer**: Added support for rounded corners on Rectangle shapes.
+  - Added "Radius" property and "Slot" mode (auto-radius).
+  - Updated rendering and toolpath generation for rounded rectangles.
+- **Visualizer**: Added 3D Navigation Cube for view control (Top, Bottom, Front, Back, Left, Right).
+- **Visualizer**: Added Tool Marker (cone) in 3D view to show spindle position.
+- **Visualizer**: Added Device Bounds visualization in 3D view.
+
+### Changed
+- **Designer**: Replaced SpinButtons with Entry widgets in properties panel for better usability.
+- **Designer**: Improved selection logic for Path shapes (now uses stroke hit testing for open paths).
+- **Designer**: Updated Pocket operations to support "Start Depth" (cutting from top of stock).
+- **Designer**: Fixed Profile cuts to respect "Cut Depth" correctly.
+- **Designer**: Fixed multi-selection with Ctrl key.
+- **Visualizer**: Unified "Show Grid", "Show Moves", etc. checkboxes to work for both 2D and 3D views.
+- **Visualizer**: Improved 3D camera controls (Shift+Pan moves in view plane, orbit speed scaled by distance).
+- **Visualizer**: Updated 3D tool marker to be semi-transparent.
+
+### Fixed
+- **Designer**: Fixed rendering of rounded rectangles in canvas.
+- **Designer**: Fixed issue where Profile cuts were stepping up instead of down.
+- **Designer**: Fixed panic in "Fit to View" caused by RefCell borrowing conflict.
+- **Visualizer**: Fixed 3D grid size to encompass full world space.
+
 ## [0.26.0-alpha.0] - 2025-12-10
 
 ### Changed

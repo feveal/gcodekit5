@@ -27,16 +27,17 @@ const _GRID_MINOR_STEP_MM: f32 = 1.0;
 const _GRID_MAJOR_VISIBILITY_SCALE: f32 = 0.3;
 const _GRID_MINOR_VISIBILITY_SCALE: f32 = 1.5;
 
-/// 2D Point for visualization
+/// 3D Point for visualization
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Point2D {
+pub struct Point3D {
     pub x: f32,
     pub y: f32,
+    pub z: f32,
 }
 
-impl Point2D {
-    pub fn new(x: f32, y: f32) -> Self {
-        Self { x, y }
+impl Point3D {
+    pub fn new(x: f32, y: f32, z: f32) -> Self {
+        Self { x, y, z }
     }
 }
 
@@ -44,20 +45,20 @@ impl Point2D {
 #[derive(Debug, Clone)]
 pub enum GCodeCommand {
     Move {
-        from: Point2D,
-        to: Point2D,
+        from: Point3D,
+        to: Point3D,
         rapid: bool,
         intensity: Option<f32>,
     },
     Arc {
-        from: Point2D,
-        to: Point2D,
-        center: Point2D,
+        from: Point3D,
+        to: Point3D,
+        center: Point3D,
         clockwise: bool,
         intensity: Option<f32>,
     },
     Dwell {
-        pos: Point2D,
+        pos: Point3D,
         duration: f32,
     },
 }
@@ -104,19 +105,21 @@ impl CoordTransform {
         (safe_to_i32(screen_x), safe_to_i32(screen_y))
     }
 
-    fn point_to_screen(&self, point: Point2D) -> (i32, i32) {
+    fn point_to_screen(&self, point: Point3D) -> (i32, i32) {
         self.world_to_screen(point.x, point.y)
     }
 }
 
-/// 2D Visualizer state
+/// Visualizer state
 #[derive(Debug, Clone)]
-pub struct Visualizer2D {
+pub struct Visualizer {
     pub min_x: f32,
     pub max_x: f32,
     pub min_y: f32,
     pub max_y: f32,
-    pub current_pos: Point2D,
+    pub min_z: f32,
+    pub max_z: f32,
+    pub current_pos: Point3D,
     pub current_intensity: f32,
     /// Zoom/scale factor for rendering (1.0 = 100%)
     pub zoom_scale: f32,
@@ -132,15 +135,17 @@ pub struct Visualizer2D {
     viewport: ViewportTransform,
 }
 
-impl Visualizer2D {
-    /// Create new 2D visualizer
+impl Visualizer {
+    /// Create new visualizer
     pub fn new() -> Self {
         Self {
             min_x: -(core_constants::WORLD_EXTENT_MM as f32),
             max_x: core_constants::WORLD_EXTENT_MM as f32,
             min_y: -(core_constants::WORLD_EXTENT_MM as f32),
             max_y: core_constants::WORLD_EXTENT_MM as f32,
-            current_pos: Point2D::new(0.0, 0.0),
+            min_z: 0.0,
+            max_z: 100.0, // Default Z range
+            current_pos: Point3D::new(0.0, 0.0, 0.0),
             current_intensity: 0.0,
             zoom_scale: 1.0,
             x_offset: 0.0,
@@ -223,7 +228,7 @@ impl Visualizer2D {
         }
 
         let mut commands = Vec::new();
-        let mut current_pos = Point2D::new(0.0, 0.0);
+        let mut current_pos = Point3D::new(0.0, 0.0, 0.0);
         self.current_intensity = 0.0;
         let mut bounds = Bounds::new();
         let mut _g0_count = 0;
@@ -292,7 +297,7 @@ impl Visualizer2D {
             }
         }
 
-        (self.min_x, self.max_x, self.min_y, self.max_y) =
+        (self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z) =
             bounds.finalize_with_padding(BOUNDS_PADDING_FACTOR);
         self.current_pos = current_pos;
 
@@ -313,7 +318,7 @@ impl Visualizer2D {
         )
     }
 
-    fn parse_dwell(commands: &mut Vec<GCodeCommand>, line: &str, current_pos: &mut Point2D) {
+    fn parse_dwell(commands: &mut Vec<GCodeCommand>, line: &str, current_pos: &mut Point3D) {
         let mut duration = 0.0;
         for part in line.split_whitespace() {
             if part.len() < 2 {
@@ -338,7 +343,7 @@ impl Visualizer2D {
     fn parse_linear_move(
         commands: &mut Vec<GCodeCommand>,
         line: &str,
-        current_pos: &mut Point2D,
+        current_pos: &mut Point3D,
         current_intensity: &mut f32,
         bounds: &mut Bounds,
         is_rapid: bool,
@@ -346,8 +351,10 @@ impl Visualizer2D {
         // Extract X and Y directly without HashMap allocation
         let mut new_x = current_pos.x;
         let mut new_y = current_pos.y;
+        let mut new_z = current_pos.z;
         let mut x_found = false;
         let mut y_found = false;
+        let mut z_found = false;
 
         for part in line.split_whitespace() {
             if part.len() < 2 {
@@ -367,6 +374,12 @@ impl Visualizer2D {
                         y_found = true;
                     }
                 }
+                'Z' => {
+                    if let Ok(val) = part[1..].parse::<f32>() {
+                        new_z = val;
+                        z_found = true;
+                    }
+                }
                 'S' => {
                     if let Ok(val) = part[1..].parse::<f32>() {
                         *current_intensity = val;
@@ -377,8 +390,8 @@ impl Visualizer2D {
         }
 
         // Only create a command if at least one axis changed
-        if x_found || y_found {
-            let to = Point2D::new(new_x, new_y);
+        if x_found || y_found || z_found {
+            let to = Point3D::new(new_x, new_y, new_z);
             commands.push(GCodeCommand::Move {
                 from: *current_pos,
                 to,
@@ -386,8 +399,8 @@ impl Visualizer2D {
                 intensity: Some(*current_intensity),
             });
 
-            bounds.update(current_pos.x, current_pos.y);
-            bounds.update(new_x, new_y);
+            bounds.update(current_pos.x, current_pos.y, current_pos.z);
+            bounds.update(new_x, new_y, new_z);
             *current_pos = to;
         }
     }
@@ -395,13 +408,14 @@ impl Visualizer2D {
     fn parse_arc_move(
         commands: &mut Vec<GCodeCommand>,
         line: &str,
-        current_pos: &mut Point2D,
+        current_pos: &mut Point3D,
         current_intensity: &mut f32,
         bounds: &mut Bounds,
         clockwise: bool,
     ) {
         let mut new_x = None;
         let mut new_y = None;
+        let mut new_z = None;
         let mut offset_i = None;
         let mut offset_j = None;
 
@@ -419,6 +433,11 @@ impl Visualizer2D {
                 'Y' => {
                     if let Ok(val) = part[1..].parse::<f32>() {
                         new_y = Some(val);
+                    }
+                }
+                'Z' => {
+                    if let Ok(val) = part[1..].parse::<f32>() {
+                        new_z = Some(val);
                     }
                 }
                 'I' => {
@@ -441,8 +460,9 @@ impl Visualizer2D {
         }
 
         if let (Some(x), Some(y), Some(i), Some(j)) = (new_x, new_y, offset_i, offset_j) {
-            let to = Point2D::new(x, y);
-            let center = Point2D::new(current_pos.x + i, current_pos.y + j);
+            let z = new_z.unwrap_or(current_pos.z);
+            let to = Point3D::new(x, y, z);
+            let center = Point3D::new(current_pos.x + i, current_pos.y + j, current_pos.z);
 
             commands.push(GCodeCommand::Arc {
                 from: *current_pos,
@@ -452,8 +472,8 @@ impl Visualizer2D {
                 intensity: Some(*current_intensity),
             });
 
-            bounds.update(current_pos.x, current_pos.y);
-            bounds.update(x, y);
+            bounds.update(current_pos.x, current_pos.y, current_pos.z);
+            bounds.update(x, y, z);
             *current_pos = to;
         }
     }
@@ -575,8 +595,8 @@ impl Visualizer2D {
                     from, to, rapid, ..
                 } => {
                     if !rapid {
-                        bounds.update(from.x, from.y);
-                        bounds.update(to.x, to.y);
+                        bounds.update(from.x, from.y, from.z);
+                        bounds.update(to.x, to.y, to.z);
                         has_content = true;
                     }
                 }
@@ -584,16 +604,16 @@ impl Visualizer2D {
                     from, to, center, ..
                 } => {
                     // For arcs, we should strictly check the arc extents, but adding points + center is a safe approximation for now
-                    bounds.update(from.x, from.y);
-                    bounds.update(to.x, to.y);
+                    bounds.update(from.x, from.y, from.z);
+                    bounds.update(to.x, to.y, to.z);
                     // Including center ensures we don't clip the curve if it bows out, though it might be loose
                     let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
-                    bounds.update(center.x - radius, center.y - radius);
-                    bounds.update(center.x + radius, center.y + radius);
+                    bounds.update(center.x - radius, center.y - radius, center.z);
+                    bounds.update(center.x + radius, center.y + radius, center.z);
                     has_content = true;
                 }
                 GCodeCommand::Dwell { pos, .. } => {
-                    bounds.update(pos.x, pos.y);
+                    bounds.update(pos.x, pos.y, pos.z);
                     has_content = true;
                 }
             }
@@ -638,7 +658,7 @@ impl Visualizer2D {
     }
 
     /// Get bounds of cutting moves only (excluding rapid moves)
-    pub fn get_cutting_bounds(&self) -> Option<(f32, f32, f32, f32)> {
+    pub fn get_cutting_bounds(&self) -> Option<(f32, f32, f32, f32, f32, f32)> {
         let mut bounds = Bounds::new();
         let mut has_cutting_moves = false;
 
@@ -646,30 +666,30 @@ impl Visualizer2D {
             match cmd {
                 GCodeCommand::Move { to, rapid, .. } => {
                     if !*rapid {
-                        bounds.update(to.x, to.y);
+                        bounds.update(to.x, to.y, to.z);
                         has_cutting_moves = true;
                     }
                 }
                 GCodeCommand::Arc { to, .. } => {
-                    bounds.update(to.x, to.y);
+                    bounds.update(to.x, to.y, to.z);
                     has_cutting_moves = true;
                 }
                 GCodeCommand::Dwell { pos, .. } => {
-                    bounds.update(pos.x, pos.y);
+                    bounds.update(pos.x, pos.y, pos.z);
                     has_cutting_moves = true;
                 }
             }
         }
 
         if has_cutting_moves && bounds.is_valid() {
-            Some((bounds.min_x, bounds.max_x, bounds.min_y, bounds.max_y))
+            Some((bounds.min_x, bounds.max_x, bounds.min_y, bounds.max_y, bounds.min_z, bounds.max_z))
         } else {
             None
         }
     }
 
     /// Get the start point of the toolpath (for debugging/testing)
-    pub fn get_start_point(&self) -> Option<Point2D> {
+    pub fn get_start_point(&self) -> Option<Point3D> {
         self.toolpath_cache.commands().first().map(|cmd| match cmd {
             GCodeCommand::Move { from, .. } => *from,
             GCodeCommand::Arc { from, .. } => *from,
@@ -678,7 +698,7 @@ impl Visualizer2D {
     }
 }
 
-impl Default for Visualizer2D {
+impl Default for Visualizer {
     fn default() -> Self {
         Self::new()
     }

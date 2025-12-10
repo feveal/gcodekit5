@@ -1,10 +1,10 @@
 //! Comprehensive tests for visualizer coordinate transformations
 
-use gcodekit5_visualizer::Visualizer2D;
+use gcodekit5_visualizer::Visualizer;
 
 #[test]
 fn test_set_default_view_with_scale() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     viz.set_scale_factor(2.0);
     viz.set_default_view(800.0, 600.0);
 
@@ -15,7 +15,7 @@ fn test_set_default_view_with_scale() {
 
 #[test]
 fn test_reset_pan_clears_offsets() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     viz.x_offset = 100.0;
     viz.y_offset = 200.0;
 
@@ -27,7 +27,7 @@ fn test_reset_pan_clears_offsets() {
 
 #[test]
 fn test_fit_to_view_centers_content() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Create a simple square from (10,10) to (20,20)
     let gcode = "G0 X10 Y10\nG1 X20 Y10\nG1 X20 Y20\nG1 X10 Y20\nG1 X10 Y10";
     viz.parse_gcode(gcode);
@@ -47,7 +47,7 @@ fn test_fit_to_view_centers_content() {
 
 #[test]
 fn test_fit_to_view_with_origin_content() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Content that includes origin
     let gcode = "G0 X0 Y0\nG1 X50 Y0\nG1 X50 Y50\nG1 X0 Y50\nG1 X0 Y0";
     viz.parse_gcode(gcode);
@@ -60,7 +60,7 @@ fn test_fit_to_view_with_origin_content() {
 
 #[test]
 fn test_fit_to_view_with_negative_coords() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Content in negative space
     let gcode = "G0 X-50 Y-50\nG1 X-10 Y-50\nG1 X-10 Y-10\nG1 X-50 Y-10\nG1 X-50 Y-50";
     viz.parse_gcode(gcode);
@@ -74,7 +74,7 @@ fn test_fit_to_view_with_negative_coords() {
 
 #[test]
 fn test_fit_to_view_preserves_aspect_ratio() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Wide rectangle
     let gcode = "G0 X0 Y0\nG1 X100 Y0\nG1 X100 Y20\nG1 X0 Y20\nG1 X0 Y0";
     viz.parse_gcode(gcode);
@@ -87,7 +87,7 @@ fn test_fit_to_view_preserves_aspect_ratio() {
 
 #[test]
 fn test_fit_to_view_tall_canvas() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Square content
     let gcode = "G0 X0 Y0\nG1 X50 Y0\nG1 X50 Y50\nG1 X0 Y50\nG1 X0 Y0";
     viz.parse_gcode(gcode);
@@ -100,7 +100,7 @@ fn test_fit_to_view_tall_canvas() {
 
 #[test]
 fn test_fit_to_view_wide_canvas() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Square content
     let gcode = "G0 X0 Y0\nG1 X50 Y0\nG1 X50 Y50\nG1 X0 Y50\nG1 X0 Y0";
     viz.parse_gcode(gcode);
@@ -113,7 +113,7 @@ fn test_fit_to_view_wide_canvas() {
 
 #[test]
 fn test_zoom_and_pan_independent() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
 
     viz.zoom_in();
     let zoom_after = viz.zoom_scale;
@@ -126,12 +126,12 @@ fn test_zoom_and_pan_independent() {
 
 #[test]
 fn test_bounds_include_origin() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // Content not at origin
     let gcode = "G0 X100 Y100\nG1 X200 Y200";
     viz.parse_gcode(gcode);
 
-    let (min_x, _max_x, min_y, _max_y) = viz.get_bounds();
+    let (min_x, _max_x, min_y, _max_y, _, _) = viz.get_bounds();
 
     // Bounds should be extended to include origin
     assert!(min_x <= 0.0, "Min X should include origin");
@@ -140,7 +140,7 @@ fn test_bounds_include_origin() {
 
 #[test]
 fn test_fit_to_view_margin_applied() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     // 100x100 square
     let gcode = "G0 X0 Y0\nG1 X100 Y0\nG1 X100 Y100\nG1 X0 Y100\nG1 X0 Y0";
     viz.parse_gcode(gcode);
@@ -155,7 +155,7 @@ fn test_fit_to_view_margin_applied() {
 
 #[test]
 fn test_pan_operations_accumulate() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
 
     viz.pan_right(800.0);
     let x_after_first = viz.x_offset;
@@ -169,7 +169,7 @@ fn test_pan_operations_accumulate() {
 
 #[test]
 fn test_zoom_affects_scale_calculation() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     let gcode = "G0 X0 Y0\nG1 X100 Y100";
     viz.parse_gcode(gcode);
 
@@ -184,7 +184,7 @@ fn test_zoom_affects_scale_calculation() {
 
 #[test]
 fn test_set_default_view_positions_origin() {
-    let mut viz = Visualizer2D::new();
+    let mut viz = Visualizer::new();
     let canvas_width = 800.0;
     let canvas_height = 600.0;
 

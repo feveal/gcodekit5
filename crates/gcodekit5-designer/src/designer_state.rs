@@ -17,6 +17,7 @@ pub struct ToolSettings {
     pub spindle_speed: u32,
     pub tool_diameter: f64,
     pub cut_depth: f64,
+    pub start_depth: f64,
     pub step_down: f64,
 }
 
@@ -27,6 +28,7 @@ impl Default for ToolSettings {
             spindle_speed: 3000,
             tool_diameter: 3.175,
             cut_depth: 5.0,
+            start_depth: 0.0,
             step_down: 1.0,
         }
     }
@@ -438,6 +440,19 @@ impl DesignerState {
             // Set strategy for this shape
             self.toolpath_generator
                 .set_pocket_strategy(shape.pocket_strategy);
+            
+            // Set start depth for this shape (overrides global setting if needed, but here we just use the shape's property)
+            // Note: shape.start_depth defaults to 0.0, which matches global default.
+            // If user changes global start_depth, it updates toolpath_generator before this loop.
+            // But here we want to use the shape's start_depth if it's intended to be per-object.
+            // However, currently UI only updates global start_depth.
+            // If we want per-object start_depth, we should use shape.start_depth.
+            // Let's assume shape.start_depth is the authority.
+            self.toolpath_generator.set_start_depth(shape.start_depth);
+            
+            // Use shape's pocket_depth as the cut depth for profiles as well.
+            // This ensures that the depth set on the shape is respected for both pockets and profiles.
+            self.toolpath_generator.set_cut_depth(shape.pocket_depth);
 
             let shape_toolpaths = match &shape.shape {
                 crate::shapes::Shape::Rectangle(rect) => {
@@ -449,7 +464,7 @@ impl DesignerState {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![self.toolpath_generator.generate_rectangle_contour(rect)]
+                        self.toolpath_generator.generate_rectangle_contour(rect, shape.step_down as f64)
                     }
                 }
                 crate::shapes::Shape::Circle(circle) => {
@@ -461,11 +476,11 @@ impl DesignerState {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![self.toolpath_generator.generate_circle_contour(circle)]
+                        self.toolpath_generator.generate_circle_contour(circle, shape.step_down as f64)
                     }
                 }
                 crate::shapes::Shape::Line(line) => {
-                    vec![self.toolpath_generator.generate_line_contour(line)]
+                    self.toolpath_generator.generate_line_contour(line, shape.step_down as f64)
                 }
                 crate::shapes::Shape::Ellipse(ellipse) => {
                     // Ellipse contour generation might need a Circle conversion or specific handler
@@ -478,7 +493,7 @@ impl DesignerState {
                     let cy = (y1 + y2) / 2.0;
                     let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
                     let circle = Circle::new(Point::new(cx, cy), radius);
-                    vec![self.toolpath_generator.generate_circle_contour(&circle)]
+                    self.toolpath_generator.generate_circle_contour(&circle, shape.step_down as f64)
                 }
                 crate::shapes::Shape::Path(path_shape) => {
                     if shape.operation_type == OperationType::Pocket {
@@ -489,11 +504,11 @@ impl DesignerState {
                             shape.step_in as f64,
                         )
                     } else {
-                        vec![self.toolpath_generator.generate_path_contour(path_shape)]
+                        self.toolpath_generator.generate_path_contour(path_shape, shape.step_down as f64)
                     }
                 }
                 crate::shapes::Shape::Text(text) => {
-                    vec![self.toolpath_generator.generate_text_toolpath(text)]
+                    self.toolpath_generator.generate_text_toolpath(text, shape.step_down as f64)
                 }
             };
             toolpaths.extend(shape_toolpaths);
@@ -1072,6 +1087,30 @@ impl DesignerState {
             let cmd = DesignerCommand::CompositeCommand(CompositeCommand {
                 commands,
                 name: "Change Step In".to_string(),
+            });
+            self.push_command(cmd);
+        }
+    }
+
+    pub fn set_selected_start_depth(&mut self, start_depth: f64) {
+        let mut commands = Vec::new();
+        for obj in self.canvas.shapes().filter(|s| s.selected) {
+            if (obj.start_depth - start_depth).abs() > f64::EPSILON {
+                let mut new_obj = obj.clone();
+                new_obj.start_depth = start_depth;
+                
+                commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
+                    id: obj.id,
+                    old_state: obj.clone(),
+                    new_state: new_obj,
+                }));
+            }
+        }
+        
+        if !commands.is_empty() {
+            let cmd = DesignerCommand::CompositeCommand(CompositeCommand {
+                commands,
+                name: "Change Start Depth".to_string(),
             });
             self.push_command(cmd);
         }

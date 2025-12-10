@@ -1,42 +1,42 @@
 //! Canvas-based G-Code Visualizer using SVG Path Commands
 //! Renders G-Code toolpaths as SVG path data for Slint Path elements
 
-use super::visualizer_2d::{GCodeCommand, Visualizer2D};
+use super::visualizer::{GCodeCommand, Visualizer};
 
 const GRID_MAJOR_STEP_MM: f32 = 10.0;
 
 /// Render toolpath as SVG path commands (cutting moves only)
-pub fn render_toolpath_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_toolpath_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.toolpath_svg().to_string()
 }
 
 /// Render rapid moves (G0) as SVG path commands
-pub fn render_rapid_moves_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_rapid_moves_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.rapid_svg().to_string()
 }
 
 /// Render G1 moves as SVG path commands
-pub fn render_g1_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_g1_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.g1_svg().to_string()
 }
 
 /// Render G2 moves as SVG path commands
-pub fn render_g2_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_g2_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.g2_svg().to_string()
 }
 
 /// Render G3 moves as SVG path commands
-pub fn render_g3_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_g3_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.g3_svg().to_string()
 }
 
 /// Render G4 moves (dwells) as SVG path commands
-pub fn render_g4_to_path(visualizer: &Visualizer2D, _width: u32, _height: u32) -> String {
+pub fn render_g4_to_path(visualizer: &Visualizer, _width: u32, _height: u32) -> String {
     visualizer.g4_svg().to_string()
 }
 
 /// Render grid as SVG path commands
-pub fn render_grid_to_path(visualizer: &Visualizer2D, width: u32, height: u32) -> (String, f32) {
+pub fn render_grid_to_path(visualizer: &Visualizer, width: u32, height: u32) -> (String, f32) {
     // Get the visible world bounds from the viewbox calculation
     let (vb_x, vb_y, vb_w, vb_h) = visualizer.get_viewbox(width as f32, height as f32);
 
@@ -130,7 +130,7 @@ pub fn render_grid_to_path(visualizer: &Visualizer2D, width: u32, height: u32) -
 /// Render intensity overlay as multiple SVG path layers (buckets)
 /// Returns 10 layers corresponding to 10%, 20%, ..., 100% opacity
 pub fn render_intensity_overlay(
-    visualizer: &Visualizer2D,
+    visualizer: &Visualizer,
     _width: u32,
     _height: u32,
     max_intensity: f32,
@@ -143,7 +143,7 @@ pub fn render_intensity_overlay(
         layer.reserve(estimated_capacity / 10);
     }
 
-    let mut last_pos: [Option<super::visualizer_2d::Point2D>; 10] = [None; 10];
+    let mut last_pos: [Option<super::visualizer::Point3D>; 10] = [None; 10];
     use std::fmt::Write;
 
     for cmd in visualizer.commands() {
@@ -227,7 +227,7 @@ pub fn render_intensity_overlay(
 }
 
 /// Render origin marker at (0,0) as yellow cross
-pub fn render_origin_to_path(visualizer: &Visualizer2D, width: u32, height: u32) -> String {
+pub fn render_origin_to_path(visualizer: &Visualizer, width: u32, height: u32) -> String {
     let (vb_x, vb_y, vb_w, vb_h) = visualizer.get_viewbox(width as f32, height as f32);
 
     let mut path = String::with_capacity(100);
@@ -248,14 +248,14 @@ mod tests {
 
     #[test]
     fn test_render_empty_visualizer() {
-        let visualizer = Visualizer2D::new();
+        let visualizer = Visualizer::new();
         let (path, _) = render_grid_to_path(&visualizer, 800, 600);
         assert!(!path.is_empty());
     }
 
     #[test]
     fn test_render_simple_line() {
-        let mut visualizer = Visualizer2D::new();
+        let mut visualizer = Visualizer::new();
         visualizer.parse_gcode("G0 X0 Y0\nG1 X10 Y10\n");
         let path = render_toolpath_to_path(&visualizer, 800, 600);
         assert!(!path.is_empty());
@@ -265,7 +265,7 @@ mod tests {
 
     #[test]
     fn test_grid_visibility() {
-        let mut visualizer = Visualizer2D::new();
+        let mut visualizer = Visualizer::new();
         visualizer.zoom_scale = 0.2; // Low zoom
         let (path, _) = render_grid_to_path(&visualizer, 800, 600);
         // Grid should still be visible with adaptive spacing

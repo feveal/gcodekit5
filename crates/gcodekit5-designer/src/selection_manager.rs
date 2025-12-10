@@ -133,7 +133,14 @@ impl SelectionManager {
         let mut found_group_id = None;
 
         // Query spatial index for candidates (used for single shapes)
-        let candidates = spatial_index.query_point(point.x, point.y);
+        // Use a bounding box with tolerance to ensure we catch shapes near the click
+        let query_bounds = Bounds::new(
+            point.x - tolerance,
+            point.y - tolerance,
+            point.x + tolerance,
+            point.y + tolerance,
+        );
+        let candidates = spatial_index.query(&query_bounds);
 
         // Pre-calculate group bounding boxes
         let mut group_bounds: HashMap<u64, (f64, f64, f64, f64)> = HashMap::new();
