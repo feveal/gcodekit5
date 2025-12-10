@@ -13,7 +13,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.2.5-alpha.7"
+version = "0.2.5-alpha.8"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["GCodeKit Contributors"]
@@ -22,7 +22,11 @@ repository = "https://github.com/thawkins/gcodekit5"
 [workspace.dependencies]
 tokio = { version = "1.35", features = ["full"] }
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "fmt",
+    "json",
+] }
 anyhow = "1.0"
 thiserror = "2.0.17"
 rfd = "0.15.4"
@@ -61,7 +65,11 @@ gcodekit5-visualizer = { path = "crates/gcodekit5-visualizer" }
 gcodekit5-ui = { path = "crates/gcodekit5-ui" }
 
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+tracing-subscriber = { version = "0.3", features = [
+    "env-filter",
+    "fmt",
+    "json",
+] }
 anyhow = "1.0"
 rfd = "0.15.4"
 arboard = "3.4"
@@ -75,4 +83,3 @@ chrono = "0.4"
 # Testing utilities
 [dev-dependencies]
 tempfile = "3.8"
-
