@@ -1,7 +1,7 @@
-## [0.34.0-alpha.0] - 2025-12-12
+## [0.35.0-alpha.0] - 2025-12-12
 
 ### Changed
-- **Version**: Bumped version to 0.34.0-alpha.0.
+- **Version**: Bumped version to 0.35.0-alpha.0.
 
 ## [0.33.0-alpha.0] - 2025-12-12
 
