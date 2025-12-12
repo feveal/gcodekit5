@@ -53,6 +53,8 @@ pub struct ViewportState {
 pub struct ShapeData {
     pub id: i32,
     pub shape_type: String,
+    #[serde(default)]
+    pub name: String,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -77,6 +79,12 @@ pub struct ShapeData {
     #[serde(default)]
     pub font_size: f64,
     #[serde(default)]
+    pub font_family: String,
+    #[serde(default)]
+    pub font_bold: bool,
+    #[serde(default)]
+    pub font_italic: bool,
+    #[serde(default)]
     pub path_data: String,
     #[serde(default)]
     pub group_id: Option<u64>,
@@ -86,6 +94,8 @@ pub struct ShapeData {
     pub is_slot: bool,
     #[serde(default)]
     pub rotation: f64,
+    #[serde(default)]
+    pub pocket_strategy: PocketStrategy,
 }
 
 /// Toolpath generation parameters
@@ -205,11 +215,18 @@ impl DesignFile {
             ShapeType::Text => "text",
         };
 
-        let (text_content, font_size) = if let Shape::Text(text_shape) = &obj.shape {
-            (text_shape.text.clone(), text_shape.font_size)
-        } else {
-            (String::new(), 0.0)
-        };
+        let (text_content, font_size, font_family, font_bold, font_italic) =
+            if let Shape::Text(text_shape) = &obj.shape {
+                (
+                    text_shape.text.clone(),
+                    text_shape.font_size,
+                    text_shape.font_family.clone(),
+                    text_shape.bold,
+                    text_shape.italic,
+                )
+            } else {
+                (String::new(), 0.0, String::new(), false, false)
+            };
 
         let path_data = if let Shape::Path(path_shape) = &obj.shape {
             path_shape.to_svg_path()
@@ -226,6 +243,7 @@ impl DesignFile {
         ShapeData {
             id: obj.id as i32,
             shape_type: shape_type.to_string(),
+            name: obj.name.clone(),
             x,
             y,
             width,
@@ -243,11 +261,15 @@ impl DesignFile {
             step_in: obj.step_in,
             text_content,
             font_size,
+            font_family,
+            font_bold,
+            font_italic,
             path_data,
             group_id: obj.group_id,
             corner_radius,
             is_slot,
             rotation: obj.shape.rotation(),
+            pocket_strategy: obj.pocket_strategy,
         }
     }
 
@@ -287,12 +309,16 @@ impl DesignFile {
                 }
                 Shape::Path(PathShape::from_points(&vertices, true))
             }
-            "text" => Shape::Text(TextShape::new(
-                data.text_content.clone(),
-                data.x,
-                data.y,
-                data.font_size,
-            )),
+            "text" => {
+                let mut s =
+                    TextShape::new(data.text_content.clone(), data.x, data.y, data.font_size);
+                if !data.font_family.is_empty() {
+                    s.font_family = data.font_family.clone();
+                }
+                s.bold = data.font_bold;
+                s.italic = data.font_italic;
+                Shape::Text(s)
+            }
             "path" => {
                 if let Some(path_shape) = PathShape::from_svg_path(&data.path_data) {
                     Shape::Path(path_shape)
@@ -323,18 +349,23 @@ impl DesignFile {
             _ => OperationType::Profile,
         };
 
+        let default_name = match shape.shape_type() {
+            crate::shapes::ShapeType::Rectangle => "Rectangle",
+            crate::shapes::ShapeType::Circle => "Circle",
+            crate::shapes::ShapeType::Line => "Line",
+            crate::shapes::ShapeType::Ellipse => "Ellipse",
+            crate::shapes::ShapeType::Path => "Path",
+            crate::shapes::ShapeType::Text => "Text",
+        };
+
         Ok(DrawingObject {
             id: next_id as u64,
             group_id: data.group_id,
-            name: match shape.shape_type() {
-                crate::shapes::ShapeType::Rectangle => "Rectangle",
-                crate::shapes::ShapeType::Circle => "Circle",
-                crate::shapes::ShapeType::Line => "Line",
-                crate::shapes::ShapeType::Ellipse => "Ellipse",
-                crate::shapes::ShapeType::Path => "Path",
-                crate::shapes::ShapeType::Text => "Text",
-            }
-            .to_string(),
+            name: if data.name.is_empty() {
+                default_name.to_string()
+            } else {
+                data.name.clone()
+            },
             shape,
             selected: data.selected,
             operation_type,
@@ -343,7 +374,7 @@ impl DesignFile {
             start_depth: data.start_depth,
             step_down: data.step_down,
             step_in: data.step_in,
-            pocket_strategy: PocketStrategy::ContourParallel,
+            pocket_strategy: data.pocket_strategy,
         })
     }
 }

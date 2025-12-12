@@ -1,11 +1,17 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Button, Orientation, Image, Label, Expander, Align, ScrolledWindow, PolicyType, Entry};
-use std::cell::RefCell;
+use gtk4::{
+    Align, Box, Button, Dialog, Entry, Frame, Grid, Image, Label, Orientation, PolicyType,
+    ResponseType, ScrolledWindow,
+};
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_settings::controller::SettingsController;
 use gcodekit5_core::units::MeasurementSystem;
+use crate::t;
+
+// Dialog widgets should not be dropped; they are owned by closures attached to buttons.
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DesignerTool {
@@ -20,19 +26,19 @@ pub enum DesignerTool {
 }
 
 impl DesignerTool {
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self) -> String {
         match self {
-            DesignerTool::Select => "Select",
-            DesignerTool::Rectangle => "Rectangle",
-            DesignerTool::Circle => "Circle",
-            DesignerTool::Line => "Line",
-            DesignerTool::Ellipse => "Ellipse",
-            DesignerTool::Polyline => "Polyline",
-            DesignerTool::Text => "Text",
-            DesignerTool::Pan => "Pan",
+            DesignerTool::Select => t!("Select"),
+            DesignerTool::Rectangle => t!("Rectangle"),
+            DesignerTool::Circle => t!("Circle"),
+            DesignerTool::Line => t!("Line"),
+            DesignerTool::Ellipse => t!("Ellipse"),
+            DesignerTool::Polyline => t!("Polyline"),
+            DesignerTool::Text => t!("Text"),
+            DesignerTool::Pan => t!("Pan"),
         }
     }
-    
+
     pub fn icon(&self) -> &'static str {
         match self {
             DesignerTool::Select => "select.svg",
@@ -45,17 +51,17 @@ impl DesignerTool {
             DesignerTool::Pan => "grab.svg",
         }
     }
-    
-    pub fn tooltip(&self) -> &'static str {
+
+    pub fn tooltip(&self) -> String {
         match self {
-            DesignerTool::Select => "Select and move shapes (S)",
-            DesignerTool::Rectangle => "Draw rectangle (R)",
-            DesignerTool::Circle => "Draw circle (C)",
-            DesignerTool::Line => "Draw line (L)",
-            DesignerTool::Ellipse => "Draw ellipse (E)",
-            DesignerTool::Polyline => "Draw polyline/polygon (P)",
-            DesignerTool::Text => "Add text (T)",
-            DesignerTool::Pan => "Pan canvas (Space)",
+            DesignerTool::Select => t!("Select (S)"),
+            DesignerTool::Rectangle => t!("Rectangle (R)"),
+            DesignerTool::Circle => t!("Circle (C)"),
+            DesignerTool::Line => t!("Line (L)"),
+            DesignerTool::Ellipse => t!("Ellipse (E)"),
+            DesignerTool::Polyline => t!("Polyline (P)"),
+            DesignerTool::Text => t!("Text (T)"),
+            DesignerTool::Pan => t!("Pan (Space)"),
         }
     }
 }
@@ -74,9 +80,16 @@ pub struct DesignerToolbox {
 
 impl DesignerToolbox {
     pub fn new(state: Rc<RefCell<DesignerState>>, settings_controller: Rc<SettingsController>) -> Rc<Self> {
+        #[derive(Clone, Copy)]
+        enum UnitsKind {
+            Length,
+            FeedRate,
+            Rpm,
+        }
+
         let main_container = Box::new(Orientation::Vertical, 0);
         main_container.set_width_request(160); // Increased width for 3 columns
-        main_container.set_hexpand(false);
+        main_container.set_hexpand(true);
         main_container.add_css_class("designer-toolbox");
         main_container.set_margin_top(5);
         main_container.set_margin_bottom(5);
@@ -93,11 +106,15 @@ impl DesignerToolbox {
         let content_box = Box::new(Orientation::Vertical, 2);
         
         let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
-        let active_tool_label = Label::new(Some("Active tool: Select (S)"));
+        let init_tool = DesignerTool::Select;
+        let active_tool_label = Label::new(Some(&format!(
+            "{} {}",
+            t!("Active tool:"),
+            init_tool.tooltip()
+        )));
         active_tool_label.add_css_class("active-tool-chip");
         active_tool_label.set_halign(Align::Center);
-        active_tool_label.set_margin_bottom(6);
-        content_box.append(&active_tool_label);
+        active_tool_label.set_margin_bottom(0);
 
         let mut buttons: Vec<Button> = Vec::new();
         
@@ -122,7 +139,8 @@ impl DesignerToolbox {
             let btn = Button::new();
             btn.set_size_request(40, 40); // Slightly smaller for 3 columns
             btn.set_halign(Align::Center);
-            btn.set_tooltip_text(Some(tool.tooltip()));
+            let tooltip = tool.tooltip();
+            btn.set_tooltip_text(Some(&tooltip));
             
             // Use icon from compiled resources
             let icon_filename = tool.icon();
@@ -154,7 +172,7 @@ impl DesignerToolbox {
             let active_tool_label = active_tool_label.clone();
             btn.connect_clicked(move |_| {
                 *current_tool_clone.borrow_mut() = tool;
-                active_tool_label.set_text(&format!("Active tool: {}", tool.tooltip()));
+                active_tool_label.set_text(&format!("{} {}", t!("Active tool:"), tool.tooltip()));
 
                 // Update button styles
                 for (j, b) in buttons_clone.iter().enumerate() {
@@ -174,106 +192,119 @@ impl DesignerToolbox {
         content_box.append(&separator);
 
         // Tool Settings
-        let settings_box = Box::new(Orientation::Vertical, 5);
-        settings_box.set_margin_start(2);
-        settings_box.set_margin_end(2);
+        let settings_box = Box::new(Orientation::Vertical, 8);
+        settings_box.set_margin_start(8);
+        settings_box.set_margin_end(8);
+        settings_box.set_margin_top(8);
+        settings_box.set_margin_bottom(8);
 
-        let current_units = Arc::new(Mutex::new(settings_controller.persistence.borrow().config().ui.measurement_system));
+        let settings_grid = Grid::builder().row_spacing(8).column_spacing(8).build();
+        settings_box.append(&settings_grid);
 
-        // Helper to create labeled entry with unit support
+        let current_units = Arc::new(Mutex::new(
+            settings_controller
+                .persistence
+                .borrow()
+                .config()
+                .ui
+                .measurement_system,
+        ));
+
+        let tool_row = Rc::new(Cell::new(0));
+
+        // Helper to create a properties-style row: label | value | units
         let create_setting = {
             let settings_controller = settings_controller.clone();
             let current_units = current_units.clone();
-            let settings_box = settings_box.clone();
-            
-            move |label_text: &str, getter: Rc<dyn Fn() -> f64>, setter: Rc<dyn Fn(f64)>, tooltip: &str, is_length: bool| -> Entry {
-                let label = Label::builder()
-                    .label(label_text)
-                    .halign(Align::Start)
-                    .build();
-                label.add_css_class("small-label");
-                settings_box.append(&label);
+            let settings_grid = settings_grid.clone();
+            let tool_row = tool_row.clone();
 
-                let entry = Entry::builder()
-                    .tooltip_text(tooltip)
-                    .build();
-                settings_box.append(&entry);
+            move |label_text: String,
+                  getter: Rc<dyn Fn() -> f64>,
+                  setter: Rc<dyn Fn(f64)>,
+                  tooltip: String,
+                  units_kind: UnitsKind|
+                  -> Entry {
+                let label = Label::new(Some(&format!("{}:", label_text)));
+                label.set_halign(Align::Start);
+
+                let entry = Entry::builder().tooltip_text(&tooltip).build();
+                entry.set_hexpand(true);
+
+                let units_label = Label::new(Some(""));
+                units_label.set_halign(Align::End);
+                units_label.set_xalign(1.0);
+                units_label.set_width_chars(6);
+
+                let row = tool_row.get();
+                tool_row.set(row + 1);
+
+                settings_grid.attach(&label, 0, row, 1, 1);
+                settings_grid.attach(&entry, 1, row, 1, 1);
+                settings_grid.attach(&units_label, 2, row, 1, 1);
 
                 let update_display = {
                     let entry = entry.clone();
-                    let label = label.clone();
+                    let units_label = units_label.clone();
                     let getter = getter.clone();
                     let current_units = current_units.clone();
-                    let label_text = label_text.to_string();
-                    
+                    let units_kind = units_kind;
+
                     Rc::new(move || {
                         let val_mm = getter();
                         let units = *current_units.lock().unwrap();
-                        
-                        let (val_display, unit_str) = if is_length {
-                            match units {
+
+                        let (val_display, unit_str) = match units_kind {
+                            UnitsKind::Length => match units {
                                 MeasurementSystem::Metric => (val_mm, "mm"),
                                 MeasurementSystem::Imperial => (val_mm / 25.4, "in"),
-                            }
-                        } else {
-                            (val_mm, "")
+                            },
+                            UnitsKind::FeedRate => match units {
+                                MeasurementSystem::Metric => (val_mm, "mm/min"),
+                                MeasurementSystem::Imperial => (val_mm / 25.4, "in/min"),
+                            },
+                            UnitsKind::Rpm => (val_mm, "RPM"),
                         };
-                        
-                        // Update label
-                        let new_label = if !unit_str.is_empty() {
-                            if label_text.contains("(mm)") {
-                                label_text.replace("(mm)", &format!("({})", unit_str))
-                            } else if label_text.contains("(in)") {
-                                label_text.replace("(in)", &format!("({})", unit_str))
-                            } else if label_text.contains("mm/min") {
-                                if unit_str == "in" {
-                                    label_text.replace("mm/min", "in/min")
-                                } else {
-                                    label_text.clone()
-                                }
-                            } else {
-                                format!("{} ({})", label_text, unit_str)
-                            }
-                        } else {
-                            label_text.clone()
-                        };
-                        label.set_label(&new_label);
-                        
-                        // Update entry
+
+                        units_label.set_text(unit_str);
                         entry.set_text(&format!("{:.3}", val_display));
                     })
                 };
-                
-                // Initial update
+
                 update_display();
-                
+
                 // Connect entry changed
                 {
                     let current_units = current_units.clone();
                     let setter = setter.clone();
+                    let units_kind = units_kind;
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f64>() {
+                            e.remove_css_class("entry-invalid");
                             let units = *current_units.lock().unwrap();
-                            let val_mm = if is_length {
-                                match units {
+                            let val_mm = match units_kind {
+                                UnitsKind::Length | UnitsKind::FeedRate => match units {
                                     MeasurementSystem::Metric => val,
                                     MeasurementSystem::Imperial => val * 25.4,
-                                }
-                            } else {
-                                val
+                                },
+                                UnitsKind::Rpm => val,
                             };
                             setter(val_mm);
+                        } else {
+                            e.add_css_class("entry-invalid");
                         }
                     });
                 }
-                
+
                 // Connect settings changed
                 {
                     let update_display = update_display.clone();
                     let current_units = current_units.clone();
                     settings_controller.on_setting_changed(move |key, value| {
                         if key == "units.measurement_system" {
-                            if let Ok(system) = serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value)) {
+                            if let Ok(system) =
+                                serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
+                            {
                                 *current_units.lock().unwrap() = system;
                             } else if value == "Metric" {
                                 *current_units.lock().unwrap() = MeasurementSystem::Metric;
@@ -284,7 +315,7 @@ impl DesignerToolbox {
                         }
                     });
                 }
-                
+
                 entry
             }
         };
@@ -295,7 +326,7 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.feed_rate);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_feed_rate(val));
-            create_setting("Feed (mm/min)", getter, setter, "Feed Rate", true);
+            create_setting(t!("Feed"), getter, setter, t!("Feed Rate"), UnitsKind::FeedRate);
         }
 
         // Spindle Speed
@@ -304,7 +335,7 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.spindle_speed as f64);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_spindle_speed(val as u32));
-            create_setting("Speed (RPM)", getter, setter, "Spindle Speed", false);
+            create_setting(t!("Speed"), getter, setter, t!("Spindle Speed"), UnitsKind::Rpm);
         }
 
         // Tool Diameter
@@ -313,7 +344,7 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.tool_diameter);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_tool_diameter(val));
-            create_setting("Tool Dia (mm)", getter, setter, "Tool Diameter", true);
+            create_setting(t!("Tool Dia"), getter, setter, t!("Tool Diameter"), UnitsKind::Length);
         }
 
         // Cut Depth
@@ -322,7 +353,7 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.cut_depth);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_cut_depth(val));
-            create_setting("Cut Depth (mm)", getter, setter, "Target Cut Depth (positive)", true);
+            create_setting(t!("Cut Depth"), getter, setter, t!("Target Cut Depth (positive)"), UnitsKind::Length);
         }
 
         // Step Down
@@ -331,98 +362,150 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.step_down);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_step_down(val));
-            create_setting("Step Down (mm)", getter, setter, "Depth per pass", true);
+            create_setting(t!("Step Down"), getter, setter, t!("Depth per pass"), UnitsKind::Length);
         }
 
-        let expander = Expander::builder()
-            .label("Tool Settings")
-            .child(&settings_box)
-            .expanded(true)
+        // Tool Settings popup
+        let tool_settings_btn = Button::with_label(&t!("Tool Settings…"));
+        tool_settings_btn.set_margin_top(6);
+        tool_settings_btn.set_margin_start(5);
+        tool_settings_btn.set_margin_end(5);
+
+        let tool_settings_dialog = Dialog::builder().title(t!("Tool Settings")).modal(true).resizable(true).build();
+        tool_settings_dialog.set_default_size(520, 520);
+        tool_settings_dialog.add_button(&t!("Close"), ResponseType::Close);
+        tool_settings_dialog.connect_response(|d, _| d.hide());
+
+        let tool_dialog_content = Box::new(Orientation::Vertical, 12);
+        tool_dialog_content.set_margin_start(12);
+        tool_dialog_content.set_margin_end(12);
+        tool_dialog_content.set_margin_top(12);
+        tool_dialog_content.set_margin_bottom(12);
+
+        let tool_header = Label::new(Some(&t!("Tool Settings")));
+        tool_header.add_css_class("title-3");
+        tool_header.set_halign(Align::Start);
+        tool_dialog_content.append(&tool_header);
+
+        let tool_frame = Frame::new(Some(&t!("Tool Parameters")));
+        tool_frame.set_child(Some(&settings_box));
+        tool_dialog_content.append(&tool_frame);
+
+        let tool_scroller = ScrolledWindow::builder()
+            .hscrollbar_policy(PolicyType::Never)
+            .vscrollbar_policy(PolicyType::Automatic)
+            .min_content_width(520)
+            .min_content_height(360)
+            .child(&tool_dialog_content)
             .build();
-        
-        content_box.append(&expander);
+        tool_settings_dialog.content_area().append(&tool_scroller);
+
+        {
+            let dlg = tool_settings_dialog.clone();
+            let btn = tool_settings_btn.clone();
+            tool_settings_btn.connect_clicked(move |_| {
+                if let Some(root) = btn.root() {
+                    if let Ok(win) = root.downcast::<gtk4::Window>() {
+                        dlg.set_transient_for(Some(&win));
+                    }
+                }
+                dlg.present();
+            });
+        }
+
+        content_box.append(&tool_settings_btn);
 
         // Stock Settings
-        let stock_box = Box::new(Orientation::Vertical, 5);
-        stock_box.set_margin_start(2);
-        stock_box.set_margin_end(2);
+        let stock_box = Box::new(Orientation::Vertical, 8);
+        stock_box.set_margin_start(8);
+        stock_box.set_margin_end(8);
+        stock_box.set_margin_top(8);
+        stock_box.set_margin_bottom(8);
 
-        // Helper for stock settings (f32)
+        let stock_grid = Grid::builder().row_spacing(8).column_spacing(8).build();
+        stock_box.append(&stock_grid);
+        let stock_row = Rc::new(Cell::new(0));
+
+        // Helper for stock settings (f32): label | value | units
         let create_stock_setting = {
             let settings_controller = settings_controller.clone();
             let current_units = current_units.clone();
-            let stock_box = stock_box.clone();
-            
-            move |label_text: &str, getter: Rc<dyn Fn() -> f32>, setter: Rc<dyn Fn(f32)>, tooltip: &str| -> Entry {
-                let label = Label::builder()
-                    .label(label_text)
-                    .halign(Align::Start)
-                    .build();
-                label.add_css_class("small-label");
-                stock_box.append(&label);
+            let stock_grid = stock_grid.clone();
+            let stock_row = stock_row.clone();
 
-                let entry = Entry::builder()
-                    .tooltip_text(tooltip)
-                    .build();
-                stock_box.append(&entry);
+            move |label_text: String,
+                  getter: Rc<dyn Fn() -> f32>,
+                  setter: Rc<dyn Fn(f32)>,
+                  tooltip: String|
+                  -> Entry {
+                let label = Label::new(Some(&format!("{}:", label_text)));
+                label.set_halign(Align::Start);
+
+                let entry = Entry::builder().tooltip_text(&tooltip).build();
+                entry.set_hexpand(true);
+
+                let units_label = Label::new(Some(""));
+                units_label.set_halign(Align::End);
+                units_label.set_xalign(1.0);
+                units_label.set_width_chars(6);
+
+                let row = stock_row.get();
+                stock_row.set(row + 1);
+
+                stock_grid.attach(&label, 0, row, 1, 1);
+                stock_grid.attach(&entry, 1, row, 1, 1);
+                stock_grid.attach(&units_label, 2, row, 1, 1);
 
                 let update_display = {
                     let entry = entry.clone();
-                    let label = label.clone();
+                    let units_label = units_label.clone();
                     let getter = getter.clone();
                     let current_units = current_units.clone();
-                    let label_text = label_text.to_string();
-                    
+
                     Rc::new(move || {
                         let val_mm = getter();
                         let units = *current_units.lock().unwrap();
-                        
+
                         let (val_display, unit_str) = match units {
                             MeasurementSystem::Metric => (val_mm, "mm"),
                             MeasurementSystem::Imperial => (val_mm / 25.4, "in"),
                         };
-                        
-                        // Update label
-                        let new_label = if label_text.contains("(mm)") {
-                            label_text.replace("(mm)", &format!("({})", unit_str))
-                        } else if label_text.contains("(in)") {
-                            label_text.replace("(in)", &format!("({})", unit_str))
-                        } else {
-                            format!("{} ({})", label_text, unit_str)
-                        };
-                        label.set_label(&new_label);
-                        
-                        // Update entry
+
+                        units_label.set_text(unit_str);
                         entry.set_text(&format!("{:.3}", val_display));
                     })
                 };
-                
-                // Initial update
+
                 update_display();
-                
+
                 // Connect entry changed
                 {
                     let current_units = current_units.clone();
                     let setter = setter.clone();
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f32>() {
+                            e.remove_css_class("entry-invalid");
                             let units = *current_units.lock().unwrap();
                             let val_mm = match units {
                                 MeasurementSystem::Metric => val,
                                 MeasurementSystem::Imperial => val * 25.4,
                             };
                             setter(val_mm);
+                        } else {
+                            e.add_css_class("entry-invalid");
                         }
                     });
                 }
-                
+
                 // Connect settings changed
                 {
                     let update_display = update_display.clone();
                     let current_units = current_units.clone();
                     settings_controller.on_setting_changed(move |key, value| {
                         if key == "units.measurement_system" {
-                            if let Ok(system) = serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value)) {
+                            if let Ok(system) =
+                                serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
+                            {
                                 *current_units.lock().unwrap() = system;
                             } else if value == "Metric" {
                                 *current_units.lock().unwrap() = MeasurementSystem::Metric;
@@ -433,7 +516,7 @@ impl DesignerToolbox {
                         }
                     });
                 }
-                
+
                 entry
             }
         };
@@ -451,7 +534,7 @@ impl DesignerToolbox {
                     stock.width = val;
                 }
             });
-            create_stock_setting("Stock Width (mm)", getter, setter, "Stock material width");
+            create_stock_setting(t!("Stock Width"), getter, setter, t!("Stock material width"));
         }
 
         {
@@ -466,7 +549,7 @@ impl DesignerToolbox {
                     stock.height = val;
                 }
             });
-            create_stock_setting("Stock Height (mm)", getter, setter, "Stock material height");
+            create_stock_setting(t!("Stock Height"), getter, setter, t!("Stock material height"));
         }
 
         {
@@ -481,7 +564,7 @@ impl DesignerToolbox {
                     stock.thickness = val;
                 }
             });
-            create_stock_setting("Stock Thickness (mm)", getter, setter, "Stock material thickness");
+            create_stock_setting(t!("Stock Thickness"), getter, setter, t!("Stock material thickness"));
         }
 
         // Resolution
@@ -492,12 +575,12 @@ impl DesignerToolbox {
             let setter = Rc::new(move |val: f32| {
                 state_setter.borrow_mut().simulation_resolution = val.max(0.01).min(2.0);
             });
-            create_stock_setting("Resolution (mm)", getter, setter, "Simulation resolution (lower = more detail)");
+            create_stock_setting(t!("Resolution"), getter, setter, t!("Simulation resolution (lower = more detail)"));
         }
 
         // Show Stock Removal checkbox
-        let show_stock_check = gtk4::CheckButton::with_label("Show Stock Removal");
-        show_stock_check.set_tooltip_text(Some("Enable stock removal visualization"));
+        let show_stock_check = gtk4::CheckButton::with_label(&t!("Show Stock Removal"));
+        show_stock_check.set_tooltip_text(Some(&t!("Enable stock removal visualization")));
         show_stock_check.set_margin_top(5);
         let show_stock_state = state.borrow().show_stock_removal;
         show_stock_check.set_active(show_stock_state);
@@ -507,16 +590,58 @@ impl DesignerToolbox {
         });
         stock_box.append(&show_stock_check);
 
-        let stock_expander = Expander::builder()
-            .label("Stock Settings")
-            .child(&stock_box)
-            .expanded(false)
+        // Stock Settings popup
+        let stock_settings_btn = Button::with_label(&t!("Stock Settings…"));
+        stock_settings_btn.set_margin_top(6);
+        stock_settings_btn.set_margin_start(5);
+        stock_settings_btn.set_margin_end(5);
+
+        let stock_settings_dialog = Dialog::builder().title(t!("Stock Settings")).modal(true).resizable(true).build();
+        stock_settings_dialog.set_default_size(520, 520);
+        stock_settings_dialog.add_button(&t!("Close"), ResponseType::Close);
+        stock_settings_dialog.connect_response(|d, _| d.hide());
+
+        let stock_dialog_content = Box::new(Orientation::Vertical, 12);
+        stock_dialog_content.set_margin_start(12);
+        stock_dialog_content.set_margin_end(12);
+        stock_dialog_content.set_margin_top(12);
+        stock_dialog_content.set_margin_bottom(12);
+
+        let stock_header = Label::new(Some(&t!("Stock Settings")));
+        stock_header.add_css_class("title-3");
+        stock_header.set_halign(Align::Start);
+        stock_dialog_content.append(&stock_header);
+
+        let stock_frame = Frame::new(Some(&t!("Stock Parameters")));
+        stock_frame.set_child(Some(&stock_box));
+        stock_dialog_content.append(&stock_frame);
+
+        let stock_scroller = ScrolledWindow::builder()
+            .hscrollbar_policy(PolicyType::Never)
+            .vscrollbar_policy(PolicyType::Automatic)
+            .min_content_width(520)
+            .min_content_height(360)
+            .child(&stock_dialog_content)
             .build();
-        
-        content_box.append(&stock_expander);
+        stock_settings_dialog.content_area().append(&stock_scroller);
+
+        {
+            let dlg = stock_settings_dialog.clone();
+            let btn = stock_settings_btn.clone();
+            stock_settings_btn.connect_clicked(move |_| {
+                if let Some(root) = btn.root() {
+                    if let Ok(win) = root.downcast::<gtk4::Window>() {
+                        dlg.set_transient_for(Some(&win));
+                    }
+                }
+                dlg.present();
+            });
+        }
+
+        content_box.append(&stock_settings_btn);
 
         // Generate G-Code Button
-        let generate_btn = Button::with_label("Generate G-Code");
+        let generate_btn = Button::with_label(&t!("Generate G-Code"));
         generate_btn.add_css_class("suggested-action");
         generate_btn.set_margin_top(10);
         generate_btn.set_margin_bottom(10);
@@ -548,10 +673,14 @@ impl DesignerToolbox {
         *self.current_tool.borrow()
     }
     
+    pub fn active_tool_label(&self) -> Label {
+        self.active_tool_label.clone()
+    }
+
     pub fn set_tool(&self, tool: DesignerTool) {
         *self.current_tool.borrow_mut() = tool;
         self.active_tool_label
-            .set_text(&format!("Active tool: {}", tool.tooltip()));
+            .set_text(&format!("{} {}", t!("Active tool:"), tool.tooltip()));
         
         // Update button styles
         for (i, btn) in self.buttons.iter().enumerate() {

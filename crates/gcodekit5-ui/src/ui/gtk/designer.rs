@@ -1,15 +1,16 @@
 use gtk4::prelude::*;
-use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation, FileChooserAction, FileChooserNative, ResponseType, Grid, Scrollbar, Adjustment, Overlay, Popover, Separator};
+use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation, FileChooserAction, FileChooserNative, ResponseType, Grid, Scrollbar, Adjustment, Overlay, Popover, Separator, Paned, Dialog, Entry, DropDown, StringList, CheckButton};
 use gtk4::gdk::{Key, ModifierType};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::path::PathBuf;
 use gcodekit5_designer::designer_state::DesignerState;
-use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse, PathShape, OperationType};
+use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse, PathShape, OperationType, TextShape};
 use gcodekit5_designer::canvas::DrawingObject;
 use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, PasteShapes};
 use gcodekit5_designer::serialization::DesignFile;
 use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegmentType};
+use gcodekit5_designer::font_manager;
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
 use gcodekit5_devicedb::DeviceManager;
 use std::sync::Arc;
@@ -22,6 +23,30 @@ use crate::ui::gtk::osd_format::format_zoom_center_cursor;
 use crate::t;
 use gcodekit5_settings::controller::SettingsController;
 //use crate::ui::gtk::designer_file_ops; // Temporarily disabled
+
+const MM_PER_PT: f64 = 25.4 / 72.0;
+
+fn mm_to_pt(mm: f64) -> f64 {
+    mm / MM_PER_PT
+}
+
+fn pt_to_mm(pt: f64) -> f64 {
+    pt * MM_PER_PT
+}
+
+fn format_font_points(mm: f64) -> String {
+    format!("{:.2}", mm_to_pt(mm))
+}
+
+fn parse_font_points_mm(s: &str) -> Option<f64> {
+    let s = s.trim().trim_end_matches("pt").trim().replace(',', ".");
+    let pt = s.parse::<f64>().ok()?;
+    if pt <= 0.0 {
+        return None;
+    }
+    Some(pt_to_mm(pt))
+}
+
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ResizeHandle {
@@ -93,7 +118,14 @@ pub struct DesignerCanvas {
     preview_generating: Rc<std::cell::Cell<bool>>,
     preview_pending: Rc<std::cell::Cell<bool>>,
     preview_cancel: Arc<AtomicBool>,
+    text_tool_dialog: Rc<RefCell<Option<(Dialog, Entry, DropDown, CheckButton, CheckButton, Entry)>>>,
+    text_tool_last_font_family: Rc<RefCell<String>>,
+    text_tool_last_bold: Rc<RefCell<bool>>,
+    text_tool_last_italic: Rc<RefCell<bool>>,
+    text_tool_last_size_mm: Rc<RefCell<f64>>,
+    text_tool_pending_pos: Rc<RefCell<Option<(f64, f64)>>>,
     device_manager: Option<Arc<DeviceManager>>,
+    status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
 }
 
 pub struct DesignerView {
@@ -110,7 +142,12 @@ pub struct DesignerView {
 }
 
 impl DesignerCanvas {
-    pub fn new(state: Rc<RefCell<DesignerState>>, toolbox: Option<Rc<DesignerToolbox>>, device_manager: Option<Arc<DeviceManager>>) -> Rc<Self> {
+    pub fn new(
+        state: Rc<RefCell<DesignerState>>,
+        toolbox: Option<Rc<DesignerToolbox>>,
+        device_manager: Option<Arc<DeviceManager>>,
+        status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
+    ) -> Rc<Self> {
         let widget = DrawingArea::builder()
             .hexpand(true)
             .vexpand(true)
@@ -175,7 +212,14 @@ impl DesignerCanvas {
             preview_generating: Rc::new(std::cell::Cell::new(false)),
             preview_pending: Rc::new(std::cell::Cell::new(false)),
             preview_cancel: Arc::new(AtomicBool::new(false)),
+            text_tool_dialog: Rc::new(RefCell::new(None)),
+            text_tool_last_font_family: Rc::new(RefCell::new("Sans".to_string())),
+            text_tool_last_bold: Rc::new(RefCell::new(false)),
+            text_tool_last_italic: Rc::new(RefCell::new(false)),
+            text_tool_last_size_mm: Rc::new(RefCell::new(pt_to_mm(20.0))),
+            text_tool_pending_pos: Rc::new(RefCell::new(None)),
             device_manager: device_manager.clone(),
+            status_bar,
         });
 
         // Mouse motion tracking
@@ -204,15 +248,28 @@ impl DesignerCanvas {
             *mouse_pos_motion.borrow_mut() = (canvas_x, canvas_y);
             
             // Update cursor based on tool
-            let tool = canvas_motion.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
-            if tool == DesignerTool::Pan {
-                if *canvas_motion.did_drag.borrow() {
-                     widget_motion.set_cursor_from_name(Some("grabbing"));
-                } else {
-                     widget_motion.set_cursor_from_name(Some("grab"));
+            let tool = canvas_motion
+                .toolbox
+                .as_ref()
+                .map(|t| t.current_tool())
+                .unwrap_or(DesignerTool::Select);
+
+            match tool {
+                DesignerTool::Select => widget_motion.set_cursor(None), // default arrow
+                DesignerTool::Pan => {
+                    if *canvas_motion.did_drag.borrow() {
+                        widget_motion.set_cursor_from_name(Some("grabbing"));
+                    } else {
+                        widget_motion.set_cursor_from_name(Some("grab"));
+                    }
                 }
-            } else {
-                widget_motion.set_cursor(None);
+                DesignerTool::Text => widget_motion.set_cursor_from_name(Some("text")),
+                // Drawing tools
+                DesignerTool::Rectangle
+                | DesignerTool::Circle
+                | DesignerTool::Line
+                | DesignerTool::Ellipse
+                | DesignerTool::Polyline => widget_motion.set_cursor_from_name(Some("pencil")),
             }
 
             widget_motion.queue_draw();
@@ -514,6 +571,38 @@ impl DesignerCanvas {
         self.widget.queue_draw();
     }
 
+    fn copy_cursor_coordinates(&self) {
+        let (x, y) = *self.mouse_pos.borrow();
+        let text = format!("X {:.2} mm  Y {:.2} mm", x, y);
+        if let Some(display) = gtk4::gdk::Display::default() {
+            display.clipboard().set_text(&text);
+        }
+    }
+
+    fn toggle_grid(&self) {
+        let mut state = self.state.borrow_mut();
+        state.show_grid = !state.show_grid;
+        drop(state);
+        self.widget.queue_draw();
+    }
+
+    fn toggle_snap(&self) {
+        let mut state = self.state.borrow_mut();
+        state.snap_enabled = !state.snap_enabled;
+    }
+
+    fn toggle_toolpaths(&self) {
+        let mut state = self.state.borrow_mut();
+        state.show_toolpaths = !state.show_toolpaths;
+        let show = state.show_toolpaths;
+        drop(state);
+        if show {
+            self.generate_preview_toolpaths();
+        } else {
+            self.widget.queue_draw();
+        }
+    }
+
     /// Public method to fit to device working area from DesignerView
     // removed; wrapper belongs on DesignerView
 
@@ -577,6 +666,16 @@ impl DesignerCanvas {
             btn.connect_clicked(move |_| {
                 menu_clone.popdown();
                 match action_name.as_str() {
+                    "fit_content" => canvas.zoom_fit(),
+                    "fit_viewport" => canvas.reset_view(),
+                    "fit_device" => {
+                        canvas.fit_to_device_area();
+                        canvas.widget.queue_draw();
+                    }
+                    "copy_cursor" => canvas.copy_cursor_coordinates(),
+                    "toggle_grid" => canvas.toggle_grid(),
+                    "toggle_snap" => canvas.toggle_snap(),
+                    "toggle_toolpaths" => canvas.toggle_toolpaths(),
                     "cut" => canvas.cut(),
                     "copy" => canvas.copy_selected(),
                     "paste" => canvas.paste(),
@@ -592,13 +691,35 @@ impl DesignerCanvas {
             btn
         };
 
+        // View (matches Visualiser)
+        vbox.append(&create_item("Fit to Content", "fit_content", true));
+        vbox.append(&create_item("Fit to Viewport", "fit_viewport", true));
+        vbox.append(&create_item(
+            "Fit to Device Working Area",
+            "fit_device",
+            self.device_manager.is_some(),
+        ));
+
+        vbox.append(&Separator::new(Orientation::Horizontal));
+
+        vbox.append(&create_item("Copy cursor coordinates", "copy_cursor", true));
+
+        vbox.append(&Separator::new(Orientation::Horizontal));
+
+        vbox.append(&create_item("Toggle Grid", "toggle_grid", true));
+        vbox.append(&create_item("Toggle Snap", "toggle_snap", true));
+        vbox.append(&create_item("Toggle Toolpaths", "toggle_toolpaths", true));
+
+        vbox.append(&Separator::new(Orientation::Horizontal));
+
+        // Edit
         vbox.append(&create_item("Cut", "cut", has_selection));
         vbox.append(&create_item("Copy", "copy", has_selection));
         vbox.append(&create_item("Paste", "paste", can_paste));
         vbox.append(&create_item("Delete", "delete", has_selection));
-        
+
         vbox.append(&Separator::new(Orientation::Horizontal));
-        
+
         vbox.append(&create_item("Group", "group", can_group));
         vbox.append(&create_item("Ungroup", "ungroup", can_ungroup));
 
@@ -687,6 +808,172 @@ impl DesignerCanvas {
         let out_x = if (sx - x).abs() <= threshold { sx } else { x };
         let out_y = if (sy - y).abs() <= threshold { sy } else { y };
         (out_x, out_y)
+    }
+
+    fn open_text_tool_dialog(&self, canvas_x: f64, canvas_y: f64) {
+        *self.text_tool_pending_pos.borrow_mut() = Some((canvas_x, canvas_y));
+
+        if self.text_tool_dialog.borrow().is_none() {
+            let dialog = Dialog::builder()
+                .title(t!("Add Text"))
+                .modal(true)
+                .resizable(false)
+                .build();
+            dialog.add_button(&t!("Cancel"), ResponseType::Cancel);
+            dialog.add_button(&t!("Add"), ResponseType::Ok);
+            dialog.set_default_response(ResponseType::Ok);
+
+            let content = Box::new(Orientation::Vertical, 10);
+            content.set_margin_top(12);
+            content.set_margin_bottom(12);
+            content.set_margin_start(12);
+            content.set_margin_end(12);
+
+            let header = Label::new(Some(&t!("Text")));
+            header.add_css_class("title-3");
+            header.set_halign(gtk4::Align::Start);
+            content.append(&header);
+
+            let entry = Entry::new();
+            entry.set_placeholder_text(Some(&t!("Enter text")));
+            entry.set_activates_default(true);
+            content.append(&entry);
+
+            // Font + attributes
+            let grid = Grid::builder().row_spacing(8).column_spacing(8).build();
+
+            let font_label = Label::new(Some(&t!("Font:")));
+            font_label.set_halign(gtk4::Align::Start);
+
+            let font_model = StringList::new(&[]);
+            font_model.append("Sans");
+            for fam in font_manager::list_font_families() {
+                if fam != "Sans" {
+                    font_model.append(&fam);
+                }
+            }
+            let font_combo = DropDown::new(Some(font_model), None::<gtk4::Expression>);
+            font_combo.set_hexpand(true);
+
+            let size_label = Label::new(Some(&t!("Size:")));
+            size_label.set_halign(gtk4::Align::Start);
+            let size_entry = Entry::new();
+            size_entry.set_hexpand(true);
+            let size_unit = Label::new(Some("pt"));
+            size_unit.set_width_chars(4);
+            size_unit.set_halign(gtk4::Align::End);
+            size_unit.set_xalign(1.0);
+
+            let bold_check = CheckButton::with_label(&t!("Bold"));
+            let italic_check = CheckButton::with_label(&t!("Italic"));
+            let style_box = Box::new(Orientation::Horizontal, 8);
+            style_box.append(&bold_check);
+            style_box.append(&italic_check);
+
+            let style_label = Label::new(Some(&t!("Style:")));
+            style_label.set_halign(gtk4::Align::Start);
+
+            grid.attach(&font_label, 0, 0, 1, 1);
+            grid.attach(&font_combo, 1, 0, 2, 1);
+            grid.attach(&size_label, 0, 1, 1, 1);
+            grid.attach(&size_entry, 1, 1, 1, 1);
+            grid.attach(&size_unit, 2, 1, 1, 1);
+            grid.attach(&style_label, 0, 2, 1, 1);
+            grid.attach(&style_box, 1, 2, 2, 1);
+
+            content.append(&grid);
+
+            dialog.content_area().append(&content);
+
+            let canvas = self.clone();
+            let entry_clone = entry.clone();
+            let font_combo_clone = font_combo.clone();
+            let bold_clone = bold_check.clone();
+            let italic_clone = italic_check.clone();
+            let size_entry_clone = size_entry.clone();
+
+            dialog.connect_response(move |d, resp| {
+                if resp == ResponseType::Ok {
+                    let text = entry_clone.text().trim().to_string();
+                    if !text.is_empty() {
+                        if let Some((x, y)) = *canvas.text_tool_pending_pos.borrow() {
+                            let family = font_combo_clone
+                                .selected_item()
+                                .and_downcast::<gtk4::StringObject>()
+                                .map(|s| s.string().to_string())
+                                .unwrap_or_else(|| "Sans".to_string());
+                            let bold = bold_clone.is_active();
+                            let italic = italic_clone.is_active();
+                            let size_mm = parse_font_points_mm(&size_entry_clone.text())
+                                .unwrap_or_else(|| pt_to_mm(20.0));
+
+                            *canvas.text_tool_last_font_family.borrow_mut() = family.clone();
+                            *canvas.text_tool_last_bold.borrow_mut() = bold;
+                            *canvas.text_tool_last_italic.borrow_mut() = italic;
+                            *canvas.text_tool_last_size_mm.borrow_mut() = size_mm;
+
+                            let mut state = canvas.state.borrow_mut();
+                            let mut shape = TextShape::new(text, x, y, size_mm);
+                            shape.font_family = family;
+                            shape.bold = bold;
+                            shape.italic = italic;
+                            let id = state.canvas.add_shape(Shape::Text(shape));
+                            state.canvas.deselect_all();
+                            state.canvas.select_shape(id, false);
+                            drop(state);
+
+                            canvas.widget.queue_draw();
+
+                            if let Some(ref props) = *canvas.properties.borrow() {
+                                props.update_from_selection();
+                            }
+                            if let Some(ref layers) = *canvas.layers.borrow() {
+                                layers.refresh(&canvas.state);
+                            }
+                        }
+                    }
+                }
+
+                entry_clone.set_text("");
+                d.hide();
+            });
+
+            *self.text_tool_dialog.borrow_mut() =
+                Some((dialog, entry, font_combo, bold_check, italic_check, size_entry));
+        }
+
+        if let Some((dialog, entry, font_combo, bold_check, italic_check, size_entry)) =
+            self.text_tool_dialog.borrow().as_ref()
+        {
+            if let Some(root) = self.widget.root() {
+                if let Ok(win) = root.downcast::<gtk4::Window>() {
+                    dialog.set_transient_for(Some(&win));
+                }
+            }
+
+            // Restore last-used values
+            let family = self.text_tool_last_font_family.borrow().clone();
+            let mut family_idx = 0;
+            if let Some(model) = font_combo.model().and_downcast::<gtk4::StringList>() {
+                for i in 0..model.n_items() {
+                    if let Some(obj) = model.item(i) {
+                        if let Ok(s) = obj.downcast::<gtk4::StringObject>() {
+                            if s.string() == family {
+                                family_idx = i;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            font_combo.set_selected(family_idx);
+            bold_check.set_active(*self.text_tool_last_bold.borrow());
+            italic_check.set_active(*self.text_tool_last_italic.borrow());
+            size_entry.set_text(&format_font_points(*self.text_tool_last_size_mm.borrow()));
+
+            dialog.present();
+            entry.grab_focus();
+        }
     }
 
     fn handle_click(&self, x: f64, y: f64, ctrl_pressed_arg: bool, n_press: i32) {
@@ -793,6 +1080,10 @@ impl DesignerCanvas {
                     drop(points);
                     self.widget.queue_draw();
                 }
+            }
+            DesignerTool::Text => {
+                // Click-to-place text.
+                self.open_text_tool_dialog(canvas_x, canvas_y);
             }
             _ => {
                 // Other tools handled by drag
@@ -1739,6 +2030,8 @@ impl DesignerCanvas {
         self.preview_generating.set(true);
         self.preview_cancel.store(false, Ordering::SeqCst);
 
+        let started_at = std::time::Instant::now();
+
         let (shapes, feed_rate, spindle_speed, tool_diameter, cut_depth) = {
             let state = self.state.borrow();
             (
@@ -1750,7 +2043,22 @@ impl DesignerCanvas {
             )
         };
 
+        let total_shapes = shapes.len().max(1);
+        let done_shapes: Arc<std::sync::atomic::AtomicUsize> = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+        // Global status bar progress + cancel (non-blocking)
+        if let Some(sb) = self.status_bar.as_ref() {
+            let cancel_flag = self.preview_cancel.clone();
+            let generating = self.preview_generating.clone();
+            sb.set_progress(0.1, "0s", "");
+            sb.set_cancel_action(Some(std::boxed::Box::new(move || {
+                cancel_flag.store(true, Ordering::SeqCst);
+                generating.set(false);
+            })));
+        }
+
         let cancel = self.preview_cancel.clone();
+        let done_shapes_thread = done_shapes.clone();
         let result_arc: Arc<std::sync::Mutex<Option<Vec<Toolpath>>>> = Arc::new(std::sync::Mutex::new(None));
         let result_arc_thread = result_arc.clone();
 
@@ -1822,6 +2130,7 @@ impl DesignerCanvas {
                     Shape::Text(text) => gen.generate_text_toolpath(text, shape.step_down as f64),
                 };
                 toolpaths.extend(shape_toolpaths);
+                done_shapes_thread.fetch_add(1, Ordering::Relaxed);
             }
 
             *result_arc_thread.lock().unwrap() = Some(toolpaths);
@@ -1836,13 +2145,26 @@ impl DesignerCanvas {
         let generating = self.preview_generating.clone();
         let pending = self.preview_pending.clone();
         let cancel_poll = self.preview_cancel.clone();
+        let done_shapes_poll = done_shapes.clone();
+        let sb_poll = self.status_bar.clone();
         let self_ref = self.clone();
 
         gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
             *poll_count_clone.borrow_mut() += 1;
 
+            if let Some(sb) = sb_poll.as_ref() {
+                let done = done_shapes_poll.load(Ordering::Relaxed).min(total_shapes);
+                let pct = (done as f64 / total_shapes as f64) * 100.0;
+                let elapsed = started_at.elapsed().as_secs_f64();
+                sb.set_progress(pct.max(0.1), &format!("{:.0}s", elapsed), "");
+            }
+
             if cancel_poll.load(Ordering::SeqCst) {
                 generating.set(false);
+                if let Some(sb) = sb_poll.as_ref() {
+                    sb.set_progress(0.0, "", "");
+                    sb.set_cancel_action(None);
+                }
                 if pending.replace(false) {
                     self_ref.generate_preview_toolpaths();
                 }
@@ -1851,6 +2173,10 @@ impl DesignerCanvas {
 
             if *poll_count_clone.borrow() > 400 {
                 generating.set(false);
+                if let Some(sb) = sb_poll.as_ref() {
+                    sb.set_progress(0.0, "", "");
+                    sb.set_cancel_action(None);
+                }
                 return gtk4::glib::ControlFlow::Break;
             }
 
@@ -1862,6 +2188,10 @@ impl DesignerCanvas {
                     }
 
                     generating.set(false);
+                    if let Some(sb) = sb_poll.as_ref() {
+                        sb.set_progress(0.0, "", "");
+                        sb.set_cancel_action(None);
+                    }
                     if pending.replace(false) {
                         self_ref.generate_preview_toolpaths();
                     }
@@ -2145,7 +2475,9 @@ impl DesignerCanvas {
                     // Flip Y back for text so it's not upside down
                     cr.translate(text.x, text.y);
                     cr.scale(1.0, -1.0); 
-                    cr.select_font_face("Sans", gtk4::cairo::FontSlant::Normal, gtk4::cairo::FontWeight::Normal);
+                    let slant = if text.italic { gtk4::cairo::FontSlant::Italic } else { gtk4::cairo::FontSlant::Normal };
+                    let weight = if text.bold { gtk4::cairo::FontWeight::Bold } else { gtk4::cairo::FontWeight::Normal };
+                    cr.select_font_face(&text.font_family, slant, weight);
                     cr.set_font_size(text.font_size);
                     cr.show_text(&text.text).unwrap();
                     cr.restore().unwrap();
@@ -2508,7 +2840,11 @@ impl DesignerCanvas {
 }
 
 impl DesignerView {
-    pub fn new(device_manager: Option<Arc<DeviceManager>>, settings_controller: Rc<SettingsController>) -> Rc<Self> {
+    pub fn new(
+        device_manager: Option<Arc<DeviceManager>>,
+        settings_controller: Rc<SettingsController>,
+        status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
+    ) -> Rc<Self> {
         let container = Box::new(Orientation::Vertical, 0);
         container.set_hexpand(true);
         container.set_vexpand(true);
@@ -2521,12 +2857,49 @@ impl DesignerView {
         main_box.set_hexpand(true);
         main_box.set_vexpand(true);
         
-        // Create toolbox
+        // Create toolbox + left sidebar container (toolbox + view/legend)
         let toolbox = DesignerToolbox::new(state.clone(), settings_controller.clone());
-        main_box.append(&toolbox.widget);
+        let left_sidebar = Box::new(Orientation::Vertical, 0);
+        left_sidebar.set_vexpand(true);
+        left_sidebar.set_hexpand(false);
+        left_sidebar.set_halign(gtk4::Align::Fill);
+        left_sidebar.append(&toolbox.widget);
+
+        // Keep left sidebar at ~20% of the main window width (set on first map).
+        let last_left_width = Rc::new(std::cell::Cell::new(-1));
+        {
+            let left_sidebar = left_sidebar.clone();
+            let last_left_width = last_left_width.clone();
+            let container_width = container.clone();
+            container.connect_map(move |_| {
+                let left_sidebar = left_sidebar.clone();
+                let last_left_width = last_left_width.clone();
+                let container_width = container_width.clone();
+                gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+                    let w = container_width.width();
+                    if w <= 0 {
+                        return gtk4::glib::ControlFlow::Continue;
+                    }
+                    let target = ((w as f64) * 0.20).round() as i32;
+                    let target = target.max(160);
+                    if last_left_width.get() != target {
+                        last_left_width.set(target);
+                        left_sidebar.set_width_request(target);
+                    }
+                    gtk4::glib::ControlFlow::Break
+                });
+            });
+        }
+
+        main_box.append(&left_sidebar);
         
         // Create canvas
-        let canvas = DesignerCanvas::new(state.clone(), Some(toolbox.clone()), device_manager.clone());
+        let canvas = DesignerCanvas::new(
+            state.clone(),
+            Some(toolbox.clone()),
+            device_manager.clone(),
+            status_bar.clone(),
+        );
         
         // Create Grid for Canvas + Scrollbars
         let canvas_grid = Grid::new();
@@ -2543,6 +2916,7 @@ impl DesignerView {
         // Floating Controls (Bottom Right)
         let floating_box = Box::new(Orientation::Horizontal, 4);
         floating_box.add_css_class("visualizer-osd"); // Reuse visualizer OSD style
+        floating_box.add_css_class("osd-controls");
         floating_box.set_halign(gtk4::Align::End);
         floating_box.set_valign(gtk4::Align::End);
         floating_box.set_margin_bottom(20);
@@ -2556,15 +2930,15 @@ impl DesignerView {
 
         let float_fit = gtk4::Button::builder()
             .icon_name("zoom-fit-best-symbolic")
-            .tooltip_text(t!("Fit to View"))
+            .tooltip_text(t!("Fit to Content"))
             .build();
-        float_fit.update_property(&[gtk4::accessible::Property::Label(&t!("Fit to View"))]);
+        float_fit.update_property(&[gtk4::accessible::Property::Label(&t!("Fit to Content"))]);
 
         let float_reset = gtk4::Button::builder()
             .icon_name("view-restore-symbolic")
-            .tooltip_text(t!("Reset View"))
+            .tooltip_text(t!("Fit to Viewport"))
             .build();
-        float_reset.update_property(&[gtk4::accessible::Property::Label(&t!("Reset View"))]);
+        float_reset.update_property(&[gtk4::accessible::Property::Label(&t!("Fit to Viewport"))]);
 
         let float_fit_device = gtk4::Button::builder()
             .icon_name("preferences-desktop-display-symbolic")
@@ -2579,11 +2953,46 @@ impl DesignerView {
             .build();
         scrollbars_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Toggle Scrollbars"))]);
 
+        let help_btn = gtk4::Button::builder()
+            .label("?")
+            .tooltip_text(t!("Keyboard Shortcuts"))
+            .build();
+        help_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Keyboard Shortcuts"))]);
+
+        let help_popover = Popover::new();
+        help_popover.set_parent(&help_btn);
+        help_popover.set_has_arrow(true);
+        {
+            let help_box = Box::new(Orientation::Vertical, 6);
+            help_box.set_margin_start(12);
+            help_box.set_margin_end(12);
+            help_box.set_margin_top(12);
+            help_box.set_margin_bottom(12);
+            help_box.append(&Label::new(Some(&t!("Designer shortcuts"))));
+            help_box.append(&Label::new(Some("Ctrl+Z / Ctrl+Y  —  Undo / Redo")));
+            help_box.append(&Label::new(Some("Ctrl+C / Ctrl+V  —  Copy / Paste")));
+            help_box.append(&Label::new(Some("Delete  —  Delete selection")));
+            help_box.append(&Label::new(Some("+ / -  —  Zoom")));
+            help_box.append(&Label::new(Some("F  —  Fit to Content")));
+            help_box.append(&Label::new(Some("R  —  Fit to Viewport")));
+            help_box.append(&Label::new(Some("D  —  Fit to Device Working Area")));
+            help_box.append(&Label::new(Some(&t!("Right click for context menu"))));
+            help_popover.set_child(Some(&help_box));
+        }
+        {
+            let pop = help_popover.clone();
+            help_btn.connect_clicked(move |_| pop.popup());
+        }
+
         let float_zoom_in = gtk4::Button::builder()
             .icon_name("zoom-in-symbolic")
             .tooltip_text(t!("Zoom In"))
             .build();
         float_zoom_in.update_property(&[gtk4::accessible::Property::Label(&t!("Zoom In"))]);
+
+        for b in [&float_zoom_out, &float_fit, &float_reset, &float_fit_device, &scrollbars_btn, &help_btn, &float_zoom_in] {
+            b.set_size_request(28, 28);
+        }
 
         floating_box.append(&float_zoom_out);
         floating_box.append(&float_fit);
@@ -2592,6 +3001,7 @@ impl DesignerView {
             floating_box.append(&float_fit_device);
         }
         floating_box.append(&scrollbars_btn);
+        floating_box.append(&help_btn);
         floating_box.append(&float_zoom_in);
 
         // Empty state (shown when no shapes)
@@ -2605,6 +3015,22 @@ impl DesignerView {
         empty_box.set_margin_bottom(20);
         empty_box.append(&Label::new(Some(&t!("No shapes yet"))));
         empty_box.append(&Label::new(Some(&t!("Use the toolbox on the left to start drawing."))));
+
+        let empty_actions = Box::new(Orientation::Horizontal, 8);
+        empty_actions.set_halign(gtk4::Align::Center);
+
+        let empty_new_btn = gtk4::Button::with_label(&t!("New"));
+        empty_new_btn.add_css_class("suggested-action");
+        let empty_open_btn = gtk4::Button::with_label(&t!("Load Design"));
+        let empty_import_svg_btn = gtk4::Button::with_label(&t!("Import SVG"));
+        let empty_import_dxf_btn = gtk4::Button::with_label(&t!("Import DXF"));
+
+        empty_actions.append(&empty_new_btn);
+        empty_actions.append(&empty_open_btn);
+        empty_actions.append(&empty_import_svg_btn);
+        empty_actions.append(&empty_import_dxf_btn);
+        empty_box.append(&empty_actions);
+
         empty_box.set_visible(true);
 
         overlay.add_overlay(&empty_box);
@@ -2738,7 +3164,34 @@ impl DesignerView {
         
         // Create right sidebar with properties and layers
         let right_sidebar = Box::new(Orientation::Vertical, 5);
-        right_sidebar.set_width_request(250);
+        right_sidebar.set_hexpand(false);
+        right_sidebar.set_halign(gtk4::Align::End);
+
+        // Keep right sidebar at ~20% of the main window width (set on first map).
+        let last_right_width = Rc::new(std::cell::Cell::new(-1));
+        {
+            let right_sidebar = right_sidebar.clone();
+            let last_right_width = last_right_width.clone();
+            let container_width = container.clone();
+            container.connect_map(move |_| {
+                let right_sidebar = right_sidebar.clone();
+                let last_right_width = last_right_width.clone();
+                let container_width = container_width.clone();
+                gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+                    let w = container_width.width();
+                    if w <= 0 {
+                        return gtk4::glib::ControlFlow::Continue;
+                    }
+                    let target = ((w as f64) * 0.20).round() as i32;
+                    let target = target.clamp(240, 520);
+                    if last_right_width.get() != target {
+                        last_right_width.set(target);
+                        right_sidebar.set_width_request(target);
+                    }
+                    gtk4::glib::ControlFlow::Break
+                });
+            });
+        }
         
         // Create properties panel
         let properties = PropertiesPanel::new(state.clone(), settings_controller.persistence.clone());
@@ -2755,50 +3208,106 @@ impl DesignerView {
             canvas_redraw.widget.queue_draw();
         });
         
+        // Inspector header + hide button (matches DeviceConsole / Visualizer sidebar UX)
+        let props_hidden = Rc::new(Cell::new(false));
+
+        let inspector_header = Box::new(Orientation::Horizontal, 6);
+        inspector_header.set_margin_start(6);
+        inspector_header.set_margin_end(6);
+        inspector_header.set_margin_top(6);
+
         let inspector_label = Label::builder()
             .label(t!("Inspector"))
             .css_classes(vec!["heading"])
             .halign(gtk4::Align::Start)
             .build();
-        right_sidebar.append(&inspector_label);
+        inspector_label.set_hexpand(true);
+        inspector_header.append(&inspector_label);
 
-        right_sidebar.append(&properties.widget);
-        
-        // Create layers panel below properties
-        let layers = Rc::new(LayersPanel::new(state.clone()));
-        layers.widget.set_vexpand(false);
+        let props_hide_btn = gtk4::Button::builder().tooltip_text(t!("Hide Properties")).build();
+        props_hide_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Hide Properties"))]);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&gtk4::Image::from_icon_name("view-conceal-symbolic"));
+            child.append(&Label::new(Some(&t!("Hide"))));
+            props_hide_btn.set_child(Some(&child));
+        }
+        inspector_header.append(&props_hide_btn);
+
+        right_sidebar.append(&inspector_header);
+
+        // Create layers panel
+        let layers = Rc::new(LayersPanel::new(state.clone(), canvas.widget.clone()));
+        layers.widget.set_vexpand(true);
         layers.widget.set_valign(gtk4::Align::Fill);
-        right_sidebar.append(&layers.widget);
 
-        // Legend (collapsible)
-        let legend_box = Box::new(Orientation::Vertical, 6);
-        legend_box.set_margin_start(6);
-        legend_box.set_margin_end(6);
-        legend_box.set_margin_top(6);
-        legend_box.set_margin_bottom(6);
+        // Draggable divider between Properties and Layers
+        let inspector_paned = Paned::new(Orientation::Vertical);
+        inspector_paned.set_vexpand(true);
+        inspector_paned.set_start_child(Some(&properties.widget));
+        inspector_paned.set_end_child(Some(&layers.widget));
+        inspector_paned.set_resize_start_child(true);
+        inspector_paned.set_resize_end_child(true);
+        inspector_paned.set_shrink_start_child(false);
+        inspector_paned.set_shrink_end_child(false);
+        inspector_paned.set_position(520);
 
-        let mk_row = |css: &str, text: &str| {
-            let row = Box::new(Orientation::Horizontal, 6);
-            let swatch = Box::new(Orientation::Horizontal, 0);
-            swatch.set_size_request(12, 12);
-            swatch.add_css_class("legend-swatch");
-            swatch.add_css_class(css);
-            row.append(&swatch);
-            row.append(&Label::new(Some(text)));
-            row
-        };
+        right_sidebar.append(&inspector_paned);
 
-        legend_box.append(&mk_row("legend-selection", &t!("Selection")));
-        legend_box.append(&mk_row("legend-toolpath", &t!("Toolpath")));
-        legend_box.append(&mk_row("legend-grid", &t!("Grid")));
-        legend_box.append(&mk_row("legend-bounds", &t!("Device bounds")));
+        // Floating unhide button (top-right of canvas)
+        let props_show_btn = gtk4::Button::builder().tooltip_text(t!("Unhide Properties")).build();
+        props_show_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Unhide Properties"))]);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&gtk4::Image::from_icon_name("view-reveal-symbolic"));
+            child.append(&Label::new(Some(&t!("Unhide"))));
+            props_show_btn.set_child(Some(&child));
+        }
 
-        let legend_expander = gtk4::Expander::builder()
-            .label(t!("Legend"))
-            .expanded(false)
-            .child(&legend_box)
-            .build();
-        right_sidebar.append(&legend_expander);
+        let props_show_panel = Box::new(Orientation::Horizontal, 0);
+        props_show_panel.add_css_class("visualizer-osd");
+        props_show_panel.add_css_class("osd-controls");
+        props_show_panel.set_halign(gtk4::Align::End);
+        props_show_panel.set_valign(gtk4::Align::Start);
+        props_show_panel.set_margin_end(12);
+        props_show_panel.set_margin_top(12);
+        props_show_panel.append(&props_show_btn);
+        props_show_panel.set_visible(false);
+        overlay.add_overlay(&props_show_panel);
+
+        {
+            let right_sidebar = right_sidebar.clone();
+            let props_hidden = props_hidden.clone();
+            let show_panel = props_show_panel.clone();
+            let hide_btn = props_hide_btn.clone();
+            props_hide_btn.connect_clicked(move |_| {
+                if props_hidden.get() {
+                    return;
+                }
+                right_sidebar.set_visible(false);
+                hide_btn.set_sensitive(false);
+                props_hidden.set(true);
+                show_panel.set_visible(true);
+            });
+        }
+
+        {
+            let right_sidebar = right_sidebar.clone();
+            let props_hidden = props_hidden.clone();
+            let show_panel = props_show_panel.clone();
+            let hide_btn = props_hide_btn.clone();
+            props_show_btn.connect_clicked(move |_| {
+                if !props_hidden.get() {
+                    return;
+                }
+                right_sidebar.set_visible(true);
+                hide_btn.set_sensitive(true);
+                props_hidden.set(false);
+                show_panel.set_visible(false);
+            });
+        }
+
+        // Legend moved to left sidebar
         
         // Give canvas references to panels
         canvas.set_properties_panel(properties.clone());
@@ -2808,19 +3317,17 @@ impl DesignerView {
         
         container.append(&main_box);
         
-        // Status bar at bottom
-        let status_bar = Box::new(Orientation::Horizontal, 10);
-        status_bar.set_margin_start(10);
-        status_bar.set_margin_end(10);
-        status_bar.set_margin_top(5);
-        status_bar.set_margin_bottom(5);
-        status_bar.add_css_class("statusbar");
-        
-        let status_label = Label::new(Some(&t!("Ready")));
-        status_label.set_halign(gtk4::Align::Start);
-        status_label.set_hexpand(true);
-        status_bar.append(&status_label);
-        
+        // Hidden labels retained for internal status messages (status bar removed)
+        let status_label = Label::new(None);
+        let coord_label = Label::new(None);
+
+        // View controls (moved from the removed bottom status bar)
+        let view_controls_box = Box::new(Orientation::Vertical, 6);
+        view_controls_box.set_margin_start(6);
+        view_controls_box.set_margin_end(6);
+        view_controls_box.set_margin_top(6);
+        view_controls_box.set_margin_bottom(6);
+
         // Grid toggle
         let grid_toggle = gtk4::CheckButton::with_label(&t!("Show Grid"));
         grid_toggle.set_active(true);
@@ -2830,7 +3337,7 @@ impl DesignerView {
             state_grid.borrow_mut().show_grid = btn.is_active();
             canvas_grid.widget.queue_draw();
         });
-        status_bar.append(&grid_toggle);
+        view_controls_box.append(&grid_toggle);
 
         // Grid spacing
         let system = settings_controller
@@ -2842,6 +3349,7 @@ impl DesignerView {
         let unit_label = gcodekit5_core::units::get_unit_label(system);
 
         let grid_spacing_combo = gtk4::ComboBoxText::new();
+        grid_spacing_combo.set_hexpand(true);
         grid_spacing_combo.set_tooltip_text(Some(&t!("Grid spacing")));
 
         let grid_options_mm = [1.0_f64, 5.0, 10.0, 25.0, 50.0];
@@ -2867,7 +3375,11 @@ impl DesignerView {
                 }
             });
         }
-        status_bar.append(&grid_spacing_combo);
+
+        let grid_spacing_row = Box::new(Orientation::Horizontal, 6);
+        grid_spacing_row.append(&Label::new(Some(&t!("Grid spacing"))));
+        grid_spacing_row.append(&grid_spacing_combo);
+        view_controls_box.append(&grid_spacing_row);
 
         // Snap controls
         let snap_toggle = gtk4::CheckButton::with_label(&t!("Snap"));
@@ -2879,7 +3391,7 @@ impl DesignerView {
                 state_snap.borrow_mut().snap_enabled = btn.is_active();
             });
         }
-        status_bar.append(&snap_toggle);
+        view_controls_box.append(&snap_toggle);
 
         let snap_threshold = gtk4::SpinButton::with_range(0.0, 5.0, 0.1);
         snap_threshold.set_tooltip_text(Some(&t!("Snap threshold")));
@@ -2899,7 +3411,11 @@ impl DesignerView {
                 state_snap.borrow_mut().snap_threshold_mm = mm.max(0.0);
             });
         }
-        status_bar.append(&snap_threshold);
+
+        let snap_threshold_row = Box::new(Orientation::Horizontal, 6);
+        snap_threshold_row.append(&Label::new(Some(&t!("Snap threshold"))));
+        snap_threshold_row.append(&snap_threshold);
+        view_controls_box.append(&snap_threshold_row);
 
         // Toolpath toggle
         let toolpath_toggle = gtk4::CheckButton::with_label(&t!("Show Toolpaths"));
@@ -2915,7 +3431,7 @@ impl DesignerView {
                 canvas_toolpath.widget.queue_draw();
             }
         });
-        status_bar.append(&toolpath_toggle);
+        view_controls_box.append(&toolpath_toggle);
 
         // Preview generation progress + cancel
         let preview_spinner = gtk4::Spinner::new();
@@ -2938,8 +3454,10 @@ impl DesignerView {
             });
         }
 
-        status_bar.append(&preview_spinner);
-        status_bar.append(&preview_cancel_btn);
+        let preview_row = Box::new(Orientation::Horizontal, 6);
+        preview_row.append(&preview_spinner);
+        preview_row.append(&preview_cancel_btn);
+        view_controls_box.append(&preview_row);
 
         // Keep widgets in sync
         {
@@ -2958,38 +3476,14 @@ impl DesignerView {
                 gtk4::glib::ControlFlow::Continue
             });
         }
-        
-        // Coordinate display
-        let coord_label = Label::new(Some(&format!("{}  {}", t!("X: 0.00"), t!("Y: 0.00"))));
-        coord_label.set_halign(gtk4::Align::End);
-        coord_label.add_css_class("monospace");
-        status_bar.append(&coord_label);
-        
-        container.append(&status_bar);
-        
-        // Update coordinate label on mouse move
-        let coord_label_clone = coord_label.clone();
-        let canvas_coord = canvas.clone();
-        let settings_coord = settings_controller.clone();
-        gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
-            let (x, y) = *canvas_coord.mouse_pos.borrow();
-            
-            let system = settings_coord.persistence.borrow().config().ui.measurement_system;
-            let unit_label = gcodekit5_core::units::get_unit_label(system);
-            let x_str = gcodekit5_core::units::format_length(x as f32, system);
-            let y_str = gcodekit5_core::units::format_length(y as f32, system);
-            
-            coord_label_clone.set_text(&format!(
-                "{} {} {}  {} {} {}",
-                t!("X:"),
-                x_str,
-                unit_label,
-                t!("Y:"),
-                y_str,
-                unit_label
-            ));
-            gtk4::glib::ControlFlow::Continue
-        });
+
+        let view_controls_expander = gtk4::Expander::builder()
+            .label(t!("View Controls"))
+            .expanded(true)
+            .child(&view_controls_box)
+            .build();
+        left_sidebar.append(&view_controls_expander);
+
 
         // Update status OSD + empty state
         let status_osd_clone = status_label_osd.clone();
@@ -3003,7 +3497,10 @@ impl DesignerView {
             let pan_x = state.canvas.pan_x();
             let pan_y = state.canvas.pan_y();
             let has_shapes = !state.canvas.shape_store.is_empty();
+            let snap_on = state.snap_enabled;
             drop(state);
+
+            let constraint_on = *canvas_osd.shift_pressed.borrow();
 
             let width = canvas_osd.widget.width() as f64;
             let height = canvas_osd.widget.height() as f64;
@@ -3015,14 +3512,27 @@ impl DesignerView {
             let (cursor_x, cursor_y) = *canvas_osd.mouse_pos.borrow();
 
             let system = settings_osd.persistence.borrow().config().ui.measurement_system;
-            status_osd_clone.set_text(&format_zoom_center_cursor(
+            let mut status = format_zoom_center_cursor(
                 zoom,
                 center_x as f32,
                 center_y as f32,
                 cursor_x as f32,
                 cursor_y as f32,
                 system,
-            ));
+            );
+
+            if snap_on || constraint_on {
+                let mut parts: Vec<String> = Vec::new();
+                if snap_on {
+                    parts.push(t!("Snap"));
+                }
+                if constraint_on {
+                    parts.push(t!("Constraint"));
+                }
+                status.push_str(&format!("  {}", parts.join(" / ")));
+            }
+
+            status_osd_clone.set_text(&status);
             units_badge_osd.set_text(gcodekit5_core::units::get_unit_label(system));
             empty_osd.set_visible(!has_shapes);
 
@@ -3077,7 +3587,25 @@ impl DesignerView {
             on_gcode_generated,
             settings_persistence: Some(settings_controller.persistence.clone()),
         });
-        
+
+        // Empty state actions
+        {
+            let v = view.clone();
+            empty_new_btn.connect_clicked(move |_| v.new_file());
+        }
+        {
+            let v = view.clone();
+            empty_open_btn.connect_clicked(move |_| v.open_file());
+        }
+        {
+            let v = view.clone();
+            empty_import_svg_btn.connect_clicked(move |_| v.import_svg_file());
+        }
+        {
+            let v = view.clone();
+            empty_import_dxf_btn.connect_clicked(move |_| v.import_dxf_file());
+        }
+
         // Update properties panel when selection changes
         let props_update = properties.clone();
         let _canvas_props = canvas.clone();
@@ -3168,6 +3696,32 @@ impl DesignerView {
                     canvas_keys.align_center_vertical();
                     gtk4::glib::Propagation::Stop
                 }
+                // View shortcuts (no Ctrl/Alt)
+                (Key::plus, false) | (Key::KP_Add, false) | (Key::equal, false)
+                    if !modifiers.contains(ModifierType::ALT_MASK) =>
+                {
+                    canvas_keys.zoom_in();
+                    gtk4::glib::Propagation::Stop
+                }
+                (Key::minus, false) | (Key::KP_Subtract, false) | (Key::underscore, false)
+                    if !modifiers.contains(ModifierType::ALT_MASK) =>
+                {
+                    canvas_keys.zoom_out();
+                    gtk4::glib::Propagation::Stop
+                }
+                (Key::f, false) | (Key::F, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                    canvas_keys.zoom_fit();
+                    gtk4::glib::Propagation::Stop
+                }
+                (Key::r, false) | (Key::R, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                    canvas_keys.reset_view();
+                    gtk4::glib::Propagation::Stop
+                }
+                (Key::d, false) | (Key::D, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                    canvas_keys.fit_to_device_area();
+                    canvas_keys.widget.queue_draw();
+                    gtk4::glib::Propagation::Stop
+                }
                 _ => gtk4::glib::Propagation::Proceed
             }
         });
@@ -3246,12 +3800,12 @@ impl DesignerView {
         // Refresh layers
         self.layers.refresh(&self.canvas.state);
         self.canvas.widget.queue_draw();
-        self.set_status("New design created");
+        self.set_status(&t!("New design created"));
     }
 
     pub fn open_file(&self) {
         let dialog = FileChooserNative::builder()
-            .title("Open Design File")
+            .title(t!("Open Design File"))
             .action(FileChooserAction::Open)
             .modal(true)
             .build();
@@ -3274,13 +3828,13 @@ impl DesignerView {
         }
         
         let filter = gtk4::FileFilter::new();
-        filter.set_name(Some("GCodeKit Design Files"));
+        filter.set_name(Some(&t!("GCodeKit Design Files")));
         filter.add_pattern("*.gckd");
         filter.add_pattern("*.gck5");
         dialog.add_filter(&filter);
         
         let all_filter = gtk4::FileFilter::new();
-        all_filter.set_name(Some("All Files"));
+        all_filter.set_name(Some(&t!("All Files")));
         all_filter.add_pattern("*");
         dialog.add_filter(&all_filter);
         
@@ -3335,9 +3889,15 @@ impl DesignerView {
         dialog.show();
     }
 
-    pub fn import_file(&self) {
+    fn import_file_internal(&self, kind: Option<&'static str>) {
+        let title = match kind {
+            Some("svg") => t!("Import SVG File"),
+            Some("dxf") => t!("Import DXF File"),
+            _ => t!("Import Design File"),
+        };
+
         let dialog = FileChooserNative::builder()
-            .title("Import Design File")
+            .title(title)
             .action(FileChooserAction::Open)
             .modal(true)
             .build();
@@ -3359,21 +3919,42 @@ impl DesignerView {
             }
         }
         
-        let filter = gtk4::FileFilter::new();
-        filter.set_name(Some("Supported Files"));
-        filter.add_pattern("*.svg");
-        filter.add_pattern("*.dxf");
-        dialog.add_filter(&filter);
-        
-        let svg_filter = gtk4::FileFilter::new();
-        svg_filter.set_name(Some("SVG Files"));
-        svg_filter.add_pattern("*.svg");
-        dialog.add_filter(&svg_filter);
+        match kind {
+            Some("svg") => {
+                let svg_filter = gtk4::FileFilter::new();
+                svg_filter.set_name(Some(&t!("SVG Files")));
+                svg_filter.add_pattern("*.svg");
+                dialog.add_filter(&svg_filter);
+            }
+            Some("dxf") => {
+                let dxf_filter = gtk4::FileFilter::new();
+                dxf_filter.set_name(Some(&t!("DXF Files")));
+                dxf_filter.add_pattern("*.dxf");
+                dialog.add_filter(&dxf_filter);
+            }
+            _ => {
+                let filter = gtk4::FileFilter::new();
+                filter.set_name(Some(&t!("Supported Files")));
+                filter.add_pattern("*.svg");
+                filter.add_pattern("*.dxf");
+                dialog.add_filter(&filter);
 
-        let dxf_filter = gtk4::FileFilter::new();
-        dxf_filter.set_name(Some("DXF Files"));
-        dxf_filter.add_pattern("*.dxf");
-        dialog.add_filter(&dxf_filter);
+                let svg_filter = gtk4::FileFilter::new();
+                svg_filter.set_name(Some(&t!("SVG Files")));
+                svg_filter.add_pattern("*.svg");
+                dialog.add_filter(&svg_filter);
+
+                let dxf_filter = gtk4::FileFilter::new();
+                dxf_filter.set_name(Some(&t!("DXF Files")));
+                dxf_filter.add_pattern("*.dxf");
+                dialog.add_filter(&dxf_filter);
+            }
+        }
+
+        let all_filter = gtk4::FileFilter::new();
+        all_filter.set_name(Some(&t!("All Files")));
+        all_filter.add_pattern("*");
+        dialog.add_filter(&all_filter);
         
         let canvas = self.canvas.clone();
         let layers = self.layers.clone();
@@ -3433,6 +4014,18 @@ impl DesignerView {
         dialog.show();
     }
 
+    pub fn import_file(&self) {
+        self.import_file_internal(None);
+    }
+
+    pub fn import_svg_file(&self) {
+        self.import_file_internal(Some("svg"));
+    }
+
+    pub fn import_dxf_file(&self) {
+        self.import_file_internal(Some("dxf"));
+    }
+
     pub fn save_file(&self) {
         let current_path = self.current_file.borrow().clone();
         
@@ -3468,7 +4061,7 @@ impl DesignerView {
         }
         
         let filter = gtk4::FileFilter::new();
-        filter.set_name(Some("GCodeKit Design Files"));
+        filter.set_name(Some(&t!("GCodeKit Design Files")));
         filter.add_pattern("*.gckd");
         dialog.add_filter(&filter);
         

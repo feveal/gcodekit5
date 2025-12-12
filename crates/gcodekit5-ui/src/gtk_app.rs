@@ -187,7 +187,11 @@ pub fn main() {
         let editor = Rc::new(GcodeEditor::new(Some(status_bar.clone())));
 
         // 4. Visualizer (Created early for MachineControl dependency)
-        let visualizer = Rc::new(GcodeVisualizer::new(Some(device_manager.clone()), settings_controller.clone()));
+        let visualizer = Rc::new(GcodeVisualizer::new(
+            Some(device_manager.clone()),
+            settings_controller.clone(),
+            Some(status_bar.clone()),
+        ));
 
         // 2. Machine Control
         let machine_control = MachineControlView::new(
@@ -262,7 +266,11 @@ pub fn main() {
         stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), &t!("CAM Tools"));
 
         // 6. Designer
-        let designer = DesignerView::new(Some(device_manager.clone()), settings_controller.clone());
+        let designer = DesignerView::new(
+            Some(device_manager.clone()),
+            settings_controller.clone(),
+            Some(status_bar.clone()),
+        );
         stack.add_titled(&designer.widget, Some("designer"), &t!("Designer"));
 
         // Connect Designer G-Code Generation to Editor

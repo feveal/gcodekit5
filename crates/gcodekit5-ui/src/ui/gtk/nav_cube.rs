@@ -70,7 +70,7 @@ impl NavCube {
         zoom_box.set_halign(Align::Center);
         
         let btn_zoom_in = create_btn("+", "Zoom In");
-        let btn_fit = create_btn("Fit", "Fit to View");
+        let btn_fit = create_btn("Fit", "Fit to Content");
         let btn_zoom_out = create_btn("-", "Zoom Out");
 
         zoom_box.append(&btn_zoom_out);

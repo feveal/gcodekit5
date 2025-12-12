@@ -486,7 +486,11 @@ fn render_shape_trait(
             )
         }
         crate::shapes::Shape::Text(text_shape) => {
-            let font = font_manager::get_font();
+            let font = font_manager::get_font_for(
+                &text_shape.font_family,
+                text_shape.bold,
+                text_shape.italic,
+            );
             let scale = Scale::uniform(text_shape.font_size as f32);
             let v_metrics = font.v_metrics(scale);
 

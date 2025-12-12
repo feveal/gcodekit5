@@ -110,21 +110,8 @@ impl ToolpathToGcode {
                     current_z = self.safe_z;
                 }
                 ToolpathSegmentType::LinearMove => {
-                    // First plunge if needed
-                    if (current_z - self.safe_z).abs() > 0.01 {
-                        let line_prefix = if self.line_numbers_enabled {
-                            format!("N{} ", line_number)
-                        } else {
-                            String::new()
-                        };
-                        gcode.push_str(&format!(
-                            "{}G01 Z{:.3} F{:.0}\n",
-                            line_prefix, toolpath.depth, segment.feed_rate
-                        ));
-                        line_number += 10;
-                        current_z = toolpath.depth;
-                    } else if (current_z - self.safe_z).abs() < 0.01 {
-                        // Plunge before first move
+                    // Plunge to cutting depth once per cutting section.
+                    if (current_z - toolpath.depth).abs() > 0.01 {
                         let line_prefix = if self.line_numbers_enabled {
                             format!("N{} ", line_number)
                         } else {
@@ -150,20 +137,8 @@ impl ToolpathToGcode {
                     ));
                 }
                 ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
-                    // First plunge if needed (same as linear)
-                    if (current_z - self.safe_z).abs() > 0.01 {
-                        let line_prefix = if self.line_numbers_enabled {
-                            format!("N{} ", line_number)
-                        } else {
-                            String::new()
-                        };
-                        gcode.push_str(&format!(
-                            "{}G01 Z{:.3} F{:.0}\n",
-                            line_prefix, toolpath.depth, segment.feed_rate
-                        ));
-                        line_number += 10;
-                        current_z = toolpath.depth;
-                    } else if (current_z - self.safe_z).abs() < 0.01 {
+                    // Plunge to cutting depth once per cutting section.
+                    if (current_z - toolpath.depth).abs() > 0.01 {
                         let line_prefix = if self.line_numbers_enabled {
                             format!("N{} ", line_number)
                         } else {

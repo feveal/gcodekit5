@@ -1481,6 +1481,9 @@ pub struct TextShape {
     pub y: f64,
     pub font_size: f64,
     pub rotation: f64,
+    pub font_family: String,
+    pub bold: bool,
+    pub italic: bool,
 }
 
 impl TextShape {
@@ -1491,11 +1494,14 @@ impl TextShape {
             y,
             font_size,
             rotation: 0.0,
+            font_family: "Sans".to_string(),
+            bold: false,
+            italic: false,
         }
     }
 
     pub fn bounding_box(&self) -> (f64, f64, f64, f64) {
-        let font = font_manager::get_font();
+        let font = font_manager::get_font_for(&self.font_family, self.bold, self.italic);
         let scale = Scale::uniform(self.font_size as f32);
         let v_metrics = font.v_metrics(scale);
 
@@ -1560,7 +1566,7 @@ impl TextShape {
     }
 
     pub fn local_bounding_box(&self) -> (f64, f64, f64, f64) {
-        let font = font_manager::get_font();
+        let font = font_manager::get_font_for(&self.font_family, self.bold, self.italic);
         let scale = Scale::uniform(self.font_size as f32);
         let v_metrics = font.v_metrics(scale);
 
@@ -1600,7 +1606,7 @@ impl TextShape {
 
     pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         // For hit testing text, check if near the boundary of text bounding box
-        let font = font_manager::get_font();
+        let font = font_manager::get_font_for(&self.font_family, self.bold, self.italic);
         let scale = Scale::uniform(self.font_size as f32);
         let v_metrics = font.v_metrics(scale);
         let start = rt_point(self.x as f32, self.y as f32 + v_metrics.ascent);

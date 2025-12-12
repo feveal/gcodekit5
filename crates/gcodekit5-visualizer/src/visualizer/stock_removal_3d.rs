@@ -263,19 +263,43 @@ impl StockSimulator3D {
     }
 
     pub fn simulate_toolpath(&mut self, toolpath: &[ToolpathSegment]) {
-        for segment in toolpath {
+        let _ = self.simulate_toolpath_with_progress(toolpath, |_| true);
+    }
+
+    /// Simulate material removal with an optional progress callback.
+    ///
+    /// The callback is called with progress in the range [0.0, 1.0]. If it returns `false`,
+    /// simulation is aborted early.
+    pub fn simulate_toolpath_with_progress<F>(
+        &mut self,
+        toolpath: &[ToolpathSegment],
+        mut on_progress: F,
+    ) -> bool
+    where
+        F: FnMut(f32) -> bool,
+    {
+        let total = toolpath.len().max(1) as f32;
+        for (idx, segment) in toolpath.iter().enumerate() {
+            if !on_progress((idx as f32) / total) {
+                return false;
+            }
             match segment.segment_type {
                 ToolpathSegmentType::LinearMove => {
                     let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
-                    self.remove_linear(start, end);
+                    if !self.remove_linear_cancellable(start, end, &mut on_progress) {
+                        return false;
+                    }
                 }
                 ToolpathSegmentType::ArcCW => {
                     let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
                     if let Some(center_tuple) = segment.center {
                         let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
-                        self.remove_arc(start, end, center, true);
+                        if !self.remove_arc_cancellable(start, end, center, true, &mut on_progress)
+                        {
+                            return false;
+                        }
                     }
                 }
                 ToolpathSegmentType::ArcCCW => {
@@ -283,12 +307,16 @@ impl StockSimulator3D {
                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
                     if let Some(center_tuple) = segment.center {
                         let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
-                        self.remove_arc(start, end, center, false);
+                        if !self.remove_arc_cancellable(start, end, center, false, &mut on_progress)
+                        {
+                            return false;
+                        }
                     }
                 }
                 _ => {}
             }
         }
+        on_progress(1.0)
     }
 
     fn remove_linear(&mut self, start: Vec3, end: Vec3) {
@@ -299,6 +327,23 @@ impl StockSimulator3D {
             let pos = start.lerp(end, t);
             self.grid.remove_sphere(pos, self.tool_radius);
         }
+    }
+
+    fn remove_linear_cancellable<F>(&mut self, start: Vec3, end: Vec3, on_progress: &mut F) -> bool
+    where
+        F: FnMut(f32) -> bool,
+    {
+        let dist = start.distance(end);
+        let steps = (dist / (self.grid.resolution * 0.5)).ceil() as usize;
+        for i in 0..=steps {
+            if (i & 0xFF) == 0 && !on_progress(0.0) {
+                return false;
+            }
+            let t = i as f32 / steps as f32;
+            let pos = start.lerp(end, t);
+            self.grid.remove_sphere(pos, self.tool_radius);
+        }
+        true
     }
 
     fn remove_arc(&mut self, start: Vec3, end: Vec3, center: Vec3, clockwise: bool) {
@@ -332,6 +377,53 @@ impl StockSimulator3D {
             );
             self.grid.remove_sphere(point, self.tool_radius);
         }
+    }
+
+    fn remove_arc_cancellable<F>(
+        &mut self,
+        start: Vec3,
+        end: Vec3,
+        center: Vec3,
+        clockwise: bool,
+        on_progress: &mut F,
+    ) -> bool
+    where
+        F: FnMut(f32) -> bool,
+    {
+        let radius = (start - center).length();
+        let start_angle = (start.y - center.y).atan2(start.x - center.x);
+        let end_angle = (end.y - center.y).atan2(end.x - center.x);
+        let angle_span = if clockwise {
+            if end_angle > start_angle {
+                end_angle - start_angle - 2.0 * std::f32::consts::PI
+            } else {
+                end_angle - start_angle
+            }
+        } else {
+            if end_angle < start_angle {
+                end_angle - start_angle + 2.0 * std::f32::consts::PI
+            } else {
+                end_angle - start_angle
+            }
+        };
+        let arc_length = radius * angle_span.abs();
+        let resolution = self.grid.resolution;
+        let steps = (arc_length / (resolution * 0.5)).ceil() as usize;
+        let steps = steps.max(1);
+        for i in 0..=steps {
+            if (i & 0xFF) == 0 && !on_progress(0.0) {
+                return false;
+            }
+            let t = i as f32 / steps as f32;
+            let angle = start_angle + angle_span * t;
+            let point = Vec3::new(
+                center.x + radius * angle.cos(),
+                center.y + radius * angle.sin(),
+                start.z + (end.z - start.z) * t,
+            );
+            self.grid.remove_sphere(point, self.tool_radius);
+        }
+        true
     }
 
     pub fn get_mesh(&self) -> Vec<f32> {

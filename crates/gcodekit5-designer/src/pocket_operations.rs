@@ -9,7 +9,7 @@ use cavalier_contours::polyline::{PlineSource, PlineSourceMut, PlineVertex, Poly
 use std::f64::consts::PI;
 
 /// Strategy for pocket milling.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum PocketStrategy {
     /// Zig-Zag or Raster milling.
     Raster { angle: f64, bidirectional: bool },
@@ -17,6 +17,12 @@ pub enum PocketStrategy {
     ContourParallel,
     /// Adaptive clearing (trochoidal-like).
     Adaptive,
+}
+
+impl Default for PocketStrategy {
+    fn default() -> Self {
+        PocketStrategy::ContourParallel
+    }
 }
 
 /// Represents a pocket operation configuration.

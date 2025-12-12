@@ -1,3 +1,4 @@
+use gcodekit5_designer::pocket_operations::PocketStrategy;
 use gcodekit5_designer::serialization::{DesignFile, ShapeData};
 
 #[test]
@@ -17,6 +18,7 @@ fn test_save_and_load() {
     design.shapes.push(ShapeData {
         id: 1,
         shape_type: "rectangle".to_string(),
+        name: "My Rect".to_string(),
         x: 0.0,
         y: 0.0,
         width: 100.0,
@@ -31,11 +33,15 @@ fn test_save_and_load() {
         start_depth: 0.0,
         text_content: String::new(),
         font_size: 0.0,
+        font_family: String::new(),
+        font_bold: false,
+        font_italic: false,
         path_data: String::new(),
         group_id: None,
         corner_radius: 0.0,
         is_slot: false,
         rotation: 0.0,
+        pocket_strategy: PocketStrategy::ContourParallel,
     });
 
     design.save_to_file(&file_path).unwrap();
@@ -43,6 +49,7 @@ fn test_save_and_load() {
 
     assert_eq!(loaded.shapes.len(), 1);
     assert_eq!(loaded.shapes[0].width, 100.0);
+    assert_eq!(loaded.shapes[0].name, "My Rect");
 
     std::fs::remove_file(&file_path).ok();
 }

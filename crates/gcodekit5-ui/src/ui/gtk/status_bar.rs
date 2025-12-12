@@ -1,6 +1,9 @@
 use gtk4::prelude::*;
-use gtk4::{Box, Label, Button, ProgressBar, Orientation, Align};
-use gcodekit5_core::units::{format_length, MeasurementSystem, get_unit_label};
+use gtk4::{Align, Box, Button, Image, Label, Orientation, ProgressBar};
+use gcodekit5_core::units::{format_length, get_unit_label, MeasurementSystem};
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct StatusBar {
@@ -16,6 +19,8 @@ pub struct StatusBar {
     elapsed_label: Label,
     remaining_label: Label,
     progress_bar: ProgressBar,
+    cancel_btn: Button,
+    cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>>,
 }
 
 impl StatusBar {
@@ -101,10 +106,31 @@ impl StatusBar {
 
         // Progress
         let progress_bar = ProgressBar::new();
-        progress_bar.set_width_request(100);
+        progress_bar.set_width_request(120);
         progress_bar.set_visible(false);
         progress_bar.set_show_text(true);
         right_box.append(&progress_bar);
+
+        // Cancel (for long-running, cancellable UI tasks)
+        let cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>> = Rc::new(RefCell::new(None));
+
+        let cancel_btn = Button::builder().tooltip_text("Cancel").build();
+        cancel_btn.set_visible(false);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&Image::from_icon_name("process-stop-symbolic"));
+            child.append(&Label::new(Some("Cancel")));
+            cancel_btn.set_child(Some(&child));
+        }
+        {
+            let cancel_action = cancel_action.clone();
+            cancel_btn.connect_clicked(move |_| {
+                if let Some(cb) = cancel_action.borrow().as_ref() {
+                    cb();
+                }
+            });
+        }
+        right_box.append(&cancel_btn);
 
         widget.append(&right_box);
 
@@ -121,6 +147,8 @@ impl StatusBar {
             elapsed_label,
             remaining_label,
             progress_bar,
+            cancel_btn,
+            cancel_action,
         }
     }
 
@@ -187,15 +215,30 @@ impl StatusBar {
     pub fn set_progress(&self, progress: f64, elapsed: &str, remaining: &str) {
         if progress > 0.0 {
             self.progress_bar.set_visible(true);
-            self.progress_bar.set_fraction(progress / 100.0);
+            self.progress_bar.set_fraction((progress / 100.0).clamp(0.0, 1.0));
             self.progress_bar.set_text(Some(&format!("{:.1}%", progress)));
-            
-            self.elapsed_label.set_text(&format!("Elapsed: {}", elapsed));
-            self.remaining_label.set_text(&format!("Remaining: {}", remaining));
+
+            if elapsed.is_empty() {
+                self.elapsed_label.set_text("");
+            } else {
+                self.elapsed_label.set_text(&format!("Elapsed: {}", elapsed));
+            }
+            if remaining.is_empty() {
+                self.remaining_label.set_text("");
+            } else {
+                self.remaining_label.set_text(&format!("Remaining: {}", remaining));
+            }
         } else {
             self.progress_bar.set_visible(false);
             self.elapsed_label.set_text("");
             self.remaining_label.set_text("");
         }
+    }
+
+    pub fn set_cancel_action(&self, action: Option<std::boxed::Box<dyn Fn() + 'static>>) {
+        *self.cancel_action.borrow_mut() = action;
+        let visible = self.cancel_action.borrow().is_some();
+        self.cancel_btn.set_visible(visible);
+        self.cancel_btn.set_sensitive(visible);
     }
 }

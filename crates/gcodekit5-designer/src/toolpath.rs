@@ -1,10 +1,10 @@
 //! Toolpath generation from design shapes.
 
 use super::pocket_operations::{PocketGenerator, PocketOperation, PocketStrategy};
-use super::shapes::{Circle, Line, PathShape, Point, Rectangle};
+use super::shapes::{rotate_point, Circle, Line, PathShape, Point, Rectangle};
 use crate::font_manager;
 use lyon::path::iterator::PathIterator;
-use rusttype::{point as rt_point, OutlineBuilder, Scale};
+use rusttype::{GlyphId, OutlineBuilder, Scale};
 
 /// Types of toolpath segments.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -783,15 +783,61 @@ impl ToolpathGenerator {
         step_down: f64,
     ) -> Vec<Toolpath> {
         let mut segments = Vec::new();
-        let font = font_manager::get_font();
+
+        let font =
+            font_manager::get_font_for(&text_shape.font_family, text_shape.bold, text_shape.italic);
         let scale = Scale::uniform(text_shape.font_size as f32);
         let v_metrics = font.v_metrics(scale);
-        let start = rt_point(text_shape.x as f32, text_shape.y as f32 + v_metrics.ascent);
+        let line_height = v_metrics.ascent - v_metrics.descent + v_metrics.line_gap;
 
-        for glyph in font.layout(&text_shape.text, scale, start) {
-            let mut builder = ToolpathBuilder::new(self.feed_rate, self.spindle_speed);
-            glyph.build_outline(&mut builder);
+        // Match the designer's text rotation behaviour: rotate around the *unrotated* text bounds center.
+        let (min_x, min_y, max_x, max_y) = text_shape.local_bounding_box();
+        let baseline_y0 = (text_shape.y as f32) + v_metrics.ascent;
+        let rotation_center_raw = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
+        let rotation_center = Point::new(
+            rotation_center_raw.x,
+            2.0 * baseline_y0 as f64 - rotation_center_raw.y,
+        );
+
+        let mut caret_x = text_shape.x as f32;
+        let mut baseline_y = baseline_y0;
+        let mut prev: Option<GlyphId> = None;
+
+        let mut pen = Point::new(0.0, 0.0);
+
+        for ch in text_shape.text.chars() {
+            if ch == '\n' {
+                caret_x = text_shape.x as f32;
+                baseline_y -= line_height;
+                prev = None;
+                continue;
+            }
+
+            let base = font.glyph(ch);
+            let base_id = base.id();
+
+            if let Some(prev_id) = prev {
+                caret_x += font.pair_kerning(scale, prev_id, base_id);
+            }
+
+            let scaled = base.scaled(scale);
+            let advance = scaled.h_metrics().advance_width;
+
+            // Build outline in glyph-local coordinates and apply baseline offset + rotation in the builder.
+            let mut builder = ToolpathBuilder::new(
+                self.feed_rate,
+                self.spindle_speed,
+                pen,
+                Point::new(caret_x as f64, baseline_y as f64),
+                rotation_center,
+                text_shape.rotation,
+            );
+            scaled.build_outline(&mut builder);
+            pen = builder.current_point;
             segments.extend(builder.segments);
+
+            caret_x += advance;
+            prev = Some(base_id);
         }
 
         self.create_multipass_toolpaths(segments, step_down)
@@ -802,25 +848,51 @@ struct ToolpathBuilder {
     segments: Vec<ToolpathSegment>,
     current_point: Point,
     start_point: Point,
+    started: bool,
     feed_rate: f64,
     spindle_speed: u32,
+    offset: Point,
+    rotation_center: Point,
+    rotation_deg: f64,
 }
 
 impl ToolpathBuilder {
-    fn new(feed_rate: f64, spindle_speed: u32) -> Self {
+    fn new(
+        feed_rate: f64,
+        spindle_speed: u32,
+        initial_point: Point,
+        offset: Point,
+        rotation_center: Point,
+        rotation_deg: f64,
+    ) -> Self {
         Self {
             segments: Vec::new(),
-            current_point: Point::new(0.0, 0.0),
+            current_point: initial_point,
             start_point: Point::new(0.0, 0.0),
+            started: false,
             feed_rate,
             spindle_speed,
+            offset,
+            rotation_center,
+            rotation_deg,
         }
+    }
+
+    fn map_point(&self, x: f32, y: f32) -> Point {
+        // rusttype/cairo glyph outlines are Y-down; convert to designer world (Y-up).
+        let p = Point::new(x as f64 + self.offset.x, self.offset.y - y as f64);
+        rotate_point(p, self.rotation_center, self.rotation_deg)
     }
 }
 
 impl OutlineBuilder for ToolpathBuilder {
     fn move_to(&mut self, x: f32, y: f32) {
-        let p = Point::new(x as f64, y as f64);
+        let p = self.map_point(x, y);
+
+        if !self.started {
+            self.started = true;
+        }
+
         // Rapid move to start of contour (assumed safe height handling in G-code gen)
         self.segments.push(ToolpathSegment::new(
             ToolpathSegmentType::RapidMove,
@@ -834,7 +906,7 @@ impl OutlineBuilder for ToolpathBuilder {
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
-        let p = Point::new(x as f64, y as f64);
+        let p = self.map_point(x, y);
         self.segments.push(ToolpathSegment::new(
             ToolpathSegmentType::LinearMove,
             self.current_point,
@@ -845,24 +917,82 @@ impl OutlineBuilder for ToolpathBuilder {
         self.current_point = p;
     }
 
-    fn quad_to(&mut self, _x1: f32, _y1: f32, x: f32, y: f32) {
-        // Approximate quadratic bezier with line for now
-        self.line_to(x, y);
+    fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
+        let p0 = self.current_point;
+        let p1 = self.map_point(x1, y1);
+        let p2 = self.map_point(x, y);
+
+        let approx_len = (p0.x - p1.x).hypot(p0.y - p1.y) + (p1.x - p2.x).hypot(p1.y - p2.y);
+        let max_seg_len = 0.5_f64;
+        let steps = ((approx_len / max_seg_len).ceil() as usize).clamp(4, 64);
+
+        for i in 1..=steps {
+            let t = (i as f64) / (steps as f64);
+            let mt = 1.0 - t;
+            let px = mt * mt * p0.x + 2.0 * mt * t * p1.x + t * t * p2.x;
+            let py = mt * mt * p0.y + 2.0 * mt * t * p1.y + t * t * p2.y;
+            let p = Point::new(px, py);
+            self.segments.push(ToolpathSegment::new(
+                ToolpathSegmentType::LinearMove,
+                self.current_point,
+                p,
+                self.feed_rate,
+                self.spindle_speed,
+            ));
+            self.current_point = p;
+        }
     }
 
-    fn curve_to(&mut self, _x1: f32, _y1: f32, _x2: f32, _y2: f32, x: f32, y: f32) {
-        // Approximate cubic bezier with line for now
-        self.line_to(x, y);
+    fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
+        let p0 = self.current_point;
+        let p1 = self.map_point(x1, y1);
+        let p2 = self.map_point(x2, y2);
+        let p3 = self.map_point(x, y);
+
+        let approx_len = (p0.x - p1.x).hypot(p0.y - p1.y)
+            + (p1.x - p2.x).hypot(p1.y - p2.y)
+            + (p2.x - p3.x).hypot(p2.y - p3.y);
+        let max_seg_len = 0.5_f64;
+        let steps = ((approx_len / max_seg_len).ceil() as usize).clamp(8, 128);
+
+        for i in 1..=steps {
+            let t = (i as f64) / (steps as f64);
+            let mt = 1.0 - t;
+            let px = mt * mt * mt * p0.x
+                + 3.0 * mt * mt * t * p1.x
+                + 3.0 * mt * t * t * p2.x
+                + t * t * t * p3.x;
+            let py = mt * mt * mt * p0.y
+                + 3.0 * mt * mt * t * p1.y
+                + 3.0 * mt * t * t * p2.y
+                + t * t * t * p3.y;
+            let p = Point::new(px, py);
+            self.segments.push(ToolpathSegment::new(
+                ToolpathSegmentType::LinearMove,
+                self.current_point,
+                p,
+                self.feed_rate,
+                self.spindle_speed,
+            ));
+            self.current_point = p;
+        }
     }
 
     fn close(&mut self) {
-        self.segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::LinearMove,
-            self.current_point,
-            self.start_point,
-            self.feed_rate,
-            self.spindle_speed,
-        ));
+        if !self.started {
+            return;
+        }
+
+        if self.current_point.distance_to(&self.start_point) > 1e-6 {
+            self.segments.push(ToolpathSegment::new(
+                ToolpathSegmentType::LinearMove,
+                self.current_point,
+                self.start_point,
+                self.feed_rate,
+                self.spindle_speed,
+            ));
+        }
+
         self.current_point = self.start_point;
     }
 }

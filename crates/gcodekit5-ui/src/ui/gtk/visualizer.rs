@@ -7,6 +7,7 @@ use gcodekit5_designer::stock_removal::{StockMaterial, SimulationResult};
 use gcodekit5_visualizer::visualizer::{StockSimulator3D, generate_surface_mesh};
 use crate::ui::gtk::osd_format::format_zoom_center_cursor;
 use crate::ui::gtk::shaders::StockRemovalShaderProgram;
+use crate::ui::gtk::status_bar::StatusBar;
 use crate::t;
 use gcodekit5_settings::controller::SettingsController;
 use gcodekit5_settings::manager::SettingsManager;
@@ -29,7 +30,9 @@ use tracing::debug;
 use crate::ui::gtk::renderer_3d::{RenderBuffers, generate_vertex_data, generate_grid_data, generate_axis_data, generate_tool_marker_data, generate_bounds_data};
 use crate::ui::gtk::shaders::ShaderProgram;
 use glow::HasContext;
+use gtk4::gdk::Key;
 use gtk4::prelude::*;
+use gtk4::{EventControllerKey, GestureClick, Popover, Separator};
 use libloading::Library;
 use std::sync::Once;
 
@@ -199,6 +202,7 @@ pub struct GcodeVisualizer {
     _status_label: Label,
     device_manager: Option<Arc<DeviceManager>>,
     settings_controller: Rc<SettingsController>,
+    status_bar: Option<StatusBar>,
     current_pos: Rc<RefCell<(f32, f32, f32)>>,
 }
 
@@ -271,7 +275,11 @@ impl GcodeVisualizer {
         }
     }
 
-    pub fn new(device_manager: Option<Arc<DeviceManager>>, settings_controller: Rc<SettingsController>) -> Self {
+    pub fn new(
+        device_manager: Option<Arc<DeviceManager>>,
+        settings_controller: Rc<SettingsController>,
+        status_bar: Option<StatusBar>,
+    ) -> Self {
         let container = Paned::new(Orientation::Horizontal);
         container.add_css_class("visualizer-container");
         container.set_hexpand(true);
@@ -297,15 +305,15 @@ impl GcodeVisualizer {
         let view_controls = Box::new(Orientation::Horizontal, 6);
         let fit_btn = Button::builder()
             .icon_name("zoom-fit-best-symbolic")
-            .tooltip_text(t!("Fit to View"))
+            .tooltip_text(t!("Fit to Content"))
             .build();
-        fit_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to View"))]);
+        fit_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to Content"))]);
 
         let reset_btn = Button::builder()
             .icon_name("view-restore-symbolic")
-            .tooltip_text(t!("Reset View"))
+            .tooltip_text(t!("Fit to Viewport"))
             .build();
-        reset_btn.update_property(&[AccessibleProperty::Label(&t!("Reset View"))]);
+        reset_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to Viewport"))]);
 
         let fit_device_btn = Button::builder()
             .icon_name("preferences-desktop-display-symbolic")
@@ -320,6 +328,10 @@ impl GcodeVisualizer {
             child.append(&Image::from_icon_name("view-conceal-symbolic"));
             child.append(&Label::new(Some(&t!("Hide"))));
             sidebar_hide_btn.set_child(Some(&child));
+        }
+
+        for b in [&fit_btn, &reset_btn, &fit_device_btn, &sidebar_hide_btn] {
+            b.set_size_request(32, 32);
         }
 
         view_controls.append(&fit_btn);
@@ -446,35 +458,6 @@ impl GcodeVisualizer {
             .active(false)
             .build();
 
-        // Legend (collapsible)
-        let legend_box = Box::new(Orientation::Vertical, 6);
-        legend_box.set_margin_start(6);
-        legend_box.set_margin_end(6);
-        legend_box.set_margin_top(6);
-        legend_box.set_margin_bottom(6);
-
-        let mk_row = |css: &str, text: &str| {
-            let row = Box::new(Orientation::Horizontal, 6);
-            let swatch = Box::new(Orientation::Horizontal, 0);
-            swatch.set_size_request(12, 12);
-            swatch.add_css_class("legend-swatch");
-            swatch.add_css_class(css);
-            row.append(&swatch);
-            row.append(&Label::new(Some(text)));
-            row
-        };
-
-        legend_box.append(&mk_row("legend-rapid", &t!("Rapid")));
-        legend_box.append(&mk_row("legend-cut", &t!("Cut")));
-        legend_box.append(&mk_row("legend-bounds", &t!("Machine bounds")));
-        legend_box.append(&mk_row("legend-grid", &t!("Grid")));
-
-        let legend_expander = Expander::builder()
-            .label(t!("Legend"))
-            .expanded(false)
-            .child(&legend_box)
-            .build();
-        
         // Stock configuration
         let stock_config_label = Label::builder()
             .label(t!("Stock Dimensions (mm)"))
@@ -525,7 +508,6 @@ impl GcodeVisualizer {
         guides_box.append(&show_grid);
         guides_box.append(&grid_spacing_row);
         guides_box.append(&show_bounds);
-        guides_box.append(&legend_expander);
 
         let guides_expander = Expander::builder()
             .label(t!("Guides"))
@@ -760,15 +742,15 @@ impl GcodeVisualizer {
 
         let float_fit = Button::builder()
             .icon_name("zoom-fit-best-symbolic")
-            .tooltip_text(t!("Fit to View"))
+            .tooltip_text(t!("Fit to Content"))
             .build();
-        float_fit.update_property(&[AccessibleProperty::Label(&t!("Fit to View"))]);
+        float_fit.update_property(&[AccessibleProperty::Label(&t!("Fit to Content"))]);
 
         let float_reset = Button::builder()
             .icon_name("view-restore-symbolic")
-            .tooltip_text(t!("Reset View"))
+            .tooltip_text(t!("Fit to Viewport"))
             .build();
-        float_reset.update_property(&[AccessibleProperty::Label(&t!("Reset View"))]);
+        float_reset.update_property(&[AccessibleProperty::Label(&t!("Fit to Viewport"))]);
 
         let float_fit_device = Button::builder()
             .icon_name("preferences-desktop-display-symbolic")
@@ -783,11 +765,43 @@ impl GcodeVisualizer {
             .build();
         scrollbars_btn.update_property(&[AccessibleProperty::Label(&t!("Toggle Scrollbars"))]);
 
+        let help_btn = Button::builder()
+            .label("?")
+            .tooltip_text(t!("Keyboard Shortcuts"))
+            .build();
+        help_btn.update_property(&[AccessibleProperty::Label(&t!("Keyboard Shortcuts"))]);
+
+        let help_popover = Popover::new();
+        help_popover.set_parent(&help_btn);
+        help_popover.set_has_arrow(true);
+        {
+            let help_box = Box::new(Orientation::Vertical, 6);
+            help_box.set_margin_start(12);
+            help_box.set_margin_end(12);
+            help_box.set_margin_top(12);
+            help_box.set_margin_bottom(12);
+            help_box.append(&Label::new(Some(&t!("Visualizer shortcuts"))));
+            help_box.append(&Label::new(Some("+ / -  —  Zoom")));
+            help_box.append(&Label::new(Some("F  —  Fit to Content")));
+            help_box.append(&Label::new(Some("R  —  Fit to Viewport")));
+            help_box.append(&Label::new(Some("D  —  Fit to Device Working Area")));
+            help_box.append(&Label::new(Some(&t!("Right click for context menu"))));
+            help_popover.set_child(Some(&help_box));
+        }
+        {
+            let pop = help_popover.clone();
+            help_btn.connect_clicked(move |_| pop.popup());
+        }
+
         let float_zoom_in = Button::builder()
             .icon_name("zoom-in-symbolic")
             .tooltip_text(t!("Zoom In"))
             .build();
         float_zoom_in.update_property(&[AccessibleProperty::Label(&t!("Zoom In"))]);
+
+        for b in [&float_zoom_out, &float_fit, &float_reset, &float_fit_device, &scrollbars_btn, &help_btn, &float_zoom_in] {
+            b.set_size_request(32, 32);
+        }
 
         floating_box.append(&float_zoom_out);
         floating_box.append(&float_fit);
@@ -796,6 +810,7 @@ impl GcodeVisualizer {
             floating_box.append(&float_fit_device);
         }
         floating_box.append(&scrollbars_btn);
+        floating_box.append(&help_btn);
         floating_box.append(&float_zoom_in);
 
         // Status Panel (Bottom Left)
@@ -835,10 +850,13 @@ impl GcodeVisualizer {
         sidebar_show_panel.set_visible(!sidebar_visible_init);
 
         // Stock removal progress (non-blocking) + cancel
-        let sim_cancel = Rc::new(std::cell::Cell::new(false));
+        let sim_cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let sim_progress = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
         let sim_spinner = Spinner::new();
         sim_spinner.start();
+
+        let sim_progress_label = Label::new(Some(""));
 
         let sim_cancel_btn = Button::builder().tooltip_text(t!("Cancel")).build();
         sim_cancel_btn.update_property(&[AccessibleProperty::Label(&t!("Cancel"))]);
@@ -855,6 +873,7 @@ impl GcodeVisualizer {
         sim_panel.set_valign(gtk4::Align::Start);
         sim_panel.set_margin_top(12);
         sim_panel.append(&Label::new(Some(&t!("Simulating stock removal…"))));
+        sim_panel.append(&sim_progress_label);
         sim_panel.append(&sim_spinner);
         sim_panel.append(&sim_cancel_btn);
         sim_panel.set_visible(false);
@@ -863,10 +882,15 @@ impl GcodeVisualizer {
             let cancel_flag = sim_cancel.clone();
             let show_stock = show_stock_removal.clone();
             let panel = sim_panel.clone();
+            let sb = status_bar.clone();
             sim_cancel_btn.connect_clicked(move |_| {
-                cancel_flag.set(true);
+                cancel_flag.store(true, std::sync::atomic::Ordering::SeqCst);
                 panel.set_visible(false);
                 show_stock.set_active(false);
+                if let Some(sb) = sb.as_ref() {
+                    sb.set_progress(0.0, "", "");
+                    sb.set_cancel_action(None);
+                }
             });
         }
 
@@ -970,7 +994,7 @@ impl GcodeVisualizer {
 
         // Helper to update status
         let cursor_pos = Rc::new(RefCell::new((0.0_f32, 0.0_f32)));
-        let update_status_fn = {
+        let update_status_fn: Rc<dyn Fn()> = Rc::new({
             let label = status_label.clone();
             let units_badge = units_badge.clone();
             let empty_box = empty_box.clone();
@@ -998,7 +1022,7 @@ impl GcodeVisualizer {
                 units_badge.set_text(gcodekit5_core::units::get_unit_label(system));
                 empty_box.set_visible(v.commands().is_empty());
             }
-        };
+        });
 
         // Track cursor position in world coordinates
         let motion = EventControllerMotion::new();
@@ -1025,6 +1049,228 @@ impl GcodeVisualizer {
             *cursor_pos_motion.borrow_mut() = (world_x as f32, world_y as f32);
         });
         drawing_area.add_controller(motion);
+
+        // Keyboard shortcuts (when the canvas has focus)
+        drawing_area.set_focusable(true);
+        drawing_area.set_can_focus(true);
+        {
+            let click_for_focus = GestureClick::new();
+            let da_focus = drawing_area.clone();
+            click_for_focus.connect_pressed(move |_, _, _, _| {
+                da_focus.grab_focus();
+            });
+            drawing_area.add_controller(click_for_focus);
+        }
+        {
+            let key_controller = EventControllerKey::new();
+            let vis_keys = visualizer.clone();
+            let da_keys = drawing_area.clone();
+            let update_keys = update_status_fn.clone();
+            let device_mgr_keys = device_manager.clone();
+            key_controller.connect_key_pressed(move |_, key, _code, modifiers: ModifierType| {
+                if modifiers.contains(ModifierType::CONTROL_MASK) || modifiers.contains(ModifierType::ALT_MASK) {
+                    return gtk4::glib::Propagation::Proceed;
+                }
+
+                match key {
+                    Key::plus | Key::KP_Add | Key::equal => {
+                        vis_keys.borrow_mut().zoom_in();
+                        update_keys();
+                        da_keys.queue_draw();
+                        gtk4::glib::Propagation::Stop
+                    }
+                    Key::minus | Key::KP_Subtract | Key::underscore => {
+                        vis_keys.borrow_mut().zoom_out();
+                        update_keys();
+                        da_keys.queue_draw();
+                        gtk4::glib::Propagation::Stop
+                    }
+                    Key::f | Key::F => {
+                        let width = da_keys.width() as f32;
+                        let height = da_keys.height() as f32;
+                        if width > 0.0 && height > 0.0 {
+                            vis_keys.borrow_mut().fit_to_view(width, height);
+                            update_keys();
+                            da_keys.queue_draw();
+                        }
+                        gtk4::glib::Propagation::Stop
+                    }
+                    Key::r | Key::R => {
+                        let mut v = vis_keys.borrow_mut();
+                        v.reset_zoom();
+                        v.reset_pan();
+                        drop(v);
+                        update_keys();
+                        da_keys.queue_draw();
+                        gtk4::glib::Propagation::Stop
+                    }
+                    Key::d | Key::D => {
+                        let width = da_keys.width() as f32;
+                        let height = da_keys.height() as f32;
+                        if width > 0.0 && height > 0.0 {
+                            let mut v = vis_keys.borrow_mut();
+                            Self::apply_fit_to_device(&mut v, &device_mgr_keys, width, height);
+                            drop(v);
+                            update_keys();
+                            da_keys.queue_draw();
+                        }
+                        gtk4::glib::Propagation::Stop
+                    }
+                    _ => gtk4::glib::Propagation::Proceed,
+                }
+            });
+            drawing_area.add_controller(key_controller);
+        }
+
+        // Right-click context menu (matches Designer structure)
+        {
+            let right_click = GestureClick::new();
+            right_click.set_button(3);
+            let da_menu = drawing_area.clone();
+            let vis_menu = visualizer.clone();
+            let cursor_pos_menu = cursor_pos.clone();
+            let settings_menu = settings_controller.clone();
+            let update_menu = update_status_fn.clone();
+            let device_mgr_menu = device_manager.clone();
+            let show_grid_menu = show_grid.clone();
+            let show_bounds_menu = show_bounds.clone();
+            let show_rapid_menu = show_rapid.clone();
+            let show_cut_menu = show_cut.clone();
+            right_click.connect_pressed(move |_g, _n, x, y| {
+                let menu = Popover::new();
+                menu.set_parent(&da_menu);
+                menu.set_has_arrow(false);
+                let rect = gtk4::gdk::Rectangle::new(x as i32, y as i32, 1, 1);
+                menu.set_pointing_to(Some(&rect));
+
+                let vbox = Box::new(Orientation::Vertical, 0);
+                vbox.add_css_class("context-menu");
+
+                let add_item = |label: &str, cb: std::boxed::Box<dyn Fn()>| {
+                    let btn = Button::builder()
+                        .label(label)
+                        .has_frame(false)
+                        .halign(gtk4::Align::Start)
+                        .build();
+                    let menu = menu.clone();
+                    btn.connect_clicked(move |_| {
+                        menu.popdown();
+                        cb();
+                    });
+                    vbox.append(&btn);
+                };
+
+                // View
+                {
+                    let vis = vis_menu.clone();
+                    let da = da_menu.clone();
+                    let update = update_menu.clone();
+                    add_item("Fit to Content", std::boxed::Box::new(move || {
+                        let width = da.width() as f32;
+                        let height = da.height() as f32;
+                        if width > 0.0 && height > 0.0 {
+                            vis.borrow_mut().fit_to_view(width, height);
+                            update();
+                            da.queue_draw();
+                        }
+                    }));
+                }
+                {
+                    let vis = vis_menu.clone();
+                    let da = da_menu.clone();
+                    let update = update_menu.clone();
+                    add_item("Fit to Viewport", std::boxed::Box::new(move || {
+                        let mut v = vis.borrow_mut();
+                        v.reset_zoom();
+                        v.reset_pan();
+                        drop(v);
+                        update();
+                        da.queue_draw();
+                    }));
+                }
+                {
+                    let vis = vis_menu.clone();
+                    let da = da_menu.clone();
+                    let update = update_menu.clone();
+                    let dm = device_mgr_menu.clone();
+                    add_item("Fit to Device Working Area", std::boxed::Box::new(move || {
+                        let width = da.width() as f32;
+                        let height = da.height() as f32;
+                        if width > 0.0 && height > 0.0 {
+                            let mut v = vis.borrow_mut();
+                            Self::apply_fit_to_device(&mut v, &dm, width, height);
+                            drop(v);
+                            update();
+                            da.queue_draw();
+                        }
+                    }));
+                }
+
+                vbox.append(&Separator::new(Orientation::Horizontal));
+
+                // Copy
+                {
+                    let cursor_pos = cursor_pos_menu.clone();
+                    let settings = settings_menu.clone();
+                    add_item("Copy cursor coordinates", std::boxed::Box::new(move || {
+                        let (x, y) = *cursor_pos.borrow();
+                        let system = settings.persistence.borrow().config().ui.measurement_system;
+                        let text = format!("X {}  Y {}", gcodekit5_core::units::format_length(x, system), gcodekit5_core::units::format_length(y, system));
+                        if let Some(display) = gtk4::gdk::Display::default() {
+                            display.clipboard().set_text(&text);
+                        }
+                    }));
+                }
+
+                vbox.append(&Separator::new(Orientation::Horizontal));
+
+                // Toggles
+                {
+                    let btn = Button::builder().label("Toggle Grid").has_frame(false).halign(gtk4::Align::Start).build();
+                    let menu = menu.clone();
+                    let cb = show_grid_menu.clone();
+                    btn.connect_clicked(move |_| {
+                        menu.popdown();
+                        cb.set_active(!cb.is_active());
+                    });
+                    vbox.append(&btn);
+                }
+                {
+                    let btn = Button::builder().label("Toggle Machine Bounds").has_frame(false).halign(gtk4::Align::Start).build();
+                    let menu = menu.clone();
+                    let cb = show_bounds_menu.clone();
+                    btn.connect_clicked(move |_| {
+                        menu.popdown();
+                        cb.set_active(!cb.is_active());
+                    });
+                    vbox.append(&btn);
+                }
+                {
+                    let btn = Button::builder().label("Toggle Rapid Moves").has_frame(false).halign(gtk4::Align::Start).build();
+                    let menu = menu.clone();
+                    let cb = show_rapid_menu.clone();
+                    btn.connect_clicked(move |_| {
+                        menu.popdown();
+                        cb.set_active(!cb.is_active());
+                    });
+                    vbox.append(&btn);
+                }
+                {
+                    let btn = Button::builder().label("Toggle Cutting Moves").has_frame(false).halign(gtk4::Align::Start).build();
+                    let menu = menu.clone();
+                    let cb = show_cut_menu.clone();
+                    btn.connect_clicked(move |_| {
+                        menu.popdown();
+                        cb.set_active(!cb.is_active());
+                    });
+                    vbox.append(&btn);
+                }
+
+                menu.set_child(Some(&vbox));
+                menu.popup();
+            });
+            drawing_area.add_controller(right_click);
+        }
 
         // Keep status text fresh while moving the mouse
         {
@@ -1538,6 +1784,9 @@ impl GcodeVisualizer {
         let stock_simulation_3d_pending_toggle = stock_simulation_3d_pending.clone();
         let sim_panel_toggle = sim_panel.clone();
         let sim_cancel_flag = sim_cancel.clone();
+        let sim_progress_flag = sim_progress.clone();
+        let sim_progress_label_toggle = sim_progress_label.clone();
+        let status_bar_sim = status_bar.clone();
         show_stock_removal.connect_toggled(move |checkbox| {
             if checkbox.is_active() {
                 // Check if simulation is already running
@@ -1545,11 +1794,27 @@ impl GcodeVisualizer {
                     return;
                 }
 
-                sim_cancel_flag.set(false);
+                sim_cancel_flag.store(false, std::sync::atomic::Ordering::SeqCst);
+                sim_progress_flag.store(0, std::sync::atomic::Ordering::Relaxed);
+                sim_progress_label_toggle.set_text("0%");
                 sim_panel_toggle.set_visible(true);
-                
+
+                if let Some(sb) = status_bar_sim.as_ref() {
+                    let cancel_flag = sim_cancel_flag.clone();
+                    let show_stock = checkbox.clone();
+                    let panel = sim_panel_toggle.clone();
+                    sb.set_progress(0.1, "0s", "");
+                    sb.set_cancel_action(Some(std::boxed::Box::new(move || {
+                        cancel_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                        panel.set_visible(false);
+                        show_stock.set_active(false);
+                    })));
+                }
+
                 *simulation_running_flag.borrow_mut() = true;
-                
+
+                let started_at = std::time::Instant::now();
+
                 // Run simulation when enabled
                 let vis = visualizer_stock.borrow();
                 
@@ -1618,7 +1883,10 @@ impl GcodeVisualizer {
                     // Use Arc<Mutex<>> for thread-safe sharing
                     let result_arc = Arc::new(Mutex::new(None));
                     let result_arc_clone = result_arc.clone();
-                    
+
+                    let cancel_thread = sim_cancel_flag.clone();
+                    let progress_thread = sim_progress_flag.clone();
+
                     std::thread::spawn(move || {
                         use gcodekit5_visualizer::{StockSimulator3D, VoxelGrid};
                         
@@ -1635,10 +1903,19 @@ impl GcodeVisualizer {
                             stock_clone.height,
                             stock_clone.thickness,
                             resolution,
-                            tool_radius_value
+                            tool_radius_value,
                         );
-                        simulator.simulate_toolpath(&toolpath_segments_3d);
-                        
+
+                        let cancel = cancel_thread.clone();
+                        let progress = progress_thread.clone();
+                        let _ = simulator.simulate_toolpath_with_progress(&toolpath_segments_3d, |p| {
+                            if p > 0.0 {
+                                progress.store((p * 100.0).round() as usize, std::sync::atomic::Ordering::Relaxed);
+                            }
+                            !cancel.load(std::sync::atomic::Ordering::SeqCst)
+                        });
+                        progress.store(100, std::sync::atomic::Ordering::Relaxed);
+
                         let result_sim = simulator;
                         
                         // Store in Arc
@@ -1654,12 +1931,28 @@ impl GcodeVisualizer {
                     let pending_flag = stock_simulation_3d_pending_toggle.clone();
                     let sim_cancel_flag_poll = sim_cancel_flag.clone();
                     let sim_panel_toggle_poll = sim_panel_toggle.clone();
+                    let sim_progress_poll = sim_progress_flag.clone();
+                    let sim_progress_label_poll = sim_progress_label_toggle.clone();
+                    let sb_poll = status_bar_sim.clone();
                     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                         *poll_count_clone.borrow_mut() += 1;
 
-                        if sim_cancel_flag_poll.get() {
+                        let pct = sim_progress_poll
+                            .load(std::sync::atomic::Ordering::Relaxed)
+                            .min(100);
+                        sim_progress_label_poll.set_text(&format!("{}%", pct));
+                        if let Some(sb) = sb_poll.as_ref() {
+                            let elapsed = started_at.elapsed().as_secs_f64();
+                            sb.set_progress((pct as f64).max(0.1), &format!("{:.0}s", elapsed), "");
+                        }
+
+                        if sim_cancel_flag_poll.load(std::sync::atomic::Ordering::SeqCst) {
                             *sim_running_poll.borrow_mut() = false;
                             sim_panel_toggle_poll.set_visible(false);
+                            if let Some(sb) = sb_poll.as_ref() {
+                                sb.set_progress(0.0, "", "");
+                                sb.set_cancel_action(None);
+                            }
                             return glib::ControlFlow::Break;
                         }
                         
@@ -1667,14 +1960,22 @@ impl GcodeVisualizer {
                         if *poll_count_clone.borrow() > 300 {
                             *sim_running_poll.borrow_mut() = false;
                             sim_panel_toggle_poll.set_visible(false);
+                            if let Some(sb) = sb_poll.as_ref() {
+                                sb.set_progress(0.0, "", "");
+                                sb.set_cancel_action(None);
+                            }
                             return glib::ControlFlow::Break;
                         }
                         
                         if let Ok(mut guard) = result_arc_poll.try_lock() {
                             if let Some(result_simulator) = guard.take() {
-                                if sim_cancel_flag_poll.get() {
+                                if sim_cancel_flag_poll.load(std::sync::atomic::Ordering::SeqCst) {
                                     *sim_running_poll.borrow_mut() = false;
                                     sim_panel_toggle_poll.set_visible(false);
+                                    if let Some(sb) = sb_poll.as_ref() {
+                                        sb.set_progress(0.0, "", "");
+                                        sb.set_cancel_action(None);
+                                    }
                                     return glib::ControlFlow::Break;
                                 }
 
@@ -1683,20 +1984,36 @@ impl GcodeVisualizer {
                                 
                                 *sim_running_poll.borrow_mut() = false;
                                 sim_panel_toggle_poll.set_visible(false);
+                                if let Some(sb) = sb_poll.as_ref() {
+                                    sb.set_progress(0.0, "", "");
+                                    sb.set_cancel_action(None);
+                                }
                                 gl_ref.queue_render();
-                                
+
                                 return glib::ControlFlow::Break;
                             }
                         }
                         glib::ControlFlow::Continue
                     });
                 } else {
+                    if let Some(sb) = status_bar_sim.as_ref() {
+                        sb.set_progress(0.0, "", "");
+                        sb.set_cancel_action(None);
+                    }
                     *stock_simulator_3d_stock.borrow_mut() = None;
                     *simulation_running_flag.borrow_mut() = false;
                     sim_panel_toggle.set_visible(false);
                 }
             } else {
                 // Clear simulation when disabled
+                sim_cancel_flag.store(true, std::sync::atomic::Ordering::SeqCst);
+                sim_progress_flag.store(0, std::sync::atomic::Ordering::Relaxed);
+                sim_progress_label_toggle.set_text("");
+                if let Some(sb) = status_bar_sim.as_ref() {
+                    sb.set_progress(0.0, "", "");
+                    sb.set_cancel_action(None);
+                }
+
                 *stock_simulator_3d_stock.borrow_mut() = None;
                 *simulation_running_flag.borrow_mut() = false;
                 sim_panel_toggle.set_visible(false);
@@ -2174,6 +2491,7 @@ impl GcodeVisualizer {
             _status_label: status_label,
             device_manager,
             settings_controller,
+            status_bar,
             current_pos,
         }
     }

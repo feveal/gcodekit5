@@ -194,7 +194,11 @@ pub fn render_canvas(
                 // tiny-skia doesn't support text directly.
                 // We'll use the existing pixel-based approach but adapted for tiny-skia's buffer.
 
-                let font = font_manager::get_font();
+                let font = font_manager::get_font_for(
+                    &text_shape.font_family,
+                    text_shape.bold,
+                    text_shape.italic,
+                );
                 let font_size_screen = text_shape.font_size as f32 * zoom;
                 let scale = Scale::uniform(font_size_screen);
 

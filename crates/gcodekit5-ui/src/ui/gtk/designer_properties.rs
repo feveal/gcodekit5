@@ -5,8 +5,33 @@ use std::rc::Rc;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::shapes::{Shape, Point, OperationType};
 use gcodekit5_designer::pocket_operations::PocketStrategy;
+use gcodekit5_designer::font_manager;
 use gcodekit5_settings::SettingsPersistence;
 use gcodekit5_core::units;
+use crate::t;
+
+const MM_PER_PT: f64 = 25.4 / 72.0;
+
+fn mm_to_pt(mm: f64) -> f64 {
+    mm / MM_PER_PT
+}
+
+fn pt_to_mm(pt: f64) -> f64 {
+    pt * MM_PER_PT
+}
+
+fn format_font_points(mm: f64) -> String {
+    format!("{:.2}", mm_to_pt(mm))
+}
+
+fn parse_font_points_mm(s: &str) -> Option<f64> {
+    let s = s.trim().trim_end_matches("pt").trim().replace(',', ".");
+    let pt = s.parse::<f64>().ok()?;
+    if pt <= 0.0 {
+        return None;
+    }
+    Some(pt_to_mm(pt))
+}
 
 pub struct PropertiesPanel {
     pub widget: ScrolledWindow,
@@ -14,6 +39,16 @@ pub struct PropertiesPanel {
     settings: Rc<RefCell<SettingsPersistence>>,
     _content: Box,
     header: Label,
+
+    // Sections (visibility controlled)
+    pos_frame: Frame,
+    size_frame: Frame,
+    rot_frame: Frame,
+    corner_frame: Frame,
+    text_frame: Frame,
+    cam_frame: Frame,
+    empty_label: Label,
+
     // Property widgets
     pos_x_entry: Entry,
     pos_y_entry: Entry,
@@ -25,6 +60,9 @@ pub struct PropertiesPanel {
     is_slot_check: CheckButton,
     // Text widgets
     text_entry: Entry,
+    font_family_combo: DropDown,
+    font_bold_check: CheckButton,
+    font_italic_check: CheckButton,
     font_size_entry: Entry,
     // CAM widgets
     op_type_combo: DropDown,
@@ -65,14 +103,15 @@ impl PropertiesPanel {
         content.set_margin_top(12);
         content.set_margin_bottom(12);
 
-        // Header
-        let header = Label::new(Some("Properties"));
+        // Header (kept for internal state, not shown in UI)
+        let header = Label::new(Some(&t!("Properties")));
         header.add_css_class("title-3");
+        header.add_css_class("heading");
         header.set_halign(gtk4::Align::Start);
-        content.append(&header);
+        header.set_visible(false);
 
         // Position Section
-        let pos_frame = Self::create_section("Position");
+        let pos_frame = Self::create_section(&t!("Position"));
         let pos_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -82,17 +121,23 @@ impl PropertiesPanel {
             .margin_bottom(8)
             .build();
 
-        let x_label = Label::new(Some("X:"));
+        let x_label = Label::new(Some(&t!("X:")));
         x_label.set_halign(gtk4::Align::Start);
         let pos_x_entry = Entry::new();
         pos_x_entry.set_hexpand(true);
         let x_unit_label = Label::new(Some("mm"));
+        x_unit_label.set_width_chars(4);
+        x_unit_label.set_halign(gtk4::Align::End);
+        x_unit_label.set_xalign(1.0);
 
-        let y_label = Label::new(Some("Y:"));
+        let y_label = Label::new(Some(&t!("Y:")));
         y_label.set_halign(gtk4::Align::Start);
         let pos_y_entry = Entry::new();
         pos_y_entry.set_hexpand(true);
         let y_unit_label = Label::new(Some("mm"));
+        y_unit_label.set_width_chars(4);
+        y_unit_label.set_halign(gtk4::Align::End);
+        y_unit_label.set_xalign(1.0);
 
         pos_grid.attach(&x_label, 0, 0, 1, 1);
         pos_grid.attach(&pos_x_entry, 1, 0, 1, 1);
@@ -105,7 +150,7 @@ impl PropertiesPanel {
         content.append(&pos_frame);
 
         // Size Section
-        let size_frame = Self::create_section("Size");
+        let size_frame = Self::create_section(&t!("Size"));
         let size_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -115,17 +160,23 @@ impl PropertiesPanel {
             .margin_bottom(8)
             .build();
 
-        let width_label = Label::new(Some("Width:"));
+        let width_label = Label::new(Some(&t!("Width:")));
         width_label.set_halign(gtk4::Align::Start);
         let width_entry = Entry::new();
         width_entry.set_hexpand(true);
         let width_unit_label = Label::new(Some("mm"));
+        width_unit_label.set_width_chars(4);
+        width_unit_label.set_halign(gtk4::Align::End);
+        width_unit_label.set_xalign(1.0);
 
-        let height_label = Label::new(Some("Height:"));
+        let height_label = Label::new(Some(&t!("Height:")));
         height_label.set_halign(gtk4::Align::Start);
         let height_entry = Entry::new();
         height_entry.set_hexpand(true);
         let height_unit_label = Label::new(Some("mm"));
+        height_unit_label.set_width_chars(4);
+        height_unit_label.set_halign(gtk4::Align::End);
+        height_unit_label.set_xalign(1.0);
 
         size_grid.attach(&width_label, 0, 0, 1, 1);
         size_grid.attach(&width_entry, 1, 0, 1, 1);
@@ -138,7 +189,7 @@ impl PropertiesPanel {
         content.append(&size_frame);
 
         // Rotation Section
-        let rot_frame = Self::create_section("Rotation");
+        let rot_frame = Self::create_section(&t!("Rotation"));
         let rot_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -148,7 +199,7 @@ impl PropertiesPanel {
             .margin_bottom(8)
             .build();
 
-        let rot_label = Label::new(Some("Angle:"));
+        let rot_label = Label::new(Some(&t!("Angle:")));
         rot_label.set_halign(gtk4::Align::Start);
         let rotation_entry = Entry::new();
         rotation_entry.set_hexpand(true);
@@ -162,7 +213,7 @@ impl PropertiesPanel {
         content.append(&rot_frame);
 
         // Corner Section (Rectangle only)
-        let corner_frame = Self::create_section("Corner");
+        let corner_frame = Self::create_section(&t!("Corner"));
         let corner_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -172,13 +223,16 @@ impl PropertiesPanel {
             .margin_bottom(8)
             .build();
 
-        let radius_label = Label::new(Some("Radius:"));
+        let radius_label = Label::new(Some(&t!("Radius:")));
         radius_label.set_halign(gtk4::Align::Start);
         let corner_radius_entry = Entry::new();
         corner_radius_entry.set_hexpand(true);
         let radius_unit_label = Label::new(Some("mm"));
+        radius_unit_label.set_width_chars(4);
+        radius_unit_label.set_halign(gtk4::Align::End);
+        radius_unit_label.set_xalign(1.0);
 
-        let slot_label = Label::new(Some("Slot Mode:"));
+        let slot_label = Label::new(Some(&t!("Slot Mode:")));
         slot_label.set_halign(gtk4::Align::Start);
         let is_slot_check = CheckButton::new();
 
@@ -192,7 +246,7 @@ impl PropertiesPanel {
         content.append(&corner_frame);
 
         // Text Section
-        let text_frame = Self::create_section("Text");
+        let text_frame = Self::create_section(&t!("Text"));
         let text_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -202,28 +256,58 @@ impl PropertiesPanel {
             .margin_bottom(8)
             .build();
 
-        let text_content_label = Label::new(Some("Content:"));
+        let text_content_label = Label::new(Some(&t!("Content:")));
         text_content_label.set_halign(gtk4::Align::Start);
         let text_entry = Entry::new();
         text_entry.set_hexpand(true);
 
-        let font_size_label = Label::new(Some("Size:"));
+        let font_label = Label::new(Some(&t!("Font:")));
+        font_label.set_halign(gtk4::Align::Start);
+        let font_model = StringList::new(&[]);
+        font_model.append("Sans");
+        for fam in font_manager::list_font_families() {
+            if fam != "Sans" {
+                font_model.append(&fam);
+            }
+        }
+        let font_family_combo = DropDown::new(Some(font_model), None::<Expression>);
+        font_family_combo.set_hexpand(true);
+
+        let style_label = Label::new(Some(&t!("Style:")));
+        style_label.set_halign(gtk4::Align::Start);
+        let font_bold_check = CheckButton::with_label(&t!("Bold"));
+        let font_italic_check = CheckButton::with_label(&t!("Italic"));
+        let style_box = Box::new(Orientation::Horizontal, 8);
+        style_box.append(&font_bold_check);
+        style_box.append(&font_italic_check);
+
+        let font_size_label = Label::new(Some(&t!("Size:")));
         font_size_label.set_halign(gtk4::Align::Start);
         let font_size_entry = Entry::new();
         font_size_entry.set_hexpand(true);
-        let font_size_unit_label = Label::new(Some("mm"));
+        let font_size_unit_label = Label::new(Some("pt"));
+        font_size_unit_label.set_width_chars(4);
+        font_size_unit_label.set_halign(gtk4::Align::End);
+        font_size_unit_label.set_xalign(1.0);
 
         text_grid.attach(&text_content_label, 0, 0, 1, 1);
-        text_grid.attach(&text_entry, 1, 0, 1, 1);
-        text_grid.attach(&font_size_label, 0, 1, 1, 1);
-        text_grid.attach(&font_size_entry, 1, 1, 1, 1);
-        text_grid.attach(&font_size_unit_label, 2, 1, 1, 1);
+        text_grid.attach(&text_entry, 1, 0, 2, 1);
+
+        text_grid.attach(&font_label, 0, 1, 1, 1);
+        text_grid.attach(&font_family_combo, 1, 1, 2, 1);
+
+        text_grid.attach(&style_label, 0, 2, 1, 1);
+        text_grid.attach(&style_box, 1, 2, 2, 1);
+
+        text_grid.attach(&font_size_label, 0, 3, 1, 1);
+        text_grid.attach(&font_size_entry, 1, 3, 1, 1);
+        text_grid.attach(&font_size_unit_label, 2, 3, 1, 1);
 
         text_frame.set_child(Some(&text_grid));
         content.append(&text_frame);
 
         // CAM Properties Section
-        let cam_frame = Self::create_section("CAM Properties");
+        let cam_frame = Self::create_section(&t!("CAM Properties"));
         let cam_grid = gtk4::Grid::builder()
             .row_spacing(8)
             .column_spacing(8)
@@ -234,37 +318,51 @@ impl PropertiesPanel {
             .build();
 
         // Operation Type
-        let op_label = Label::new(Some("Operation:"));
+        let op_label = Label::new(Some(&t!("Operation:")));
         op_label.set_halign(gtk4::Align::Start);
-        let op_model = StringList::new(&["Profile", "Pocket"]);
+        let op_model = StringList::new(&[]);
+        op_model.append(&t!("Profile"));
+        op_model.append(&t!("Pocket"));
         let op_type_combo = DropDown::new(Some(op_model), None::<Expression>);
         op_type_combo.set_hexpand(true);
 
         // Pocket Depth
-        let depth_label = Label::new(Some("Depth:"));
+        let depth_label = Label::new(Some(&t!("Depth:")));
         depth_label.set_halign(gtk4::Align::Start);
         let depth_entry = Entry::new();
         depth_entry.set_hexpand(true);
         let depth_unit_label = Label::new(Some("mm"));
+        depth_unit_label.set_width_chars(4);
+        depth_unit_label.set_halign(gtk4::Align::End);
+        depth_unit_label.set_xalign(1.0);
 
         // Step Down
-        let step_down_label = Label::new(Some("Step Down:"));
+        let step_down_label = Label::new(Some(&t!("Step Down:")));
         step_down_label.set_halign(gtk4::Align::Start);
         let step_down_entry = Entry::new();
         step_down_entry.set_hexpand(true);
         let step_down_unit_label = Label::new(Some("mm"));
+        step_down_unit_label.set_width_chars(4);
+        step_down_unit_label.set_halign(gtk4::Align::End);
+        step_down_unit_label.set_xalign(1.0);
 
         // Step In (for pockets)
-        let step_in_label = Label::new(Some("Step In:"));
+        let step_in_label = Label::new(Some(&t!("Step In:")));
         step_in_label.set_halign(gtk4::Align::Start);
         let step_in_entry = Entry::new();
         step_in_entry.set_hexpand(true);
         let step_in_unit_label = Label::new(Some("mm"));
+        step_in_unit_label.set_width_chars(4);
+        step_in_unit_label.set_halign(gtk4::Align::End);
+        step_in_unit_label.set_xalign(1.0);
 
         // Pocket Strategy
-        let strategy_label = Label::new(Some("Strategy:"));
+        let strategy_label = Label::new(Some(&t!("Strategy:")));
         strategy_label.set_halign(gtk4::Align::Start);
-        let strategy_model = StringList::new(&["Raster", "Offset", "Adaptive"]);
+        let strategy_model = StringList::new(&[]);
+        strategy_model.append(&t!("Raster"));
+        strategy_model.append(&t!("Offset"));
+        strategy_model.append(&t!("Adaptive"));
         let strategy_combo = DropDown::new(Some(strategy_model), None::<Expression>);
         strategy_combo.set_hexpand(true);
 
@@ -286,7 +384,7 @@ impl PropertiesPanel {
         content.append(&cam_frame);
 
         // Empty state message
-        let empty_label = Label::new(Some("Select a shape to edit its properties"));
+        let empty_label = Label::new(Some(&t!("Select a shape to edit its properties")));
         empty_label.add_css_class("dim-label");
         empty_label.set_wrap(true);
         empty_label.set_margin_top(24);
@@ -299,6 +397,13 @@ impl PropertiesPanel {
             state: state.clone(),
             settings: settings.clone(),
             _content: content,
+            pos_frame: pos_frame.clone(),
+            size_frame: size_frame.clone(),
+            rot_frame: rot_frame.clone(),
+            corner_frame: corner_frame.clone(),
+            text_frame: text_frame.clone(),
+            cam_frame: cam_frame.clone(),
+            empty_label: empty_label.clone(),
             pos_x_entry: pos_x_entry.clone(),
             pos_y_entry: pos_y_entry.clone(),
             width_entry: width_entry.clone(),
@@ -307,6 +412,9 @@ impl PropertiesPanel {
             corner_radius_entry: corner_radius_entry.clone(),
             is_slot_check: is_slot_check.clone(),
             text_entry: text_entry.clone(),
+            font_family_combo: font_family_combo.clone(),
+            font_bold_check: font_bold_check.clone(),
+            font_italic_check: font_italic_check.clone(),
             font_size_entry: font_size_entry.clone(),
             op_type_combo: op_type_combo.clone(),
             depth_entry: depth_entry.clone(),
@@ -364,13 +472,14 @@ impl PropertiesPanel {
             if *updating1.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
                     let w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
                     let h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
                     let x = val as f64;
-                    
+
                     // Update shape position
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
@@ -380,6 +489,8 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw1.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -397,13 +508,14 @@ impl PropertiesPanel {
             if *updating2.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
                     let h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
                     let y = val as f64;
-                    
+
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
                     }
@@ -412,6 +524,8 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw2.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -429,13 +543,14 @@ impl PropertiesPanel {
             if *updating3.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
                     let h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
                     let w = val as f64;
-                    
+
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
                     }
@@ -444,6 +559,8 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw3.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -461,13 +578,14 @@ impl PropertiesPanel {
             if *updating4.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
                     let w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
                     let h = val as f64;
-                    
+
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         Self::update_shape_position_and_size(&mut obj.shape, x, y, w, h);
                     }
@@ -476,6 +594,8 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw4.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -487,10 +607,11 @@ impl PropertiesPanel {
         self.rotation_entry.connect_changed(move |entry| {
             if *updating5.borrow() { return; }
             if let Ok(val) = entry.text().parse::<f64>() {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                     let angle = val;
-                    
+
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         // Set rotation directly on shape variants that support it
                         match &mut obj.shape {
@@ -505,6 +626,8 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw5.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -518,12 +641,15 @@ impl PropertiesPanel {
             if *updating_cr.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 designer_state.set_selected_corner_radius(val as f64);
                 drop(designer_state);
                 if let Some(ref cb) = *redraw_cr.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -570,18 +696,18 @@ impl PropertiesPanel {
         let redraw7 = self.redraw_callback.clone();
         let updating7 = self.updating.clone();
 
-        // Font Size changed
+        // Font Size changed (entered in points; stored in mm)
         self.font_size_entry.connect_changed(move |entry| {
-            if *updating7.borrow() { return; }
-            let system = settings.borrow().config().ui.measurement_system;
-            if let Ok(val) = units::parse_length(&entry.text(), system) {
+            if *updating7.borrow() {
+                return;
+            }
+            if let Some(size_mm) = parse_font_points_mm(&entry.text()) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                    let size = val as f64;
-                    
                     if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                         if let Shape::Text(text_shape) = &mut obj.shape {
-                            text_shape.font_size = size;
+                            text_shape.font_size = size_mm;
                         }
                     }
                 }
@@ -589,6 +715,110 @@ impl PropertiesPanel {
                 if let Some(ref cb) = *redraw7.borrow() {
                     cb();
                 }
+            } else {
+                entry.add_css_class("entry-invalid");
+            }
+        });
+
+        let state = self.state.clone();
+        let redraw_font = self.redraw_callback.clone();
+        let updating_font = self.updating.clone();
+        let bold_check = self.font_bold_check.clone();
+        let italic_check = self.font_italic_check.clone();
+
+        // Font family changed
+        self.font_family_combo.connect_selected_notify(move |combo| {
+            if *updating_font.borrow() { return; }
+            let family = combo
+                .selected_item()
+                .and_downcast::<gtk4::StringObject>()
+                .map(|s| s.string().to_string())
+                .unwrap_or_else(|| "Sans".to_string());
+
+            let bold = bold_check.is_active();
+            let italic = italic_check.is_active();
+
+            let mut designer_state = state.borrow_mut();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                    if let Shape::Text(text_shape) = &mut obj.shape {
+                        text_shape.font_family = family;
+                        text_shape.bold = bold;
+                        text_shape.italic = italic;
+                    }
+                }
+            }
+            drop(designer_state);
+            if let Some(ref cb) = *redraw_font.borrow() {
+                cb();
+            }
+        });
+
+        let state = self.state.clone();
+        let redraw_style = self.redraw_callback.clone();
+        let updating_style = self.updating.clone();
+        let font_combo = self.font_family_combo.clone();
+        let bold_check = self.font_bold_check.clone();
+        let italic_check = self.font_italic_check.clone();
+
+        // Font style changed (bold)
+        bold_check.clone().connect_toggled(move |_| {
+            if *updating_style.borrow() { return; }
+            let family = font_combo
+                .selected_item()
+                .and_downcast::<gtk4::StringObject>()
+                .map(|s| s.string().to_string())
+                .unwrap_or_else(|| "Sans".to_string());
+            let bold = bold_check.is_active();
+            let italic = italic_check.is_active();
+
+            let mut designer_state = state.borrow_mut();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                    if let Shape::Text(text_shape) = &mut obj.shape {
+                        text_shape.font_family = family;
+                        text_shape.bold = bold;
+                        text_shape.italic = italic;
+                    }
+                }
+            }
+            drop(designer_state);
+            if let Some(ref cb) = *redraw_style.borrow() {
+                cb();
+            }
+        });
+
+        let state = self.state.clone();
+        let redraw_style2 = self.redraw_callback.clone();
+        let updating_style2 = self.updating.clone();
+        let font_combo2 = self.font_family_combo.clone();
+        let bold_check2 = self.font_bold_check.clone();
+        let italic_check2 = self.font_italic_check.clone();
+
+        // Font style changed (italic)
+        italic_check2.clone().connect_toggled(move |_| {
+            if *updating_style2.borrow() { return; }
+            let family = font_combo2
+                .selected_item()
+                .and_downcast::<gtk4::StringObject>()
+                .map(|s| s.string().to_string())
+                .unwrap_or_else(|| "Sans".to_string());
+            let bold = bold_check2.is_active();
+            let italic = italic_check2.is_active();
+
+            let mut designer_state = state.borrow_mut();
+            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                    if let Shape::Text(text_shape) = &mut obj.shape {
+                        text_shape.font_family = family;
+                        text_shape.bold = bold;
+                        text_shape.italic = italic;
+                    }
+                }
+            }
+            drop(designer_state);
+            if let Some(ref cb) = *redraw_style2.borrow() {
+                cb();
             }
         });
 
@@ -614,9 +844,12 @@ impl PropertiesPanel {
             if *updating9.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 let is_pocket = op_combo.selected() == 1;
                 designer_state.set_selected_pocket_properties(is_pocket, val as f64);
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -629,8 +862,11 @@ impl PropertiesPanel {
             if *updating10.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 designer_state.set_selected_step_down(val as f64);
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -643,8 +879,11 @@ impl PropertiesPanel {
             if *updating11.borrow() { return; }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
+                entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
                 designer_state.set_selected_step_in(val as f64);
+            } else {
+                entry.add_css_class("entry-invalid");
             }
         });
 
@@ -715,7 +954,7 @@ impl PropertiesPanel {
         self.width_unit_label.set_text(unit_label);
         self.height_unit_label.set_text(unit_label);
         self.radius_unit_label.set_text(unit_label);
-        self.font_size_unit_label.set_text(unit_label);
+        self.font_size_unit_label.set_text("pt");
         self.depth_unit_label.set_text(unit_label);
         self.step_down_unit_label.set_text(unit_label);
         self.step_in_unit_label.set_text(unit_label);
@@ -762,9 +1001,48 @@ impl PropertiesPanel {
 
             // Update header with shape ID(s)
             if ids.len() == 1 {
-                self.header.set_text(&format!("Properties [{}]", ids[0]));
+                self.header
+                    .set_text(&format!("{} [{}]", t!("Properties"), ids[0]));
             } else {
-                self.header.set_text(&format!("Properties [{} shapes]", ids.len()));
+                self.header.set_text(&format!(
+                    "{} [{} {}]",
+                    t!("Properties"),
+                    ids.len(),
+                    t!("shapes")
+                ));
+            }
+
+            self.empty_label.set_visible(false);
+
+            if ids.len() == 1 {
+                self.pos_frame.set_visible(true);
+                self.size_frame.set_visible(true);
+                self.rot_frame.set_visible(true);
+                self.cam_frame.set_visible(true);
+            } else {
+                // Multi-select: CAM only
+                self.pos_frame.set_visible(false);
+                self.size_frame.set_visible(false);
+                self.rot_frame.set_visible(false);
+                self.corner_frame.set_visible(false);
+                self.text_frame.set_visible(false);
+                self.cam_frame.set_visible(true);
+            }
+
+            // Clear validation state on programmatic updates
+            for e in [
+                &self.pos_x_entry,
+                &self.pos_y_entry,
+                &self.width_entry,
+                &self.height_entry,
+                &self.rotation_entry,
+                &self.corner_radius_entry,
+                &self.font_size_entry,
+                &self.depth_entry,
+                &self.step_down_entry,
+                &self.step_in_entry,
+            ] {
+                e.remove_css_class("entry-invalid");
             }
 
             if let Some(shape) = shape_opt {
@@ -779,6 +1057,9 @@ impl PropertiesPanel {
                 // Update spin buttons based on shape type
                 match shape {
                 Shape::Rectangle(rect) => {
+                    self.corner_frame.set_visible(true);
+                    self.text_frame.set_visible(false);
+
                     self.pos_x_entry.set_text(&units::format_length(rect.x as f32, system));
                     self.pos_y_entry.set_text(&units::format_length(rect.y as f32, system));
                     self.width_entry.set_text(&units::format_length(rect.width as f32, system));
@@ -797,6 +1078,9 @@ impl PropertiesPanel {
                     self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Circle(circle) => {
+                    self.corner_frame.set_visible(false);
+                    self.text_frame.set_visible(false);
+
                     self.pos_x_entry.set_text(&units::format_length(circle.center.x as f32, system));
                     self.pos_y_entry.set_text(&units::format_length(circle.center.y as f32, system));
                     self.width_entry.set_text(&units::format_length((circle.radius * 2.0) as f32, system));
@@ -808,10 +1092,13 @@ impl PropertiesPanel {
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&units::format_length(0.0, system));
+                    self.font_size_entry.set_text(&format_font_points(0.0));
                     self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Ellipse(ellipse) => {
+                    self.corner_frame.set_visible(false);
+                    self.text_frame.set_visible(false);
+
                     self.pos_x_entry.set_text(&units::format_length(ellipse.center.x as f32, system));
                     self.pos_y_entry.set_text(&units::format_length(ellipse.center.y as f32, system));
                     self.width_entry.set_text(&units::format_length((ellipse.rx * 2.0) as f32, system));
@@ -823,10 +1110,13 @@ impl PropertiesPanel {
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&units::format_length(0.0, system));
+                    self.font_size_entry.set_text(&format_font_points(0.0));
                     self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Line(line) => {
+                    self.corner_frame.set_visible(false);
+                    self.text_frame.set_visible(false);
+
                     self.pos_x_entry.set_text(&units::format_length(line.start.x as f32, system));
                     self.pos_y_entry.set_text(&units::format_length(line.start.y as f32, system));
                     self.width_entry.set_text(&units::format_length((line.end.x - line.start.x) as f32, system));
@@ -838,10 +1128,13 @@ impl PropertiesPanel {
                     
                     self.text_entry.set_text("");
                     self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&units::format_length(0.0, system));
+                    self.font_size_entry.set_text(&format_font_points(0.0));
                     self.font_size_entry.set_sensitive(false);
                 }
                 Shape::Text(text) => {
+                    self.corner_frame.set_visible(false);
+                    self.text_frame.set_visible(true);
+
                     self.pos_x_entry.set_text(&units::format_length(text.x as f32, system));
                     self.pos_y_entry.set_text(&units::format_length(text.y as f32, system));
                     // Width/Height are derived, maybe show bounding box size?
@@ -858,10 +1151,35 @@ impl PropertiesPanel {
                     
                     self.text_entry.set_text(&text.text);
                     self.text_entry.set_sensitive(true);
-                    self.font_size_entry.set_text(&units::format_length(text.font_size as f32, system));
+                    self.font_size_entry.set_text(&format_font_points(text.font_size));
                     self.font_size_entry.set_sensitive(true);
+
+                    self.font_family_combo.set_sensitive(true);
+                    self.font_bold_check.set_sensitive(true);
+                    self.font_italic_check.set_sensitive(true);
+
+                    let family = if text.font_family.is_empty() { "Sans" } else { &text.font_family };
+                    let mut family_idx = 0;
+                    if let Some(model) = self.font_family_combo.model().and_downcast::<StringList>() {
+                        for i in 0..model.n_items() {
+                            if let Some(obj) = model.item(i) {
+                                if let Ok(s) = obj.downcast::<gtk4::StringObject>() {
+                                    if s.string() == family {
+                                        family_idx = i;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    self.font_family_combo.set_selected(family_idx);
+                    self.font_bold_check.set_active(text.bold);
+                    self.font_italic_check.set_active(text.italic);
                 }
                 _ => {
+                    self.corner_frame.set_visible(false);
+                    self.text_frame.set_visible(false);
+
                     // Other shapes
                     self.corner_radius_entry.set_sensitive(false);
                     self.is_slot_check.set_sensitive(false);
@@ -920,8 +1238,16 @@ impl PropertiesPanel {
             *self.updating.borrow_mut() = false;
         } else {
             // No selection - reset header and disable controls
-            self.header.set_text("Properties");
-            
+            self.header.set_text(&t!("Properties"));
+
+            self.empty_label.set_visible(true);
+            self.pos_frame.set_visible(false);
+            self.size_frame.set_visible(false);
+            self.rot_frame.set_visible(false);
+            self.corner_frame.set_visible(false);
+            self.text_frame.set_visible(false);
+            self.cam_frame.set_visible(false);
+
             self.pos_x_entry.set_sensitive(false);
             self.pos_y_entry.set_sensitive(false);
             self.width_entry.set_sensitive(false);
