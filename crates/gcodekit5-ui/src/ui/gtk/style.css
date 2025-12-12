@@ -39,6 +39,22 @@ window.gk-about-dialog {
     background-color: var(--view-bg-color);
 }
 
+/* Visualizer Sidebar (compact list) */
+.visualizer-sidebar {
+    background-color: alpha(var(--window-bg-color), 0.92);
+    border-right: 1px solid alpha(var(--fg-color), 0.08);
+    border-radius: 8px;
+    padding: 8px;
+}
+
+.visualizer-sidebar-list {
+    background: transparent;
+}
+
+.visualizer-sidebar-list > row {
+    padding: 0;
+}
+
 /* Editor styling tweaks if needed */
 textview {
     font-family: "Monospace";

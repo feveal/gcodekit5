@@ -49,6 +49,11 @@ jobs:
           libwayland-dev \
           libxkbcommon-x11-dev \
           libudev-dev \
+          libgio-2.0-dev \
+          liblzma-dev \
+          libbz2-dev \
+          libcairo-gobject2-dev \
+          gettext \
           flatpak \
           flatpak-builder
         flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo

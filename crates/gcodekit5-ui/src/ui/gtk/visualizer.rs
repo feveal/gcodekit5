@@ -93,8 +93,9 @@ use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
     accessible::Property as AccessibleProperty, gdk::ModifierType, Adjustment, Box, Button,
     CheckButton, ComboBoxText, DrawingArea, EventControllerMotion, EventControllerScroll,
-    EventControllerScrollFlags, Expander, GLArea, GestureDrag, Grid, Image, Label, Orientation,
-    Overlay, Paned, Scrollbar, Spinner, Stack, ToggleButton,
+    EventControllerScrollFlags, Expander, GLArea, GestureDrag, Grid, Image, Label, ListBox,
+    ListBoxRow, Orientation, Overlay, Paned, Revealer, Scrollbar, SelectionMode, Spinner, Stack,
+    ToggleButton,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -182,10 +183,11 @@ pub struct GcodeVisualizer {
     hadjustment_3d: Adjustment,
     vadjustment_3d: Adjustment,
     // Info labels
-    bounds_label: Label,
-    min_s_label: Label,
-    max_s_label: Label,
-    avg_s_label: Label,
+    bounds_x_value: Label,
+    bounds_y_value: Label,
+    min_s_value: Label,
+    max_s_value: Label,
+    avg_s_value: Label,
     _status_label: Label,
     device_manager: Option<Arc<DeviceManager>>,
     settings_controller: Rc<SettingsController>,
@@ -272,8 +274,8 @@ impl GcodeVisualizer {
         container.set_hexpand(true);
         container.set_vexpand(true);
 
-        // Sidebar for controls
-        let sidebar = Box::new(Orientation::Vertical, 12);
+        // Sidebar for controls (compact list + toolbar)
+        let sidebar = Box::new(Orientation::Vertical, 8);
         sidebar.set_width_request(200);
         sidebar.add_css_class("visualizer-sidebar");
         sidebar.set_margin_start(12);
@@ -281,15 +283,9 @@ impl GcodeVisualizer {
         sidebar.set_margin_top(12);
         sidebar.set_margin_bottom(12);
 
-        // View Controls
-        let view_label = Label::builder()
-            .label(t!("View Controls"))
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .build();
-        sidebar.append(&view_label);
-
+        // Top toolbar row
         let view_controls = Box::new(Orientation::Horizontal, 6);
+
         let fit_btn = Button::builder()
             .icon_name("zoom-fit-best-symbolic")
             .tooltip_text(t!("Fit to Content"))
@@ -333,16 +329,7 @@ impl GcodeVisualizer {
 
         sidebar.append(&view_controls);
 
-        // View Mode Switcher
-        let mode_label = Label::builder()
-            .label(t!("View Mode"))
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .margin_top(12)
-            .build();
-        sidebar.append(&mode_label);
-
-        // Compact 2D/3D segmented control
+        // Compact 2D/3D segmented control (in a list row)
         let mode_box = Box::new(Orientation::Horizontal, 0);
         mode_box.add_css_class("linked");
 
@@ -366,16 +353,23 @@ impl GcodeVisualizer {
 
         mode_box.append(&mode_2d_btn);
         mode_box.append(&mode_3d_btn);
-        sidebar.append(&mode_box);
 
-        // Sidebar sections
-        let vis_label = Label::builder()
-            .label(t!("View"))
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .margin_top(12)
-            .build();
-        sidebar.append(&vis_label);
+        let sidebar_list = ListBox::new();
+        sidebar_list.set_selection_mode(SelectionMode::None);
+        sidebar_list.add_css_class("visualizer-sidebar-list");
+
+        {
+            let row = ListBoxRow::new();
+            let mode_row = Box::new(Orientation::Horizontal, 8);
+            let mode_label = Label::new(Some(&t!("Mode")));
+            mode_label.add_css_class("caption");
+            mode_label.set_halign(gtk4::Align::Start);
+            mode_label.set_hexpand(true);
+            mode_row.append(&mode_label);
+            mode_row.append(&mode_box);
+            row.set_child(Some(&mode_row));
+            sidebar_list.append(&row);
+        }
 
         let show_rapid = CheckButton::builder()
             .label(t!("Show Rapid Moves"))
@@ -449,12 +443,6 @@ impl GcodeVisualizer {
             .build();
 
         // Stock configuration
-        let stock_config_label = Label::builder()
-            .label(t!("Stock Dimensions (mm)"))
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .margin_top(12)
-            .build();
 
         let stock_width_entry = gtk4::Entry::builder()
             .placeholder_text(t!("Width"))
@@ -488,9 +476,13 @@ impl GcodeVisualizer {
             .expanded(true)
             .child(&toolpath_box)
             .build();
-        sidebar.append(&toolpath_expander);
+        {
+            let row = ListBoxRow::new();
+            row.set_child(Some(&toolpath_expander));
+            sidebar_list.append(&row);
+        }
 
-        let guides_box = Box::new(Orientation::Vertical, 6);
+        let guides_box = Box::new(Orientation::Vertical, 4);
         guides_box.set_margin_start(6);
         guides_box.set_margin_end(6);
         guides_box.set_margin_top(6);
@@ -504,71 +496,147 @@ impl GcodeVisualizer {
             .expanded(true)
             .child(&guides_box)
             .build();
-        sidebar.append(&guides_expander);
+        {
+            let row = ListBoxRow::new();
+            row.set_child(Some(&guides_expander));
+            sidebar_list.append(&row);
+        }
 
-        let simulation_box = Box::new(Orientation::Vertical, 6);
+        let stock_box = Box::new(Orientation::Vertical, 4);
+        {
+            let stock_label = Label::new(Some(&t!("Stock")));
+            stock_label.add_css_class("caption");
+            stock_label.set_halign(gtk4::Align::Start);
+            stock_box.append(&stock_label);
+        }
+        stock_box.append(&stock_width_entry);
+        stock_box.append(&stock_height_entry);
+        stock_box.append(&stock_thickness_entry);
+        stock_box.append(&stock_tool_radius_entry);
+
+        let stock_revealer = Revealer::new();
+        stock_revealer.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
+        stock_revealer.set_child(Some(&stock_box));
+        stock_revealer.set_reveal_child(show_stock_removal.is_active());
+
+        {
+            let stock_revealer = stock_revealer.clone();
+            show_stock_removal.connect_toggled(move |b| {
+                stock_revealer.set_reveal_child(b.is_active());
+            });
+        }
+
+        let simulation_box = Box::new(Orientation::Vertical, 4);
         simulation_box.set_margin_start(6);
         simulation_box.set_margin_end(6);
         simulation_box.set_margin_top(6);
         simulation_box.set_margin_bottom(6);
         simulation_box.append(&show_intensity);
         simulation_box.append(&show_stock_removal);
-        simulation_box.append(&stock_config_label);
-        simulation_box.append(&stock_width_entry);
-        simulation_box.append(&stock_height_entry);
-        simulation_box.append(&stock_thickness_entry);
-        simulation_box.append(&stock_tool_radius_entry);
+        simulation_box.append(&stock_revealer);
 
         let simulation_expander = Expander::builder()
             .label(t!("Simulation"))
             .expanded(false)
             .child(&simulation_box)
             .build();
-        sidebar.append(&simulation_expander);
+        {
+            let row = ListBoxRow::new();
+            row.set_child(Some(&simulation_expander));
+            sidebar_list.append(&row);
+        }
 
         // Inspector
-        let bounds_label = Label::builder()
-            .label(t!("Bounds\nX: 0.0 to 0.0\nY: 0.0 to 0.0"))
-            .css_classes(vec!["caption"])
-            .halign(gtk4::Align::Start)
+        let bounds_x_value = Label::builder()
+            .label("0.0")
+            .halign(gtk4::Align::End)
+            .css_classes(vec!["monospace"])
+            .build();
+        let bounds_y_value = Label::builder()
+            .label("0.0")
+            .halign(gtk4::Align::End)
+            .css_classes(vec!["monospace"])
             .build();
 
-        let min_s_label = Label::builder()
-            .label(t!("Min S: -"))
-            .halign(gtk4::Align::Start)
+        let min_s_value = Label::builder()
+            .label(t!("N/A"))
+            .halign(gtk4::Align::End)
+            .css_classes(vec!["monospace"])
             .build();
-        let max_s_label = Label::builder()
-            .label(t!("Max S: -"))
-            .halign(gtk4::Align::Start)
+        let max_s_value = Label::builder()
+            .label(t!("N/A"))
+            .halign(gtk4::Align::End)
+            .css_classes(vec!["monospace"])
             .build();
-        let avg_s_label = Label::builder()
-            .label(t!("Avg S: -"))
-            .halign(gtk4::Align::Start)
+        let avg_s_value = Label::builder()
+            .label(t!("N/A"))
+            .halign(gtk4::Align::End)
+            .css_classes(vec!["monospace"])
             .build();
+
+        let inspector_list = ListBox::new();
+        inspector_list.set_selection_mode(gtk4::SelectionMode::None);
+        inspector_list.add_css_class("boxed-list");
+
+        let make_row = |key: String, value: &Label| {
+            let row_box = Box::new(Orientation::Horizontal, 12);
+            row_box.set_margin_start(10);
+            row_box.set_margin_end(10);
+            row_box.set_margin_top(6);
+            row_box.set_margin_bottom(6);
+
+            let key_label = Label::builder()
+                .label(&key)
+                .halign(gtk4::Align::Start)
+                .hexpand(true)
+                .css_classes(vec!["caption"])
+                .build();
+
+            row_box.append(&key_label);
+            row_box.append(value);
+
+            let row = ListBoxRow::new();
+            row.set_activatable(false);
+            row.set_selectable(false);
+            row.set_child(Some(&row_box));
+            row
+        };
+
+        inspector_list.append(&make_row(format!("{} X", t!("Bounds")), &bounds_x_value));
+        inspector_list.append(&make_row(format!("{} Y", t!("Bounds")), &bounds_y_value));
+        inspector_list.append(&make_row(t!("Min S:").to_string(), &min_s_value));
+        inspector_list.append(&make_row(t!("Max S:").to_string(), &max_s_value));
+        inspector_list.append(&make_row(t!("Avg S:").to_string(), &avg_s_value));
 
         let inspector_box = Box::new(Orientation::Vertical, 6);
         inspector_box.set_margin_start(6);
         inspector_box.set_margin_end(6);
         inspector_box.set_margin_top(6);
         inspector_box.set_margin_bottom(6);
-        inspector_box.append(&bounds_label);
-        inspector_box.append(&min_s_label);
-        inspector_box.append(&max_s_label);
-        inspector_box.append(&avg_s_label);
+        inspector_box.append(&inspector_list);
 
         let inspector_expander = Expander::builder()
             .label(t!("Inspector"))
-            .expanded(true)
+            .expanded(false)
             .child(&inspector_box)
             .build();
-        sidebar.append(&inspector_expander);
+        {
+            let row = ListBoxRow::new();
+            row.set_child(Some(&inspector_expander));
+            sidebar_list.append(&row);
+        }
 
-        // Wrap sidebar in a scrolled window
-        let scrolled_sidebar = gtk4::ScrolledWindow::builder()
+        // Scroll the list content (keep toolbar pinned)
+        let list_scroller = gtk4::ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
             .vscrollbar_policy(gtk4::PolicyType::Automatic)
-            .child(&sidebar)
+            .child(&sidebar_list)
             .build();
+        list_scroller.set_vexpand(true);
+        sidebar.append(&list_scroller);
+
+        // Widget that gets inserted/hidden in the Paned
+        let scrolled_sidebar = sidebar.clone();
 
         let sidebar_visible_init = settings_controller
             .persistence
@@ -2604,10 +2672,11 @@ impl GcodeVisualizer {
             vadjustment,
             hadjustment_3d,
             vadjustment_3d,
-            bounds_label,
-            min_s_label,
-            max_s_label,
-            avg_s_label,
+            bounds_x_value,
+            bounds_y_value,
+            min_s_value,
+            max_s_value,
+            avg_s_value,
             _status_label: status_label,
             device_manager,
             settings_controller,
@@ -2773,7 +2842,7 @@ impl GcodeVisualizer {
         cache.cutting_bounds = None;
         drop(cache);
 
-        // Update bounds label
+        // Update bounds
         let (min_x, max_x, min_y, max_y) = vis.get_bounds();
 
         let system = self
@@ -2788,16 +2857,10 @@ impl GcodeVisualizer {
         let min_y_str = gcodekit5_core::units::format_length(min_y, system);
         let max_y_str = gcodekit5_core::units::format_length(max_y, system);
 
-        self.bounds_label.set_text(&format!(
-            "{}\nX: {} {} {}\nY: {} {} {}",
-            t!("Bounds"),
-            min_x_str,
-            t!("to"),
-            max_x_str,
-            min_y_str,
-            t!("to"),
-            max_y_str
-        ));
+        self.bounds_x_value
+            .set_text(&format!("{} {} {}", min_x_str, t!("to"), max_x_str));
+        self.bounds_y_value
+            .set_text(&format!("{} {} {}", min_y_str, t!("to"), max_y_str));
 
         // Calculate S statistics
         let mut min_s = f32::MAX;
@@ -2829,19 +2892,14 @@ impl GcodeVisualizer {
         }
 
         if count_s > 0 {
-            self.min_s_label
-                .set_text(&format!("{} {:.1}", t!("Min S:"), min_s));
-            self.max_s_label
-                .set_text(&format!("{} {:.1}", t!("Max S:"), max_s));
-            self.avg_s_label
-                .set_text(&format!("{} {:.1}", t!("Avg S:"), sum_s / count_s as f32));
+            self.min_s_value.set_text(&format!("{:.1}", min_s));
+            self.max_s_value.set_text(&format!("{:.1}", max_s));
+            self.avg_s_value
+                .set_text(&format!("{:.1}", sum_s / count_s as f32));
         } else {
-            self.min_s_label
-                .set_text(&format!("{} {}", t!("Min S:"), t!("N/A")));
-            self.max_s_label
-                .set_text(&format!("{} {}", t!("Max S:"), t!("N/A")));
-            self.avg_s_label
-                .set_text(&format!("{} {}", t!("Avg S:"), t!("N/A")));
+            self.min_s_value.set_text(&t!("N/A"));
+            self.max_s_value.set_text(&t!("N/A"));
+            self.avg_s_value.set_text(&t!("N/A"));
         }
 
         // Auto fit
