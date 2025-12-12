@@ -1,16 +1,21 @@
-use gtk4::prelude::*;
-use gtk4::{Box, Button, Entry, Label, Orientation, Overlay, PolicyType, ScrolledWindow, FileChooserAction, FileChooserNative, ResponseType};
-use sourceview5::prelude::*;
-use sourceview5::{Buffer, LanguageManager, SearchContext, SearchSettings, StyleSchemeManager, View};
-use std::cell::RefCell;
-use std::path::PathBuf;
-use std::fs;
-use std::rc::Rc;
-use tracing::error;
-use std::thread;
-use std::sync::mpsc;
-use glib;
 use crate::ui::gtk::status_bar::StatusBar;
+use glib;
+use gtk4::prelude::*;
+use gtk4::{
+    Box, Button, Entry, FileChooserAction, FileChooserNative, Label, Orientation, Overlay,
+    PolicyType, ResponseType, ScrolledWindow,
+};
+use sourceview5::prelude::*;
+use sourceview5::{
+    Buffer, LanguageManager, SearchContext, SearchSettings, StyleSchemeManager, View,
+};
+use std::cell::RefCell;
+use std::fs;
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::sync::mpsc;
+use std::thread;
+use tracing::error;
 
 pub struct GcodeEditor {
     pub widget: Overlay,
@@ -27,7 +32,7 @@ impl GcodeEditor {
     pub fn new(status_bar: Option<StatusBar>) -> Self {
         let buffer = Buffer::new(None);
         let view = View::with_buffer(&buffer);
-        
+
         view.set_show_line_numbers(true);
         view.set_monospace(true);
         view.set_highlight_current_line(true);
@@ -35,14 +40,15 @@ impl GcodeEditor {
         view.set_insert_spaces_instead_of_tabs(true);
         view.set_show_right_margin(true);
         view.set_right_margin_position(80);
-        
+
         // Try to set a dark style scheme if available, matching the app's dark theme
         let scheme_manager = StyleSchemeManager::default();
-        
+
         // Add custom search path for styles
         let current_style_paths = scheme_manager.search_path();
-        let mut new_style_paths: Vec<String> = current_style_paths.iter().map(|s| s.to_string()).collect();
-        
+        let mut new_style_paths: Vec<String> =
+            current_style_paths.iter().map(|s| s.to_string()).collect();
+
         if let Ok(cwd) = std::env::current_dir() {
             let assets_path = cwd.join("assets");
             if assets_path.exists() {
@@ -57,14 +63,14 @@ impl GcodeEditor {
                 }
             }
         }
-        
+
         let style_path_refs: Vec<&str> = new_style_paths.iter().map(|s| s.as_str()).collect();
         scheme_manager.set_search_path(&style_path_refs);
 
         // Try to load our custom bright scheme first
         if let Some(scheme) = scheme_manager.scheme("gcode-bright") {
             buffer.set_style_scheme(Some(&scheme));
-        } else if let Some(scheme) = scheme_manager.scheme("kate") { 
+        } else if let Some(scheme) = scheme_manager.scheme("kate") {
             buffer.set_style_scheme(Some(&scheme));
         } else if let Some(scheme) = scheme_manager.scheme("classic") {
             buffer.set_style_scheme(Some(&scheme));
@@ -72,15 +78,15 @@ impl GcodeEditor {
 
         // Load G-code language definition
         let lm = LanguageManager::default();
-        
+
         // Add custom search path for language specs
         let current_paths = lm.search_path();
         let mut new_paths: Vec<String> = current_paths.iter().map(|s| s.to_string()).collect();
-        
+
         // Check for assets/language-specs in current directory (dev mode)
         if let Ok(cwd) = std::env::current_dir() {
             let assets_path = cwd.join("assets");
-            
+
             // Add assets directory (manager might look for language-specs subdir)
             if assets_path.exists() {
                 if let Some(path_str) = assets_path.to_str() {
@@ -96,7 +102,7 @@ impl GcodeEditor {
                 }
             }
         }
-        
+
         let path_refs: Vec<&str> = new_paths.iter().map(|s| s.as_str()).collect();
         lm.set_search_path(&path_refs);
 
@@ -104,7 +110,10 @@ impl GcodeEditor {
             buffer.set_language(Some(&lang));
         } else {
             // Fallback or log if needed
-            tracing::warn!("G-code language definition not found in search path: {:?}", new_paths);
+            tracing::warn!(
+                "G-code language definition not found in search path: {:?}",
+                new_paths
+            );
         }
 
         let scrolled = ScrolledWindow::builder()
@@ -125,9 +134,7 @@ impl GcodeEditor {
         line_counter_box.set_margin_bottom(20);
         line_counter_box.set_margin_end(20);
 
-        let line_counter_label = Label::builder()
-            .label("Line 1 / 1")
-            .build();
+        let line_counter_label = Label::builder().label("Line 1 / 1").build();
         line_counter_box.append(&line_counter_label);
 
         overlay.add_overlay(&line_counter_box);
@@ -143,7 +150,7 @@ impl GcodeEditor {
         search_box.set_valign(gtk4::Align::Start);
         search_box.set_margin_top(20);
         search_box.set_margin_end(20);
-        
+
         // Search Row
         let search_row = Box::new(Orientation::Horizontal, 4);
         let search_entry = Entry::builder()
@@ -158,11 +165,11 @@ impl GcodeEditor {
             .icon_name("go-down-symbolic")
             .tooltip_text("Next Match")
             .build();
-            
+
         search_row.append(&search_entry);
         search_row.append(&prev_btn);
         search_row.append(&next_btn);
-        
+
         // Replace Row
         let replace_row = Box::new(Orientation::Horizontal, 4);
         let replace_entry = Entry::builder()
@@ -217,7 +224,7 @@ impl GcodeEditor {
             let replace_entry = replace_entry.clone();
             let buffer = buffer.clone();
             let context = search_context.clone();
-            
+
             Rc::new(move || {
                 let count = context.occurrences_count();
                 let replace_text = replace_entry.text();
@@ -243,16 +250,24 @@ impl GcodeEditor {
                 // Calculate n (current match index)
                 let mut current_idx = 0;
                 let mut iter = buffer.start_iter();
-                
+
                 // Get current selection start/end
                 let insert = buffer.iter_at_mark(&buffer.get_insert());
                 let bound = buffer.iter_at_mark(&buffer.selection_bound());
-                let selection_start = if bound.offset() < insert.offset() { bound } else { insert };
-                let selection_end = if bound.offset() > insert.offset() { bound } else { insert };
+                let selection_start = if bound.offset() < insert.offset() {
+                    bound
+                } else {
+                    insert
+                };
+                let selection_end = if bound.offset() > insert.offset() {
+                    bound
+                } else {
+                    insert
+                };
 
                 let mut found_current = false;
                 let mut match_count = 0;
-                
+
                 // Iterate to find current match index
                 while let Some((start, end, _)) = context.forward(&iter) {
                     match_count += 1;
@@ -261,19 +276,19 @@ impl GcodeEditor {
                         current_idx = match_count;
                         found_current = true;
                     }
-                    
+
                     iter = end;
                     if start.offset() > selection_start.offset() {
                         break;
                     }
                 }
-                
+
                 if found_current {
                     label.set_label(&format!("{} of {} matches", current_idx, count));
                 } else {
                     label.set_label(&format!("{} matches", count));
                 }
-                
+
                 // Update buttons
                 // Prev: check if there is a match before selection start
                 if context.backward(&selection_start).is_some() {
@@ -281,7 +296,7 @@ impl GcodeEditor {
                 } else {
                     prev_btn.set_sensitive(false);
                 }
-                
+
                 // Next: check if there is a match after selection end
                 if context.forward(&selection_end).is_some() {
                     next_btn.set_sensitive(true);
@@ -306,7 +321,9 @@ impl GcodeEditor {
         // Connect Cursor Move (Mark Set)
         let update_ui_clone = update_ui.clone();
         buffer.connect_mark_set(move |_, _, mark| {
-            if mark.name().as_deref() == Some("insert") || mark.name().as_deref() == Some("selection_bound") {
+            if mark.name().as_deref() == Some("insert")
+                || mark.name().as_deref() == Some("selection_bound")
+            {
                 update_ui_clone();
             }
         });
@@ -318,11 +335,21 @@ impl GcodeEditor {
         next_btn.connect_clicked(move |_| {
             let insert = buffer_clone.iter_at_mark(&buffer_clone.get_insert());
             let bound = buffer_clone.iter_at_mark(&buffer_clone.selection_bound());
-            let selection_end = if bound.offset() > insert.offset() { bound } else { insert };
-            
+            let selection_end = if bound.offset() > insert.offset() {
+                bound
+            } else {
+                insert
+            };
+
             if let Some((start, end, _)) = context_clone.forward(&selection_end) {
                 buffer_clone.select_range(&start, &end);
-                view_clone.scroll_to_mark(&buffer_clone.create_mark(None, &start, false), 0.0, true, 0.5, 0.5);
+                view_clone.scroll_to_mark(
+                    &buffer_clone.create_mark(None, &start, false),
+                    0.0,
+                    true,
+                    0.5,
+                    0.5,
+                );
                 // UI update will happen via mark-set signal
             }
         });
@@ -334,11 +361,21 @@ impl GcodeEditor {
         prev_btn.connect_clicked(move |_| {
             let insert = buffer_clone.iter_at_mark(&buffer_clone.get_insert());
             let bound = buffer_clone.iter_at_mark(&buffer_clone.selection_bound());
-            let selection_start = if bound.offset() < insert.offset() { bound } else { insert };
-            
+            let selection_start = if bound.offset() < insert.offset() {
+                bound
+            } else {
+                insert
+            };
+
             if let Some((start, end, _)) = context_clone.backward(&selection_start) {
                 buffer_clone.select_range(&start, &end);
-                view_clone.scroll_to_mark(&buffer_clone.create_mark(None, &start, false), 0.0, true, 0.5, 0.5);
+                view_clone.scroll_to_mark(
+                    &buffer_clone.create_mark(None, &start, false),
+                    0.0,
+                    true,
+                    0.5,
+                    0.5,
+                );
                 // UI update will happen via mark-set signal
             }
         });
@@ -353,25 +390,32 @@ impl GcodeEditor {
                 if let Some(selection_bound) = buffer_clone.mark("selection_bound") {
                     let mut start = buffer_clone.iter_at_mark(&insert);
                     let mut end = buffer_clone.iter_at_mark(&selection_bound);
-                    
+
                     // Ensure start is before end
                     if start.offset() > end.offset() {
                         std::mem::swap(&mut start, &mut end);
                     }
 
                     let replace_text = replace_entry_clone.text();
-                    
+
                     // Check if current selection is a match
                     // Note: This is a simplified check. Ideally we check if the selection matches the search text.
                     // But context.replace() requires us to pass the match iterators.
                     // If we just want to replace the current match and move to next:
-                    
+
                     if let Ok(_) = context_clone.replace(&mut start, &mut end, &replace_text) {
                         // Move to next match
                         let iter = end; // Continue from end of replacement
-                        if let Some((next_start, next_end, _wrapped)) = context_clone.forward(&iter) {
+                        if let Some((next_start, next_end, _wrapped)) = context_clone.forward(&iter)
+                        {
                             buffer_clone.select_range(&next_start, &next_end);
-                            view_clone.scroll_to_mark(&buffer_clone.create_mark(None, &next_start, false), 0.0, true, 0.5, 0.5);
+                            view_clone.scroll_to_mark(
+                                &buffer_clone.create_mark(None, &next_start, false),
+                                0.0,
+                                true,
+                                0.5,
+                                0.5,
+                            );
                         }
                     }
                 }
@@ -386,27 +430,30 @@ impl GcodeEditor {
 
         replace_all_btn.connect_clicked(move |_| {
             let replace_text = replace_entry_clone.text().to_string();
-            let search_text = search_settings_clone.search_text().map(|s| s.to_string()).unwrap_or_default();
-            
+            let search_text = search_settings_clone
+                .search_text()
+                .map(|s| s.to_string())
+                .unwrap_or_default();
+
             if search_text.is_empty() {
                 return;
             }
 
             let buffer = buffer_clone.clone();
             let status_bar = status_bar_clone.clone();
-            
+
             // Get text from buffer (must be on main thread)
             let start = buffer.start_iter();
             let end = buffer.end_iter();
             let text = buffer.text(&start, &end, true).to_string();
-            
+
             if let Some(sb) = &status_bar {
                 sb.set_progress(10.0, "Calculating...", "Please wait");
             }
 
             // Spawn thread
             let (sender, receiver) = mpsc::channel();
-            
+
             thread::spawn(move || {
                 // Perform replacement
                 let new_text = text.replace(&search_text, &replace_text);
@@ -415,7 +462,7 @@ impl GcodeEditor {
 
             let buffer = buffer_clone.clone();
             let status_bar = status_bar_clone.clone();
-            
+
             glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                 match receiver.try_recv() {
                     Ok(new_text) => {
@@ -491,7 +538,8 @@ impl GcodeEditor {
         let mut start_iter = self.buffer.start_iter();
         self.buffer.place_cursor(&start_iter);
         // Scroll to top
-        self.view.scroll_to_iter(&mut start_iter, 0.0, false, 0.0, 0.0);
+        self.view
+            .scroll_to_iter(&mut start_iter, 0.0, false, 0.0, 0.0);
     }
 
     pub fn get_text(&self) -> String {
@@ -499,11 +547,11 @@ impl GcodeEditor {
         let end = self.buffer.end_iter();
         self.buffer.text(&start, &end, true).to_string()
     }
-    
+
     pub fn grab_focus(&self) {
         self.view.grab_focus();
     }
-    
+
     pub fn connect_changed<F: Fn(&Buffer) + 'static>(&self, f: F) {
         self.buffer.connect_changed(f);
     }
@@ -568,7 +616,7 @@ impl GcodeEditor {
 
         let buffer = self.buffer.clone();
         let current_file = self.current_file.clone();
-        
+
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
@@ -597,12 +645,12 @@ impl GcodeEditor {
 
     pub fn save_file(&self) {
         let current_path = self.current_file.borrow().clone();
-        
+
         if let Some(path) = current_path {
             let start = self.buffer.start_iter();
             let end = self.buffer.end_iter();
             let content = self.buffer.text(&start, &end, true);
-            
+
             if let Err(e) = fs::write(&path, content.as_str()) {
                 error!("Error saving file: {}", e);
                 // TODO: Show error dialog
@@ -644,11 +692,11 @@ impl GcodeEditor {
                         if path.extension().is_none() {
                             path.set_extension("gcode");
                         }
-                        
+
                         let start = buffer.start_iter();
                         let end = buffer.end_iter();
                         let content = buffer.text(&start, &end, true);
-                        
+
                         match fs::write(&path, content.as_str()) {
                             Ok(_) => {
                                 *current_file.borrow_mut() = Some(path);

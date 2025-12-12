@@ -1,26 +1,29 @@
+use gcodekit5_communication::firmware::grbl::status_parser::{FeedSpindleState, StatusParser};
 use gcodekit5_communication::{
     Communicator, ConnectionDriver, ConnectionParams, SerialCommunicator,
 };
-use gcodekit5_communication::firmware::grbl::status_parser::{FeedSpindleState, StatusParser};
-use gcodekit5_core::units::{format_feed_rate, format_length, get_unit_label, parse_feed_rate, FeedRateUnits, MeasurementSystem};
+use gcodekit5_core::units::{
+    format_feed_rate, format_length, get_unit_label, parse_feed_rate, FeedRateUnits,
+    MeasurementSystem,
+};
 use gcodekit5_settings::controller::SettingsController;
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::{
     accessible::Property as AccessibleProperty, pango::EllipsizeMode, Align, Box, Button,
-    ComboBoxText, EventControllerKey, Grid, Image, Label, Orientation, Overlay, Paned,
-    PolicyType, ScrolledWindow, SizeGroup, SizeGroupMode, ToggleButton,
+    ComboBoxText, EventControllerKey, Grid, Image, Label, Orientation, Overlay, Paned, PolicyType,
+    ScrolledWindow, SizeGroup, SizeGroupMode, ToggleButton,
 };
-use gtk4::glib;
 use std::cell::Cell;
-use std::sync::{Arc, Mutex};
 use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
 
-use crate::ui::gtk::status_bar::StatusBar;
-use crate::ui::gtk::device_console::DeviceConsoleView;
-use crate::ui::gtk::editor::GcodeEditor;
-use crate::ui::gtk::visualizer::GcodeVisualizer;
 use crate::device_status;
 use crate::t;
+use crate::ui::gtk::device_console::DeviceConsoleView;
+use crate::ui::gtk::editor::GcodeEditor;
+use crate::ui::gtk::status_bar::StatusBar;
+use crate::ui::gtk::visualizer::GcodeVisualizer;
 use std::rc::Rc;
 
 fn set_button_icon_label(btn: &Button, icon: &str, label: &str) {
@@ -140,7 +143,7 @@ impl MachineControlView {
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
-        
+
         fn make_section(title: &str, child: &impl IsA<gtk4::Widget>) -> Box {
             let section = Box::new(Orientation::Vertical, 4);
             section.add_css_class("mc-section");
@@ -257,7 +260,6 @@ impl MachineControlView {
         setup_title.set_margin_top(4);
         sidebar.append(&setup_title);
 
-
         // Connection Section
         let conn_box = Box::new(Orientation::Vertical, 4);
 
@@ -329,10 +331,11 @@ impl MachineControlView {
         // Work Coordinates Section
         let wcs_box = Box::new(Orientation::Vertical, 4);
 
-        let reset_g53_btn = make_icon_label_button("bookmark-new-symbolic", &t!("Use G53 (Machine Coords)"));
-        reset_g53_btn.set_tooltip_text(Some(
-            &t!("Send G53: use machine coordinates for the next move (non-modal)"),
-        ));
+        let reset_g53_btn =
+            make_icon_label_button("bookmark-new-symbolic", &t!("Use G53 (Machine Coords)"));
+        reset_g53_btn.set_tooltip_text(Some(&t!(
+            "Send G53: use machine coordinates for the next move (non-modal)"
+        )));
         wcs_box.append(&reset_g53_btn);
 
         let wcs_grid = Grid::new();
@@ -381,7 +384,9 @@ impl MachineControlView {
         job_btn_group.add_widget(&send_btn);
 
         let stop_btn = make_icon_label_button("media-playback-stop-symbolic", &t!("Stop"));
-        stop_btn.set_tooltip_text(Some(&t!("Stop job: abort streaming (does not reset controller)")));
+        stop_btn.set_tooltip_text(Some(&t!(
+            "Stop job: abort streaming (does not reset controller)"
+        )));
         stop_btn.add_css_class("destructive-action");
         stop_btn.set_hexpand(true);
         job_btn_group.add_widget(&stop_btn);
@@ -405,7 +410,9 @@ impl MachineControlView {
         trans_row2.append(&resume_btn);
         trans_box.append(&trans_row2);
 
-        let stop_hint = Label::new(Some(&t!("Stop aborts streaming; E‑Stop resets the controller.")));
+        let stop_hint = Label::new(Some(&t!(
+            "Stop aborts streaming; E‑Stop resets the controller."
+        )));
         stop_hint.add_css_class("dim-label");
         stop_hint.set_wrap(true);
         stop_hint.set_halign(Align::Start);
@@ -487,9 +494,7 @@ impl MachineControlView {
         zero_actions.set_margin_top(6);
 
         let zero_all_btn = make_icon_label_button("edit-clear-symbolic", &t!("Zero All Axes"));
-        zero_all_btn.set_tooltip_text(Some(&t!(
-            "Set active work position to 0 for X/Y/Z"
-        )));
+        zero_all_btn.set_tooltip_text(Some(&t!("Set active work position to 0 for X/Y/Z")));
         zero_all_btn.add_css_class("destructive-action");
         zero_actions.append(&zero_all_btn);
 
@@ -569,7 +574,7 @@ impl MachineControlView {
         let xy_grid = Grid::new();
         xy_grid.set_column_spacing(5);
         xy_grid.set_row_spacing(5);
-        
+
         let jog_y_pos = make_icon_label_button("go-up-symbolic", "Y+");
         jog_y_pos.set_tooltip_text(Some(&t!("Jog Y+")));
         jog_y_pos.update_property(&[AccessibleProperty::Label(&t!("Jog Y+"))]);
@@ -583,7 +588,7 @@ impl MachineControlView {
         jog_y_neg.set_tooltip_text(Some(&t!("Jog Y-")));
         jog_y_neg.update_property(&[AccessibleProperty::Label(&t!("Jog Y-"))]);
         let home_center = Label::new(Some("XY"));
-        
+
         // Style buttons
         for btn in [&jog_y_pos, &jog_x_neg, &jog_x_pos, &jog_y_neg] {
             btn.set_width_request(56);
@@ -600,7 +605,7 @@ impl MachineControlView {
         // Z Pad & eStop
         let z_estop_box = Box::new(Orientation::Horizontal, 20);
         z_estop_box.set_valign(Align::Center);
-        
+
         let z_box = Box::new(Orientation::Vertical, 5);
         z_box.set_valign(Align::Center);
         let jog_z_pos = make_icon_label_button("go-up-symbolic", "Z+");
@@ -615,12 +620,12 @@ impl MachineControlView {
         let jog_z_neg = make_icon_label_button("go-down-symbolic", "Z-");
         jog_z_neg.set_tooltip_text(Some(&t!("Jog Z-")));
         jog_z_neg.update_property(&[AccessibleProperty::Label(&t!("Jog Z-"))]);
-        
+
         for btn in [&jog_z_pos, &jog_z_neg] {
             btn.set_width_request(56);
             btn.set_height_request(56);
         }
-        
+
         z_box.append(&jog_z_pos);
         z_box.append(&z_label);
         z_box.append(&jog_z_neg);
@@ -640,7 +645,7 @@ impl MachineControlView {
         estop_btn.set_child(Some(&estop_content));
         estop_btn.set_tooltip_text(Some(&t!("Emergency stop (soft reset Ctrl-X)")));
         estop_btn.update_property(&[AccessibleProperty::Label(&t!("Emergency stop"))]);
-        
+
         estop_btn.add_css_class("estop-big");
         // Shorter button, centered; width can be a bit larger.
         estop_btn.set_width_request(112);
@@ -654,7 +659,7 @@ impl MachineControlView {
         jog_area.append(&pads_box);
 
         main_area.append(&jog_area);
-        
+
         // Setup Paned
         // Use an inner paned so we have: [sidebar] | [main area] | [device console]
         let main_scroller = ScrolledWindow::new();
@@ -727,7 +732,9 @@ impl MachineControlView {
             let console_view = device_console.clone();
             let console_container = console_container.clone();
             console_copy_err_btn.connect_clicked(move |_| {
-                let Some(c) = console_view.as_ref() else { return; };
+                let Some(c) = console_view.as_ref() else {
+                    return;
+                };
                 let text = c.get_log_text();
                 let mut last = None;
                 for line in text.lines().rev() {
@@ -839,7 +846,7 @@ impl MachineControlView {
 
         widget.set_start_child(Some(&sidebar_scroller));
         widget.set_end_child(Some(&inner_overlay));
-        
+
         // Initial sizing (20% sidebar / 80% main), then let the user resize.
         let outer_sized = Rc::new(Cell::new(false));
         widget.add_tick_callback({
@@ -862,7 +869,12 @@ impl MachineControlView {
 
         // Initialize units from settings if available
         let initial_units = if let Some(controller) = &settings_controller {
-            controller.persistence.borrow().config().ui.measurement_system
+            controller
+                .persistence
+                .borrow()
+                .config()
+                .ui
+                .measurement_system
         } else {
             MeasurementSystem::Metric
         };
@@ -1141,7 +1153,10 @@ impl MachineControlView {
             let communicator = view.communicator.clone();
             let jog_step_mm = view.jog_step_mm.clone();
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
-            let console_entry = view.device_console.as_ref().map(|c| c.command_entry.clone());
+            let console_entry = view
+                .device_console
+                .as_ref()
+                .map(|c| c.command_entry.clone());
 
             controller.connect_key_pressed(move |_, key, _, _| {
                 if let Some(entry) = console_entry.as_ref() {
@@ -1195,22 +1210,22 @@ impl MachineControlView {
             let is_streaming = view.is_streaming.clone();
             let waiting_for_ack = view.waiting_for_ack.clone();
             let send_queue = view.send_queue.clone();
-            
+
             view.resume_btn.connect_clicked(move |_| {
                 if let Ok(mut comm) = communicator.lock() {
                     let _ = comm.send(b"~");
                 }
                 *is_paused.lock().unwrap() = false;
-                
+
                 // Kickstart if stalled (streaming, not waiting for ack, and has commands)
                 if *is_streaming.lock().unwrap() && !*waiting_for_ack.lock().unwrap() {
-                     let mut queue = send_queue.lock().unwrap();
-                     if let Some(cmd) = queue.pop_front() {
-                          if let Ok(mut comm) = communicator.lock() {
-                               let _ = comm.send_command(&cmd);
-                               *waiting_for_ack.lock().unwrap() = true;
-                          }
-                     }
+                    let mut queue = send_queue.lock().unwrap();
+                    if let Some(cmd) = queue.pop_front() {
+                        if let Ok(mut comm) = communicator.lock() {
+                            let _ = comm.send_command(&cmd);
+                            *waiting_for_ack.lock().unwrap() = true;
+                        }
+                    }
                 }
             });
         }
@@ -1246,18 +1261,16 @@ impl MachineControlView {
             let waiting_for_ack = view.waiting_for_ack.clone();
             let total_lines = view.total_lines.clone();
             let console = view.device_console.clone();
-            
+
             view.send_btn.connect_clicked(move |_| {
                 if *is_streaming.lock().unwrap() {
                     return;
                 }
-                
+
                 let mut content = String::new();
                 if let Some(ed) = editor.as_ref() {
                     content = ed.get_text();
-
                 } else {
-
                 }
 
                 if content.trim().is_empty() {
@@ -1265,23 +1278,22 @@ impl MachineControlView {
                         .message_type(gtk4::MessageType::Error)
                         .buttons(gtk4::ButtonsType::Ok)
                         .text(&t!("No G-Code to Send"))
-                        .secondary_text(&t!(
-                            "Please load or type G-Code into the editor first."
-                        ))
+                        .secondary_text(&t!("Please load or type G-Code into the editor first."))
                         .build();
                     dialog.connect_response(|d, _| d.close());
                     dialog.show();
                     return;
                 }
-                
-                let lines: Vec<String> = content.lines()
+
+                let lines: Vec<String> = content
+                    .lines()
                     .map(|s| s.trim().to_string())
                     .filter(|s| !s.is_empty() && !s.starts_with(';') && !s.starts_with('('))
                     .collect();
-                    
+
                 if lines.is_empty() {
                     if let Some(c) = console.as_ref() {
-                         c.append_log(&format!("{}\n", t!("No valid G-Code lines found.")));
+                        c.append_log(&format!("{}\n", t!("No valid G-Code lines found.")));
                     }
                     return;
                 }
@@ -1293,25 +1305,21 @@ impl MachineControlView {
                         queue.push_back(line.clone());
                     }
                     *total_lines.lock().unwrap() = queue.len();
-
                 }
-                
+
                 *is_streaming.lock().unwrap() = true;
                 *is_paused.lock().unwrap() = false;
                 *waiting_for_ack.lock().unwrap() = false;
-                
+
                 // Kickstart
                 if let Ok(mut comm) = communicator.lock() {
                     let mut queue = send_queue.lock().unwrap();
                     if let Some(cmd) = queue.pop_front() {
-
                         let _ = comm.send_command(&cmd);
                         *waiting_for_ack.lock().unwrap() = true;
                     } else {
-
                     }
                 } else {
-
                 }
             });
         }
@@ -1343,7 +1351,7 @@ impl MachineControlView {
                 }
             });
         }
-        
+
         for (i, btn) in view.wcs_btns.iter().enumerate() {
             let communicator = view.communicator.clone();
             let cmd = format!("G{}", 54 + i);
@@ -1478,11 +1486,10 @@ impl MachineControlView {
             });
         }
 
-
         let view_clone = view.clone();
         view.connect_btn.connect_clicked(move |_| {
             let is_connected = view_clone.communicator.lock().unwrap().is_connected();
-            
+
             if is_connected {
                 // Disconnect
                 let mut comm = view_clone.communicator.lock().unwrap();
@@ -1502,7 +1509,7 @@ impl MachineControlView {
 
                         // Update global device status
                         device_status::update_connection_status(false, None);
-                        
+
                         // Disable all controls on disconnect
                         set_controls_enabled(
                             &view_clone.send_btn,
@@ -1529,12 +1536,12 @@ impl MachineControlView {
                             &view_clone.estop_btn,
                             false,
                         );
-                        
+
                         // Update StatusBar
                         if let Some(ref status_bar) = view_clone.status_bar {
                             status_bar.set_connected(false, "");
                         }
-                        
+
                         // Log to device console
                         if let Some(ref console) = view_clone.device_console {
                             console.append_log(&format!("{}\n", t!("Disconnected")));
@@ -1557,17 +1564,17 @@ impl MachineControlView {
                     view_clone.connect_btn.set_sensitive(false);
                     view_clone.state_label.set_text(&t!("Connecting…"));
                     view_clone.conn_status_state.set_text(&t!("State: Connecting…"));
-                    
+
                     let params = ConnectionParams {
                         driver: ConnectionDriver::Serial,
                         port: port_name.to_string(),
                         baud_rate: 115200,
                         ..Default::default()
                     };
-                    
+
                     // Perform synchronous connection (it's fast)
                     let result = view_clone.communicator.lock().unwrap().connect(&params);
-                    
+
                     match result {
                         Ok(_) => {
                             set_button_icon_label(&view_clone.connect_btn, "network-disconnect-symbolic", &t!("Disconnect"));
@@ -1586,12 +1593,12 @@ impl MachineControlView {
 
                             // Update global device status
                             device_status::update_connection_status(true, Some(port_name.to_string()));
-                            
+
                             // Update StatusBar
                             if let Some(ref sb) = view_clone.status_bar {
                                 sb.set_connected(true, &port_name.to_string());
                             }
-                            
+
                             // Log to device console
                             if let Some(ref console) = view_clone.device_console {
                                 console.append_log(&format!(
@@ -1600,7 +1607,7 @@ impl MachineControlView {
                                     port_name
                                 ));
                             }
-                            
+
                             // Enable all controls on successful connection
                             set_controls_enabled(
                                 &view_clone.send_btn,
@@ -1630,12 +1637,12 @@ impl MachineControlView {
 
                             // Unlock button should initially be disabled until ALARM state is detected
                             view_clone.unlock_btn.set_sensitive(false);
-                            
+
                             // Query firmware version on connect
                             if let Ok(mut comm) = view_clone.communicator.lock() {
                                 let _ = comm.send_command("$I");
                             }
-                            
+
                             // Simple polling using glib::timeout_add_local - runs on main thread, no blocking
                             let state_label_poll = view_clone.state_label.clone();
                             let state_feed_label_poll = view_clone.state_feed_label.clone();
@@ -1667,10 +1674,10 @@ impl MachineControlView {
                             let mut query_counter = 0u32;
                             let mut response_buffer = String::new();
                             let mut firmware_detected = false;
-                            
+
                             glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                                 query_counter += 1;
-                                
+
                                 // Check if still connected
                                 let is_connected = {
                                     if let Ok(comm) = communicator_poll.try_lock() {
@@ -1679,11 +1686,11 @@ impl MachineControlView {
                                         return glib::ControlFlow::Continue;
                                     }
                                 };
-                                
+
                                 if !is_connected {
                                     return glib::ControlFlow::Break;
                                 }
-                                
+
                                 // Try to read data (non-blocking, quick)
                                 if let Ok(mut comm) = communicator_poll.try_lock() {
                                     if let Ok(response_bytes) = comm.receive() {
@@ -1691,12 +1698,12 @@ impl MachineControlView {
                                             let s = String::from_utf8_lossy(&response_bytes);
 
                                             response_buffer.push_str(&s);
-                                            
+
                                             // Process complete lines
                                             while let Some(idx) = response_buffer.find('\n') {
                                                 let line = response_buffer[..idx].trim().to_string();
                                                 response_buffer.drain(..idx + 1);
-                                                
+
                                                 if line.is_empty() { continue; }
 
                                                 // Detect firmware version info
@@ -1709,7 +1716,7 @@ impl MachineControlView {
                                                         firmware_detected = true;
                                                     }
                                                 }
-                                                
+
                                                 // Log to console, filtering out status reports and 'ok' acks to avoid spam
                                                 if !line.starts_with('<') && line != "ok" {
                                                     if let Some(c) = device_console_poll.as_ref() {
@@ -1756,7 +1763,7 @@ impl MachineControlView {
 
                                                 if is_ack || is_error {
                                                      *waiting_for_ack_poll.lock().unwrap() = false;
-                                                     
+
                                                      // If error, we might want to stop, but for now we continue
                                                      // if is_error { ... logic to stop ... }
 
@@ -1766,7 +1773,7 @@ impl MachineControlView {
                                                               let total_lines_val = *total_lines_poll.lock().unwrap();
                                                               let remaining = queue.len();
                                                               let sent = total_lines_val - remaining;
-                                                              
+
                                                               // Update progress bar
                                                               if let Some(sb) = status_bar_poll.as_ref() {
                                                                   let progress = if total_lines_val > 0 {
@@ -1774,19 +1781,19 @@ impl MachineControlView {
                                                                   } else {
                                                                       0.0
                                                                   };
-                                                                  
+
                                                                   // Simple time estimation (very rough)
                                                                   // Assuming average 0.1s per command for now
                                                                   let elapsed_secs = sent as f64 * 0.1;
                                                                   let remaining_secs = remaining as f64 * 0.1;
-                                                                  
+
                                                                   let format_time = |secs: f64| {
                                                                       let h = (secs / 3600.0).floor();
                                                                       let m = ((secs % 3600.0) / 60.0).floor();
                                                                       let s = (secs % 60.0).floor();
                                                                       format!("{:02}:{:02}:{:02}", h, m, s)
                                                                   };
-                                                                  
+
                                                                   sb.set_progress(
                                                                       progress,
                                                                       &format_time(elapsed_secs),
@@ -1813,7 +1820,7 @@ impl MachineControlView {
                                                          }
                                                      }
                                                 }
-                                                
+
                                                 // Parse GRBL status: <Idle|MPos:0.000,0.000,0.000|...>
                                                 if line.starts_with('<') && line.ends_with('>') {
                                                     // Update machine state
@@ -1862,7 +1869,7 @@ impl MachineControlView {
                                                             disabled_reason_label_poll.set_text("");
                                                         }
                                                     }
-                                                    
+
                                                     let full_status = StatusParser::parse_full(&line);
 
                                                     // Update machine position (MPos)
@@ -1974,13 +1981,13 @@ impl MachineControlView {
                                             }
                                         }
                                     }
-                                    
+
                                     // Send status query every ~250ms (every 5 cycles of 50ms)
                                     if query_counter % 5 == 0 {
                                         let _ = comm.send(b"?");
                                     }
                                 }
-                                
+
                                 glib::ControlFlow::Continue
                             });
                         }
@@ -2005,17 +2012,19 @@ impl MachineControlView {
 
     pub fn refresh_ports(&self) {
         self.port_combo.remove_all();
-        
+
         match gcodekit5_communication::list_ports() {
             Ok(ports) if !ports.is_empty() => {
                 for port in ports {
-                    self.port_combo.append(Some(&port.port_name), &port.port_name);
+                    self.port_combo
+                        .append(Some(&port.port_name), &port.port_name);
                 }
                 // Select the first port
                 self.port_combo.set_active(Some(0));
             }
             _ => {
-                self.port_combo.append(Some("none"), &t!("No ports available"));
+                self.port_combo
+                    .append(Some("none"), &t!("No ports available"));
                 self.port_combo.set_active_id(Some("none"));
             }
         }

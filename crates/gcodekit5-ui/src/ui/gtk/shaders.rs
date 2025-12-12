@@ -32,7 +32,9 @@ impl ShaderProgram {
         "#;
 
         unsafe {
-            let program = gl.create_program().map_err(|e| format!("Cannot create program: {}", e))?;
+            let program = gl
+                .create_program()
+                .map_err(|e| format!("Cannot create program: {}", e))?;
 
             let vertex_shader = compile_shader(&gl, vertex_shader_source, VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_source, FRAGMENT_SHADER)?;
@@ -65,11 +67,9 @@ impl ShaderProgram {
             self.gl.use_program(None);
         }
     }
-    
+
     pub fn get_uniform_location(&self, name: &str) -> Option<NativeUniformLocation> {
-        unsafe {
-            self.gl.get_uniform_location(self.program, name)
-        }
+        unsafe { self.gl.get_uniform_location(self.program, name) }
     }
 }
 
@@ -130,7 +130,9 @@ impl StockRemovalShaderProgram {
         "#;
 
         unsafe {
-            let program = gl.create_program().map_err(|e| format!("Cannot create program: {}", e))?;
+            let program = gl
+                .create_program()
+                .map_err(|e| format!("Cannot create program: {}", e))?;
 
             let vertex_shader = compile_shader(&gl, vertex_shader_source, VERTEX_SHADER)?;
             let fragment_shader = compile_shader(&gl, fragment_shader_source, FRAGMENT_SHADER)?;
@@ -163,11 +165,9 @@ impl StockRemovalShaderProgram {
             self.gl.use_program(None);
         }
     }
-    
+
     pub fn get_uniform_location(&self, name: &str) -> Option<NativeUniformLocation> {
-        unsafe {
-            self.gl.get_uniform_location(self.program, name)
-        }
+        unsafe { self.gl.get_uniform_location(self.program, name) }
     }
 }
 
@@ -179,8 +179,14 @@ impl Drop for StockRemovalShaderProgram {
     }
 }
 
-unsafe fn compile_shader(gl: &Context, source: &str, shader_type: u32) -> Result<NativeShader, String> {
-    let shader = gl.create_shader(shader_type).map_err(|e| format!("Cannot create shader: {}", e))?;
+unsafe fn compile_shader(
+    gl: &Context,
+    source: &str,
+    shader_type: u32,
+) -> Result<NativeShader, String> {
+    let shader = gl
+        .create_shader(shader_type)
+        .map_err(|e| format!("Cannot create shader: {}", e))?;
     gl.shader_source(shader, source);
     gl.compile_shader(shader);
 

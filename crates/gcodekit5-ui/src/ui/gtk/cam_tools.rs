@@ -2,8 +2,8 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::{
     Align, Box, Button, ButtonsType, CheckButton, ComboBoxText, Entry, FileChooserAction,
-    FileChooserDialog, Grid, Image, Label, MessageDialog, MessageType, Orientation, Overlay,
-    Paned, ResponseType, ScrolledWindow, Stack,
+    FileChooserDialog, Grid, Image, Label, MessageDialog, MessageType, Orientation, Overlay, Paned,
+    ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
@@ -11,17 +11,18 @@ use std::fs;
 use std::rc::Rc;
 
 use gcodekit5_camtools::jigsaw_puzzle::{JigsawPuzzleMaker, PuzzleParameters};
-use gcodekit5_camtools::tabbed_box::{
-    BoxParameters, BoxType, KeyDividerType,
-    TabbedBoxMaker as Generator,
-};
 use gcodekit5_camtools::laser_engraver::{
     BitmapImageEngraver, EngravingParameters, HalftoneMethod, ImageTransformations, RotationAngle,
     ScanDirection,
 };
-use gcodekit5_camtools::vector_engraver::{VectorEngraver, VectorEngravingParameters};
-use gcodekit5_camtools::spoilboard_surfacing::{SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters};
 use gcodekit5_camtools::spoilboard_grid::{SpoilboardGridGenerator, SpoilboardGridParameters};
+use gcodekit5_camtools::spoilboard_surfacing::{
+    SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters,
+};
+use gcodekit5_camtools::tabbed_box::{
+    BoxParameters, BoxType, KeyDividerType, TabbedBoxMaker as Generator,
+};
+use gcodekit5_camtools::vector_engraver::{VectorEngraver, VectorEngravingParameters};
 
 pub struct CamToolsView {
     pub content: Stack,
@@ -56,23 +57,23 @@ impl CamToolsView {
         // Jigsaw Puzzle Tool
         let jigsaw_tool = JigsawTool::new(&stack, on_generate.clone());
         stack.add_named(jigsaw_tool.widget(), Some("jigsaw"));
-        
+
         // Bitmap Engraving Tool
         let bitmap_tool = BitmapEngravingTool::new(&stack, on_generate.clone());
         stack.add_named(bitmap_tool.widget(), Some("laser_image"));
-        
+
         // Vector Engraving Tool
         let vector_tool = VectorEngravingTool::new(&stack, on_generate.clone());
         stack.add_named(vector_tool.widget(), Some("laser_vector"));
-        
+
         // Speeds & Feeds Calculator
         let feeds_tool = SpeedsFeedsTool::new(&stack);
         stack.add_named(feeds_tool.widget(), Some("feeds"));
-        
+
         // Spoilboard Surfacing
         let surfacing_tool = SpoilboardSurfacingTool::new(&stack, on_generate.clone());
         stack.add_named(surfacing_tool.widget(), Some("surfacing"));
-        
+
         // Spoilboard Grid
         let grid_tool = SpoilboardGridTool::new(&stack, on_generate.clone());
         stack.add_named(grid_tool.widget(), Some("grid"));
@@ -376,7 +377,10 @@ impl JigsawTool {
         let feed_rate = Entry::builder().text("500").valign(Align::Center).build();
         let offset_x = Entry::builder().text("10").valign(Align::Center).build();
         let offset_y = Entry::builder().text("10").valign(Align::Center).build();
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Groups
         let dim_group = PreferencesGroup::builder()
@@ -424,8 +428,10 @@ impl JigsawTool {
             .build();
         offset_group.add(&Self::create_row("Offset X:", &offset_x));
         offset_group.add(&Self::create_row("Offset Y:", &offset_y));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         offset_group.add(&home_row);
 
@@ -488,7 +494,7 @@ impl JigsawTool {
         generate_btn.connect_clicked(move |_| {
             let params = Self::collect_params(&w_gen);
             let home_before = w_gen.home_before.is_active();
-            
+
             // Create progress dialog
             let progress_window = gtk4::Window::builder()
                 .title("Generating Puzzle")
@@ -497,42 +503,42 @@ impl JigsawTool {
                 .default_height(150)
                 .resizable(false)
                 .build();
-            
+
             let vbox = Box::new(Orientation::Vertical, 12);
             vbox.set_margin_top(24);
             vbox.set_margin_bottom(24);
             vbox.set_margin_start(24);
             vbox.set_margin_end(24);
-            
+
             let status_label = Label::new(Some("Generating puzzle pieces..."));
             vbox.append(&status_label);
-            
+
             let progress_bar = gtk4::ProgressBar::new();
             progress_bar.set_show_text(true);
             progress_bar.set_fraction(0.0);
             vbox.append(&progress_bar);
-            
+
             let button_box = Box::new(Orientation::Horizontal, 6);
             button_box.set_halign(Align::End);
             let cancel_button = Button::with_label("Cancel");
             button_box.append(&cancel_button);
             vbox.append(&button_box);
-            
+
             progress_window.set_child(Some(&vbox));
             progress_window.show();
-            
+
             let on_gen_clone = on_gen.clone();
             let progress_window_clone = progress_window.clone();
             let progress_bar_clone = progress_bar.clone();
-            
+
             let (result_tx, result_rx) = std::sync::mpsc::channel();
             let (cancel_tx, cancel_rx) = std::sync::mpsc::channel();
-            
+
             let cancel_tx_clone = cancel_tx.clone();
             cancel_button.connect_clicked(move |_| {
                 let _ = cancel_tx_clone.send(());
             });
-            
+
             // Spawn background thread
             std::thread::spawn(move || {
                 let result = (|| -> Result<String, String> {
@@ -542,26 +548,26 @@ impl JigsawTool {
                     let mut maker = JigsawPuzzleMaker::new(params)?;
                     maker.generate()?;
                     let mut gcode = maker.to_gcode(500.0, 1.0);
-                    
+
                     // Handle homing
                     gcode = gcode.replace("$H\n", "").replace("$H", "");
                     if home_before {
                         gcode = format!("$H\n{}", gcode);
                     }
-                    
+
                     Ok(gcode)
                 })();
-                
+
                 let _ = result_tx.send(result);
             });
-            
+
             // Simulate progress since JigsawPuzzleMaker doesn't have progress callback yet
             let mut progress = 0.0;
             glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                 // Check for result
                 if let Ok(result) = result_rx.try_recv() {
                     progress_window_clone.close();
-                    
+
                     match result {
                         Ok(gcode) => {
                             on_gen_clone(gcode);
@@ -825,7 +831,7 @@ impl BitmapEngravingTool {
         preview_image.set_vexpand(true);
         preview_image.set_hexpand(true);
         preview_overlay.set_child(Some(&preview_image));
-        
+
         // Loading spinner
         let preview_spinner = gtk4::Spinner::new();
         preview_spinner.set_halign(Align::Center);
@@ -833,7 +839,7 @@ impl BitmapEngravingTool {
         preview_spinner.set_size_request(48, 48);
         preview_spinner.set_visible(false);
         preview_overlay.add_overlay(&preview_spinner);
-        
+
         sidebar.append(&preview_overlay);
 
         // Content Area
@@ -846,7 +852,10 @@ impl BitmapEngravingTool {
             .build();
 
         // Create Widgets
-        let image_path = Entry::builder().placeholder_text("No image selected").valign(Align::Center).build();
+        let image_path = Entry::builder()
+            .placeholder_text("No image selected")
+            .valign(Align::Center)
+            .build();
         let width_mm = Entry::builder().text("100").valign(Align::Center).build();
         let feed_rate = Entry::builder().text("1000").valign(Align::Center).build();
         let travel_rate = Entry::builder().text("3000").valign(Align::Center).build();
@@ -864,10 +873,22 @@ impl BitmapEngravingTool {
         scan_direction.set_active_id(Some("0"));
         scan_direction.set_valign(Align::Center);
 
-        let bidirectional = CheckButton::builder().active(true).valign(Align::Center).build();
-        let invert = CheckButton::builder().active(false).valign(Align::Center).build();
-        let mirror_x = CheckButton::builder().active(false).valign(Align::Center).build();
-        let mirror_y = CheckButton::builder().active(false).valign(Align::Center).build();
+        let bidirectional = CheckButton::builder()
+            .active(true)
+            .valign(Align::Center)
+            .build();
+        let invert = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
+        let mirror_x = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
+        let mirror_y = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         let rotation = ComboBoxText::new();
         rotation.append(Some("0"), "0°");
@@ -888,7 +909,10 @@ impl BitmapEngravingTool {
 
         let halftone_dot_size = Entry::builder().text("4").valign(Align::Center).build();
         let halftone_threshold = Entry::builder().text("127").valign(Align::Center).build();
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Groups
         let image_group = PreferencesGroup::builder().title("Image File").build();
@@ -901,7 +925,9 @@ impl BitmapEngravingTool {
         image_group.add(&image_row);
         scroll_content.append(&image_group);
 
-        let output_group = PreferencesGroup::builder().title("Output Settings (mm)").build();
+        let output_group = PreferencesGroup::builder()
+            .title("Output Settings (mm)")
+            .build();
         output_group.add(&Self::create_row("Width:", &width_mm));
         output_group.add(&Self::create_row("Feed Rate:", &feed_rate));
         output_group.add(&Self::create_row("Travel Rate:", &travel_rate));
@@ -922,7 +948,9 @@ impl BitmapEngravingTool {
         scan_group.add(&bid_row);
         scroll_content.append(&scan_group);
 
-        let transform_group = PreferencesGroup::builder().title("Image Transformations").build();
+        let transform_group = PreferencesGroup::builder()
+            .title("Image Transformations")
+            .build();
         let invert_row = ActionRow::builder().title("Invert:").build();
         invert_row.add_suffix(&invert);
         transform_group.add(&invert_row);
@@ -941,11 +969,15 @@ impl BitmapEngravingTool {
         halftone_group.add(&Self::create_row("Threshold:", &halftone_threshold));
         scroll_content.append(&halftone_group);
 
-        let offset_group = PreferencesGroup::builder().title("Work Offsets (mm)").build();
+        let offset_group = PreferencesGroup::builder()
+            .title("Work Offsets (mm)")
+            .build();
         offset_group.add(&Self::create_row("Offset X:", &offset_x));
         offset_group.add(&Self::create_row("Offset Y:", &offset_y));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         offset_group.add(&home_row);
 
@@ -974,7 +1006,7 @@ impl BitmapEngravingTool {
 
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
-        
+
         // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
@@ -1025,7 +1057,7 @@ impl BitmapEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
-            
+
             let filter = gtk4::FileFilter::new();
             filter.set_name(Some("Image Files"));
             filter.add_mime_type("image/png");
@@ -1041,36 +1073,39 @@ impl BitmapEngravingTool {
                     if let Some(file) = d.file() {
                         if let Some(path) = file.path() {
                             w_clone.image_path.set_text(&path.display().to_string());
-                            
+
                             // Show spinner and load preview in background
                             w_clone.preview_spinner.set_visible(true);
                             w_clone.preview_spinner.start();
-                            
+
                             let preview_img = w_clone.preview_image.clone();
                             let spinner = w_clone.preview_spinner.clone();
                             let path_clone = path.clone();
-                            
+
                             let (tx, rx) = std::sync::mpsc::channel();
-                            
+
                             std::thread::spawn(move || {
                                 let file = gtk4::gio::File::for_path(&path_clone);
                                 let texture_result = gtk4::gdk::Texture::from_file(&file);
                                 let _ = tx.send(texture_result);
                             });
-                            
-                            glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
-                                if let Ok(texture_result) = rx.try_recv() {
-                                    spinner.stop();
-                                    spinner.set_visible(false);
-                                    
-                                    if let Ok(texture) = texture_result {
-                                        preview_img.set_paintable(Some(&texture));
+
+                            glib::timeout_add_local(
+                                std::time::Duration::from_millis(50),
+                                move || {
+                                    if let Ok(texture_result) = rx.try_recv() {
+                                        spinner.stop();
+                                        spinner.set_visible(false);
+
+                                        if let Ok(texture) = texture_result {
+                                            preview_img.set_paintable(Some(&texture));
+                                        }
+                                        glib::ControlFlow::Break
+                                    } else {
+                                        glib::ControlFlow::Continue
                                     }
-                                    glib::ControlFlow::Break
-                                } else {
-                                    glib::ControlFlow::Continue
-                                }
-                            });
+                                },
+                            );
                         }
                     }
                 }
@@ -1087,7 +1122,7 @@ impl BitmapEngravingTool {
             let params = Self::collect_params(&w_gen);
             let image_path = w_gen.image_path.text().to_string();
             let home_before = w_gen.home_before.is_active();
-            
+
             if image_path.is_empty() {
                 CamToolsView::show_error_dialog(
                     "No Image Selected",
@@ -1104,47 +1139,47 @@ impl BitmapEngravingTool {
                 .default_height(150)
                 .resizable(false)
                 .build();
-            
+
             let vbox = Box::new(Orientation::Vertical, 12);
             vbox.set_margin_top(24);
             vbox.set_margin_bottom(24);
             vbox.set_margin_start(24);
             vbox.set_margin_end(24);
-            
+
             let status_label = Label::new(Some("Processing image..."));
             vbox.append(&status_label);
-            
+
             let progress_bar = gtk4::ProgressBar::new();
             progress_bar.set_show_text(true);
             vbox.append(&progress_bar);
-            
+
             let button_box = Box::new(Orientation::Horizontal, 6);
             button_box.set_halign(Align::End);
             let cancel_button = Button::with_label("Cancel");
             button_box.append(&cancel_button);
             vbox.append(&button_box);
-            
+
             progress_window.set_child(Some(&vbox));
             progress_window.show();
-            
+
             // Clone what we need
             let image_path_thread = image_path.clone();
             let on_gen_clone = on_gen.clone();
             let progress_window_clone = progress_window.clone();
             let progress_bar_clone = progress_bar.clone();
             let status_label_clone = status_label.clone();
-            
+
             // Create channels for progress and result
             let (progress_tx, progress_rx) = std::sync::mpsc::channel();
             let (result_tx, result_rx) = std::sync::mpsc::channel();
             let (cancel_tx, cancel_rx) = std::sync::mpsc::channel();
-            
+
             // Cancel button handler
             let cancel_tx_clone = cancel_tx.clone();
             cancel_button.connect_clicked(move |_| {
                 let _ = cancel_tx_clone.send(());
             });
-            
+
             // Spawn background thread for generation
             std::thread::spawn(move || {
                 let result = BitmapImageEngraver::from_file(&image_path_thread, params)
@@ -1159,25 +1194,25 @@ impl BitmapEngravingTool {
                         })
                     })
                     .map(|mut gcode| {
-                         gcode = gcode.replace("$H\n", "").replace("$H", "");
-                         if home_before {
-                             format!("$H\n{}", gcode)
-                         } else {
-                             gcode
-                         }
+                        gcode = gcode.replace("$H\n", "").replace("$H", "");
+                        if home_before {
+                            format!("$H\n{}", gcode)
+                        } else {
+                            gcode
+                        }
                     });
-                
+
                 // Send result back
                 let _ = result_tx.send(result);
             });
-            
+
             // Poll for progress and result on main thread
             glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                 // Check for progress updates
                 while let Ok(progress) = progress_rx.try_recv() {
                     progress_bar_clone.set_fraction(progress as f64);
                     progress_bar_clone.set_text(Some(&format!("{:.0}%", progress * 100.0)));
-                    
+
                     // Update status label based on progress
                     if progress < 0.1 {
                         status_label_clone.set_text("Loading image...");
@@ -1187,11 +1222,11 @@ impl BitmapEngravingTool {
                         status_label_clone.set_text("Finalizing...");
                     }
                 }
-                
+
                 // Check for result
                 if let Ok(result) = result_rx.try_recv() {
                     progress_window_clone.close();
-                    
+
                     match result {
                         Ok(gcode) => {
                             on_gen_clone(gcode);
@@ -1261,7 +1296,9 @@ impl BitmapEngravingTool {
                     if let Some(file) = d.file() {
                         if let Some(path) = file.path() {
                             if let Ok(content) = fs::read_to_string(path) {
-                                if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Ok(params) =
+                                    serde_json::from_str::<serde_json::Value>(&content)
+                                {
                                     Self::apply_params(&w_clone, &params);
                                 }
                             }
@@ -1280,7 +1317,9 @@ impl BitmapEngravingTool {
             stack_clone_cancel.set_visible_child_name("dashboard");
         });
 
-        Self { content: content_box }
+        Self {
+            content: content_box,
+        }
     }
 
     pub fn widget(&self) -> &Box {
@@ -1309,11 +1348,12 @@ impl BitmapEngravingTool {
             _ => HalftoneMethod::None,
         };
 
-        let scan_direction = if w.scan_direction.active_id().as_ref().map(|s| s.as_str()) == Some("1") {
-            ScanDirection::Vertical
-        } else {
-            ScanDirection::Horizontal
-        };
+        let scan_direction =
+            if w.scan_direction.active_id().as_ref().map(|s| s.as_str()) == Some("1") {
+                ScanDirection::Vertical
+            } else {
+                ScanDirection::Horizontal
+            };
 
         EngravingParameters {
             width_mm: w.width_mm.text().parse().unwrap_or(100.0),
@@ -1369,28 +1409,28 @@ impl BitmapEngravingTool {
     fn apply_params(w: &BitmapEngravingWidgets, params: &serde_json::Value) {
         if let Some(image_path) = params.get("image_path").and_then(|v| v.as_str()) {
             w.image_path.set_text(image_path);
-            
+
             // Show spinner and load preview in background
             w.preview_spinner.set_visible(true);
             w.preview_spinner.start();
-            
+
             let preview_img = w.preview_image.clone();
             let spinner = w.preview_spinner.clone();
             let path = image_path.to_string();
-            
+
             let (tx, rx) = std::sync::mpsc::channel();
-            
+
             std::thread::spawn(move || {
                 let file = gtk4::gio::File::for_path(&path);
                 let texture_result = gtk4::gdk::Texture::from_file(&file);
                 let _ = tx.send(texture_result);
             });
-            
+
             glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                 if let Ok(texture_result) = rx.try_recv() {
                     spinner.stop();
                     spinner.set_visible(false);
-                    
+
                     if let Ok(texture) = texture_result {
                         preview_img.set_paintable(Some(&texture));
                     }
@@ -1550,32 +1590,32 @@ impl VectorEngravingTool {
         // Preview Area
         let preview_container = Box::new(Orientation::Vertical, 6);
         preview_container.set_vexpand(true);
-        
+
         // Preview image with spinner overlay
         let preview_overlay = Overlay::new();
-        
+
         // Add light gray background frame
         let preview_frame = gtk4::Frame::new(None::<&str>);
         preview_frame.add_css_class("vector-preview");
         preview_frame.set_vexpand(true);
         preview_frame.set_hexpand(true);
-        
+
         let preview_image = gtk4::Picture::new();
         preview_image.set_can_shrink(true);
         preview_image.set_vexpand(true);
         preview_image.set_hexpand(true);
         preview_frame.set_child(Some(&preview_image));
         preview_overlay.set_child(Some(&preview_frame));
-        
+
         // Loading spinner
         let preview_spinner = gtk4::Spinner::new();
         preview_spinner.set_halign(Align::Center);
         preview_spinner.set_valign(Align::Center);
         preview_spinner.set_size_request(48, 48);
         preview_overlay.add_overlay(&preview_spinner);
-        
+
         preview_container.append(&preview_overlay);
-        
+
         // Info overlay label
         let info_label = Label::builder()
             .label("No file selected")
@@ -1584,7 +1624,7 @@ impl VectorEngravingTool {
             .wrap(true)
             .build();
         preview_container.append(&info_label);
-        
+
         sidebar.append(&preview_container);
 
         // Content Area (80%)
@@ -1597,27 +1637,48 @@ impl VectorEngravingTool {
             .build();
 
         // Create Widgets
-        let vector_path = Entry::builder().placeholder_text("No vector file selected").valign(Align::Center).build();
+        let vector_path = Entry::builder()
+            .placeholder_text("No vector file selected")
+            .valign(Align::Center)
+            .build();
         let feed_rate = Entry::builder().text("600").valign(Align::Center).build();
         let travel_rate = Entry::builder().text("3000").valign(Align::Center).build();
         let cut_power = Entry::builder().text("100").valign(Align::Center).build();
         let engrave_power = Entry::builder().text("50").valign(Align::Center).build();
         let power_scale = Entry::builder().text("1000").valign(Align::Center).build();
-        let multi_pass = CheckButton::builder().active(false).valign(Align::Center).build();
+        let multi_pass = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
         let num_passes = Entry::builder().text("1").valign(Align::Center).build();
         let z_increment = Entry::builder().text("0.5").valign(Align::Center).build();
-        let invert_power = CheckButton::builder().active(false).valign(Align::Center).build();
+        let invert_power = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
         let desired_width = Entry::builder().text("100").valign(Align::Center).build();
         let offset_x = Entry::builder().text("10").valign(Align::Center).build();
         let offset_y = Entry::builder().text("10").valign(Align::Center).build();
-        let enable_hatch = CheckButton::builder().active(false).valign(Align::Center).build();
+        let enable_hatch = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
         let hatch_angle = Entry::builder().text("45").valign(Align::Center).build();
         let hatch_spacing = Entry::builder().text("1.0").valign(Align::Center).build();
         let hatch_tolerance = Entry::builder().text("0.1").valign(Align::Center).build();
-        let cross_hatch = CheckButton::builder().active(false).valign(Align::Center).build();
-        let enable_dwell = CheckButton::builder().active(false).valign(Align::Center).build();
+        let cross_hatch = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
+        let enable_dwell = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
         let dwell_time = Entry::builder().text("0.1").valign(Align::Center).build();
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Groups
         let file_group = PreferencesGroup::builder().title("Vector File").build();
@@ -1630,7 +1691,9 @@ impl VectorEngravingTool {
         file_group.add(&file_row);
         scroll_content.append(&file_group);
 
-        let output_group = PreferencesGroup::builder().title("Output Settings (mm)").build();
+        let output_group = PreferencesGroup::builder()
+            .title("Output Settings (mm)")
+            .build();
         output_group.add(&Self::create_row("Desired Width:", &desired_width));
         output_group.add(&Self::create_row("Feed Rate:", &feed_rate));
         output_group.add(&Self::create_row("Travel Rate:", &travel_rate));
@@ -1645,7 +1708,9 @@ impl VectorEngravingTool {
         power_group.add(&invert_row);
         scroll_content.append(&power_group);
 
-        let multipass_group = PreferencesGroup::builder().title("Multi-Pass Settings").build();
+        let multipass_group = PreferencesGroup::builder()
+            .title("Multi-Pass Settings")
+            .build();
         let multi_row = ActionRow::builder().title("Multi-Pass:").build();
         multi_row.add_suffix(&multi_pass);
         multipass_group.add(&multi_row);
@@ -1672,11 +1737,15 @@ impl VectorEngravingTool {
         dwell_group.add(&Self::create_row("Dwell Time (s):", &dwell_time));
         scroll_content.append(&dwell_group);
 
-        let offset_group = PreferencesGroup::builder().title("Work Offsets (mm)").build();
+        let offset_group = PreferencesGroup::builder()
+            .title("Work Offsets (mm)")
+            .build();
         offset_group.add(&Self::create_row("Offset X:", &offset_x));
         offset_group.add(&Self::create_row("Offset Y:", &offset_y));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         offset_group.add(&home_row);
 
@@ -1705,7 +1774,7 @@ impl VectorEngravingTool {
 
         paned.set_start_child(Some(&sidebar));
         paned.set_end_child(Some(&right_panel));
-        
+
         // Sidebar sizing (40%)
         paned.add_tick_callback(|paned, _clock| {
             let width = paned.width();
@@ -1755,7 +1824,7 @@ impl VectorEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
-            
+
             let filter = gtk4::FileFilter::new();
             filter.set_name(Some("Vector Files"));
             filter.add_pattern("*.svg");
@@ -1785,7 +1854,7 @@ impl VectorEngravingTool {
             let params = Self::collect_params(&w_gen);
             let vector_path = w_gen.vector_path.text().to_string();
             let home_before = w_gen.home_before.is_active();
-            
+
             if vector_path.is_empty() {
                 CamToolsView::show_error_dialog(
                     "No Vector File Selected",
@@ -1802,43 +1871,43 @@ impl VectorEngravingTool {
                 .default_height(150)
                 .resizable(false)
                 .build();
-            
+
             let vbox = Box::new(Orientation::Vertical, 12);
             vbox.set_margin_top(24);
             vbox.set_margin_bottom(24);
             vbox.set_margin_start(24);
             vbox.set_margin_end(24);
-            
+
             let status_label = Label::new(Some("Loading vector file..."));
             vbox.append(&status_label);
-            
+
             let progress_bar = gtk4::ProgressBar::new();
             progress_bar.set_show_text(true);
             vbox.append(&progress_bar);
-            
+
             let button_box = Box::new(Orientation::Horizontal, 6);
             button_box.set_halign(Align::End);
             let cancel_button = Button::with_label("Cancel");
             button_box.append(&cancel_button);
             vbox.append(&button_box);
-            
+
             progress_window.set_child(Some(&vbox));
             progress_window.show();
-            
+
             let on_gen_clone = on_gen.clone();
             let progress_window_clone = progress_window.clone();
             let progress_bar_clone = progress_bar.clone();
             let status_label_clone = status_label.clone();
-            
+
             let (progress_tx, progress_rx) = std::sync::mpsc::channel();
             let (result_tx, result_rx) = std::sync::mpsc::channel();
             let (cancel_tx, cancel_rx) = std::sync::mpsc::channel();
-            
+
             let cancel_tx_clone = cancel_tx.clone();
             cancel_button.connect_clicked(move |_| {
                 let _ = cancel_tx_clone.send(());
             });
-            
+
             // Spawn background thread
             std::thread::spawn(move || {
                 let result = VectorEngraver::from_file(&vector_path, params)
@@ -1851,24 +1920,24 @@ impl VectorEngravingTool {
                         })
                     })
                     .map(|mut gcode| {
-                         gcode = gcode.replace("$H\n", "").replace("$H", "");
-                         if home_before {
-                             format!("$H\n{}", gcode)
-                         } else {
-                             gcode
-                         }
+                        gcode = gcode.replace("$H\n", "").replace("$H", "");
+                        if home_before {
+                            format!("$H\n{}", gcode)
+                        } else {
+                            gcode
+                        }
                     });
-                
+
                 let _ = result_tx.send(result);
             });
-            
+
             // Poll for progress and result
             glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                 // Check for progress updates
                 while let Ok(progress) = progress_rx.try_recv() {
                     progress_bar_clone.set_fraction(progress as f64);
                     progress_bar_clone.set_text(Some(&format!("{:.0}%", progress * 100.0)));
-                    
+
                     if progress < 0.1 {
                         status_label_clone.set_text("Loading vector file...");
                     } else if progress < 0.9 {
@@ -1877,11 +1946,11 @@ impl VectorEngravingTool {
                         status_label_clone.set_text("Finalizing...");
                     }
                 }
-                
+
                 // Check for result
                 if let Ok(result) = result_rx.try_recv() {
                     progress_window_clone.close();
-                    
+
                     match result {
                         Ok(gcode) => {
                             on_gen_clone(gcode);
@@ -1951,7 +2020,9 @@ impl VectorEngravingTool {
                     if let Some(file) = d.file() {
                         if let Some(path) = file.path() {
                             if let Ok(content) = fs::read_to_string(path) {
-                                if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content) {
+                                if let Ok(params) =
+                                    serde_json::from_str::<serde_json::Value>(&content)
+                                {
                                     Self::apply_params(&w_clone, &params);
                                 }
                             }
@@ -1970,7 +2041,9 @@ impl VectorEngravingTool {
             stack_clone_cancel.set_visible_child_name("dashboard");
         });
 
-        Self { content: content_box }
+        Self {
+            content: content_box,
+        }
     }
 
     pub fn widget(&self) -> &Box {
@@ -2011,27 +2084,27 @@ impl VectorEngravingTool {
         // Show spinner
         w.preview_spinner.start();
         w.preview_spinner.set_visible(true);
-        
+
         let path_clone = path.to_path_buf();
         let preview_image = w.preview_image.clone();
         let spinner = w.preview_spinner.clone();
         let info_label = w.info_label.clone();
-        
+
         // Use channel to communicate with main thread
         let (tx, rx) = std::sync::mpsc::channel();
-        
+
         // Load in background thread
         std::thread::spawn(move || {
             let result = Self::render_vector_file(&path_clone);
             let _ = tx.send(result);
         });
-        
+
         // Poll for result on main thread
         glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
             if let Ok(result) = rx.try_recv() {
                 spinner.stop();
                 spinner.set_visible(false);
-                
+
                 match result {
                     Ok((texture, info)) => {
                         preview_image.set_paintable(Some(&texture));
@@ -2050,10 +2123,11 @@ impl VectorEngravingTool {
     }
 
     fn render_vector_file(path: &std::path::Path) -> Result<(gtk4::gdk::Texture, String), String> {
-        let ext = path.extension()
+        let ext = path
+            .extension()
             .and_then(|e| e.to_str())
             .ok_or("Unknown file extension")?;
-        
+
         match ext.to_lowercase().as_str() {
             "svg" => Self::render_svg(path),
             "dxf" => Self::render_dxf(path),
@@ -2065,10 +2139,10 @@ impl VectorEngravingTool {
         let file = gtk4::gio::File::for_path(path);
         let texture = gtk4::gdk::Texture::from_file(&file)
             .map_err(|e| format!("Failed to load SVG: {}", e))?;
-        
+
         let width = texture.intrinsic_width();
         let height = texture.intrinsic_height();
-        
+
         let info = format!("SVG: {}x{} pixels", width, height);
         Ok((texture, info))
     }
@@ -2078,29 +2152,31 @@ impl VectorEngravingTool {
         let params = VectorEngravingParameters::default();
         let engraver = VectorEngraver::from_file(path, params)
             .map_err(|e| format!("Failed to load DXF: {}", e))?;
-        
+
         // Render paths to a raster image
         let (width, height) = (400, 400);
         let mut img = image::RgbImage::new(width, height);
-        
+
         // Fill with white background
         for pixel in img.pixels_mut() {
             *pixel = image::Rgb([255, 255, 255]);
         }
-        
+
         // Calculate bounds
         let mut min_x = f32::MAX;
         let mut min_y = f32::MAX;
         let mut max_x = f32::MIN;
         let mut max_y = f32::MIN;
         let mut path_count = 0;
-        
+
         for path in &engraver.paths {
             path_count += 1;
             for event in path.iter() {
                 use lyon::path::Event;
                 match event {
-                    Event::Begin { at } | Event::Line { to: at, .. } | Event::End { last: at, .. } => {
+                    Event::Begin { at }
+                    | Event::Line { to: at, .. }
+                    | Event::End { last: at, .. } => {
                         min_x = min_x.min(at.x);
                         min_y = min_y.min(at.y);
                         max_x = max_x.max(at.x);
@@ -2115,20 +2191,20 @@ impl VectorEngravingTool {
                 }
             }
         }
-        
+
         let bounds_width = max_x - min_x;
         let bounds_height = max_y - min_y;
-        
+
         if bounds_width > 0.0 && bounds_height > 0.0 {
             let scale = (width as f32 / bounds_width).min(height as f32 / bounds_height) * 0.9;
             let offset_x = (width as f32 - bounds_width * scale) / 2.0;
             let offset_y = (height as f32 - bounds_height * scale) / 2.0;
-            
+
             // Draw paths
             for path in &engraver.paths {
                 let mut prev_x = 0;
                 let mut prev_y = 0;
-                
+
                 for event in path.iter() {
                     use lyon::path::Event;
                     match event {
@@ -2143,7 +2219,7 @@ impl VectorEngravingTool {
                             let y = ((to.y - min_y) * scale + offset_y) as i32;
                             let x = x.clamp(0, width as i32 - 1);
                             let y = y.clamp(0, height as i32 - 1);
-                            
+
                             // Draw line using Bresenham
                             Self::draw_line(&mut img, prev_x, prev_y, x, y);
                             prev_x = x;
@@ -2154,7 +2230,7 @@ impl VectorEngravingTool {
                 }
             }
         }
-        
+
         // Convert to texture
         let buffer = glib::Bytes::from(&img.into_raw());
         let texture = gtk4::gdk::MemoryTexture::new(
@@ -2164,8 +2240,11 @@ impl VectorEngravingTool {
             &buffer,
             width as usize * 3,
         );
-        
-        let info = format!("DXF: {:.1}x{:.1} mm, {} paths", bounds_width, bounds_height, path_count);
+
+        let info = format!(
+            "DXF: {:.1}x{:.1} mm, {} paths",
+            bounds_width, bounds_height, path_count
+        );
         Ok((texture.upcast(), info))
     }
 
@@ -2177,16 +2256,16 @@ impl VectorEngravingTool {
         let mut err = dx - dy;
         let mut x = x0;
         let mut y = y0;
-        
+
         loop {
             if x >= 0 && x < img.width() as i32 && y >= 0 && y < img.height() as i32 {
                 img.put_pixel(x as u32, y as u32, image::Rgb([0, 0, 0]));
             }
-            
+
             if x == x1 && y == y1 {
                 break;
             }
-            
+
             let e2 = 2 * err;
             if e2 > -dy {
                 err -= dy;
@@ -2431,7 +2510,10 @@ impl TabbedBoxMaker {
 
         let offset_x = Entry::builder().text("10").valign(Align::Center).build();
         let offset_y = Entry::builder().text("10").valign(Align::Center).build();
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Box Dimensions
         let dim_group = PreferencesGroup::builder()
@@ -2497,8 +2579,10 @@ impl TabbedBoxMaker {
             .build();
         offset_group.add(&Self::create_row("Offset X:", &offset_x));
         offset_group.add(&Self::create_row("Offset Y:", &offset_y));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         offset_group.add(&home_row);
 
@@ -2571,7 +2655,7 @@ impl TabbedBoxMaker {
         generate_btn.connect_clicked(move |_| {
             let params = Self::collect_params(&widgets_gen);
             let home_before = widgets_gen.home_before.is_active();
-            
+
             // Create progress dialog
             let progress_window = gtk4::Window::builder()
                 .title("Generating Box")
@@ -2580,42 +2664,42 @@ impl TabbedBoxMaker {
                 .default_height(150)
                 .resizable(false)
                 .build();
-            
+
             let vbox = Box::new(Orientation::Vertical, 12);
             vbox.set_margin_top(24);
             vbox.set_margin_bottom(24);
             vbox.set_margin_start(24);
             vbox.set_margin_end(24);
-            
+
             let status_label = Label::new(Some("Generating box panels..."));
             vbox.append(&status_label);
-            
+
             let progress_bar = gtk4::ProgressBar::new();
             progress_bar.set_show_text(true);
             progress_bar.set_fraction(0.0);
             vbox.append(&progress_bar);
-            
+
             let button_box = Box::new(Orientation::Horizontal, 6);
             button_box.set_halign(Align::End);
             let cancel_button = Button::with_label("Cancel");
             button_box.append(&cancel_button);
             vbox.append(&button_box);
-            
+
             progress_window.set_child(Some(&vbox));
             progress_window.show();
-            
+
             let on_generate_clone = on_generate.clone();
             let progress_window_clone = progress_window.clone();
             let progress_bar_clone = progress_bar.clone();
-            
+
             let (result_tx, result_rx) = std::sync::mpsc::channel();
             let (cancel_tx, cancel_rx) = std::sync::mpsc::channel();
-            
+
             let cancel_tx_clone = cancel_tx.clone();
             cancel_button.connect_clicked(move |_| {
                 let _ = cancel_tx_clone.send(());
             });
-            
+
             // Spawn background thread
             std::thread::spawn(move || {
                 let result = (|| -> Result<String, String> {
@@ -2625,24 +2709,24 @@ impl TabbedBoxMaker {
                     let mut generator = Generator::new(params)?;
                     generator.generate()?;
                     let mut gcode = generator.to_gcode();
-                    
+
                     gcode = gcode.replace("$H\n", "").replace("$H", "");
                     if home_before {
                         gcode = format!("$H\n{}", gcode);
                     }
                     Ok(gcode)
                 })();
-                
+
                 let _ = result_tx.send(result);
             });
-            
+
             // Simulate progress
             let mut progress = 0.0;
             glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                 // Check for result
                 if let Ok(result) = result_rx.try_recv() {
                     progress_window_clone.close();
-                    
+
                     match result {
                         Ok(gcode) => {
                             on_generate_clone(gcode);
@@ -2890,16 +2974,16 @@ impl SpeedsFeedsTool {
         // Results display area
         let results_box = Box::new(Orientation::Vertical, 6);
         results_box.set_vexpand(true);
-        
+
         let results_frame = gtk4::Frame::new(Some("Calculated Results"));
         results_frame.set_margin_top(12);
-        
+
         let results_content = Box::new(Orientation::Vertical, 6);
         results_content.set_margin_top(12);
         results_content.set_margin_bottom(12);
         results_content.set_margin_start(12);
         results_content.set_margin_end(12);
-        
+
         let rpm_label = Label::builder()
             .label("RPM: --")
             .halign(Align::Start)
@@ -2920,7 +3004,7 @@ impl SpeedsFeedsTool {
             .halign(Align::Start)
             .wrap(true)
             .build();
-        
+
         results_content.append(&rpm_label);
         results_content.append(&feed_label);
         results_content.append(&source_label);
@@ -2997,7 +3081,7 @@ impl SpeedsFeedsTool {
         let feed_label_calc = feed_label.clone();
         let source_label_calc = source_label.clone();
         let warnings_label_calc = warnings_label.clone();
-        
+
         calculate_btn.connect_clicked(move |_| {
             // Placeholder calculation
             rpm_label_calc.set_text("RPM: 12,000");
@@ -3006,7 +3090,9 @@ impl SpeedsFeedsTool {
             warnings_label_calc.set_text("");
         });
 
-        Self { content: content_box }
+        Self {
+            content: content_box,
+        }
     }
 
     pub fn widget(&self) -> &Box {
@@ -3102,10 +3188,15 @@ impl SpoilboardSurfacingTool {
         let cut_depth = Entry::builder().text("0.5").valign(Align::Center).build();
         let stepover_percent = Entry::builder().text("40").valign(Align::Center).build();
         let safe_z = Entry::builder().text("5.0").valign(Align::Center).build();
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Groups
-        let dim_group = PreferencesGroup::builder().title("Spoilboard Dimensions (mm)").build();
+        let dim_group = PreferencesGroup::builder()
+            .title("Spoilboard Dimensions (mm)")
+            .build();
         dim_group.add(&Self::create_row("Width:", &width));
         dim_group.add(&Self::create_row("Height:", &height));
         scroll_content.append(&dim_group);
@@ -3116,12 +3207,16 @@ impl SpoilboardSurfacingTool {
         tool_group.add(&Self::create_row("Stepover (%):", &stepover_percent));
         scroll_content.append(&tool_group);
 
-        let machine_group = PreferencesGroup::builder().title("Machine Settings").build();
+        let machine_group = PreferencesGroup::builder()
+            .title("Machine Settings")
+            .build();
         machine_group.add(&Self::create_row("Feed Rate (mm/min):", &feed_rate));
         machine_group.add(&Self::create_row("Spindle Speed (RPM):", &spindle_speed));
         machine_group.add(&Self::create_row("Safe Z Height (mm):", &safe_z));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         machine_group.add(&home_row);
 
@@ -3223,7 +3318,9 @@ impl SpoilboardSurfacingTool {
             stack_clone_cancel.set_visible_child_name("dashboard");
         });
 
-        Self { content: content_box }
+        Self {
+            content: content_box,
+        }
     }
 
     pub fn widget(&self) -> &Box {
@@ -3310,26 +3407,33 @@ impl SpoilboardSurfacingTool {
                 if let Some(file) = d.file() {
                     if let Some(path) = file.path() {
                         if let Ok(content) = fs::read_to_string(path) {
-                            if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content) {
+                            if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content)
+                            {
                                 if let Some(v) = params.get("width").and_then(|v| v.as_str()) {
                                     w_clone.0.set_text(v);
                                 }
                                 if let Some(v) = params.get("height").and_then(|v| v.as_str()) {
                                     w_clone.1.set_text(v);
                                 }
-                                if let Some(v) = params.get("tool_diameter").and_then(|v| v.as_str()) {
+                                if let Some(v) =
+                                    params.get("tool_diameter").and_then(|v| v.as_str())
+                                {
                                     w_clone.2.set_text(v);
                                 }
                                 if let Some(v) = params.get("feed_rate").and_then(|v| v.as_str()) {
                                     w_clone.3.set_text(v);
                                 }
-                                if let Some(v) = params.get("spindle_speed").and_then(|v| v.as_str()) {
+                                if let Some(v) =
+                                    params.get("spindle_speed").and_then(|v| v.as_str())
+                                {
                                     w_clone.4.set_text(v);
                                 }
                                 if let Some(v) = params.get("cut_depth").and_then(|v| v.as_str()) {
                                     w_clone.5.set_text(v);
                                 }
-                                if let Some(v) = params.get("stepover_percent").and_then(|v| v.as_str()) {
+                                if let Some(v) =
+                                    params.get("stepover_percent").and_then(|v| v.as_str())
+                                {
                                     w_clone.6.set_text(v);
                                 }
                                 if let Some(v) = params.get("safe_z").and_then(|v| v.as_str()) {
@@ -3436,11 +3540,16 @@ impl SpoilboardGridTool {
         laser_mode.append(Some("M4"), "M4 (Dynamic Power)");
         laser_mode.set_active_id(Some("M4"));
         laser_mode.set_valign(Align::Center);
-        
-        let home_before = CheckButton::builder().active(false).valign(Align::Center).build();
+
+        let home_before = CheckButton::builder()
+            .active(false)
+            .valign(Align::Center)
+            .build();
 
         // Groups
-        let dim_group = PreferencesGroup::builder().title("Spoilboard Dimensions (mm)").build();
+        let dim_group = PreferencesGroup::builder()
+            .title("Spoilboard Dimensions (mm)")
+            .build();
         dim_group.add(&Self::create_row("Width:", &width));
         dim_group.add(&Self::create_row("Height:", &height));
         dim_group.add(&Self::create_row("Grid Spacing:", &grid_spacing));
@@ -3450,8 +3559,10 @@ impl SpoilboardGridTool {
         laser_group.add(&Self::create_row("Laser Power (S):", &laser_power));
         laser_group.add(&Self::create_row("Feed Rate (mm/min):", &feed_rate));
         laser_group.add(&Self::create_row("Laser Mode:", &laser_mode));
-        
-        let home_row = ActionRow::builder().title("Home Device Before Start").build();
+
+        let home_row = ActionRow::builder()
+            .title("Home Device Before Start")
+            .build();
         home_row.add_suffix(&home_before);
         laser_group.add(&home_row);
 
@@ -3506,7 +3617,9 @@ impl SpoilboardGridTool {
         let w_gen = widgets.clone();
         generate_btn.connect_clicked(move |_| {
             let home_before = w_gen.home_before.is_active();
-            let laser_mode_str = w_gen.laser_mode.active_id()
+            let laser_mode_str = w_gen
+                .laser_mode
+                .active_id()
                 .map(|s| s.to_string())
                 .unwrap_or_else(|| "M4".to_string());
 
@@ -3553,7 +3666,9 @@ impl SpoilboardGridTool {
             stack_clone_cancel.set_visible_child_name("dashboard");
         });
 
-        Self { content: content_box }
+        Self {
+            content: content_box,
+        }
     }
 
     pub fn widget(&self) -> &Box {
@@ -3584,7 +3699,10 @@ impl SpoilboardGridTool {
             w.grid_spacing.text().to_string(),
             w.feed_rate.text().to_string(),
             w.laser_power.text().to_string(),
-            w.laser_mode.active_id().map(|s| s.to_string()).unwrap_or_else(|| "M4".to_string()),
+            w.laser_mode
+                .active_id()
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "M4".to_string()),
         ));
 
         dialog.connect_response(move |d, response| {
@@ -3634,20 +3752,23 @@ impl SpoilboardGridTool {
                 if let Some(file) = d.file() {
                     if let Some(path) = file.path() {
                         if let Ok(content) = fs::read_to_string(path) {
-                            if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content) {
+                            if let Ok(params) = serde_json::from_str::<serde_json::Value>(&content)
+                            {
                                 if let Some(v) = params.get("width").and_then(|v| v.as_str()) {
                                     w_clone.0.set_text(v);
                                 }
                                 if let Some(v) = params.get("height").and_then(|v| v.as_str()) {
                                     w_clone.1.set_text(v);
                                 }
-                                if let Some(v) = params.get("grid_spacing").and_then(|v| v.as_str()) {
+                                if let Some(v) = params.get("grid_spacing").and_then(|v| v.as_str())
+                                {
                                     w_clone.2.set_text(v);
                                 }
                                 if let Some(v) = params.get("feed_rate").and_then(|v| v.as_str()) {
                                     w_clone.3.set_text(v);
                                 }
-                                if let Some(v) = params.get("laser_power").and_then(|v| v.as_str()) {
+                                if let Some(v) = params.get("laser_power").and_then(|v| v.as_str())
+                                {
                                     w_clone.4.set_text(v);
                                 }
                                 if let Some(v) = params.get("laser_mode").and_then(|v| v.as_str()) {

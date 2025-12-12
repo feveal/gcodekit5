@@ -1,16 +1,16 @@
-use gcodekit5_devicedb::DeviceManager;
 use gcodekit5_core::constants as core_constants;
+use gcodekit5_designer::stock_removal::{SimulationResult, StockMaterial};
+use gcodekit5_devicedb::DeviceManager;
 use gcodekit5_visualizer::visualizer::GCodeCommand;
-use gcodekit5_visualizer::{Visualizer, Camera3D};
-use gcodekit5_designer::stock_removal::{StockMaterial, SimulationResult};
+use gcodekit5_visualizer::{Camera3D, Visualizer};
 // use gcodekit5_designer::stock_removal::visualization::generate_2d_contours;
-use gcodekit5_visualizer::visualizer::{StockSimulator3D, generate_surface_mesh};
+use crate::t;
 use crate::ui::gtk::osd_format::format_zoom_center_cursor;
 use crate::ui::gtk::shaders::StockRemovalShaderProgram;
 use crate::ui::gtk::status_bar::StatusBar;
-use crate::t;
 use gcodekit5_settings::controller::SettingsController;
 use gcodekit5_settings::manager::SettingsManager;
+use gcodekit5_visualizer::visualizer::{generate_surface_mesh, StockSimulator3D};
 use glam::Vec3;
 
 // Stock removal visualization cache
@@ -26,8 +26,10 @@ struct StockRemovalVisualization {
     contour_layers: Vec<ContourLayer>,
 }
 use crate::ui::gtk::nav_cube::NavCube;
-use tracing::debug;
-use crate::ui::gtk::renderer_3d::{RenderBuffers, generate_vertex_data, generate_grid_data, generate_axis_data, generate_tool_marker_data, generate_bounds_data};
+use crate::ui::gtk::renderer_3d::{
+    generate_axis_data, generate_bounds_data, generate_grid_data, generate_tool_marker_data,
+    generate_vertex_data, RenderBuffers,
+};
 use crate::ui::gtk::shaders::ShaderProgram;
 use glow::HasContext;
 use gtk4::gdk::Key;
@@ -35,6 +37,7 @@ use gtk4::prelude::*;
 use gtk4::{EventControllerKey, GestureClick, Popover, Separator};
 use libloading::Library;
 use std::sync::Once;
+use tracing::debug;
 
 static mut EPOXY_LIB: Option<Library> = None;
 static mut GL_LIB: Option<Library> = None;
@@ -57,7 +60,11 @@ fn load_gl_func(name: &str) -> *const std::ffi::c_void {
         // Try epoxy first
         if let Some(lib) = (*(&raw const EPOXY_LIB)).as_ref() {
             // Try epoxy_get_proc_addr
-            if let Ok(get_proc_addr) = lib.get::<unsafe extern "C" fn(*const i8) -> *const std::ffi::c_void>(b"epoxy_get_proc_addr") {
+            if let Ok(get_proc_addr) = lib
+                .get::<unsafe extern "C" fn(*const i8) -> *const std::ffi::c_void>(
+                    b"epoxy_get_proc_addr",
+                )
+            {
                 let c_name = std::ffi::CString::new(name).unwrap();
                 let ptr = get_proc_addr(c_name.as_ptr());
                 if !ptr.is_null() {
@@ -84,30 +91,10 @@ fn load_gl_func(name: &str) -> *const std::ffi::c_void {
 }
 use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
-    accessible::Property as AccessibleProperty,
-    gdk::ModifierType,
-    Box,
-    Button,
-    CheckButton,
-    DrawingArea,
-    EventControllerMotion,
-    EventControllerScroll,
-    EventControllerScrollFlags,
-    GestureDrag,
-    Grid,
-    Adjustment,
-    ComboBoxText,
-    Expander,
-    Image,
-    Scrollbar,
-    Label,
-    Orientation,
-    Overlay,
-    Paned,
-    Stack,
-    ToggleButton,
-    Spinner,
-    GLArea,
+    accessible::Property as AccessibleProperty, gdk::ModifierType, Adjustment, Box, Button,
+    CheckButton, ComboBoxText, DrawingArea, EventControllerMotion, EventControllerScroll,
+    EventControllerScrollFlags, Expander, GLArea, GestureDrag, Grid, Image, Label, Orientation,
+    Overlay, Paned, Scrollbar, Spinner, Stack, ToggleButton,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -118,13 +105,13 @@ use std::sync::Arc;
 struct RenderCache {
     // Cache key: hash of visualizer state
     cache_hash: u64,
-    
+
     // Cached intensity buckets (for intensity mode)
     intensity_buckets: Vec<Vec<(f64, f64, f64, f64)>>,
-    
+
     // Cached cutting bounds (for LOD 3)
     cutting_bounds: Option<(f32, f32, f32, f32, f32, f32)>, // (min_x, max_x, min_y, max_y, min_z, max_z)
-    
+
     // Statistics
     total_lines: usize,
     _rapid_lines: usize,
@@ -319,7 +306,8 @@ impl GcodeVisualizer {
             .icon_name("preferences-desktop-display-symbolic")
             .tooltip_text(t!("Fit to Device Working Area"))
             .build();
-        fit_device_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to Device Working Area"))]);
+        fit_device_btn
+            .update_property(&[AccessibleProperty::Label(&t!("Fit to Device Working Area"))]);
 
         let sidebar_hide_btn = Button::builder().tooltip_text(t!("Hide Sidebar")).build();
         sidebar_hide_btn.update_property(&[AccessibleProperty::Label(&t!("Hide Sidebar"))]);
@@ -336,13 +324,13 @@ impl GcodeVisualizer {
 
         view_controls.append(&fit_btn);
         view_controls.append(&reset_btn);
-        
+
         // Only show fit to device button if device manager is available
         if device_manager.is_some() {
             view_controls.append(&fit_device_btn);
         }
         view_controls.append(&sidebar_hide_btn);
-        
+
         sidebar.append(&view_controls);
 
         // View Mode Switcher
@@ -431,7 +419,9 @@ impl GcodeVisualizer {
         {
             let grid_spacing_mm = grid_spacing_mm.clone();
             grid_spacing_combo.connect_changed(move |cb| {
-                let Some(id) = cb.active_id() else { return; };
+                let Some(id) = cb.active_id() else {
+                    return;
+                };
                 if let Ok(mm) = id.parse::<f64>() {
                     grid_spacing_mm.set(mm);
                 }
@@ -465,7 +455,7 @@ impl GcodeVisualizer {
             .halign(gtk4::Align::Start)
             .margin_top(12)
             .build();
-        
+
         let stock_width_entry = gtk4::Entry::builder()
             .placeholder_text(t!("Width"))
             .text("200.0")
@@ -633,24 +623,18 @@ impl GcodeVisualizer {
         stack.set_vexpand(true);
 
         // 2D Page (Grid with DrawingArea + Scrollbars)
-        let grid = Grid::builder()
-            .hexpand(true)
-            .vexpand(true)
-            .build();
+        let grid = Grid::builder().hexpand(true).vexpand(true).build();
 
         grid.attach(&drawing_area, 0, 0, 1, 1);
         grid.attach(&vscrollbar, 1, 0, 1, 1);
         grid.attach(&hscrollbar, 0, 1, 1, 1);
-        
+
         stack.add_titled(&grid, Some("2d"), &t!("2D View"));
 
         // 3D Page
-        let gl_area = GLArea::builder()
-            .hexpand(true)
-            .vexpand(true)
-            .build();
+        let gl_area = GLArea::builder().hexpand(true).vexpand(true).build();
         gl_area.set_required_version(3, 3);
-        
+
         // 3D Scrollbars
         let extent = core_constants::WORLD_EXTENT_MM as f64;
         let hadjustment_3d = Adjustment::new(0.0, -extent, extent, 10.0, 100.0, 100.0);
@@ -670,15 +654,12 @@ impl GcodeVisualizer {
         hscrollbar_3d.set_visible(false);
         vscrollbar_3d.set_visible(false);
 
-        let grid_3d = Grid::builder()
-            .hexpand(true)
-            .vexpand(true)
-            .build();
+        let grid_3d = Grid::builder().hexpand(true).vexpand(true).build();
 
         grid_3d.attach(&gl_area, 0, 0, 1, 1);
         grid_3d.attach(&vscrollbar_3d, 1, 0, 1, 1);
         grid_3d.attach(&hscrollbar_3d, 0, 1, 1, 1);
-        
+
         stack.add_titled(&grid_3d, Some("3d"), &t!("3D View"));
 
         // Initialize Visualizer logic
@@ -687,7 +668,7 @@ impl GcodeVisualizer {
         let camera = Rc::new(RefCell::new(Camera3D::default()));
         let renderer_state = Rc::new(RefCell::new(None));
         let is_updating_3d = Rc::new(RefCell::new(false));
-        
+
         // Stock removal simulation - use default sensible values
         let initial_stock = Some(StockMaterial {
             width: 200.0,
@@ -799,7 +780,15 @@ impl GcodeVisualizer {
             .build();
         float_zoom_in.update_property(&[AccessibleProperty::Label(&t!("Zoom In"))]);
 
-        for b in [&float_zoom_out, &float_fit, &float_reset, &float_fit_device, &scrollbars_btn, &help_btn, &float_zoom_in] {
+        for b in [
+            &float_zoom_out,
+            &float_fit,
+            &float_reset,
+            &float_fit_device,
+            &scrollbars_btn,
+            &help_btn,
+            &float_zoom_in,
+        ] {
             b.set_size_request(32, 32);
         }
 
@@ -909,29 +898,30 @@ impl GcodeVisualizer {
         let hadj_fit_3d = hadjustment_3d.clone();
         let vadj_fit_3d = vadjustment_3d.clone();
         let is_updating_fit_3d = is_updating_3d.clone();
-        
+
         fit_btn_3d.connect_clicked(move |_| {
             let vis = vis_fit_3d.borrow();
-            let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
-                bounds
-            } else {
-                let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
-                (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
-            };
+            let (min_x, max_x, min_y, max_y, min_z, max_z) =
+                if let Some(bounds) = vis.get_cutting_bounds() {
+                    bounds
+                } else {
+                    let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                    (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+                };
             drop(vis);
-            
+
             let mut cam = cam_fit_3d.borrow_mut();
             cam.fit_to_bounds(
                 Vec3::new(min_x, min_y, min_z),
-                Vec3::new(max_x, max_y, max_z)
+                Vec3::new(max_x, max_y, max_z),
             );
-            
+
             // Update scrollbars
             *is_updating_fit_3d.borrow_mut() = true;
             hadj_fit_3d.set_value(cam.target.x as f64);
             vadj_fit_3d.set_value(cam.target.y as f64);
             *is_updating_fit_3d.borrow_mut() = false;
-            
+
             gl_area_fit_3d.queue_render();
         });
 
@@ -967,10 +957,10 @@ impl GcodeVisualizer {
         let show_intensity_vis = show_intensity.clone();
         let mode_2d_btn_vis = mode_2d_btn.clone();
         let mode_3d_btn_vis = mode_3d_btn.clone();
-        
+
         // Initial state
         nav_widget.set_visible(false); // Start in 2D mode
-        
+
         stack.connect_visible_child_name_notify(move |stack| {
             let is_3d = stack.visible_child_name().as_deref() == Some("3d");
             if is_3d {
@@ -1068,7 +1058,9 @@ impl GcodeVisualizer {
             let update_keys = update_status_fn.clone();
             let device_mgr_keys = device_manager.clone();
             key_controller.connect_key_pressed(move |_, key, _code, modifiers: ModifierType| {
-                if modifiers.contains(ModifierType::CONTROL_MASK) || modifiers.contains(ModifierType::ALT_MASK) {
+                if modifiers.contains(ModifierType::CONTROL_MASK)
+                    || modifiers.contains(ModifierType::ALT_MASK)
+                {
                     return gtk4::glib::Propagation::Proceed;
                 }
 
@@ -1165,45 +1157,54 @@ impl GcodeVisualizer {
                     let vis = vis_menu.clone();
                     let da = da_menu.clone();
                     let update = update_menu.clone();
-                    add_item("Fit to Content", std::boxed::Box::new(move || {
-                        let width = da.width() as f32;
-                        let height = da.height() as f32;
-                        if width > 0.0 && height > 0.0 {
-                            vis.borrow_mut().fit_to_view(width, height);
-                            update();
-                            da.queue_draw();
-                        }
-                    }));
+                    add_item(
+                        "Fit to Content",
+                        std::boxed::Box::new(move || {
+                            let width = da.width() as f32;
+                            let height = da.height() as f32;
+                            if width > 0.0 && height > 0.0 {
+                                vis.borrow_mut().fit_to_view(width, height);
+                                update();
+                                da.queue_draw();
+                            }
+                        }),
+                    );
                 }
                 {
                     let vis = vis_menu.clone();
                     let da = da_menu.clone();
                     let update = update_menu.clone();
-                    add_item("Fit to Viewport", std::boxed::Box::new(move || {
-                        let mut v = vis.borrow_mut();
-                        v.reset_zoom();
-                        v.reset_pan();
-                        drop(v);
-                        update();
-                        da.queue_draw();
-                    }));
+                    add_item(
+                        "Fit to Viewport",
+                        std::boxed::Box::new(move || {
+                            let mut v = vis.borrow_mut();
+                            v.reset_zoom();
+                            v.reset_pan();
+                            drop(v);
+                            update();
+                            da.queue_draw();
+                        }),
+                    );
                 }
                 {
                     let vis = vis_menu.clone();
                     let da = da_menu.clone();
                     let update = update_menu.clone();
                     let dm = device_mgr_menu.clone();
-                    add_item("Fit to Device Working Area", std::boxed::Box::new(move || {
-                        let width = da.width() as f32;
-                        let height = da.height() as f32;
-                        if width > 0.0 && height > 0.0 {
-                            let mut v = vis.borrow_mut();
-                            Self::apply_fit_to_device(&mut v, &dm, width, height);
-                            drop(v);
-                            update();
-                            da.queue_draw();
-                        }
-                    }));
+                    add_item(
+                        "Fit to Device Working Area",
+                        std::boxed::Box::new(move || {
+                            let width = da.width() as f32;
+                            let height = da.height() as f32;
+                            if width > 0.0 && height > 0.0 {
+                                let mut v = vis.borrow_mut();
+                                Self::apply_fit_to_device(&mut v, &dm, width, height);
+                                drop(v);
+                                update();
+                                da.queue_draw();
+                            }
+                        }),
+                    );
                 }
 
                 vbox.append(&Separator::new(Orientation::Horizontal));
@@ -1212,21 +1213,33 @@ impl GcodeVisualizer {
                 {
                     let cursor_pos = cursor_pos_menu.clone();
                     let settings = settings_menu.clone();
-                    add_item("Copy cursor coordinates", std::boxed::Box::new(move || {
-                        let (x, y) = *cursor_pos.borrow();
-                        let system = settings.persistence.borrow().config().ui.measurement_system;
-                        let text = format!("X {}  Y {}", gcodekit5_core::units::format_length(x, system), gcodekit5_core::units::format_length(y, system));
-                        if let Some(display) = gtk4::gdk::Display::default() {
-                            display.clipboard().set_text(&text);
-                        }
-                    }));
+                    add_item(
+                        "Copy cursor coordinates",
+                        std::boxed::Box::new(move || {
+                            let (x, y) = *cursor_pos.borrow();
+                            let system =
+                                settings.persistence.borrow().config().ui.measurement_system;
+                            let text = format!(
+                                "X {}  Y {}",
+                                gcodekit5_core::units::format_length(x, system),
+                                gcodekit5_core::units::format_length(y, system)
+                            );
+                            if let Some(display) = gtk4::gdk::Display::default() {
+                                display.clipboard().set_text(&text);
+                            }
+                        }),
+                    );
                 }
 
                 vbox.append(&Separator::new(Orientation::Horizontal));
 
                 // Toggles
                 {
-                    let btn = Button::builder().label("Toggle Grid").has_frame(false).halign(gtk4::Align::Start).build();
+                    let btn = Button::builder()
+                        .label("Toggle Grid")
+                        .has_frame(false)
+                        .halign(gtk4::Align::Start)
+                        .build();
                     let menu = menu.clone();
                     let cb = show_grid_menu.clone();
                     btn.connect_clicked(move |_| {
@@ -1236,7 +1249,11 @@ impl GcodeVisualizer {
                     vbox.append(&btn);
                 }
                 {
-                    let btn = Button::builder().label("Toggle Machine Bounds").has_frame(false).halign(gtk4::Align::Start).build();
+                    let btn = Button::builder()
+                        .label("Toggle Machine Bounds")
+                        .has_frame(false)
+                        .halign(gtk4::Align::Start)
+                        .build();
                     let menu = menu.clone();
                     let cb = show_bounds_menu.clone();
                     btn.connect_clicked(move |_| {
@@ -1246,7 +1263,11 @@ impl GcodeVisualizer {
                     vbox.append(&btn);
                 }
                 {
-                    let btn = Button::builder().label("Toggle Rapid Moves").has_frame(false).halign(gtk4::Align::Start).build();
+                    let btn = Button::builder()
+                        .label("Toggle Rapid Moves")
+                        .has_frame(false)
+                        .halign(gtk4::Align::Start)
+                        .build();
                     let menu = menu.clone();
                     let cb = show_rapid_menu.clone();
                     btn.connect_clicked(move |_| {
@@ -1256,7 +1277,11 @@ impl GcodeVisualizer {
                     vbox.append(&btn);
                 }
                 {
-                    let btn = Button::builder().label("Toggle Cutting Moves").has_frame(false).halign(gtk4::Align::Start).build();
+                    let btn = Button::builder()
+                        .label("Toggle Cutting Moves")
+                        .has_frame(false)
+                        .halign(gtk4::Align::Start)
+                        .build();
                     let menu = menu.clone();
                     let cb = show_cut_menu.clone();
                     btn.connect_clicked(move |_| {
@@ -1293,7 +1318,7 @@ impl GcodeVisualizer {
                 let v = vis.borrow();
                 let width = da.width() as f64;
                 let height = da.height() as f64;
-                
+
                 if width <= 0.0 || height <= 0.0 {
                     return;
                 }
@@ -1301,30 +1326,44 @@ impl GcodeVisualizer {
                 let zoom = v.zoom_scale as f64;
                 let page_size_x = width / zoom;
                 let page_size_y = height / zoom;
-                
+
                 let center_x = -v.x_offset as f64;
                 let center_y = -v.y_offset as f64;
-                
+
                 let val_x = center_x - page_size_x / 2.0;
                 let val_y = center_y - page_size_y / 2.0;
-                
+
                 let (min_x, max_x, min_y, max_y) = v.get_bounds();
                 let margin = 10.0;
-                
+
                 // Use World Extents for scrollbar range
                 let extent = core_constants::WORLD_EXTENT_MM as f64;
-                
+
                 // Ensure the range includes the current view and content
                 let lower_x = (-extent).min(min_x as f64 - margin).min(val_x);
                 let upper_x = (extent).max(max_x as f64 + margin).max(val_x + page_size_x);
                 let lower_y = (-extent).min(min_y as f64 - margin).min(val_y);
                 let upper_y = (extent).max(max_y as f64 + margin).max(val_y + page_size_y);
-                
+
                 drop(v);
 
                 *is_updating.borrow_mut() = true;
-                hadj.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
-                vadj.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
+                hadj.configure(
+                    val_x,
+                    lower_x,
+                    upper_x,
+                    page_size_x * 0.1,
+                    page_size_x * 0.9,
+                    page_size_x,
+                );
+                vadj.configure(
+                    val_y,
+                    lower_y,
+                    upper_y,
+                    page_size_y * 0.1,
+                    page_size_y * 0.9,
+                    page_size_y,
+                );
                 *is_updating.borrow_mut() = false;
             }
         };
@@ -1344,15 +1383,17 @@ impl GcodeVisualizer {
         let is_updating_h = is_updating.clone();
         let update_status_h = update_status_fn.clone();
         hadjustment.connect_value_changed(move |adj| {
-            if *is_updating_h.borrow() { return; }
+            if *is_updating_h.borrow() {
+                return;
+            }
             let val = adj.value();
             let page_size = adj.page_size();
             let center_x = val + page_size / 2.0;
-            
+
             let mut v = vis_h.borrow_mut();
             v.x_offset = -center_x as f32;
             drop(v);
-            
+
             update_status_h();
             da_h.queue_draw();
         });
@@ -1362,15 +1403,17 @@ impl GcodeVisualizer {
         let is_updating_v = is_updating.clone();
         let update_status_v = update_status_fn.clone();
         vadjustment.connect_value_changed(move |adj| {
-            if *is_updating_v.borrow() { return; }
+            if *is_updating_v.borrow() {
+                return;
+            }
             let val = adj.value();
             let page_size = adj.page_size();
             let center_y = val + page_size / 2.0;
-            
+
             let mut v = vis_v.borrow_mut();
             v.y_offset = -center_y as f32;
             drop(v);
-            
+
             update_status_v();
             da_v.queue_draw();
         });
@@ -1685,30 +1728,31 @@ impl GcodeVisualizer {
         let hadj_fit_main_3d = hadjustment_3d.clone();
         let vadj_fit_main_3d = vadjustment_3d.clone();
         let is_updating_fit_main_3d = is_updating_3d.clone();
-        
+
         fit_btn.connect_clicked(move |_| {
             if stack_fit.visible_child_name().as_deref() == Some("3d") {
                 let vis = vis_fit.borrow();
-                let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
-                    bounds
-                } else {
-                    let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
-                    (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
-                };
+                let (min_x, max_x, min_y, max_y, min_z, max_z) =
+                    if let Some(bounds) = vis.get_cutting_bounds() {
+                        bounds
+                    } else {
+                        let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                        (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+                    };
                 drop(vis);
-                
+
                 let mut cam = camera_fit.borrow_mut();
                 cam.fit_to_bounds(
                     Vec3::new(min_x, min_y, min_z),
-                    Vec3::new(max_x, max_y, max_z)
+                    Vec3::new(max_x, max_y, max_z),
                 );
-                
+
                 // Update scrollbars
                 *is_updating_fit_main_3d.borrow_mut() = true;
                 hadj_fit_main_3d.set_value(cam.target.x as f64);
                 vadj_fit_main_3d.set_value(cam.target.y as f64);
                 *is_updating_fit_main_3d.borrow_mut() = false;
-                
+
                 gl_area_fit.queue_render();
             } else {
                 let width = da_fit.width() as f32;
@@ -1728,12 +1772,12 @@ impl GcodeVisualizer {
             fit_device_btn.connect_clicked(move |_| {
                 let width = da_fit_dev.width() as f32;
                 let height = da_fit_dev.height() as f32;
-                
+
                 let mut vis = vis_fit_dev.borrow_mut();
                 let mgr_opt = Some(device_mgr_clone.clone());
                 Self::apply_fit_to_device(&mut vis, &mgr_opt, width, height);
                 drop(vis);
-                
+
                 update_status();
                 da_fit_dev.queue_draw();
             });
@@ -1756,22 +1800,40 @@ impl GcodeVisualizer {
         let gl_update = gl_area.clone();
         let _da_update = drawing_area.clone();
         let _gl_update = gl_area.clone();
-        show_rapid.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_rapid.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
-        show_cut.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_cut.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
-        show_grid.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_grid.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
-        show_bounds.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_bounds.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
-        show_intensity.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_intensity.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
-        show_laser.connect_toggled(move |_| { da_update.queue_draw(); gl_update.queue_render(); });
+        show_laser.connect_toggled(move |_| {
+            da_update.queue_draw();
+            gl_update.queue_render();
+        });
         let _da_update = drawing_area.clone();
         let gl_update = gl_area.clone();
         let visualizer_stock = visualizer.clone();
@@ -1817,28 +1879,30 @@ impl GcodeVisualizer {
 
                 // Run simulation when enabled
                 let vis = visualizer_stock.borrow();
-                
+
                 if let Some(stock) = stock_material_stock.borrow().as_ref() {
                     use std::sync::{Arc, Mutex};
-                    
+
                     // Run simulation in background thread
                     let stock_clone = stock.clone();
                     let tool_radius_value = *tool_radius_stock.borrow();
                     let result_3d_ref = stock_simulator_3d_stock.clone();
                     let gl_ref = gl_update.clone();
-                    
+
                     // Convert GCode commands to toolpath segments for 3D
                     use gcodekit5_visualizer::{ToolpathSegment, ToolpathSegmentType};
                     let mut toolpath_segments_3d = Vec::new();
-                    
+
                     // G-code Z is typically negative when cutting (Z=-5 means 5mm below surface)
                     // Voxel grid expects Z from 0 (bottom) to thickness (top)
                     // So we convert: voxel_z = stock_thickness + gcode_z
                     let stock_thickness = stock_clone.thickness;
-                    
+
                     for cmd in vis.commands() {
                         match cmd {
-                            GCodeCommand::Move { from, to, rapid, .. } => {
+                            GCodeCommand::Move {
+                                from, to, rapid, ..
+                            } => {
                                 let seg_type = if *rapid {
                                     ToolpathSegmentType::RapidMove
                                 } else {
@@ -1856,7 +1920,13 @@ impl GcodeVisualizer {
                                     spindle_speed: 3000.0,
                                 });
                             }
-                            GCodeCommand::Arc { from, to, center, clockwise, .. } => {
+                            GCodeCommand::Arc {
+                                from,
+                                to,
+                                center,
+                                clockwise,
+                                ..
+                            } => {
                                 let seg_type = if *clockwise {
                                     ToolpathSegmentType::ArcCW
                                 } else {
@@ -1879,7 +1949,7 @@ impl GcodeVisualizer {
                             }
                         }
                     }
-                    
+
                     // Use Arc<Mutex<>> for thread-safe sharing
                     let result_arc = Arc::new(Mutex::new(None));
                     let result_arc_clone = result_arc.clone();
@@ -1889,15 +1959,15 @@ impl GcodeVisualizer {
 
                     std::thread::spawn(move || {
                         use gcodekit5_visualizer::{StockSimulator3D, VoxelGrid};
-                        
+
                         let resolution = 0.25; // 0.25mm voxel resolution (doubled from 0.5mm)
                         let _grid = VoxelGrid::new(
                             stock_clone.width,
                             stock_clone.height,
                             stock_clone.thickness,
-                            resolution
+                            resolution,
                         );
-                        
+
                         let mut simulator = StockSimulator3D::new(
                             stock_clone.width,
                             stock_clone.height,
@@ -1908,26 +1978,30 @@ impl GcodeVisualizer {
 
                         let cancel = cancel_thread.clone();
                         let progress = progress_thread.clone();
-                        let _ = simulator.simulate_toolpath_with_progress(&toolpath_segments_3d, |p| {
-                            if p > 0.0 {
-                                progress.store((p * 100.0).round() as usize, std::sync::atomic::Ordering::Relaxed);
-                            }
-                            !cancel.load(std::sync::atomic::Ordering::SeqCst)
-                        });
+                        let _ =
+                            simulator.simulate_toolpath_with_progress(&toolpath_segments_3d, |p| {
+                                if p > 0.0 {
+                                    progress.store(
+                                        (p * 100.0).round() as usize,
+                                        std::sync::atomic::Ordering::Relaxed,
+                                    );
+                                }
+                                !cancel.load(std::sync::atomic::Ordering::SeqCst)
+                            });
                         progress.store(100, std::sync::atomic::Ordering::Relaxed);
 
                         let result_sim = simulator;
-                        
+
                         // Store in Arc
                         *result_arc_clone.lock().unwrap() = Some(result_sim);
                     });
-                    
+
                     // Poll for completion on main thread with timeout limit
                     let result_arc_poll = result_arc.clone();
                     let poll_count = Rc::new(RefCell::new(0u32));
                     let poll_count_clone = poll_count.clone();
                     let sim_running_poll = simulation_running_flag.clone();
-                    
+
                     let pending_flag = stock_simulation_3d_pending_toggle.clone();
                     let sim_cancel_flag_poll = sim_cancel_flag.clone();
                     let sim_panel_toggle_poll = sim_panel_toggle.clone();
@@ -1955,7 +2029,7 @@ impl GcodeVisualizer {
                             }
                             return glib::ControlFlow::Break;
                         }
-                        
+
                         // Stop after 300 iterations (30 seconds)
                         if *poll_count_clone.borrow() > 300 {
                             *sim_running_poll.borrow_mut() = false;
@@ -1966,7 +2040,7 @@ impl GcodeVisualizer {
                             }
                             return glib::ControlFlow::Break;
                         }
-                        
+
                         if let Ok(mut guard) = result_arc_poll.try_lock() {
                             if let Some(result_simulator) = guard.take() {
                                 if sim_cancel_flag_poll.load(std::sync::atomic::Ordering::SeqCst) {
@@ -1981,7 +2055,7 @@ impl GcodeVisualizer {
 
                                 *result_3d_ref.borrow_mut() = Some(result_simulator);
                                 *pending_flag.borrow_mut() = true;
-                                
+
                                 *sim_running_poll.borrow_mut() = false;
                                 sim_panel_toggle_poll.set_visible(false);
                                 if let Some(sb) = sb_poll.as_ref() {
@@ -2020,7 +2094,7 @@ impl GcodeVisualizer {
                 gl_update.queue_render();
             }
         });
-        
+
         // Stock dimension entry handlers
         let stock_material_width = stock_material.clone();
         // Stock parameter changes - update values only, don't trigger simulation
@@ -2031,7 +2105,7 @@ impl GcodeVisualizer {
                 }
             }
         });
-        
+
         let stock_material_height = stock_material.clone();
         stock_height_entry.connect_changed(move |entry| {
             if let Ok(height) = entry.text().parse::<f32>() {
@@ -2040,7 +2114,7 @@ impl GcodeVisualizer {
                 }
             }
         });
-        
+
         let stock_material_thickness = stock_material.clone();
         stock_thickness_entry.connect_changed(move |entry| {
             if let Ok(thickness) = entry.text().parse::<f32>() {
@@ -2049,7 +2123,7 @@ impl GcodeVisualizer {
                 }
             }
         });
-        
+
         let tool_radius = tool_radius.clone();
         stock_tool_radius_entry.connect_changed(move |entry| {
             if let Ok(radius) = entry.text().parse::<f32>() {
@@ -2094,7 +2168,7 @@ impl GcodeVisualizer {
         let stock_simulator_3d_render = stock_simulator_3d.clone();
         let _stock_material_3d = stock_material.clone();
         let stock_simulation_3d_pending_render = stock_simulation_3d_pending.clone();
-        
+
         // Capture checkbox states
         let show_rapid_3d = show_rapid.clone();
         let show_cut_3d = show_cut.clone();
@@ -2110,15 +2184,11 @@ impl GcodeVisualizer {
             }
 
             let mut state_ref = renderer_state_clone.borrow_mut();
-            
+
             if state_ref.is_none() {
-                let gl = unsafe {
-                    glow::Context::from_loader_function(|s| {
-                        load_gl_func(s)
-                    })
-                };
+                let gl = unsafe { glow::Context::from_loader_function(|s| load_gl_func(s)) };
                 let gl = Rc::new(gl);
-                
+
                 let shader_res = ShaderProgram::new(gl.clone());
                 let rapid_res = RenderBuffers::new(gl.clone(), glow::LINES);
                 let cut_res = RenderBuffers::new(gl.clone(), glow::LINES);
@@ -2127,14 +2197,24 @@ impl GcodeVisualizer {
                 let tool_res = RenderBuffers::new(gl.clone(), glow::TRIANGLES);
                 let bounds_res = RenderBuffers::new(gl.clone(), glow::LINES);
 
-                match (shader_res, rapid_res, cut_res, grid_res, axis_res, tool_res, bounds_res) {
-                    (Ok(shader), Ok(rapid_buffers), Ok(cut_buffers), Ok(mut grid_buffers), Ok(mut axis_buffers), Ok(mut tool_buffers), Ok(bounds_buffers)) => {
+                match (
+                    shader_res, rapid_res, cut_res, grid_res, axis_res, tool_res, bounds_res,
+                ) {
+                    (
+                        Ok(shader),
+                        Ok(rapid_buffers),
+                        Ok(cut_buffers),
+                        Ok(mut grid_buffers),
+                        Ok(mut axis_buffers),
+                        Ok(mut tool_buffers),
+                        Ok(bounds_buffers),
+                    ) => {
                         let grid_data = generate_grid_data(4000.0, 10.0);
                         grid_buffers.update(&grid_data);
-                        
+
                         let axis_data = generate_axis_data(100.0);
                         axis_buffers.update(&axis_data);
-                        
+
                         let tool_data = generate_tool_marker_data();
                         tool_buffers.update(&tool_data);
 
@@ -2151,28 +2231,42 @@ impl GcodeVisualizer {
                         });
                     }
                     (shader, rapid, cut, grid, axis, tool, bounds) => {
-                        if let Err(e) = shader { eprintln!("Shader init failed: {}", e); }
-                        if let Err(e) = rapid { eprintln!("Rapid buffer init failed: {}", e); }
-                        if let Err(e) = cut { eprintln!("Cut buffer init failed: {}", e); }
-                        if let Err(e) = grid { eprintln!("Grid buffer init failed: {}", e); }
-                        if let Err(e) = axis { eprintln!("Axis buffer init failed: {}", e); }
-                        if let Err(e) = tool { eprintln!("Tool buffer init failed: {}", e); }
-                        if let Err(e) = bounds { eprintln!("Bounds buffer init failed: {}", e); }
+                        if let Err(e) = shader {
+                            eprintln!("Shader init failed: {}", e);
+                        }
+                        if let Err(e) = rapid {
+                            eprintln!("Rapid buffer init failed: {}", e);
+                        }
+                        if let Err(e) = cut {
+                            eprintln!("Cut buffer init failed: {}", e);
+                        }
+                        if let Err(e) = grid {
+                            eprintln!("Grid buffer init failed: {}", e);
+                        }
+                        if let Err(e) = axis {
+                            eprintln!("Axis buffer init failed: {}", e);
+                        }
+                        if let Err(e) = tool {
+                            eprintln!("Tool buffer init failed: {}", e);
+                        }
+                        if let Err(e) = bounds {
+                            eprintln!("Bounds buffer init failed: {}", e);
+                        }
                         eprintln!("Failed to initialize 3D renderer");
                         return gtk4::glib::Propagation::Stop;
                     }
                 }
             }
-            
+
             if let Some(state) = state_ref.as_mut() {
                 let gl = &state.shader.gl;
-                
+
                 unsafe {
                     gl.clear_color(0.15, 0.15, 0.15, 1.0);
                     gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
                     gl.enable(glow::DEPTH_TEST);
                 }
-                
+
                 // Update buffers
                 // TODO: Only update when dirty
                 let vis = visualizer_3d.borrow();
@@ -2180,7 +2274,7 @@ impl GcodeVisualizer {
                 state.rapid_buffers.update(&rapid_data);
                 state.cut_buffers.update(&cut_data);
                 drop(vis);
-                
+
                 // Update bounds buffer
                 if let Some(manager) = &device_manager_3d {
                     if let Some(profile) = manager.get_active_profile() {
@@ -2190,8 +2284,9 @@ impl GcodeVisualizer {
                         let max_y = profile.y_axis.max as f32;
                         let min_z = profile.z_axis.min as f32;
                         let max_z = profile.z_axis.max as f32;
-                        
-                        let bounds_data = generate_bounds_data(min_x, max_x, min_y, max_y, min_z, max_z);
+
+                        let bounds_data =
+                            generate_bounds_data(min_x, max_x, min_y, max_y, min_z, max_z);
                         state.bounds_buffers.update(&bounds_data);
                     }
                 }
@@ -2201,23 +2296,23 @@ impl GcodeVisualizer {
                 let view = cam.get_view_matrix();
                 let proj = cam.get_projection_matrix();
                 let mvp = proj * view;
-                
+
                 state.shader.bind();
-                
+
                 if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
                     unsafe {
                         gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp.to_cols_array());
                     }
                 }
-                
+
                 // Draw Grid
                 if show_grid_3d.is_active() {
                     state.grid_buffers.draw();
                 }
-                
+
                 // Draw Axes
                 state.axis_buffers.draw();
-                
+
                 // Draw Bounds
                 if show_bounds_3d.is_active() {
                     state.bounds_buffers.draw();
@@ -2230,19 +2325,23 @@ impl GcodeVisualizer {
                 if show_cut_3d.is_active() {
                     state.cut_buffers.draw();
                 }
-                
+
                 // Draw Tool Marker
                 if show_laser_3d.is_active() {
                     let pos = *current_pos_3d.borrow();
                     let model = glam::Mat4::from_translation(glam::Vec3::new(pos.0, pos.1, pos.2));
                     let mvp_tool = proj * view * model;
-                    
+
                     if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
                         unsafe {
-                            gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp_tool.to_cols_array());
+                            gl.uniform_matrix_4_f32_slice(
+                                Some(&loc),
+                                false,
+                                &mvp_tool.to_cols_array(),
+                            );
                         }
                     }
-                    
+
                     unsafe {
                         gl.enable(glow::BLEND);
                         gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
@@ -2252,9 +2351,9 @@ impl GcodeVisualizer {
                         gl.disable(glow::BLEND);
                     }
                 }
-                
+
                 state.shader.unbind();
-                
+
                 // Draw 3D Stock Removal
                 if show_stock_removal_3d.is_active() {
                     if let Some(simulator) = stock_simulator_3d_render.borrow().as_ref() {
@@ -2267,31 +2366,46 @@ impl GcodeVisualizer {
                         }
 
                         // Rebuild mesh when pending or buffers missing
-                        if state.stock_removal_buffers.is_none() || *stock_simulation_3d_pending_render.borrow() {
+                        if state.stock_removal_buffers.is_none()
+                            || *stock_simulation_3d_pending_render.borrow()
+                        {
                             let mesh_vertices = generate_surface_mesh(simulator.get_grid());
                             match RenderBuffers::new(gl.clone(), glow::TRIANGLES) {
                                 Ok(mut buffers) => {
                                     buffers.update_mesh(&mesh_vertices);
                                     state.stock_removal_buffers = Some(buffers);
                                 }
-                                Err(e) => eprintln!("Failed to create stock removal mesh buffers: {}", e),
+                                Err(e) => {
+                                    eprintln!("Failed to create stock removal mesh buffers: {}", e)
+                                }
                             }
                             *stock_simulation_3d_pending_render.borrow_mut() = false;
                         }
 
-                        if let (Some(shader), Some(buffers)) = (&state.stock_removal_shader, &state.stock_removal_buffers) {
+                        if let (Some(shader), Some(buffers)) =
+                            (&state.stock_removal_shader, &state.stock_removal_buffers)
+                        {
                             shader.bind();
 
                             if let Some(loc) = shader.get_uniform_location("uModelViewProjection") {
                                 unsafe {
-                                    gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp.to_cols_array());
+                                    gl.uniform_matrix_4_f32_slice(
+                                        Some(&loc),
+                                        false,
+                                        &mvp.to_cols_array(),
+                                    );
                                 }
                             }
 
                             if let Some(loc) = shader.get_uniform_location("uNormalMatrix") {
-                                let normal_matrix = glam::Mat3::from_mat4(view).inverse().transpose();
+                                let normal_matrix =
+                                    glam::Mat3::from_mat4(view).inverse().transpose();
                                 unsafe {
-                                    gl.uniform_matrix_3_f32_slice(Some(&loc), false, &normal_matrix.to_cols_array());
+                                    gl.uniform_matrix_3_f32_slice(
+                                        Some(&loc),
+                                        false,
+                                        &normal_matrix.to_cols_array(),
+                                    );
                                 }
                             }
 
@@ -2317,7 +2431,7 @@ impl GcodeVisualizer {
                     }
                 }
             }
-            
+
             gtk4::glib::Propagation::Stop
         });
 
@@ -2332,10 +2446,10 @@ impl GcodeVisualizer {
         let gesture_drag = GestureDrag::new();
         let camera_drag = camera.clone();
         let gl_area_drag = gl_area.clone();
-        
+
         let last_drag_pos = Rc::new(RefCell::new((0.0f64, 0.0f64)));
         let last_drag_pos_begin = last_drag_pos.clone();
-        
+
         gesture_drag.connect_drag_begin(move |_, _, _| {
             *last_drag_pos_begin.borrow_mut() = (0.0, 0.0);
         });
@@ -2352,10 +2466,12 @@ impl GcodeVisualizer {
             *last_pos = (dx, dy);
 
             let mut cam = camera_drag.borrow_mut();
-            
+
             // Check for Shift key
             let is_shift = if let Some(event) = gesture.current_event() {
-                event.modifier_state().contains(gtk4::gdk::ModifierType::SHIFT_MASK)
+                event
+                    .modifier_state()
+                    .contains(gtk4::gdk::ModifierType::SHIFT_MASK)
             } else {
                 false
             };
@@ -2383,7 +2499,7 @@ impl GcodeVisualizer {
                 let sensitivity = 0.005 * orbit_scale;
                 cam.orbit(-delta_x as f32 * sensitivity, -delta_y as f32 * sensitivity);
             }
-            
+
             // Update scrollbars
             *is_updating_3d_drag.borrow_mut() = true;
             hadj_3d_drag.set_value(cam.target.x as f64);
@@ -2393,13 +2509,15 @@ impl GcodeVisualizer {
             gl_area_drag.queue_render();
         });
         gl_area.add_controller(gesture_drag);
-        
+
         // Connect 3D Scrollbars
         let camera_h = camera.clone();
         let gl_area_h = gl_area.clone();
         let is_updating_h = is_updating_3d.clone();
         hadjustment_3d.connect_value_changed(move |adj| {
-            if *is_updating_h.borrow() { return; }
+            if *is_updating_h.borrow() {
+                return;
+            }
             let val = adj.value();
             let mut cam = camera_h.borrow_mut();
             cam.target.x = val as f32;
@@ -2410,13 +2528,15 @@ impl GcodeVisualizer {
         let gl_area_v = gl_area.clone();
         let is_updating_v = is_updating_3d.clone();
         vadjustment_3d.connect_value_changed(move |adj| {
-            if *is_updating_v.borrow() { return; }
+            if *is_updating_v.borrow() {
+                return;
+            }
             let val = adj.value();
             let mut cam = camera_v.borrow_mut();
             cam.target.y = val as f32;
             gl_area_v.queue_render();
         });
-        
+
         // Update 3D scrollbars on fit/reset
         let update_3d_scrollbars = {
             let hadj = hadjustment_3d.clone();
@@ -2428,15 +2548,15 @@ impl GcodeVisualizer {
                 *is_updating.borrow_mut() = true;
                 hadj.set_value(c.target.x as f64);
                 vadj.set_value(c.target.y as f64);
-                
+
                 // Update page size based on view extent
                 let fov_rad = c.fov.to_radians();
                 let visible_height = 2.0 * c.distance * (fov_rad / 2.0).tan();
                 let visible_width = visible_height * c.aspect_ratio;
-                
+
                 hadj.set_page_size(visible_width as f64);
                 vadj.set_page_size(visible_height as f64);
-                
+
                 *is_updating.borrow_mut() = false;
             }
         };
@@ -2445,7 +2565,7 @@ impl GcodeVisualizer {
         let camera_scroll = camera.clone();
         let gl_area_scroll = gl_area.clone();
         let update_scroll_3d = update_3d_scrollbars.clone();
-        
+
         scroll_3d.connect_scroll(move |_controller, _dx, dy| {
             let mut cam = camera_scroll.borrow_mut();
             let sensitivity = 5.0;
@@ -2496,7 +2616,11 @@ impl GcodeVisualizer {
         }
     }
 
-    fn setup_interaction<F: Fn() + 'static>(da: &DrawingArea, vis: &Rc<RefCell<Visualizer>>, update_ui: F) {
+    fn setup_interaction<F: Fn() + 'static>(
+        da: &DrawingArea,
+        vis: &Rc<RefCell<Visualizer>>,
+        update_ui: F,
+    ) {
         // Scroll to pan (Ctrl+Scroll to zoom)
         let scroll = EventControllerScroll::new(EventControllerScrollFlags::BOTH_AXES);
         let vis_scroll = vis.clone();
@@ -2595,7 +2719,7 @@ impl GcodeVisualizer {
     fn update_scrollbars(&self) {
         let width = self.drawing_area.width() as f64;
         let height = self.drawing_area.height() as f64;
-        
+
         if width <= 0.0 || height <= 0.0 {
             return;
         }
@@ -2604,25 +2728,39 @@ impl GcodeVisualizer {
         let zoom = v.zoom_scale as f64;
         let page_size_x = width / zoom;
         let page_size_y = height / zoom;
-        
+
         let center_x = -v.x_offset as f64;
         let center_y = -v.y_offset as f64;
-        
+
         let val_x = center_x - page_size_x / 2.0;
         let val_y = center_y - page_size_y / 2.0;
-        
+
         let (min_x, max_x, min_y, max_y) = v.get_bounds();
         let margin = 10.0;
-        
+
         let lower_x = (min_x as f64 - margin).min(val_x);
         let upper_x = (max_x as f64 + margin).max(val_x + page_size_x);
         let lower_y = (min_y as f64 - margin).min(val_y);
         let upper_y = (max_y as f64 + margin).max(val_y + page_size_y);
-        
+
         drop(v);
 
-        self.hadjustment.configure(val_x, lower_x, upper_x, page_size_x * 0.1, page_size_x * 0.9, page_size_x);
-        self.vadjustment.configure(val_y, lower_y, upper_y, page_size_y * 0.1, page_size_y * 0.9, page_size_y);
+        self.hadjustment.configure(
+            val_x,
+            lower_x,
+            upper_x,
+            page_size_x * 0.1,
+            page_size_x * 0.9,
+            page_size_x,
+        );
+        self.vadjustment.configure(
+            val_y,
+            lower_y,
+            upper_y,
+            page_size_y * 0.1,
+            page_size_y * 0.9,
+            page_size_y,
+        );
     }
 
     pub fn set_gcode(&self, gcode: &str) {
@@ -2637,13 +2775,19 @@ impl GcodeVisualizer {
 
         // Update bounds label
         let (min_x, max_x, min_y, max_y) = vis.get_bounds();
-        
-        let system = self.settings_controller.persistence.borrow().config().ui.measurement_system;
+
+        let system = self
+            .settings_controller
+            .persistence
+            .borrow()
+            .config()
+            .ui
+            .measurement_system;
         let min_x_str = gcodekit5_core::units::format_length(min_x, system);
         let max_x_str = gcodekit5_core::units::format_length(max_x, system);
         let min_y_str = gcodekit5_core::units::format_length(min_y, system);
         let max_y_str = gcodekit5_core::units::format_length(max_y, system);
-        
+
         self.bounds_label.set_text(&format!(
             "{}\nX: {} {} {}\nY: {} {} {}",
             t!("Bounds"),
@@ -2663,14 +2807,22 @@ impl GcodeVisualizer {
 
         for cmd in vis.commands() {
             let s = match cmd {
-                GCodeCommand::Move { intensity: Some(s), .. } => Some(*s),
-                GCodeCommand::Arc { intensity: Some(s), .. } => Some(*s),
+                GCodeCommand::Move {
+                    intensity: Some(s), ..
+                } => Some(*s),
+                GCodeCommand::Arc {
+                    intensity: Some(s), ..
+                } => Some(*s),
                 _ => None,
             };
 
             if let Some(val) = s {
-                if val < min_s { min_s = val; }
-                if val > max_s { max_s = val; }
+                if val < min_s {
+                    min_s = val;
+                }
+                if val > max_s {
+                    max_s = val;
+                }
                 sum_s += val;
                 count_s += 1;
             }
@@ -2715,28 +2867,29 @@ impl GcodeVisualizer {
             // Explicitly disable intensity for 3D view
             self._show_intensity.set_active(false);
             self._show_intensity.set_sensitive(false);
-            
+
             // Fit 3D view
-            let (min_x, max_x, min_y, max_y, min_z, max_z) = if let Some(bounds) = vis.get_cutting_bounds() {
-                bounds
-            } else {
-                let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
-                (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
-            };
-            
+            let (min_x, max_x, min_y, max_y, min_z, max_z) =
+                if let Some(bounds) = vis.get_cutting_bounds() {
+                    bounds
+                } else {
+                    let (min_x_2d, max_x_2d, min_y_2d, max_y_2d) = vis.get_bounds();
+                    (min_x_2d, max_x_2d, min_y_2d, max_y_2d, vis.min_z, vis.max_z)
+                };
+
             let (target_x, target_y) = {
                 let mut cam = self.camera.borrow_mut();
                 cam.fit_to_bounds(
                     Vec3::new(min_x, min_y, min_z),
-                    Vec3::new(max_x, max_y, max_z)
+                    Vec3::new(max_x, max_y, max_z),
                 );
                 (cam.target.x, cam.target.y)
             };
-            
+
             // Update 3D scrollbars
             self.hadjustment_3d.set_value(target_x as f64);
             self.vadjustment_3d.set_value(target_y as f64);
-            
+
             self.gl_area.queue_render();
         } else {
             self.stack.set_visible_child_name("2d");
@@ -2746,29 +2899,32 @@ impl GcodeVisualizer {
         if self.show_stock_removal.is_active() {
             if let Some(stock) = self.stock_material.borrow().as_ref() {
                 use gcodekit5_designer::stock_removal::StockSimulator2D;
-                use gcodekit5_designer::{create_linear_segment, create_arc_segment};
-                
+                use gcodekit5_designer::{create_arc_segment, create_linear_segment};
+
                 // Convert GCode commands to toolpath segments
                 let mut toolpath_segments = Vec::new();
                 for cmd in vis.commands() {
                     match cmd {
-                        GCodeCommand::Move { from, to, rapid, .. } => {
+                        GCodeCommand::Move {
+                            from, to, rapid, ..
+                        } => {
                             let segment = create_linear_segment(
-                                from.x, from.y, from.z,
-                                to.x, to.y, to.z,
-                                *rapid,
+                                from.x, from.y, from.z, to.x, to.y, to.z, *rapid,
                                 100.0, // Default feed rate
                                 3000,  // Default spindle speed
                             );
                             toolpath_segments.push(segment);
                         }
-                        GCodeCommand::Arc { from, to, center, clockwise, .. } => {
+                        GCodeCommand::Arc {
+                            from,
+                            to,
+                            center,
+                            clockwise,
+                            ..
+                        } => {
                             let segment = create_arc_segment(
-                                from.x, from.y, from.z,
-                                to.x, to.y, to.z,
-                                center.x, center.y,
-                                *clockwise,
-                                100.0, // Default feed rate
+                                from.x, from.y, from.z, to.x, to.y, to.z, center.x, center.y,
+                                *clockwise, 100.0, // Default feed rate
                                 3000,  // Default spindle speed
                             );
                             toolpath_segments.push(segment);
@@ -2778,12 +2934,12 @@ impl GcodeVisualizer {
                         }
                     }
                 }
-                
+
                 // Create simulator with default tool radius
                 let tool_radius = 1.585; // 3.17mm diameter / 2
                 let resolution = 0.1; // 0.1mm resolution
                 let mut simulator = StockSimulator2D::new(stock.clone(), tool_radius, resolution);
-                
+
                 // Run simulation
                 simulator.simulate_toolpath(&toolpath_segments);
                 let result = simulator.get_simulation_result();
@@ -2822,7 +2978,7 @@ impl GcodeVisualizer {
         // Phase 4: Calculate cache hash from visualizer state
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+
         let mut hasher = DefaultHasher::new();
         vis.commands().len().hash(&mut hasher);
         show_intensity.hash(&mut hasher);
@@ -2887,11 +3043,11 @@ impl GcodeVisualizer {
                         accent_color.blue() as f64,
                         1.0,
                     );
-                                                      // Calc line width in user space to result in 3px on screen
-                                                      // Zoom scale is user units per screen pixel? No.
-                                                      // Cairo scale(s, -s) means 1 user unit = s pixels.
-                                                      // So 1 pixel = 1/s user units.
-                                                      // 3 pixels = 3/s user units.
+                    // Calc line width in user space to result in 3px on screen
+                    // Zoom scale is user units per screen pixel? No.
+                    // Cairo scale(s, -s) means 1 user unit = s pixels.
+                    // So 1 pixel = 1/s user units.
+                    // 3 pixels = 3/s user units.
                     cr.set_line_width(3.0 / vis.zoom_scale as f64);
 
                     cr.rectangle(min_x, min_y, width, height);
@@ -2903,15 +3059,15 @@ impl GcodeVisualizer {
         // Draw Origin Axes (Full World Extent)
         let extent = core_constants::WORLD_EXTENT_MM as f64;
         cr.set_line_width(1.0 / vis.zoom_scale as f64); // Thinner line for full axes
-        
+
         // X Axis Red
-        cr.set_source_rgb(1.0, 0.0, 0.0); 
+        cr.set_source_rgb(1.0, 0.0, 0.0);
         cr.move_to(-extent, 0.0);
         cr.line_to(extent, 0.0);
         cr.stroke().unwrap();
 
         // Y Axis Green
-        cr.set_source_rgb(0.0, 1.0, 0.0); 
+        cr.set_source_rgb(0.0, 1.0, 0.0);
         cr.move_to(0.0, -extent);
         cr.line_to(0.0, extent);
         cr.stroke().unwrap();
@@ -2919,10 +3075,10 @@ impl GcodeVisualizer {
         // Draw Stock Removal - only draw cached result, don't regenerate
         if show_stock_removal {
             if let Some(cached_viz) = simulation_visualization {
-                static DRAW_COUNTER: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+                static DRAW_COUNTER: std::sync::atomic::AtomicU32 =
+                    std::sync::atomic::AtomicU32::new(0);
                 let count = DRAW_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                if count % 10 == 0 {
-                }
+                if count % 10 == 0 {}
                 Self::draw_stock_removal_cached(cr, vis, cached_viz);
             }
         }
@@ -2933,7 +3089,7 @@ impl GcodeVisualizer {
         // Phase 3: Level of Detail - calculate pixels per mm to determine detail level
         // At low zoom (far out), lines become sub-pixel and we can skip detail
         let pixels_per_mm = vis.zoom_scale;
-        
+
         // LOD thresholds:
         // - LOD 0 (High): zoom >= 1.0 (1:1 or closer) - Draw everything
         // - LOD 1 (Medium): 0.2 <= zoom < 1.0 - Skip every other line
@@ -2948,19 +3104,19 @@ impl GcodeVisualizer {
         } else {
             3 // Minimal (bounding box)
         };
-        
+
         // Phase 2: Calculate visible viewport bounds in world coordinates
         // The viewport in screen space is centered at (center_x, center_y) with dimensions (width, height)
         // After transformations: translate(center) -> scale(zoom) -> translate(offset)
         // To find world coordinates visible, we reverse: screen -> unscale -> unoffset
         let half_width_world = (width as f32 / 2.0) / vis.zoom_scale;
         let half_height_world = (height as f32 / 2.0) / vis.zoom_scale;
-        
+
         // Add 5% margin to prevent popping at edges during pan
         let margin = 0.1;
         let margin_x = half_width_world * margin;
         let margin_y = half_height_world * margin;
-        
+
         let view_min_x = -vis.x_offset - half_width_world - margin_x;
         let view_max_x = -vis.x_offset + half_width_world + margin_x;
         let view_min_y = -vis.y_offset - half_height_world - margin_y;
@@ -2975,30 +3131,47 @@ impl GcodeVisualizer {
                 warning_color.blue() as f64,
                 0.5,
             );
-            
+
             let mut line_counter = 0u32;
             for cmd in vis.commands() {
-                if let GCodeCommand::Move { from, to, rapid: true, .. } = cmd {
+                if let GCodeCommand::Move {
+                    from,
+                    to,
+                    rapid: true,
+                    ..
+                } = cmd
+                {
                     // Phase 2: Viewport culling - skip lines completely outside view
                     let line_min_x = from.x.min(to.x);
                     let line_max_x = from.x.max(to.x);
                     let line_min_y = from.y.min(to.y);
                     let line_max_y = from.y.max(to.y);
-                    
+
                     // Skip if line is entirely outside viewport
-                    if line_max_x < view_min_x || line_min_x > view_max_x ||
-                       line_max_y < view_min_y || line_min_y > view_max_y {
+                    if line_max_x < view_min_x
+                        || line_min_x > view_max_x
+                        || line_max_y < view_min_y
+                        || line_min_y > view_max_y
+                    {
                         continue;
                     }
-                    
+
                     // Phase 3: LOD - skip lines based on detail level
                     line_counter += 1;
                     match lod_level {
-                        1 => if line_counter % 2 != 0 { continue; }, // Skip every other line
-                        2 => if line_counter % 4 != 0 { continue; }, // Skip 3 of 4 lines
+                        1 => {
+                            if line_counter % 2 != 0 {
+                                continue;
+                            }
+                        } // Skip every other line
+                        2 => {
+                            if line_counter % 4 != 0 {
+                                continue;
+                            }
+                        } // Skip 3 of 4 lines
                         _ => {} // LOD 0: Draw all
                     }
-                    
+
                     cr.move_to(from.x as f64, from.y as f64);
                     cr.line_to(to.x as f64, to.y as f64);
                 }
@@ -3011,52 +3184,61 @@ impl GcodeVisualizer {
             if show_intensity {
                 // Phase 4: Check if we need to rebuild intensity buckets cache
                 const INTENSITY_BUCKETS: usize = 20;
-                
-                if cache.needs_rebuild(new_hash) || cache.intensity_buckets.len() != INTENSITY_BUCKETS {
+
+                if cache.needs_rebuild(new_hash)
+                    || cache.intensity_buckets.len() != INTENSITY_BUCKETS
+                {
                     // Rebuild cache
                     cache.cache_hash = new_hash;
                     cache.intensity_buckets = vec![Vec::new(); INTENSITY_BUCKETS];
                     cache.total_lines = 0;
                     cache.cut_lines = 0;
-                    
+
                     // Pre-compute intensity buckets (WITHOUT viewport/LOD - cache is view-independent)
                     for cmd in vis.commands() {
                         cache.total_lines += 1;
-                        if let GCodeCommand::Move { from, to, rapid: false, intensity } = cmd {
+                        if let GCodeCommand::Move {
+                            from,
+                            to,
+                            rapid: false,
+                            intensity,
+                        } = cmd
+                        {
                             cache.cut_lines += 1;
-                            
+
                             let s = intensity.unwrap_or(0.0);
                             let mut gray = 1.0 - (s as f64 / max_s_value).clamp(0.0, 1.0);
                             if s > 0.0 && gray > 0.95 {
                                 gray = 0.95;
                             }
-                            
-                            let bucket_idx = ((gray * (INTENSITY_BUCKETS as f64 - 1.0)).round() as usize)
+
+                            let bucket_idx = ((gray * (INTENSITY_BUCKETS as f64 - 1.0)).round()
+                                as usize)
                                 .min(INTENSITY_BUCKETS - 1);
-                            
+
                             cache.intensity_buckets[bucket_idx].push((
                                 from.x as f64,
                                 from.y as f64,
                                 to.x as f64,
-                                to.y as f64
+                                to.y as f64,
                             ));
                         }
                     }
                 }
-                
+
                 // Phase 4: Render from cached buckets (apply viewport culling + LOD during render)
                 let mut line_counter = 0u32;
-                
+
                 // Draw each bucket with a single stroke (apply viewport + LOD filtering)
                 for (bucket_idx, lines) in cache.intensity_buckets.iter().enumerate() {
                     if lines.is_empty() {
                         continue;
                     }
-                    
+
                     let gray = (bucket_idx as f64) / ((INTENSITY_BUCKETS - 1) as f64);
                     cr.set_source_rgb(gray, gray, gray);
                     cr.new_path();
-                    
+
                     // line_counter = 0;
                     for (fx, fy, tx, ty) in lines {
                         // Phase 2: Viewport culling (on cached data)
@@ -3064,42 +3246,64 @@ impl GcodeVisualizer {
                         let line_max_x = (*fx as f32).max(*tx as f32);
                         let line_min_y = (*fy as f32).min(*ty as f32);
                         let line_max_y = (*fy as f32).max(*ty as f32);
-                        
-                        if line_max_x < view_min_x || line_min_x > view_max_x ||
-                           line_max_y < view_min_y || line_min_y > view_max_y {
+
+                        if line_max_x < view_min_x
+                            || line_min_x > view_max_x
+                            || line_max_y < view_min_y
+                            || line_min_y > view_max_y
+                        {
                             continue;
                         }
-                        
+
                         // Phase 3: LOD (on cached data)
                         line_counter += 1;
                         match lod_level {
-                            1 => if line_counter % 2 != 0 { continue; },
-                            2 => if line_counter % 4 != 0 { continue; },
+                            1 => {
+                                if line_counter % 2 != 0 {
+                                    continue;
+                                }
+                            }
+                            2 => {
+                                if line_counter % 4 != 0 {
+                                    continue;
+                                }
+                            }
                             _ => {}
                         }
-                        
+
                         cr.move_to(*fx, *fy);
                         cr.line_to(*tx, *ty);
                     }
-                    
+
                     cr.stroke().unwrap(); // One stroke per intensity level!
                 }
-                
+
                 // Draw arcs separately (usually fewer)
                 for cmd in vis.commands() {
-                    if let GCodeCommand::Arc { from, to, center, clockwise, intensity } = cmd {
+                    if let GCodeCommand::Arc {
+                        from,
+                        to,
+                        center,
+                        clockwise,
+                        intensity,
+                    } = cmd
+                    {
                         // Phase 2: Viewport culling for arcs (check bounding box)
-                        let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                        let radius =
+                            ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
                         let arc_min_x = center.x - radius;
                         let arc_max_x = center.x + radius;
                         let arc_min_y = center.y - radius;
                         let arc_max_y = center.y + radius;
-                        
-                        if arc_max_x < view_min_x || arc_min_x > view_max_x ||
-                           arc_max_y < view_min_y || arc_min_y > view_max_y {
+
+                        if arc_max_x < view_min_x
+                            || arc_min_x > view_max_x
+                            || arc_max_y < view_min_y
+                            || arc_min_y > view_max_y
+                        {
                             continue;
                         }
-                        
+
                         let s = intensity.unwrap_or(0.0);
                         let mut gray = 1.0 - (s as f64 / max_s_value).clamp(0.0, 1.0);
                         if s > 0.0 && gray > 0.95 {
@@ -3135,51 +3339,77 @@ impl GcodeVisualizer {
                 // Non-intensity mode: Single color, single stroke! + viewport culling + LOD
                 cr.new_path();
                 cr.set_source_rgba(
-                success_color.red() as f64,
-                success_color.green() as f64,
-                success_color.blue() as f64,
-                1.0,
-            );
-                
+                    success_color.red() as f64,
+                    success_color.green() as f64,
+                    success_color.blue() as f64,
+                    1.0,
+                );
+
                 let mut line_counter = 0u32;
                 for cmd in vis.commands() {
                     match cmd {
-                        GCodeCommand::Move { from, to, rapid: false, .. } => {
+                        GCodeCommand::Move {
+                            from,
+                            to,
+                            rapid: false,
+                            ..
+                        } => {
                             // Phase 2: Viewport culling
                             let line_min_x = from.x.min(to.x);
                             let line_max_x = from.x.max(to.x);
                             let line_min_y = from.y.min(to.y);
                             let line_max_y = from.y.max(to.y);
-                            
-                            if line_max_x < view_min_x || line_min_x > view_max_x ||
-                               line_max_y < view_min_y || line_min_y > view_max_y {
+
+                            if line_max_x < view_min_x
+                                || line_min_x > view_max_x
+                                || line_max_y < view_min_y
+                                || line_min_y > view_max_y
+                            {
                                 continue;
                             }
-                            
+
                             // Phase 3: LOD - skip lines based on detail level
                             line_counter += 1;
                             match lod_level {
-                                1 => if line_counter % 2 != 0 { continue; },
-                                2 => if line_counter % 4 != 0 { continue; },
+                                1 => {
+                                    if line_counter % 2 != 0 {
+                                        continue;
+                                    }
+                                }
+                                2 => {
+                                    if line_counter % 4 != 0 {
+                                        continue;
+                                    }
+                                }
                                 _ => {}
                             }
-                            
+
                             cr.move_to(from.x as f64, from.y as f64);
                             cr.line_to(to.x as f64, to.y as f64);
                         }
-                        GCodeCommand::Arc { from, to, center, clockwise, .. } => {
+                        GCodeCommand::Arc {
+                            from,
+                            to,
+                            center,
+                            clockwise,
+                            ..
+                        } => {
                             // Phase 2: Viewport culling for arcs
-                            let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                            let radius =
+                                ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
                             let arc_min_x = center.x - radius;
                             let arc_max_x = center.x + radius;
                             let arc_min_y = center.y - radius;
                             let arc_max_y = center.y + radius;
-                            
-                            if arc_max_x < view_min_x || arc_min_x > view_max_x ||
-                               arc_max_y < view_min_y || arc_min_y > view_max_y {
+
+                            if arc_max_x < view_min_x
+                                || arc_min_x > view_max_x
+                                || arc_max_y < view_min_y
+                                || arc_min_y > view_max_y
+                            {
                                 continue;
                             }
-                            
+
                             let radius = radius as f64;
                             let start_angle = (from.y - center.y).atan2(from.x - center.x) as f64;
                             let end_angle = (to.y - center.y).atan2(to.x - center.x) as f64;
@@ -3208,7 +3438,7 @@ impl GcodeVisualizer {
                 cr.stroke().unwrap(); // Single stroke for all cutting moves!
             }
         }
-        
+
         // Phase 3 + 4: LOD Level 3 (Minimal) - Draw bounding box only at extreme zoom out
         if lod_level == 3 && show_cut {
             // Phase 4: Use cached bounds if available
@@ -3221,10 +3451,15 @@ impl GcodeVisualizer {
                 let mut bounds_min_z = f32::MAX;
                 let mut bounds_max_z = f32::MIN;
                 let mut has_bounds = false;
-                
+
                 for cmd in vis.commands() {
                     match cmd {
-                        GCodeCommand::Move { from, to, rapid: false, .. } => {
+                        GCodeCommand::Move {
+                            from,
+                            to,
+                            rapid: false,
+                            ..
+                        } => {
                             bounds_min_x = bounds_min_x.min(from.x).min(to.x);
                             bounds_max_x = bounds_max_x.max(from.x).max(to.x);
                             bounds_min_y = bounds_min_y.min(from.y).min(to.y);
@@ -3233,8 +3468,14 @@ impl GcodeVisualizer {
                             bounds_max_z = bounds_max_z.max(from.z).max(to.z);
                             has_bounds = true;
                         }
-                        GCodeCommand::Arc { from, to: _, center, .. } => {
-                            let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
+                        GCodeCommand::Arc {
+                            from,
+                            to: _,
+                            center,
+                            ..
+                        } => {
+                            let radius =
+                                ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
                             bounds_min_x = bounds_min_x.min(center.x - radius);
                             bounds_max_x = bounds_max_x.max(center.x + radius);
                             bounds_min_y = bounds_min_y.min(center.y - radius);
@@ -3246,23 +3487,32 @@ impl GcodeVisualizer {
                         _ => {}
                     }
                 }
-                
+
                 if has_bounds {
-                    cache.cutting_bounds = Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y, bounds_min_z, bounds_max_z));
+                    cache.cutting_bounds = Some((
+                        bounds_min_x,
+                        bounds_max_x,
+                        bounds_min_y,
+                        bounds_max_y,
+                        bounds_min_z,
+                        bounds_max_z,
+                    ));
                 }
             }
-            
-            if let Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y, _, _)) = cache.cutting_bounds {
+
+            if let Some((bounds_min_x, bounds_max_x, bounds_min_y, bounds_max_y, _, _)) =
+                cache.cutting_bounds
+            {
                 // Draw filled rectangle for toolpath bounds (using cached bounds)
                 cr.set_source_rgba(1.0, 1.0, 0.0, 0.5); // Semi-transparent yellow
                 cr.rectangle(
                     bounds_min_x as f64,
                     bounds_min_y as f64,
                     (bounds_max_x - bounds_min_x) as f64,
-                    (bounds_max_y - bounds_min_y) as f64
+                    (bounds_max_y - bounds_min_y) as f64,
                 );
                 cr.fill().unwrap();
-                
+
                 // Draw outline
                 cr.set_source_rgb(1.0, 1.0, 0.0);
                 cr.set_line_width(2.0 / vis.zoom_scale as f64);
@@ -3270,7 +3520,7 @@ impl GcodeVisualizer {
                     bounds_min_x as f64,
                     bounds_min_y as f64,
                     (bounds_max_x - bounds_min_x) as f64,
-                    (bounds_max_y - bounds_min_y) as f64
+                    (bounds_max_y - bounds_min_y) as f64,
                 );
                 cr.stroke().unwrap();
             }
@@ -3279,18 +3529,29 @@ impl GcodeVisualizer {
         // Draw Laser/Spindle Position
         if show_laser {
             cr.set_source_rgb(1.0, 0.0, 0.0); // Red
-            // Draw a circle at current_pos
-            // Radius 4.0 pixels (diameter 8)
-            // We are in transformed space, so we need to scale the radius
+                                              // Draw a circle at current_pos
+                                              // Radius 4.0 pixels (diameter 8)
+                                              // We are in transformed space, so we need to scale the radius
             let radius = 4.0 / vis.zoom_scale as f64;
-            cr.arc(current_pos.0 as f64, current_pos.1 as f64, radius, 0.0, 2.0 * std::f64::consts::PI);
+            cr.arc(
+                current_pos.0 as f64,
+                current_pos.1 as f64,
+                radius,
+                0.0,
+                2.0 * std::f64::consts::PI,
+            );
             cr.fill().unwrap();
         }
 
         cr.restore().unwrap();
     }
 
-    fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer, grid_size: f64, fg_color: &gtk4::gdk::RGBA) {
+    fn draw_grid(
+        cr: &gtk4::cairo::Context,
+        vis: &Visualizer,
+        grid_size: f64,
+        fg_color: &gtk4::gdk::RGBA,
+    ) {
         let grid_alpha = 0.25;
 
         // Calculate visible area in world coordinates
@@ -3329,18 +3590,20 @@ impl GcodeVisualizer {
     ) {
         // Just draw the pre-computed contours - NO computation here!
         cr.set_line_width(1.5 / vis.zoom_scale as f64);
-        
+
         for layer in &cached_viz.contour_layers {
             cr.set_source_rgba(
                 layer.color.0 as f64,
                 layer.color.1 as f64,
                 layer.color.2 as f64,
-                0.7
+                0.7,
             );
-            
+
             for contour in &layer.contours {
-                if contour.len() < 2 { continue; }
-                
+                if contour.len() < 2 {
+                    continue;
+                }
+
                 cr.move_to(contour[0].0 as f64, contour[0].1 as f64);
                 for point in &contour[1..] {
                     cr.line_to(point.0 as f64, point.1 as f64);
@@ -3349,41 +3612,43 @@ impl GcodeVisualizer {
             }
         }
     }
-    
+
     #[allow(dead_code)]
-    fn generate_stock_visualization(result: &SimulationResult, stock: &StockMaterial) -> StockRemovalVisualization {
+    fn generate_stock_visualization(
+        result: &SimulationResult,
+        stock: &StockMaterial,
+    ) -> StockRemovalVisualization {
         use gcodekit5_designer::stock_removal::visualization::generate_2d_contours;
-        
+
         // Reduce contour count dramatically - only 3 levels
         let num_contours = 3;
         let mut contour_layers = Vec::new();
-        
+
         for i in 0..num_contours {
             let t = i as f32 / (num_contours - 1) as f32;
             let z_height = stock.thickness * t;
-            
+
             // Simple color gradient from yellow (shallow) to blue (deep)
             let r = 1.0 - t;
             let g = 0.7 - t * 0.5;
             let b = t;
-            
+
             let contours = generate_2d_contours(&result.height_map, z_height);
-            
+
             // Convert Vec<Vec<Point2D>> to Vec<Vec<(f32, f32)>>
-            let contours: Vec<Vec<(f32, f32)>> = contours.into_iter()
+            let contours: Vec<Vec<(f32, f32)>> = contours
+                .into_iter()
                 .map(|contour| contour.into_iter().map(|p| (p.x, p.y)).collect())
                 .collect();
-            
+
             contour_layers.push(ContourLayer {
                 _z_height: z_height,
                 color: (r, g, b),
                 contours,
             });
         }
-        
-        StockRemovalVisualization {
-            contour_layers,
-        }
+
+        StockRemovalVisualization { contour_layers }
     }
 }
 
@@ -3405,8 +3670,14 @@ mod tests_visualizer {
         let margin_percent = 0.05f32;
         let available_width = width * (1.0 - margin_percent * 2.0);
         let available_height = height * (1.0 - margin_percent * 2.0);
-        let expected_scale = (available_width / core_constants::DEFAULT_WORK_WIDTH_MM as f32).min(available_height / core_constants::DEFAULT_WORK_HEIGHT_MM as f32);
+        let expected_scale = (available_width / core_constants::DEFAULT_WORK_WIDTH_MM as f32)
+            .min(available_height / core_constants::DEFAULT_WORK_HEIGHT_MM as f32);
 
-        assert!((vis.zoom_scale - expected_scale).abs() < 1e-4, "zoom {} expected {}", vis.zoom_scale, expected_scale);
+        assert!(
+            (vis.zoom_scale - expected_scale).abs() < 1e-4,
+            "zoom {} expected {}",
+            vis.zoom_scale,
+            expected_scale
+        );
     }
 }

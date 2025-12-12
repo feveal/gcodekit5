@@ -1,8 +1,8 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, Frame, Grid, Label, ListBox,
-    Orientation, Paned, PolicyType, ScrolledWindow, SearchEntry, SpinButton, Stack,
-    StackSwitcher, TextView, WrapMode,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, Frame, Grid, Label, ListBox, Orientation,
+    Paned, PolicyType, ScrolledWindow, SearchEntry, SpinButton, Stack, StackSwitcher, TextView,
+    WrapMode,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -17,7 +17,7 @@ pub struct MaterialsManagerView {
     materials_list: ListBox,
     search_entry: SearchEntry,
     category_filter: ComboBoxText,
-    
+
     // Edit form widgets
     edit_id: Entry,
     edit_name: Entry,
@@ -36,11 +36,11 @@ pub struct MaterialsManagerView {
     edit_fume_hazard: ComboBoxText,
     edit_coolant_required: CheckButton,
     edit_notes: TextView,
-    
+
     // State
     selected_material: Rc<RefCell<Option<Material>>>,
     is_creating: Rc<RefCell<bool>>,
-    
+
     // Action buttons
     save_btn: Button,
     cancel_btn: Button,
@@ -51,7 +51,7 @@ pub struct MaterialsManagerView {
 impl MaterialsManagerView {
     pub fn new() -> Rc<Self> {
         let backend = Rc::new(RefCell::new(MaterialsManagerBackend::new()));
-        
+
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
@@ -129,15 +129,15 @@ impl MaterialsManagerView {
         let delete_btn = Button::with_label("🗑️ Delete");
         delete_btn.add_css_class("destructive-action");
         delete_btn.set_sensitive(false);
-        
+
         action_bar.append(&save_btn);
         action_bar.append(&cancel_btn);
         action_bar.append(&delete_btn);
-        
+
         let spacer = Label::new(None);
         spacer.set_hexpand(true);
         action_bar.append(&spacer);
-        
+
         main_content.append(&action_bar);
 
         // Stack with tabs
@@ -147,10 +147,20 @@ impl MaterialsManagerView {
         // Create tab pages
         let (general_page, edit_id, edit_name, edit_category, edit_subcategory, edit_description) =
             Self::create_general_tab();
-        let (properties_page, edit_density, edit_machinability, edit_tensile_strength, edit_melting_point) =
-            Self::create_properties_tab();
-        let (machining_page, edit_chip_type, edit_heat_sensitivity, edit_abrasiveness, edit_surface_finish) =
-            Self::create_machining_tab();
+        let (
+            properties_page,
+            edit_density,
+            edit_machinability,
+            edit_tensile_strength,
+            edit_melting_point,
+        ) = Self::create_properties_tab();
+        let (
+            machining_page,
+            edit_chip_type,
+            edit_heat_sensitivity,
+            edit_abrasiveness,
+            edit_surface_finish,
+        ) = Self::create_machining_tab();
         let (safety_page, edit_dust_hazard, edit_fume_hazard, edit_coolant_required) =
             Self::create_safety_tab();
         let (notes_page, edit_notes) = Self::create_notes_tab();
@@ -294,7 +304,14 @@ impl MaterialsManagerView {
         vbox.append(&desc_frame);
 
         scroll.set_child(Some(&vbox));
-        (scroll, edit_id, edit_name, edit_category, edit_subcategory, edit_description)
+        (
+            scroll,
+            edit_id,
+            edit_name,
+            edit_category,
+            edit_subcategory,
+            edit_description,
+        )
     }
 
     fn create_properties_tab() -> (ScrolledWindow, SpinButton, SpinButton, Entry, Entry) {
@@ -348,10 +365,22 @@ impl MaterialsManagerView {
         grid.attach(&edit_melting_point, 1, row, 1, 1);
 
         scroll.set_child(Some(&grid));
-        (scroll, edit_density, edit_machinability, edit_tensile_strength, edit_melting_point)
+        (
+            scroll,
+            edit_density,
+            edit_machinability,
+            edit_tensile_strength,
+            edit_melting_point,
+        )
     }
 
-    fn create_machining_tab() -> (ScrolledWindow, ComboBoxText, ComboBoxText, ComboBoxText, ComboBoxText) {
+    fn create_machining_tab() -> (
+        ScrolledWindow,
+        ComboBoxText,
+        ComboBoxText,
+        ComboBoxText,
+        ComboBoxText,
+    ) {
         let scroll = ScrolledWindow::new();
         scroll.set_policy(PolicyType::Never, PolicyType::Automatic);
 
@@ -415,7 +444,13 @@ impl MaterialsManagerView {
         grid.attach(&edit_surface_finish, 1, row, 1, 1);
 
         scroll.set_child(Some(&grid));
-        (scroll, edit_chip_type, edit_heat_sensitivity, edit_abrasiveness, edit_surface_finish)
+        (
+            scroll,
+            edit_chip_type,
+            edit_heat_sensitivity,
+            edit_abrasiveness,
+            edit_surface_finish,
+        )
     }
 
     fn create_safety_tab() -> (ScrolledWindow, ComboBoxText, ComboBoxText, CheckButton) {
@@ -463,7 +498,12 @@ impl MaterialsManagerView {
         grid.attach(&edit_coolant_required, 0, row, 2, 1);
 
         scroll.set_child(Some(&grid));
-        (scroll, edit_dust_hazard, edit_fume_hazard, edit_coolant_required)
+        (
+            scroll,
+            edit_dust_hazard,
+            edit_fume_hazard,
+            edit_coolant_required,
+        )
     }
 
     fn create_notes_tab() -> (ScrolledWindow, TextView) {
@@ -534,7 +574,7 @@ impl MaterialsManagerView {
                 // Find the hidden label containing the material ID (last child)
                 let mut child = row_box.first_child();
                 let mut id_label: Option<Label> = None;
-                
+
                 while let Some(widget) = child.clone() {
                     if let Ok(label) = widget.clone().downcast::<Label>() {
                         if !label.is_visible() {
@@ -544,7 +584,7 @@ impl MaterialsManagerView {
                     }
                     child = widget.next_sibling();
                 }
-                
+
                 if let Some(label) = id_label {
                     let material_id = label.label().to_string();
                     view.load_material_for_edit(&material_id);
@@ -609,15 +649,15 @@ impl MaterialsManagerView {
     fn load_material_for_edit(&self, material_id: &str) {
         let backend = self.backend.borrow();
         let mat_id = MaterialId(material_id.to_string());
-        
+
         if let Some(material) = backend.get_material(&mat_id) {
             *self.is_creating.borrow_mut() = false;
             *self.selected_material.borrow_mut() = Some(material.clone());
-            
+
             // Load material into form
             self.edit_id.set_text(&material.id.0);
             self.edit_name.set_text(&material.name);
-            
+
             // Set category
             let category_text = material.category.to_string();
             for i in 0..7 {
@@ -628,24 +668,27 @@ impl MaterialsManagerView {
                 }
                 self.edit_category.set_active(Some(i));
             }
-            
+
             self.edit_subcategory.set_text(&material.subcategory);
-            self.edit_description.buffer().set_text(&material.description);
+            self.edit_description
+                .buffer()
+                .set_text(&material.description);
             self.edit_density.set_value(material.density as f64);
-            self.edit_machinability.set_value(material.machinability_rating as f64);
-            
+            self.edit_machinability
+                .set_value(material.machinability_rating as f64);
+
             if let Some(ts) = material.tensile_strength {
                 self.edit_tensile_strength.set_text(&ts.to_string());
             } else {
                 self.edit_tensile_strength.set_text("");
             }
-            
+
             if let Some(mp) = material.melting_point {
                 self.edit_melting_point.set_text(&mp.to_string());
             } else {
                 self.edit_melting_point.set_text("");
             }
-            
+
             // Set chip type
             let chip_text = format!("{:?}", material.chip_type);
             for i in 0..4 {
@@ -656,7 +699,7 @@ impl MaterialsManagerView {
                 }
                 self.edit_chip_type.set_active(Some(i));
             }
-            
+
             // Set heat sensitivity
             let heat_text = format!("{:?}", material.heat_sensitivity);
             for i in 0..3 {
@@ -667,7 +710,7 @@ impl MaterialsManagerView {
                 }
                 self.edit_heat_sensitivity.set_active(Some(i));
             }
-            
+
             // Set abrasiveness
             let abr_text = format!("{:?}", material.abrasiveness);
             for i in 0..3 {
@@ -678,7 +721,7 @@ impl MaterialsManagerView {
                 }
                 self.edit_abrasiveness.set_active(Some(i));
             }
-            
+
             // Set surface finish
             let surf_text = format!("{:?}", material.surface_finish);
             for i in 0..4 {
@@ -689,7 +732,7 @@ impl MaterialsManagerView {
                 }
                 self.edit_surface_finish.set_active(Some(i));
             }
-            
+
             // Set dust hazard
             let dust_text = format!("{:?}", material.dust_hazard);
             for i in 0..4 {
@@ -700,7 +743,7 @@ impl MaterialsManagerView {
                 }
                 self.edit_dust_hazard.set_active(Some(i));
             }
-            
+
             // Set fume hazard
             let fume_text = format!("{:?}", material.fume_hazard);
             for i in 0..4 {
@@ -711,10 +754,11 @@ impl MaterialsManagerView {
                 }
                 self.edit_fume_hazard.set_active(Some(i));
             }
-            
-            self.edit_coolant_required.set_active(material.coolant_required);
+
+            self.edit_coolant_required
+                .set_active(material.coolant_required);
             self.edit_notes.buffer().set_text(&material.notes);
-            
+
             // Update UI state
             self.edit_id.set_sensitive(false);
             self.save_btn.set_sensitive(true);

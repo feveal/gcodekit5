@@ -203,7 +203,6 @@ mod tests {
 
     #[test]
     fn test_persistence() {
-
         // Create a test material
         let test_material = Material::new(
             MaterialId("test_persist".to_string()),

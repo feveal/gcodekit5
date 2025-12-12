@@ -10,6 +10,8 @@ mod render_optimizer;
 mod shapes;
 #[path = "core/spatial_index.rs"]
 mod spatial_index;
+#[path = "core/text_toolpath.rs"]
+mod text_toolpath;
 #[path = "core/toolpath.rs"]
 mod toolpath;
 #[path = "core/viewport.rs"]

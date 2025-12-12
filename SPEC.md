@@ -1,10 +1,22 @@
 # GCodeKit5 - Specification Document
 
-**Version**: 0.30.0-alpha.0
+**Version**: 0.31.0-alpha.0
 **Last Updated**: 2025-12-12
 **Status**: Alpha Release
 
-### Latest Release (v0.30.0-alpha.0) - UI Polish + Status
+### Latest Release (v0.31.0-alpha.0) - Designer Text + UX
+- ✅ **Designer**
+  - Text tool implemented with font selection (family/bold/italic) and point-size UI mapped to mm in the design file.
+  - Improved layer management UX (selection behavior, group/ungroup actions, draggable separator) and inspector polish.
+- ✅ **Visualizer/Designer**
+  - Consistent progress + cancel UX for long-running operations.
+  - Standardized Fit semantics (Fit to Viewport / Fit to Content / Fit to Device Working Area).
+- ✅ **Preferences/About**
+  - Added “Show About on startup” preference; About dialog supports background artwork and startup auto-dismiss.
+- ✅ **Version**
+  - Bumped version to 0.31.0-alpha.0.
+
+### Previous Release (v0.30.0-alpha.0) - UI Polish + Status
 - ✅ **Machine Control**
   - Decode GRBL `WPos` (working coordinates) and update the working coordinate DRO.
 - ✅ **Visualizer**

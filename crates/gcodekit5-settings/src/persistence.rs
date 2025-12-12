@@ -279,6 +279,17 @@ impl SettingsPersistence {
             .with_description("Display keyboard shortcuts in menu items")
             .with_category(SettingsCategory::UserInterface),
         );
+
+        // Show About on Startup
+        dialog.add_setting(
+            Setting::new(
+                "show_about_on_startup",
+                "Show About on Startup",
+                SettingValue::Boolean(ui.show_about_on_startup),
+            )
+            .with_description("Show the About dialog for 15 seconds when the application starts")
+            .with_category(SettingsCategory::UserInterface),
+        );
     }
 
     /// Add file processing settings to dialog
@@ -447,6 +458,12 @@ impl SettingsPersistence {
         if let Some(setting) = dialog.get_setting("show_menu_shortcuts") {
             if let Ok(value) = setting.value.as_str().parse::<bool>() {
                 self.config.ui.show_menu_shortcuts = value;
+            }
+        }
+
+        if let Some(setting) = dialog.get_setting("show_about_on_startup") {
+            if let Ok(value) = setting.value.as_str().parse::<bool>() {
+                self.config.ui.show_about_on_startup = value;
             }
         }
 

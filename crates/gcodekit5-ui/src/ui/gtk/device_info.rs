@@ -1,5 +1,8 @@
 use gtk4::prelude::*;
-use gtk4::{Align, Box, Button, Label, ListBox, ListBoxRow, Orientation, PolicyType, ScrolledWindow, Separator};
+use gtk4::{
+    Align, Box, Button, Label, ListBox, ListBoxRow, Orientation, PolicyType, ScrolledWindow,
+    Separator,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -157,7 +160,7 @@ impl DeviceInfoView {
 
     pub fn set_connected(&self, connected: bool, device_name: &str, firmware: &str, version: &str) {
         *self.connected.borrow_mut() = connected;
-        
+
         if connected {
             self.status_icon.set_text("📠");
             self.device_name_label.set_text(device_name);
@@ -218,7 +221,7 @@ impl DeviceInfoView {
         status_label.add_css_class(if cap.enabled { "success" } else { "error" });
         status_label.set_width_chars(8);
         status_label.set_xalign(0.5);
-        
+
         let status_frame = Box::new(Orientation::Horizontal, 0);
         status_frame.append(&status_label);
         status_frame.add_css_class("pill");

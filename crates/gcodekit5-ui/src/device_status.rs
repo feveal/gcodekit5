@@ -1,10 +1,10 @@
 //! Global device status shared across the application
 
 use gcodekit5_communication::firmware::grbl::status_parser::{
-    MachinePosition, WorkPosition, WorkCoordinateOffset, BufferRxState, FeedSpindleState,
+    BufferRxState, FeedSpindleState, MachinePosition, WorkCoordinateOffset, WorkPosition,
 };
-use std::sync::{Arc, RwLock};
 use once_cell::sync::Lazy;
+use std::sync::{Arc, RwLock};
 
 /// Global GRBL device status
 #[derive(Debug, Clone)]
@@ -52,7 +52,7 @@ impl Default for GrblDeviceStatus {
 }
 
 /// Global device status instance
-pub static DEVICE_STATUS: Lazy<Arc<RwLock<GrblDeviceStatus>>> = 
+pub static DEVICE_STATUS: Lazy<Arc<RwLock<GrblDeviceStatus>>> =
     Lazy::new(|| Arc::new(RwLock::new(GrblDeviceStatus::default())));
 
 /// Update the machine state

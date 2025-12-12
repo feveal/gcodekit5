@@ -1,8 +1,7 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, ComboBoxText, Entry, Frame, Grid, Label, ListBox,
-    Orientation, Paned, PolicyType, ScrolledWindow, SearchEntry, SpinButton, Stack,
-    StackSwitcher, TextView, WrapMode,
+    Align, Box, Button, ComboBoxText, Entry, Frame, Grid, Label, ListBox, Orientation, Paned,
+    PolicyType, ScrolledWindow, SearchEntry, SpinButton, Stack, StackSwitcher, TextView, WrapMode,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -18,7 +17,7 @@ pub struct ToolsManagerView {
     search_entry: SearchEntry,
     type_filter: ComboBoxText,
     right_panel_stack: Stack,
-    
+
     // Edit form widgets
     edit_id: Entry,
     edit_number: SpinButton,
@@ -35,11 +34,11 @@ pub struct ToolsManagerView {
     edit_part_number: Entry,
     edit_description: TextView,
     edit_notes: TextView,
-    
+
     // State
     selected_tool: Rc<RefCell<Option<Tool>>>,
     is_creating: Rc<RefCell<bool>>,
-    
+
     // Action buttons
     save_btn: Button,
     cancel_btn: Button,
@@ -50,7 +49,7 @@ pub struct ToolsManagerView {
 impl ToolsManagerView {
     pub fn new() -> Rc<Self> {
         let backend = Rc::new(RefCell::new(ToolsManagerBackend::new()));
-        
+
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
@@ -115,21 +114,21 @@ impl ToolsManagerView {
         let right_panel_stack = Stack::new();
         right_panel_stack.set_hexpand(true);
         right_panel_stack.set_vexpand(true);
-        
+
         // Empty state
         let empty_state = Box::new(Orientation::Vertical, 0);
         empty_state.set_valign(Align::Center);
         empty_state.set_halign(Align::Center);
         empty_state.set_vexpand(true);
         empty_state.set_hexpand(true);
-        
+
         let empty_label = Label::new(Some("Please select or create a tool to edit"));
         empty_label.add_css_class("title-2");
         empty_label.add_css_class("dim-label");
         empty_state.append(&empty_label);
-        
+
         right_panel_stack.add_named(&empty_state, Some("empty"));
-        
+
         // Edit form container
         let main_content = Box::new(Orientation::Vertical, 10);
         main_content.set_margin_top(20);
@@ -147,15 +146,15 @@ impl ToolsManagerView {
         let delete_btn = Button::with_label("🗑️ Delete");
         delete_btn.add_css_class("destructive-action");
         delete_btn.set_sensitive(false);
-        
+
         action_bar.append(&save_btn);
         action_bar.append(&cancel_btn);
         action_bar.append(&delete_btn);
-        
+
         let spacer = Label::new(None);
         spacer.set_hexpand(true);
         action_bar.append(&spacer);
-        
+
         main_content.append(&action_bar);
 
         // Stack with tabs
@@ -165,8 +164,14 @@ impl ToolsManagerView {
         // Create tab pages
         let (basic_page, edit_id, edit_number, edit_name, edit_tool_type, edit_material) =
             Self::create_basic_tab();
-        let (geometry_page, edit_diameter, edit_length, edit_flute_length, edit_shaft_diameter, edit_flutes) =
-            Self::create_geometry_tab();
+        let (
+            geometry_page,
+            edit_diameter,
+            edit_length,
+            edit_flute_length,
+            edit_shaft_diameter,
+            edit_flutes,
+        ) = Self::create_geometry_tab();
         let (mfg_page, edit_coating, edit_manufacturer, edit_part_number, edit_description) =
             Self::create_manufacturer_tab();
         let (notes_page, edit_notes) = Self::create_notes_tab();
@@ -182,7 +187,7 @@ impl ToolsManagerView {
 
         main_content.append(&switcher);
         main_content.append(&stack);
-        
+
         right_panel_stack.add_named(&main_content, Some("edit"));
         right_panel_stack.set_visible_child_name("empty");
 
@@ -234,7 +239,14 @@ impl ToolsManagerView {
         view
     }
 
-    fn create_basic_tab() -> (ScrolledWindow, Entry, SpinButton, Entry, ComboBoxText, ComboBoxText) {
+    fn create_basic_tab() -> (
+        ScrolledWindow,
+        Entry,
+        SpinButton,
+        Entry,
+        ComboBoxText,
+        ComboBoxText,
+    ) {
         let scroll = ScrolledWindow::new();
         scroll.set_policy(PolicyType::Never, PolicyType::Automatic);
 
@@ -306,7 +318,14 @@ impl ToolsManagerView {
         grid.attach(&edit_material, 1, row, 1, 1);
 
         scroll.set_child(Some(&grid));
-        (scroll, edit_id, edit_number, edit_name, edit_tool_type, edit_material)
+        (
+            scroll,
+            edit_id,
+            edit_number,
+            edit_name,
+            edit_tool_type,
+            edit_material,
+        )
     }
 
     fn create_geometry_tab() -> (ScrolledWindow, Entry, Entry, Entry, Entry, SpinButton) {
@@ -368,7 +387,14 @@ impl ToolsManagerView {
         grid.attach(&edit_flutes, 1, row, 1, 1);
 
         scroll.set_child(Some(&grid));
-        (scroll, edit_diameter, edit_length, edit_flute_length, edit_shaft_diameter, edit_flutes)
+        (
+            scroll,
+            edit_diameter,
+            edit_length,
+            edit_flute_length,
+            edit_shaft_diameter,
+            edit_flutes,
+        )
     }
 
     fn create_manufacturer_tab() -> (ScrolledWindow, ComboBoxText, Entry, Entry, TextView) {
@@ -430,7 +456,13 @@ impl ToolsManagerView {
         vbox.append(&desc_frame);
 
         scroll.set_child(Some(&vbox));
-        (scroll, edit_coating, edit_manufacturer, edit_part_number, edit_description)
+        (
+            scroll,
+            edit_coating,
+            edit_manufacturer,
+            edit_part_number,
+            edit_description,
+        )
     }
 
     fn create_notes_tab() -> (ScrolledWindow, TextView) {
@@ -499,7 +531,7 @@ impl ToolsManagerView {
             if let Some(row_box) = row.child().and_then(|w| w.downcast::<Box>().ok()) {
                 let mut child = row_box.first_child();
                 let mut id_label: Option<Label> = None;
-                
+
                 while let Some(widget) = child.clone() {
                     if let Ok(label) = widget.clone().downcast::<Label>() {
                         if !label.is_visible() {
@@ -509,7 +541,7 @@ impl ToolsManagerView {
                     }
                     child = widget.next_sibling();
                 }
-                
+
                 if let Some(label) = id_label {
                     let tool_id = label.label().to_string();
                     view.load_tool_for_edit(&tool_id);
@@ -527,7 +559,7 @@ impl ToolsManagerView {
         let backend = self.backend.borrow();
         let search_query = self.search_entry.text().to_string();
         let mut tools = backend.search_tools(&search_query);
-        
+
         // Apply type filter
         if let Some(type_id) = self.type_filter.active_id() {
             if type_id.as_str() != "all" {
@@ -601,13 +633,13 @@ impl ToolsManagerView {
         if let Some(tool) = backend.get_tool(&ToolId(tool_id.to_string())) {
             *self.is_creating.borrow_mut() = false;
             *self.selected_tool.borrow_mut() = Some(tool.clone());
-            
+
             // Populate form with tool data
             self.edit_id.set_text(&tool.id.0);
             self.edit_id.set_sensitive(false);
             self.edit_number.set_value(tool.number as f64);
             self.edit_name.set_text(&tool.name);
-            
+
             // Set tool type
             match tool.tool_type {
                 ToolType::EndMillFlat => self.edit_tool_type.set_active(Some(0)),
@@ -620,22 +652,26 @@ impl ToolsManagerView {
                 ToolType::ChamferTool => self.edit_tool_type.set_active(Some(7)),
                 ToolType::Specialty => self.edit_tool_type.set_active(Some(8)),
             }
-            
+
             // Material - map string to combobox
             self.edit_material.set_active(Some(1)); // Default to Carbide
-            
-            self.edit_diameter.set_text(&format!("{:.2}", tool.diameter));
+
+            self.edit_diameter
+                .set_text(&format!("{:.2}", tool.diameter));
             self.edit_length.set_text(&format!("{:.2}", tool.length));
-            self.edit_flute_length.set_text(&format!("{:.2}", tool.flute_length));
-            
+            self.edit_flute_length
+                .set_text(&format!("{:.2}", tool.flute_length));
+
             if let Some(shaft_dia) = tool.shaft_diameter {
-                self.edit_shaft_diameter.set_text(&format!("{:.2}", shaft_dia));
+                self.edit_shaft_diameter
+                    .set_text(&format!("{:.2}", shaft_dia));
             } else {
-                self.edit_shaft_diameter.set_text(&format!("{:.2}", tool.diameter));
+                self.edit_shaft_diameter
+                    .set_text(&format!("{:.2}", tool.diameter));
             }
-            
+
             self.edit_flutes.set_value(tool.flutes as f64);
-            
+
             // Optional fields
             if let Some(ref _coating) = tool.coating {
                 // Set coating combobox
@@ -647,11 +683,11 @@ impl ToolsManagerView {
             if let Some(ref part_number) = tool.part_number {
                 self.edit_part_number.set_text(part_number);
             }
-            
+
             // Description and notes are not Option types
             self.edit_description.buffer().set_text(&tool.description);
             self.edit_notes.buffer().set_text(&tool.notes);
-            
+
             // Show edit form
             self.right_panel_stack.set_visible_child_name("edit");
             self.save_btn.set_sensitive(true);
@@ -665,7 +701,7 @@ impl ToolsManagerView {
         let tool_id = self.edit_id.text().to_string();
         let tool_number = self.edit_number.value() as u32;
         let tool_name = self.edit_name.text().to_string();
-        
+
         // Get tool type from combobox
         let tool_type = match self.edit_tool_type.active() {
             Some(0) => ToolType::EndMillFlat,
@@ -679,41 +715,49 @@ impl ToolsManagerView {
             Some(8) => ToolType::Specialty,
             _ => ToolType::EndMillFlat,
         };
-        
+
         // Parse numeric fields
         let diameter = self.edit_diameter.text().parse::<f32>().unwrap_or(6.35);
         let length = self.edit_length.text().parse::<f32>().unwrap_or(50.0);
         let flute_length = self.edit_flute_length.text().parse::<f32>().unwrap_or(20.0);
         let shaft_diameter = self.edit_shaft_diameter.text().parse::<f32>().ok();
         let flutes = self.edit_flutes.value() as u32;
-        
+
         // Get optional fields
         let manufacturer = {
             let text = self.edit_manufacturer.text().to_string();
-            if text.is_empty() { None } else { Some(text) }
+            if text.is_empty() {
+                None
+            } else {
+                Some(text)
+            }
         };
-        
+
         let part_number = {
             let text = self.edit_part_number.text().to_string();
-            if text.is_empty() { None } else { Some(text) }
+            if text.is_empty() {
+                None
+            } else {
+                Some(text)
+            }
         };
-        
+
         let coating = None; // TODO: Parse from combobox
-        
+
         let description = {
             let buffer = self.edit_description.buffer();
             let start = buffer.start_iter();
             let end = buffer.end_iter();
             buffer.text(&start, &end, true).to_string()
         };
-        
+
         let notes = {
             let buffer = self.edit_notes.buffer();
             let start = buffer.start_iter();
             let end = buffer.end_iter();
             buffer.text(&start, &end, true).to_string()
         };
-        
+
         // Create tool
         let tool = Tool {
             id: ToolId(tool_id.clone()),
@@ -731,7 +775,7 @@ impl ToolsManagerView {
             material: gcodekit5_core::data::tools::ToolMaterial::Carbide,
             coating,
             shank: gcodekit5_core::data::tools::ShankType::Straight(
-                (shaft_diameter.unwrap_or(diameter) * 10.0) as u32
+                (shaft_diameter.unwrap_or(diameter) * 10.0) as u32,
             ),
             params: gcodekit5_core::data::tools::ToolCuttingParams::default(),
             manufacturer,
@@ -740,7 +784,7 @@ impl ToolsManagerView {
             notes,
             custom: true,
         };
-        
+
         // Save to backend
         let mut backend = self.backend.borrow_mut();
         if *self.is_creating.borrow() {
@@ -751,7 +795,7 @@ impl ToolsManagerView {
             backend.add_tool(tool);
         }
         drop(backend);
-        
+
         // Refresh list and return to empty state
         self.load_tools();
         self.cancel_edit();
@@ -761,7 +805,7 @@ impl ToolsManagerView {
         // Get the selected tool
         if let Some(ref tool) = *self.selected_tool.borrow() {
             let tool_id = tool.id.clone();
-            
+
             // Show confirmation dialog
             if let Some(window) = self.widget.root().and_downcast::<gtk4::Window>() {
                 let dialog = gtk4::MessageDialog::builder()
@@ -775,24 +819,24 @@ impl ToolsManagerView {
                         tool.number, tool.name
                     ))
                     .build();
-                
+
                 let backend = self.backend.clone();
                 let view = Rc::new(self.clone());
-                
+
                 dialog.connect_response(move |dialog, response| {
                     if response == gtk4::ResponseType::Yes {
                         // Delete from backend
                         let mut backend_mut = backend.borrow_mut();
                         backend_mut.remove_tool(&tool_id);
                         drop(backend_mut);
-                        
+
                         // Refresh list and return to empty state
                         view.load_tools();
                         view.cancel_edit();
                     }
                     dialog.close();
                 });
-                
+
                 dialog.show();
             }
         }

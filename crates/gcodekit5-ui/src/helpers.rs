@@ -1,9 +1,8 @@
-use crate::ui::main_window::MainWindow;
-use gcodekit5_communication::{CapabilityManager, list_ports};
 use crate::editor::EditorBridge;
-use gcodekit5_communication::firmware::firmware_version::{FirmwareType, SemanticVersion};
 use crate::ui::gtk::device_info::CapabilityItem;
-
+use crate::ui::main_window::MainWindow;
+use gcodekit5_communication::firmware::firmware_version::{FirmwareType, SemanticVersion};
+use gcodekit5_communication::{list_ports, CapabilityManager};
 
 /// Copy text to clipboard using arboard crate
 pub fn copy_to_clipboard(text: &str) -> bool {
@@ -75,15 +74,37 @@ pub fn parse_grbl_setting_line(line: &str) -> Option<ConfigSettingRow> {
     })
 }
 
-pub fn get_grbl_setting_info(number: i32) -> (&'static str, &'static str, &'static str, &'static str) {
+pub fn get_grbl_setting_info(
+    number: i32,
+) -> (&'static str, &'static str, &'static str, &'static str) {
     match number {
-        0 => ("Step pulse time", "Step pulse duration in microseconds", "μs", "System"),
-        1 => ("Step idle delay", "Step idle delay in milliseconds", "ms", "System"),
+        0 => (
+            "Step pulse time",
+            "Step pulse duration in microseconds",
+            "μs",
+            "System",
+        ),
+        1 => (
+            "Step idle delay",
+            "Step idle delay in milliseconds",
+            "ms",
+            "System",
+        ),
         2 => ("Step pulse invert", "Step pulse invert mask", "", "System"),
-        3 => ("Step direction invert", "Step direction invert mask", "", "System"),
+        3 => (
+            "Step direction invert",
+            "Step direction invert mask",
+            "",
+            "System",
+        ),
         // ... (copy further entries as needed) ...
         132 => ("Z max travel", "Z-axis maximum travel", "mm", "Max Travel"),
-        _ => (Box::leak(format!("${}", number).into_boxed_str()), "Unknown setting", "", "Other"),
+        _ => (
+            Box::leak(format!("${}", number).into_boxed_str()),
+            "Unknown setting",
+            "",
+            "Other",
+        ),
     }
 }
 
@@ -94,15 +115,51 @@ pub fn sync_capabilities_to_ui(window: &MainWindow, capability_manager: &Capabil
     // Build capability list for the view
     let mut capabilities = Vec::new();
 
-    capabilities.push(CapabilityItem { name: "Arc Support (G2/G3)".into(), enabled: state.supports_arcs, notes: "Circular interpolation commands".into() });
-    capabilities.push(CapabilityItem { name: "Variable Spindle (M3/M4 S)".into(), enabled: state.supports_variable_spindle, notes: "PWM spindle speed control".into() });
-    capabilities.push(CapabilityItem { name: "Probing (G38.x)".into(), enabled: state.supports_probing, notes: "Touch probe operations".into() });
-    capabilities.push(CapabilityItem { name: "Tool Change (M6 T)".into(), enabled: state.supports_tool_change, notes: "Automatic tool changing".into() });
-    capabilities.push(CapabilityItem { name: "Homing Cycle ($H)".into(), enabled: state.supports_homing, notes: "Machine homing to limit switches".into() });
-    capabilities.push(CapabilityItem { name: "Feed/Spindle Overrides".into(), enabled: state.supports_overrides, notes: "Real-time adjustment of feed and spindle".into() });
-    capabilities.push(CapabilityItem { name: "Laser Mode (M3/M4)".into(), enabled: state.supports_laser, notes: "Dynamic laser power control for engraving/cutting".into() });
-    capabilities.push(CapabilityItem { name: format!("{} Axes Support", state.max_axes).into(), enabled: state.max_axes > 0, notes: format!("Maximum {} axes (X,Y,Z,A,B,C)", state.max_axes).into() });
-    capabilities.push(CapabilityItem { name: format!("{} Coordinate Systems", state.coordinate_systems).into(), enabled: state.coordinate_systems > 0, notes: "Work coordinate systems (G54-G59)".into() });
+    capabilities.push(CapabilityItem {
+        name: "Arc Support (G2/G3)".into(),
+        enabled: state.supports_arcs,
+        notes: "Circular interpolation commands".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Variable Spindle (M3/M4 S)".into(),
+        enabled: state.supports_variable_spindle,
+        notes: "PWM spindle speed control".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Probing (G38.x)".into(),
+        enabled: state.supports_probing,
+        notes: "Touch probe operations".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Tool Change (M6 T)".into(),
+        enabled: state.supports_tool_change,
+        notes: "Automatic tool changing".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Homing Cycle ($H)".into(),
+        enabled: state.supports_homing,
+        notes: "Machine homing to limit switches".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Feed/Spindle Overrides".into(),
+        enabled: state.supports_overrides,
+        notes: "Real-time adjustment of feed and spindle".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Laser Mode (M3/M4)".into(),
+        enabled: state.supports_laser,
+        notes: "Dynamic laser power control for engraving/cutting".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: format!("{} Axes Support", state.max_axes).into(),
+        enabled: state.max_axes > 0,
+        notes: format!("Maximum {} axes (X,Y,Z,A,B,C)", state.max_axes).into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: format!("{} Coordinate Systems", state.coordinate_systems).into(),
+        enabled: state.coordinate_systems > 0,
+        notes: "Work coordinate systems (G54-G59)".into(),
+    });
 
     // Update UI
     window.set_device_capabilities(capabilities);
@@ -126,17 +183,53 @@ pub fn update_device_info_panel(
     let state = capability_manager.get_state();
     let mut capabilities = Vec::new();
 
-    capabilities.push(CapabilityItem { name: "Arc Support (G2/G3)".into(), enabled: state.supports_arcs, notes: "Circular interpolation commands".into() });
-    capabilities.push(CapabilityItem { name: "Variable Spindle (M3/M4 S)".into(), enabled: state.supports_variable_spindle, notes: "PWM spindle speed control".into() });
-    capabilities.push(CapabilityItem { name: "Probing (G38.x)".into(), enabled: state.supports_probing, notes: "Touch probe operations".into() });
-    capabilities.push(CapabilityItem { name: "Tool Change (M6 T)".into(), enabled: state.supports_tool_change, notes: "Automatic tool changing".into() });
-    capabilities.push(CapabilityItem { name: "Homing Cycle ($H)".into(), enabled: state.supports_homing, notes: "Machine homing to limit switches".into() });
-    capabilities.push(CapabilityItem { name: "Feed/Spindle Overrides".into(), enabled: state.supports_overrides, notes: "Real-time adjustment of feed and spindle".into() });
-    capabilities.push(CapabilityItem { name: "Laser Mode (M3/M4)".into(), enabled: state.supports_laser, notes: "Dynamic laser power control for engraving/cutting".into() });
+    capabilities.push(CapabilityItem {
+        name: "Arc Support (G2/G3)".into(),
+        enabled: state.supports_arcs,
+        notes: "Circular interpolation commands".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Variable Spindle (M3/M4 S)".into(),
+        enabled: state.supports_variable_spindle,
+        notes: "PWM spindle speed control".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Probing (G38.x)".into(),
+        enabled: state.supports_probing,
+        notes: "Touch probe operations".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Tool Change (M6 T)".into(),
+        enabled: state.supports_tool_change,
+        notes: "Automatic tool changing".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Homing Cycle ($H)".into(),
+        enabled: state.supports_homing,
+        notes: "Machine homing to limit switches".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Feed/Spindle Overrides".into(),
+        enabled: state.supports_overrides,
+        notes: "Real-time adjustment of feed and spindle".into(),
+    });
+    capabilities.push(CapabilityItem {
+        name: "Laser Mode (M3/M4)".into(),
+        enabled: state.supports_laser,
+        notes: "Dynamic laser power control for engraving/cutting".into(),
+    });
 
-    capabilities.push(CapabilityItem { name: format!("{} Axes Support", state.max_axes).into(), enabled: state.max_axes > 0, notes: format!("Maximum {} axes (X,Y,Z,A,B,C)", state.max_axes).into() });
+    capabilities.push(CapabilityItem {
+        name: format!("{} Axes Support", state.max_axes).into(),
+        enabled: state.max_axes > 0,
+        notes: format!("Maximum {} axes (X,Y,Z,A,B,C)", state.max_axes).into(),
+    });
 
-    capabilities.push(CapabilityItem { name: format!("{} Coordinate Systems", state.coordinate_systems).into(), enabled: state.coordinate_systems > 0, notes: "Work coordinate systems (G54-G59)".into() });
+    capabilities.push(CapabilityItem {
+        name: format!("{} Coordinate Systems", state.coordinate_systems).into(),
+        enabled: state.coordinate_systems > 0,
+        notes: "Work coordinate systems (G54-G59)".into(),
+    });
 
     window.set_device_capabilities(capabilities);
 }

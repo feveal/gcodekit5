@@ -537,8 +537,8 @@ impl DesignerState {
         let mut gcode = String::new();
         let gcode_gen = ToolpathToGcode::new(Units::MM, 10.0);
 
-        // Store shape-to-toolpath mapping
-        let mut shape_toolpaths: Vec<(DrawingObject, Vec<crate::Toolpath>)> = Vec::new();
+        // Store shape-to-toolpath mapping (plus whether we had to fall back from pocket->profile)
+        let mut shape_toolpaths: Vec<(DrawingObject, Vec<crate::Toolpath>, bool)> = Vec::new();
 
         for shape in self.canvas.shapes() {
             // Set strategy for this shape
@@ -558,80 +558,121 @@ impl DesignerState {
             // This ensures that the depth set on the shape is respected for both pockets and profiles.
             self.toolpath_generator.set_cut_depth(shape.pocket_depth);
 
-            let toolpaths = match &shape.shape {
+            self.toolpath_generator.set_step_in(shape.step_in as f64);
+
+            let (toolpaths, pocket_fallback_to_profile) = match &shape.shape {
                 crate::shapes::Shape::Rectangle(rect) => {
                     if shape.operation_type == OperationType::Pocket {
-                        self.toolpath_generator.generate_rectangle_pocket(
-                            rect,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
+                        (
+                            self.toolpath_generator.generate_rectangle_pocket(
+                                rect,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            ),
+                            false,
                         )
                     } else {
-                        self.toolpath_generator
-                            .generate_rectangle_contour(rect, shape.step_down as f64)
+                        (
+                            self.toolpath_generator
+                                .generate_rectangle_contour(rect, shape.step_down as f64),
+                            false,
+                        )
                     }
                 }
                 crate::shapes::Shape::Circle(circle) => {
                     if shape.operation_type == OperationType::Pocket {
-                        self.toolpath_generator.generate_circle_pocket(
-                            circle,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
+                        (
+                            self.toolpath_generator.generate_circle_pocket(
+                                circle,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            ),
+                            false,
                         )
                     } else {
-                        self.toolpath_generator
-                            .generate_circle_contour(circle, shape.step_down as f64)
+                        (
+                            self.toolpath_generator
+                                .generate_circle_contour(circle, shape.step_down as f64),
+                            false,
+                        )
                     }
                 }
-                crate::shapes::Shape::Line(line) => self
-                    .toolpath_generator
-                    .generate_line_contour(line, shape.step_down as f64),
+                crate::shapes::Shape::Line(line) => (
+                    self.toolpath_generator
+                        .generate_line_contour(line, shape.step_down as f64),
+                    false,
+                ),
                 crate::shapes::Shape::Ellipse(ellipse) => {
-                    // Ellipse contour generation might need a Circle conversion or specific handler
-                    // The original code converted it to a Circle based on bounding box?
-                    // "let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;"
-                    // This seems to approximate ellipse as circle for toolpath?
-                    // Let's keep original logic for now but use the ellipse data
                     let (x1, y1, x2, y2) = ellipse.bounding_box();
                     let cx = (x1 + x2) / 2.0;
                     let cy = (y1 + y2) / 2.0;
                     let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
                     let circle = Circle::new(Point::new(cx, cy), radius);
-                    self.toolpath_generator
-                        .generate_circle_contour(&circle, shape.step_down as f64)
+                    (
+                        self.toolpath_generator
+                            .generate_circle_contour(&circle, shape.step_down as f64),
+                        false,
+                    )
                 }
                 crate::shapes::Shape::Path(path_shape) => {
                     if shape.operation_type == OperationType::Pocket {
-                        self.toolpath_generator.generate_path_pocket(
-                            path_shape,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
+                        (
+                            self.toolpath_generator.generate_path_pocket(
+                                path_shape,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            ),
+                            false,
                         )
                     } else {
-                        self.toolpath_generator
-                            .generate_path_contour(path_shape, shape.step_down as f64)
+                        (
+                            self.toolpath_generator
+                                .generate_path_contour(path_shape, shape.step_down as f64),
+                            false,
+                        )
                     }
                 }
-                crate::shapes::Shape::Text(text) => self
-                    .toolpath_generator
-                    .generate_text_toolpath(text, shape.step_down as f64),
+                crate::shapes::Shape::Text(text) => {
+                    if shape.operation_type == OperationType::Pocket {
+                        let pocket = self
+                            .toolpath_generator
+                            .generate_text_pocket_toolpath(text, shape.step_down as f64);
+                        let pocket_len: f64 = pocket.iter().map(|tp| tp.total_length()).sum();
+
+                        if pocket_len <= 1e-9 {
+                            (
+                                self.toolpath_generator
+                                    .generate_text_toolpath(text, shape.step_down as f64),
+                                true,
+                            )
+                        } else {
+                            (pocket, false)
+                        }
+                    } else {
+                        (
+                            self.toolpath_generator
+                                .generate_text_toolpath(text, shape.step_down as f64),
+                            false,
+                        )
+                    }
+                }
             };
-            shape_toolpaths.push((shape.clone(), toolpaths));
+            shape_toolpaths.push((shape.clone(), toolpaths, pocket_fallback_to_profile));
         }
 
         // Calculate total length from all toolpaths
         let total_length: f64 = shape_toolpaths
             .iter()
-            .flat_map(|(_, tps)| tps.iter())
+            .flat_map(|(_, tps, _)| tps.iter())
             .map(|tp| tp.total_length())
             .sum();
 
         // Use settings from first toolpath if available, or defaults
         let (header_speed, header_feed, header_diam, header_depth) =
-            if let Some((_, tps)) = shape_toolpaths.first() {
+            if let Some((_, tps, _)) = shape_toolpaths.first() {
                 if let Some(first) = tps.first() {
                     let s = first
                         .segments
@@ -661,7 +702,7 @@ impl DesignerState {
 
         let mut line_number = 10;
 
-        for (shape, toolpaths) in shape_toolpaths.iter() {
+        for (shape, toolpaths, pocket_fallback_to_profile) in shape_toolpaths.iter() {
             // Add shape metadata as comments
             gcode.push_str(&format!(
                 "\n; Shape ID={}, Type={:?}\n",
@@ -670,6 +711,9 @@ impl DesignerState {
             ));
             gcode.push_str(&format!("; Name: {}\n", shape.name));
             gcode.push_str(&format!("; Operation: {:?}\n", shape.operation_type));
+            if *pocket_fallback_to_profile {
+                gcode.push_str("; NOTE: Text pocketing produced no valid pocket area for the current tool/text size; fell back to profile toolpath.\n");
+            }
 
             // Add shape-specific data
             match &shape.shape {

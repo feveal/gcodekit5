@@ -776,12 +776,10 @@ impl ToolpathGenerator {
         self.generate_polyline_pocket(&polyline_vertices, pocket_depth, step_down, step_in)
     }
 
-    /// Generates a toolpath for text.
-    pub fn generate_text_toolpath(
+    fn build_text_outline_segments(
         &self,
         text_shape: &crate::shapes::TextShape,
-        step_down: f64,
-    ) -> Vec<Toolpath> {
+    ) -> Vec<ToolpathSegment> {
         let mut segments = Vec::new();
 
         let font =
@@ -840,8 +838,347 @@ impl ToolpathGenerator {
             prev = Some(base_id);
         }
 
+        segments
+    }
+
+    /// Generates a pocket (area clearing) toolpath for text.
+    pub fn generate_text_pocket_toolpath(
+        &self,
+        text_shape: &crate::shapes::TextShape,
+        step_down: f64,
+    ) -> Vec<Toolpath> {
+        let outline_segments = self.build_text_outline_segments(text_shape);
+        let contours = contours_from_outline_segments(&outline_segments);
+        if contours.is_empty() {
+            return Vec::new();
+        }
+
+        let stepover = if self.step_in > 1e-6 {
+            self.step_in
+        } else {
+            (self.tool_diameter * 0.4).max(0.1)
+        };
+
+        fn centroid(poly: &[Point]) -> Point {
+            if poly.is_empty() {
+                return Point::new(0.0, 0.0);
+            }
+            let (mut sx, mut sy) = (0.0, 0.0);
+            for p in poly {
+                sx += p.x;
+                sy += p.y;
+            }
+            let n = poly.len() as f64;
+            Point::new(sx / n, sy / n)
+        }
+
+        fn clean_contour(contour: &[Point], tol: f64) -> Vec<Point> {
+            let mut out: Vec<Point> = Vec::new();
+            for &p in contour {
+                let should_push = match out.last() {
+                    None => true,
+                    Some(last) => last.distance_to(&p) > tol,
+                };
+                if should_push {
+                    out.push(p);
+                }
+            }
+
+            if out.len() > 2 {
+                let first = out[0];
+                let last = *out.last().unwrap();
+                if last.distance_to(&first) <= tol {
+                    out.pop();
+                }
+            }
+
+            out
+        }
+
+        fn point_in_polygon(p: Point, poly: &[Point]) -> bool {
+            if poly.len() < 3 {
+                return false;
+            }
+            let mut inside = false;
+            let mut j = poly.len() - 1;
+            for i in 0..poly.len() {
+                let pi = poly[i];
+                let pj = poly[j];
+                let intersect = ((pi.y > p.y) != (pj.y > p.y))
+                    && (p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y + 1e-12) + pi.x);
+                if intersect {
+                    inside = !inside;
+                }
+                j = i;
+            }
+            inside
+        }
+
+        // Classify contours by nesting depth (even=solid, odd=hole)
+        let mut holes: Vec<Vec<Point>> = Vec::new();
+        let mut solids: Vec<Vec<Point>> = Vec::new();
+        for (idx, c) in contours.iter().enumerate() {
+            let clean = clean_contour(c, 0.01);
+            if clean.len() < 3 {
+                continue;
+            }
+            // Use a boundary-adjacent point for nesting tests; centroids can fall in holes (e.g. 'O').
+            let test_pt = Point::new(clean[0].x + 1e-6, clean[0].y);
+            let mut depth = 0usize;
+            for (j, other) in contours.iter().enumerate() {
+                if idx == j {
+                    continue;
+                }
+                let other_clean = clean_contour(other, 0.01);
+                if other_clean.len() < 3 {
+                    continue;
+                }
+                if point_in_polygon(test_pt, &other_clean) {
+                    depth += 1;
+                }
+            }
+            if depth % 2 == 1 {
+                holes.push(clean);
+            } else {
+                solids.push(clean);
+            }
+        }
+
+        let mut segments = Vec::new();
+        let mut current = Point::new(0.0, 0.0);
+
+        fn intersections_at_y(poly: &[Point], y: f64) -> Vec<f64> {
+            let mut xs = Vec::new();
+            if poly.len() < 3 {
+                return xs;
+            }
+
+            for i in 0..poly.len() {
+                let p1 = poly[i];
+                let p2 = poly[(i + 1) % poly.len()];
+
+                if (p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y) {
+                    let dy = p2.y - p1.y;
+                    if dy.abs() > 1e-12 {
+                        let t = (y - p1.y) / dy;
+                        xs.push(p1.x + t * (p2.x - p1.x));
+                    }
+                }
+            }
+
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            xs
+        }
+
+        fn pair_intervals(mut xs: Vec<f64>) -> Vec<(f64, f64)> {
+            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+            let mut out = Vec::new();
+            for i in (0..xs.len()).step_by(2) {
+                if i + 1 < xs.len() {
+                    out.push((xs[i], xs[i + 1]));
+                }
+            }
+            out
+        }
+
+        fn merge_intervals(mut ivals: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+            ivals.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+            let mut out: Vec<(f64, f64)> = Vec::new();
+            for (a, b) in ivals {
+                if let Some(last) = out.last_mut() {
+                    if a <= last.1 {
+                        last.1 = last.1.max(b);
+                        continue;
+                    }
+                }
+                out.push((a, b));
+            }
+            out
+        }
+
+        fn subtract_intervals(
+            mut allowed: Vec<(f64, f64)>,
+            forbidden: &[(f64, f64)],
+        ) -> Vec<(f64, f64)> {
+            if forbidden.is_empty() {
+                return allowed;
+            }
+
+            allowed.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+            let mut out = Vec::new();
+            for (mut a0, a1) in allowed {
+                for (f0, f1) in forbidden {
+                    if *f1 <= a0 || *f0 >= a1 {
+                        continue;
+                    }
+                    if *f0 > a0 {
+                        out.push((a0, (*f0).min(a1)));
+                    }
+                    a0 = a0.max(*f1);
+                    if a0 >= a1 {
+                        break;
+                    }
+                }
+                if a0 < a1 {
+                    out.push((a0, a1));
+                }
+            }
+            out
+        }
+
+        for solid in solids {
+            if solid.len() < 3 {
+                continue;
+            }
+
+            let (mut min_x, mut max_x) = (f64::INFINITY, f64::NEG_INFINITY);
+            let (mut min_y, mut max_y) = (f64::INFINITY, f64::NEG_INFINITY);
+            for p in &solid {
+                min_x = min_x.min(p.x);
+                max_x = max_x.max(p.x);
+                min_y = min_y.min(p.y);
+                max_y = max_y.max(p.y);
+            }
+
+            let mut y = min_y;
+            let y_limit = max_y;
+            let mut forward = true;
+
+            while y <= y_limit {
+                let solid_xs = intersections_at_y(&solid, y);
+                let mut allowed = Vec::new();
+                for (x0, x1) in pair_intervals(solid_xs) {
+                    let a0 = x0;
+                    let a1 = x1;
+                    if a0 < a1 {
+                        allowed.push((a0, a1));
+                    }
+                }
+
+                if !allowed.is_empty() {
+                    let mut forbidden = Vec::new();
+                    for h in &holes {
+                        if h.len() < 3 {
+                            continue;
+                        }
+                        // Only subtract holes that are inside this solid.
+                        if !point_in_polygon(centroid(h), &solid) {
+                            continue;
+                        }
+                        let hole_xs = intersections_at_y(h, y);
+                        for (hx0, hx1) in pair_intervals(hole_xs) {
+                            forbidden.push((hx0, hx1));
+                        }
+                    }
+                    let forbidden = merge_intervals(forbidden);
+                    allowed = subtract_intervals(allowed, &forbidden);
+                }
+
+                if !allowed.is_empty() {
+                    if !forward {
+                        allowed.reverse();
+                    }
+
+                    for (a0, a1) in allowed {
+                        let (start_x, end_x) = if forward { (a0, a1) } else { (a1, a0) };
+                        let start = Point::new(start_x, y);
+                        let end = Point::new(end_x, y);
+
+                        segments.push(ToolpathSegment::new(
+                            ToolpathSegmentType::RapidMove,
+                            current,
+                            start,
+                            self.feed_rate,
+                            self.spindle_speed,
+                        ));
+                        segments.push(ToolpathSegment::new(
+                            ToolpathSegmentType::LinearMove,
+                            start,
+                            end,
+                            self.feed_rate,
+                            self.spindle_speed,
+                        ));
+                        current = end;
+                    }
+                }
+
+                forward = !forward;
+                y += stepover.max(0.05);
+            }
+        }
+
+        segments.push(ToolpathSegment::new(
+            ToolpathSegmentType::RapidMove,
+            current,
+            Point::new(0.0, 0.0),
+            self.feed_rate,
+            self.spindle_speed,
+        ));
+
         self.create_multipass_toolpaths(segments, step_down)
     }
+
+    /// Generates a contour (profile) toolpath for text.
+    pub fn generate_text_toolpath(
+        &self,
+        text_shape: &crate::shapes::TextShape,
+        step_down: f64,
+    ) -> Vec<Toolpath> {
+        let segments = self.build_text_outline_segments(text_shape);
+        self.create_multipass_toolpaths(segments, step_down)
+    }
+}
+
+fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point>> {
+    let mut contours: Vec<Vec<Point>> = Vec::new();
+    let mut current: Vec<Point> = Vec::new();
+
+    for seg in segments {
+        match seg.segment_type {
+            ToolpathSegmentType::RapidMove => {
+                if current.len() >= 2 {
+                    if current
+                        .last()
+                        .unwrap()
+                        .distance_to(current.first().unwrap())
+                        <= 1e-6
+                    {
+                        current.pop();
+                    }
+                    if current.len() >= 2 {
+                        contours.push(std::mem::take(&mut current));
+                    } else {
+                        current.clear();
+                    }
+                }
+                current.clear();
+                current.push(seg.end);
+            }
+            _ => {
+                if current.is_empty() {
+                    current.push(seg.start);
+                }
+                current.push(seg.end);
+            }
+        }
+    }
+
+    if current.len() >= 2 {
+        if current
+            .last()
+            .unwrap()
+            .distance_to(current.first().unwrap())
+            <= 1e-6
+        {
+            current.pop();
+        }
+        if current.len() >= 2 {
+            contours.push(current);
+        }
+    }
+
+    contours
 }
 
 struct ToolpathBuilder {

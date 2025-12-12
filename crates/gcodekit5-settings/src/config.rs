@@ -171,6 +171,10 @@ pub struct UiSettings {
     #[serde(default)]
     pub startup_tab: StartupTab,
 
+    /// Show the About dialog on startup (auto-closes after a short delay)
+    #[serde(default)]
+    pub show_about_on_startup: bool,
+
     /// Visualizer sidebar splitter position (Paned position in pixels)
     #[serde(default)]
     pub visualizer_sidebar_position: Option<i32>,
@@ -196,6 +200,7 @@ impl Default for UiSettings {
             measurement_system: MeasurementSystem::default(),
             feed_rate_units: FeedRateUnits::default(),
             startup_tab: StartupTab::default(),
+            show_about_on_startup: false,
             visualizer_sidebar_position: None,
         }
     }

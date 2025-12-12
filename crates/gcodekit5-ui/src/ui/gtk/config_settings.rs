@@ -1,14 +1,14 @@
+use gcodekit5_communication::firmware::grbl::settings::{Setting, SettingsManager};
+use gcodekit5_communication::{Communicator, SerialCommunicator};
+use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, ComboBoxText, Dialog, DialogFlags, Entry, Grid, Label, ListBox,
-    ListBoxRow, Orientation, PolicyType, ResponseType, ScrolledWindow, SearchEntry, Separator,
+    Align, Box, Button, ComboBoxText, Dialog, DialogFlags, Entry, Grid, Label, ListBox, ListBoxRow,
+    Orientation, PolicyType, ResponseType, ScrolledWindow, SearchEntry, Separator,
 };
-use gtk4::glib;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use gcodekit5_communication::firmware::grbl::settings::{Setting, SettingsManager};
-use gcodekit5_communication::{Communicator, SerialCommunicator};
 
 #[derive(Clone)]
 pub struct ConfigSettingRow {
@@ -62,7 +62,7 @@ pub struct ConfigSettingsView {
     restore_btn: Button,
     communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>,
     device_console: Rc<RefCell<Option<Rc<DeviceConsoleView>>>>,
-} 
+}
 
 impl ConfigSettingsView {
     pub fn new() -> Rc<Self> {
@@ -278,14 +278,13 @@ impl ConfigSettingsView {
         restore_btn.connect_clicked(move |_| {
             view_clone.restore_to_device();
         });
-        
+
         // Connect ListBox row-activated signal to handle editing
         let view_clone = view.clone();
         settings_list.connect_row_activated(move |_listbox, row| {
             // Get the row index
             let index = row.index();
             if index >= 0 {
-                
                 // Get the setting at this index
                 let manager = view_clone.settings_manager.borrow();
                 let mut all_settings: Vec<ConfigSettingRow> = manager
@@ -294,14 +293,17 @@ impl ConfigSettingsView {
                     .map(|s| ConfigSettingRow::from(*s))
                     .collect();
                 all_settings.sort_by_key(|s| s.number);
-                
+
                 // Apply same filtering as display
                 let search_text = view_clone.search_entry.text().to_string().to_lowercase();
-                let category = view_clone.category_filter.active_text()
+                let category = view_clone
+                    .category_filter
+                    .active_text()
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "All".to_string());
-                
-                let filtered_settings: Vec<ConfigSettingRow> = all_settings.into_iter()
+
+                let filtered_settings: Vec<ConfigSettingRow> = all_settings
+                    .into_iter()
                     .filter(|setting| {
                         // Apply search filter
                         if !search_text.is_empty() {
@@ -312,16 +314,16 @@ impl ConfigSettingsView {
                                 return false;
                             }
                         }
-                        
+
                         // Apply category filter
                         if category != "All" && setting.category != category {
                             return false;
                         }
-                        
+
                         true
                     })
                     .collect();
-                
+
                 if let Some(setting) = filtered_settings.get(index as usize) {
                     if !setting.read_only {
                         let view_for_refresh = view_clone.clone();
@@ -332,7 +334,7 @@ impl ConfigSettingsView {
                             view_clone.settings_manager.clone(),
                             move || {
                                 view_for_refresh.refresh_display();
-                            }
+                            },
                         );
                     }
                 }
@@ -345,24 +347,33 @@ impl ConfigSettingsView {
     pub fn set_communicator(&self, communicator: Arc<Mutex<SerialCommunicator>>) {
         *self.communicator.borrow_mut() = Some(communicator);
     }
-    
+
     pub fn set_device_console(&self, console: Rc<DeviceConsoleView>) {
         *self.device_console.borrow_mut() = Some(console);
     }
 
     pub fn set_connected(&self, connected: bool) {
         self.reload_btn.set_sensitive(connected);
-        self.restore_btn.set_sensitive(connected && self.has_settings());
+        self.restore_btn
+            .set_sensitive(connected && self.has_settings());
         if connected {
-            self.status_label.set_text("Connected - Ready to retrieve settings");
+            self.status_label
+                .set_text("Connected - Ready to retrieve settings");
         } else {
             self.status_label.set_text("Not connected");
         }
     }
 
-    pub fn set_device_info(&self, connected: bool, device_name: &str, firmware: &str, version: &str) {
+    pub fn set_device_info(
+        &self,
+        connected: bool,
+        device_name: &str,
+        firmware: &str,
+        version: &str,
+    ) {
         // Forward to embedded DeviceInfoView
-        self.device_info_view.set_connected(connected, device_name, firmware, version);
+        self.device_info_view
+            .set_connected(connected, device_name, firmware, version);
         if connected {
             self.device_info_view.load_sample_capabilities();
         }
@@ -375,19 +386,21 @@ impl ConfigSettingsView {
     fn retrieve_settings(&self) {
         // Load settings definitions first
         self.load_default_grbl_settings();
-        
+
         if let Some(ref comm) = *self.communicator.borrow() {
             if let Ok(mut comm_lock) = comm.lock() {
                 if comm_lock.is_connected() {
                     // Send $$ command to get all settings
-                    self.status_label.set_text("Retrieving settings from device...");
-                    
+                    self.status_label
+                        .set_text("Retrieving settings from device...");
+
                     if let Err(e) = comm_lock.send_command("$$") {
-                        self.status_label.set_text(&format!("Error sending $$: {}", e));
+                        self.status_label
+                            .set_text(&format!("Error sending $$: {}", e));
                         return;
                     }
                     drop(comm_lock); // Release lock
-                    
+
                     // Wait for console to receive responses (machine control polling handles this)
                     let manager_clone = self.settings_manager.clone();
                     let status_label_clone = self.status_label.clone();
@@ -399,36 +412,41 @@ impl ConfigSettingsView {
                     let container_clone = self.container.clone();
                     let device_console_clone = self.device_console.clone();
                     let communicator_clone = self.communicator.clone();
-                    
-                    let start_log_length = if let Some(ref console) = *self.device_console.borrow() {
+
+                    let start_log_length = if let Some(ref console) = *self.device_console.borrow()
+                    {
                         console.get_log_text().len()
                     } else {
                         0
                     };
-                    
+
                     let attempt_count = Rc::new(RefCell::new(0));
-                    
+
                     glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
                         *attempt_count.borrow_mut() += 1;
-                        
+
                         // Get console log
-                        let console_text = if let Some(ref console) = *device_console_clone.borrow() {
+                        let console_text = if let Some(ref console) = *device_console_clone.borrow()
+                        {
                             console.get_log_text()
                         } else {
                             String::new()
                         };
-                        
+
                         // Check if we got response (console log grew)
-                        let has_settings_response = console_text.len() > start_log_length && 
-                                                   (console_text.contains("$0=") || console_text.contains("$100="));
-                        
-                        if has_settings_response || *attempt_count.borrow() > 40 { // 2 seconds timeout
+                        let has_settings_response = console_text.len() > start_log_length
+                            && (console_text.contains("$0=") || console_text.contains("$100="));
+
+                        if has_settings_response || *attempt_count.borrow() > 40 {
+                            // 2 seconds timeout
                             // Parse settings from console log
                             let mut count = 0;
                             for line in console_text.lines() {
                                 let line = line.trim();
                                 if line.starts_with('$') && line.contains('=') {
-                                    if let Some((number, value)) = SettingsManager::parse_setting_line(line) {
+                                    if let Some((number, value)) =
+                                        SettingsManager::parse_setting_line(line)
+                                    {
                                         let mut manager = manager_clone.borrow_mut();
                                         if let Some(setting) = manager.get_setting(number) {
                                             let mut updated = setting.clone();
@@ -440,66 +458,84 @@ impl ConfigSettingsView {
                                     }
                                 }
                             }
-                            
+
                             // Refresh display by calling apply_filter logic
                             while let Some(child) = settings_list_clone.first_child() {
                                 settings_list_clone.remove(&child);
                             }
-                            
+
                             let search_text = search_entry_clone.text().to_string().to_lowercase();
-                            let category = category_filter_clone.active_text().map(|s| s.to_string()).unwrap_or_else(|| "All".to_string());
-                            
+                            let category = category_filter_clone
+                                .active_text()
+                                .map(|s| s.to_string())
+                                .unwrap_or_else(|| "All".to_string());
+
                             let manager = manager_clone.borrow();
                             let mut settings: Vec<ConfigSettingRow> = manager
                                 .get_all_settings()
                                 .iter()
                                 .map(|s| ConfigSettingRow::from(*s))
                                 .collect();
-                            
+
                             settings.sort_by_key(|s| s.number);
-                            
+
                             let mut displayed_count = 0;
                             for setting in settings {
                                 if !search_text.is_empty() {
-                                    let matches = setting.name.to_lowercase().contains(&search_text)
-                                        || setting.description.to_lowercase().contains(&search_text)
-                                        || format!("${}", setting.number).contains(&search_text);
+                                    let matches =
+                                        setting.name.to_lowercase().contains(&search_text)
+                                            || setting
+                                                .description
+                                                .to_lowercase()
+                                                .contains(&search_text)
+                                            || format!("${}", setting.number)
+                                                .contains(&search_text);
                                     if !matches {
                                         continue;
                                     }
                                 }
-                                
+
                                 if category != "All" && setting.category != category {
                                     continue;
                                 }
-                                
-                                let row = Self::create_setting_row_static(&setting, &container_clone, communicator_clone.clone());
+
+                                let row = Self::create_setting_row_static(
+                                    &setting,
+                                    &container_clone,
+                                    communicator_clone.clone(),
+                                );
                                 settings_list_clone.append(&row);
                                 displayed_count += 1;
                             }
-                            
+
                             let total = manager.get_all_settings().len();
-                            if let Some(count_label) = container_clone.last_child().and_then(|w| w.last_child().and_downcast::<Label>()) {
-                                count_label.set_text(&format!("{} / {} settings", displayed_count, total));
+                            if let Some(count_label) = container_clone
+                                .last_child()
+                                .and_then(|w| w.last_child().and_downcast::<Label>())
+                            {
+                                count_label
+                                    .set_text(&format!("{} / {} settings", displayed_count, total));
                             }
-                            
-                            status_label_clone.set_text(&format!("Retrieved {} settings from device", count));
+
+                            status_label_clone
+                                .set_text(&format!("Retrieved {} settings from device", count));
                             save_btn_clone.set_sensitive(true);
                             restore_btn_clone.set_sensitive(true);
-                            
+
                             return glib::ControlFlow::Break;
                         }
-                        
+
                         glib::ControlFlow::Continue
                     });
                     return;
                 }
             }
         }
-        
+
         // Fallback if not connected
         self.refresh_display();
-        self.status_label.set_text("Not connected - showing defaults");
+        self.status_label
+            .set_text("Not connected - showing defaults");
         self.save_btn.set_sensitive(true);
         self.restore_btn.set_sensitive(false);
     }
@@ -524,10 +560,25 @@ impl ConfigSettingsView {
 
     fn grbl_settings_definitions() -> Vec<(u8, &'static str, &'static str, bool)> {
         vec![
-            (0, "Step Pulse", "Step pulse duration in microseconds", false),
-            (1, "Step Idle Delay", "Step idle delay in milliseconds", false),
+            (
+                0,
+                "Step Pulse",
+                "Step pulse duration in microseconds",
+                false,
+            ),
+            (
+                1,
+                "Step Idle Delay",
+                "Step idle delay in milliseconds",
+                false,
+            ),
             (2, "Step Port Invert", "Step port invert mask", false),
-            (3, "Direction Port Invert", "Direction port invert mask", false),
+            (
+                3,
+                "Direction Port Invert",
+                "Direction port invert mask",
+                false,
+            ),
             (4, "Step Enable Invert", "Invert step enable pin", false),
             (5, "Limit Pins Invert", "Invert limit pins", false),
             (6, "Probe Pin Invert", "Invert probe pin", false),
@@ -538,13 +589,33 @@ impl ConfigSettingsView {
             (20, "Soft Limits", "Enable soft limits", false),
             (21, "Hard Limits", "Enable hard limits", false),
             (22, "Homing Cycle", "Enable homing cycle", false),
-            (23, "Homing Dir Invert", "Homing direction invert mask", false),
+            (
+                23,
+                "Homing Dir Invert",
+                "Homing direction invert mask",
+                false,
+            ),
             (24, "Homing Feed", "Homing feed rate in mm/min", false),
             (25, "Homing Seek", "Homing seek rate in mm/min", false),
             (26, "Homing Debounce", "Homing debounce in ms", false),
-            (27, "Homing Pull-Off", "Homing pull-off distance in mm", false),
-            (30, "Max Spindle Speed", "Maximum spindle speed in RPM", false),
-            (31, "Min Spindle Speed", "Minimum spindle speed in RPM", false),
+            (
+                27,
+                "Homing Pull-Off",
+                "Homing pull-off distance in mm",
+                false,
+            ),
+            (
+                30,
+                "Max Spindle Speed",
+                "Maximum spindle speed in RPM",
+                false,
+            ),
+            (
+                31,
+                "Min Spindle Speed",
+                "Minimum spindle speed in RPM",
+                false,
+            ),
             (32, "Laser Mode", "Enable laser mode", false),
             (100, "X Steps/mm", "X-axis steps per mm", false),
             (101, "Y Steps/mm", "Y-axis steps per mm", false),
@@ -552,9 +623,24 @@ impl ConfigSettingsView {
             (110, "X Max Rate", "X-axis maximum rate in mm/min", false),
             (111, "Y Max Rate", "Y-axis maximum rate in mm/min", false),
             (112, "Z Max Rate", "Z-axis maximum rate in mm/min", false),
-            (120, "X Acceleration", "X-axis acceleration in mm/sec²", false),
-            (121, "Y Acceleration", "Y-axis acceleration in mm/sec²", false),
-            (122, "Z Acceleration", "Z-axis acceleration in mm/sec²", false),
+            (
+                120,
+                "X Acceleration",
+                "X-axis acceleration in mm/sec²",
+                false,
+            ),
+            (
+                121,
+                "Y Acceleration",
+                "Y-axis acceleration in mm/sec²",
+                false,
+            ),
+            (
+                122,
+                "Z Acceleration",
+                "Z-axis acceleration in mm/sec²",
+                false,
+            ),
             (130, "X Max Travel", "X-axis maximum travel in mm", false),
             (131, "Y Max Travel", "Y-axis maximum travel in mm", false),
             (132, "Z Max Travel", "Z-axis maximum travel in mm", false),
@@ -572,7 +658,11 @@ impl ConfigSettingsView {
         }
 
         let search_text = self.search_entry.text().to_string().to_lowercase();
-        let category = self.category_filter.active_text().map(|s| s.to_string()).unwrap_or_else(|| "All".to_string());
+        let category = self
+            .category_filter
+            .active_text()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "All".to_string());
 
         let manager = self.settings_manager.borrow();
         let mut settings: Vec<ConfigSettingRow> = manager
@@ -605,15 +695,20 @@ impl ConfigSettingsView {
         }
 
         let total = manager.get_all_settings().len();
-        let count_label = self.container.last_child().and_then(|w| {
-            w.last_child().and_downcast::<Label>()
-        });
+        let count_label = self
+            .container
+            .last_child()
+            .and_then(|w| w.last_child().and_downcast::<Label>());
         if let Some(label) = count_label {
             label.set_text(&format!("{} / {} settings", count, total));
         }
     }
 
-    fn create_setting_row_static(setting: &ConfigSettingRow, _parent: &Box, _communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>) -> ListBoxRow {
+    fn create_setting_row_static(
+        setting: &ConfigSettingRow,
+        _parent: &Box,
+        _communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>,
+    ) -> ListBoxRow {
         let row = ListBoxRow::new();
         let hbox = Box::new(Orientation::Horizontal, 5);
         hbox.set_margin_start(5);
@@ -681,19 +776,22 @@ impl ConfigSettingsView {
     }
 
     fn show_edit_dialog(
-        parent: &Box, 
-        setting: &ConfigSettingRow, 
+        parent: &Box,
+        setting: &ConfigSettingRow,
         communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>,
         settings_manager: Rc<RefCell<SettingsManager>>,
         refresh_callback: impl Fn() + 'static,
     ) {
         let window = parent.root().and_downcast::<gtk4::Window>().unwrap();
-        
+
         let dialog = Dialog::with_buttons(
             Some(&format!("Edit Setting ${}", setting.number)),
             Some(&window),
             DialogFlags::MODAL | DialogFlags::DESTROY_WITH_PARENT,
-            &[("Cancel", ResponseType::Cancel), ("Save", ResponseType::Accept)],
+            &[
+                ("Cancel", ResponseType::Cancel),
+                ("Save", ResponseType::Accept),
+            ],
         );
 
         let content = dialog.content_area();
@@ -752,7 +850,7 @@ impl ConfigSettingsView {
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 let new_value = value_entry.text().to_string();
-                
+
                 // Update local settings manager first
                 let mut manager = manager_clone.borrow_mut();
                 if let Some(setting) = manager.get_setting(setting_number) {
@@ -762,10 +860,10 @@ impl ConfigSettingsView {
                     manager.set_setting(updated);
                 }
                 drop(manager); // Release the borrow
-                
+
                 // Refresh the display
                 refresh_callback();
-                
+
                 // Send to device
                 if let Some(ref comm) = *comm_clone.borrow() {
                     if let Ok(mut comm_lock) = comm.lock() {
@@ -783,13 +881,20 @@ impl ConfigSettingsView {
     }
 
     fn save_to_file(&self) {
-        let window = self.container.root().and_downcast::<gtk4::Window>().unwrap();
-        
+        let window = self
+            .container
+            .root()
+            .and_downcast::<gtk4::Window>()
+            .unwrap();
+
         let dialog = gtk4::FileChooserDialog::new(
             Some("Save Settings"),
             Some(&window),
             gtk4::FileChooserAction::Save,
-            &[("Cancel", ResponseType::Cancel), ("Save", ResponseType::Accept)],
+            &[
+                ("Cancel", ResponseType::Cancel),
+                ("Save", ResponseType::Accept),
+            ],
         );
 
         dialog.set_current_name("grbl_settings.json");
@@ -810,13 +915,20 @@ impl ConfigSettingsView {
     }
 
     fn load_from_file(&self) {
-        let window = self.container.root().and_downcast::<gtk4::Window>().unwrap();
-        
+        let window = self
+            .container
+            .root()
+            .and_downcast::<gtk4::Window>()
+            .unwrap();
+
         let dialog = gtk4::FileChooserDialog::new(
             Some("Load Settings"),
             Some(&window),
             gtk4::FileChooserAction::Open,
-            &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)],
+            &[
+                ("Cancel", ResponseType::Cancel),
+                ("Open", ResponseType::Accept),
+            ],
         );
 
         let status_label = self.status_label.clone();
@@ -835,7 +947,8 @@ impl ConfigSettingsView {
     }
 
     fn restore_to_device(&self) {
-        self.status_label.set_text("Restoring settings to device...");
+        self.status_label
+            .set_text("Restoring settings to device...");
         // This would send settings to device via communicator
     }
 }

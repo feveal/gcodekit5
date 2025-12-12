@@ -7,6 +7,7 @@ use libadwaita::prelude::*;
 use libadwaita::{
     ActionRow, ComboRow, PreferencesGroup, PreferencesPage, PreferencesRow, PreferencesWindow,
 };
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::rc::Rc;
 use tracing::error;
 
@@ -27,47 +28,26 @@ impl SettingsWindow {
             .default_height(600)
             .build();
 
-        // Add explicit Save/Cancel actions (avoid synchronous disk writes on every change).
-        let header_bar = gtk4::HeaderBar::new();
-        let cancel_btn = Button::with_label("Cancel");
-        let save_btn = Button::with_label("Save");
-        save_btn.add_css_class("suggested-action");
-        header_bar.pack_start(&cancel_btn);
-        header_bar.pack_end(&save_btn);
-        window.set_titlebar(Some(&header_bar));
-
         let settings_window = Self {
             window: window.clone(),
             controller: controller.clone(),
         };
         settings_window.setup_pages();
 
-        // Treat close as cancel (discard any un-saved changes).
+        // Save on close (AdwWindow does not support gtk_window_set_titlebar()).
         {
             let controller = controller.clone();
             window.connect_close_request(move |_| {
-                controller.discard_changes();
+                let _ = catch_unwind(AssertUnwindSafe(|| {
+                    if let Err(e) = controller.save() {
+                        error!("Failed to save settings: {}", e);
+                    }
+                }))
+                .map_err(|_| {
+                    error!("Panic while saving settings on close");
+                });
+
                 glib::Propagation::Proceed
-            });
-        }
-
-        {
-            let controller = controller.clone();
-            let window = window.clone();
-            cancel_btn.connect_clicked(move |_| {
-                controller.discard_changes();
-                window.close();
-            });
-        }
-
-        {
-            let controller = controller.clone();
-            let window = window.clone();
-            save_btn.connect_clicked(move |_| {
-                if let Err(e) = controller.save() {
-                    error!("Failed to save settings: {}", e);
-                }
-                window.close();
             });
         }
 

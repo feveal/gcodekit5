@@ -1,3 +1,7 @@
+use crate::t;
+use gcodekit5_core::units::MeasurementSystem;
+use gcodekit5_designer::designer_state::DesignerState;
+use gcodekit5_settings::controller::SettingsController;
 use gtk4::prelude::*;
 use gtk4::{
     Align, Box, Button, Dialog, Entry, Frame, Grid, Image, Label, Orientation, PolicyType,
@@ -6,10 +10,6 @@ use gtk4::{
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use gcodekit5_designer::designer_state::DesignerState;
-use gcodekit5_settings::controller::SettingsController;
-use gcodekit5_core::units::MeasurementSystem;
-use crate::t;
 
 // Dialog widgets should not be dropped; they are owned by closures attached to buttons.
 
@@ -79,7 +79,10 @@ pub struct DesignerToolbox {
 }
 
 impl DesignerToolbox {
-    pub fn new(state: Rc<RefCell<DesignerState>>, settings_controller: Rc<SettingsController>) -> Rc<Self> {
+    pub fn new(
+        state: Rc<RefCell<DesignerState>>,
+        settings_controller: Rc<SettingsController>,
+    ) -> Rc<Self> {
         #[derive(Clone, Copy)]
         enum UnitsKind {
             Length,
@@ -104,7 +107,7 @@ impl DesignerToolbox {
             .build();
 
         let content_box = Box::new(Orientation::Vertical, 2);
-        
+
         let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
         let init_tool = DesignerTool::Select;
         let active_tool_label = Label::new(Some(&format!(
@@ -117,7 +120,7 @@ impl DesignerToolbox {
         active_tool_label.set_margin_bottom(0);
 
         let mut buttons: Vec<Button> = Vec::new();
-        
+
         let tools = vec![
             DesignerTool::Select,
             DesignerTool::Pan,
@@ -128,47 +131,47 @@ impl DesignerToolbox {
             DesignerTool::Polyline,
             DesignerTool::Text,
         ];
-        
+
         let grid = gtk4::Grid::builder()
             .column_spacing(2)
             .row_spacing(2)
             .halign(Align::Center)
             .build();
-        
+
         for (i, tool) in tools.iter().enumerate() {
             let btn = Button::new();
             btn.set_size_request(40, 40); // Slightly smaller for 3 columns
             btn.set_halign(Align::Center);
             let tooltip = tool.tooltip();
             btn.set_tooltip_text(Some(&tooltip));
-            
+
             // Use icon from compiled resources
             let icon_filename = tool.icon();
             let resource_path = format!("/com/gcodekit5/icons/{}", icon_filename);
-            
+
             let icon = Image::from_resource(&resource_path);
             icon.set_pixel_size(20);
             btn.set_child(Some(&icon));
-            
+
             buttons.push(btn.clone());
-            
+
             // Select tool is initially selected
             if *tool == DesignerTool::Select {
                 btn.add_css_class("selected-tool");
             }
-            
+
             grid.attach(&btn, (i % 3) as i32, (i / 3) as i32, 1, 1);
         }
-        
+
         content_box.append(&grid);
-        
+
         // Now wire up click handlers after all buttons are collected
         for (i, btn) in buttons.iter().enumerate() {
             let current_tool_clone = current_tool.clone();
             let buttons_clone = buttons.clone();
             let tools_clone = tools.clone();
             let tool = tools[i];
-            
+
             let active_tool_label = active_tool_label.clone();
             btn.connect_clicked(move |_| {
                 *current_tool_clone.borrow_mut() = tool;
@@ -184,7 +187,7 @@ impl DesignerToolbox {
                 }
             });
         }
-        
+
         // Add separator
         let separator = gtk4::Separator::new(Orientation::Horizontal);
         separator.set_margin_top(10);
@@ -326,7 +329,13 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.feed_rate);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_feed_rate(val));
-            create_setting(t!("Feed"), getter, setter, t!("Feed Rate"), UnitsKind::FeedRate);
+            create_setting(
+                t!("Feed"),
+                getter,
+                setter,
+                t!("Feed Rate"),
+                UnitsKind::FeedRate,
+            );
         }
 
         // Spindle Speed
@@ -334,8 +343,15 @@ impl DesignerToolbox {
             let state_getter = state.clone();
             let getter = Rc::new(move || state_getter.borrow().tool_settings.spindle_speed as f64);
             let state_setter = state.clone();
-            let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_spindle_speed(val as u32));
-            create_setting(t!("Speed"), getter, setter, t!("Spindle Speed"), UnitsKind::Rpm);
+            let setter =
+                Rc::new(move |val: f64| state_setter.borrow_mut().set_spindle_speed(val as u32));
+            create_setting(
+                t!("Speed"),
+                getter,
+                setter,
+                t!("Spindle Speed"),
+                UnitsKind::Rpm,
+            );
         }
 
         // Tool Diameter
@@ -344,7 +360,13 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.tool_diameter);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_tool_diameter(val));
-            create_setting(t!("Tool Dia"), getter, setter, t!("Tool Diameter"), UnitsKind::Length);
+            create_setting(
+                t!("Tool Dia"),
+                getter,
+                setter,
+                t!("Tool Diameter"),
+                UnitsKind::Length,
+            );
         }
 
         // Cut Depth
@@ -353,7 +375,13 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.cut_depth);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_cut_depth(val));
-            create_setting(t!("Cut Depth"), getter, setter, t!("Target Cut Depth (positive)"), UnitsKind::Length);
+            create_setting(
+                t!("Cut Depth"),
+                getter,
+                setter,
+                t!("Target Cut Depth (positive)"),
+                UnitsKind::Length,
+            );
         }
 
         // Step Down
@@ -362,7 +390,13 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().tool_settings.step_down);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f64| state_setter.borrow_mut().set_step_down(val));
-            create_setting(t!("Step Down"), getter, setter, t!("Depth per pass"), UnitsKind::Length);
+            create_setting(
+                t!("Step Down"),
+                getter,
+                setter,
+                t!("Depth per pass"),
+                UnitsKind::Length,
+            );
         }
 
         // Tool Settings popup
@@ -371,7 +405,11 @@ impl DesignerToolbox {
         tool_settings_btn.set_margin_start(5);
         tool_settings_btn.set_margin_end(5);
 
-        let tool_settings_dialog = Dialog::builder().title(t!("Tool Settings")).modal(true).resizable(true).build();
+        let tool_settings_dialog = Dialog::builder()
+            .title(t!("Tool Settings"))
+            .modal(true)
+            .resizable(true)
+            .build();
         tool_settings_dialog.set_default_size(520, 520);
         tool_settings_dialog.add_button(&t!("Close"), ResponseType::Close);
         tool_settings_dialog.connect_response(|d, _| d.hide());
@@ -525,7 +563,12 @@ impl DesignerToolbox {
         {
             let state_getter = state.clone();
             let getter = Rc::new(move || {
-                state_getter.borrow().stock_material.as_ref().map(|s| s.width).unwrap_or(200.0)
+                state_getter
+                    .borrow()
+                    .stock_material
+                    .as_ref()
+                    .map(|s| s.width)
+                    .unwrap_or(200.0)
             });
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f32| {
@@ -534,13 +577,23 @@ impl DesignerToolbox {
                     stock.width = val;
                 }
             });
-            create_stock_setting(t!("Stock Width"), getter, setter, t!("Stock material width"));
+            create_stock_setting(
+                t!("Stock Width"),
+                getter,
+                setter,
+                t!("Stock material width"),
+            );
         }
 
         {
             let state_getter = state.clone();
             let getter = Rc::new(move || {
-                state_getter.borrow().stock_material.as_ref().map(|s| s.height).unwrap_or(200.0)
+                state_getter
+                    .borrow()
+                    .stock_material
+                    .as_ref()
+                    .map(|s| s.height)
+                    .unwrap_or(200.0)
             });
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f32| {
@@ -549,13 +602,23 @@ impl DesignerToolbox {
                     stock.height = val;
                 }
             });
-            create_stock_setting(t!("Stock Height"), getter, setter, t!("Stock material height"));
+            create_stock_setting(
+                t!("Stock Height"),
+                getter,
+                setter,
+                t!("Stock material height"),
+            );
         }
 
         {
             let state_getter = state.clone();
             let getter = Rc::new(move || {
-                state_getter.borrow().stock_material.as_ref().map(|s| s.thickness).unwrap_or(10.0)
+                state_getter
+                    .borrow()
+                    .stock_material
+                    .as_ref()
+                    .map(|s| s.thickness)
+                    .unwrap_or(10.0)
             });
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f32| {
@@ -564,7 +627,12 @@ impl DesignerToolbox {
                     stock.thickness = val;
                 }
             });
-            create_stock_setting(t!("Stock Thickness"), getter, setter, t!("Stock material thickness"));
+            create_stock_setting(
+                t!("Stock Thickness"),
+                getter,
+                setter,
+                t!("Stock material thickness"),
+            );
         }
 
         // Resolution
@@ -575,7 +643,12 @@ impl DesignerToolbox {
             let setter = Rc::new(move |val: f32| {
                 state_setter.borrow_mut().simulation_resolution = val.max(0.01).min(2.0);
             });
-            create_stock_setting(t!("Resolution"), getter, setter, t!("Simulation resolution (lower = more detail)"));
+            create_stock_setting(
+                t!("Resolution"),
+                getter,
+                setter,
+                t!("Simulation resolution (lower = more detail)"),
+            );
         }
 
         // Show Stock Removal checkbox
@@ -596,7 +669,11 @@ impl DesignerToolbox {
         stock_settings_btn.set_margin_start(5);
         stock_settings_btn.set_margin_end(5);
 
-        let stock_settings_dialog = Dialog::builder().title(t!("Stock Settings")).modal(true).resizable(true).build();
+        let stock_settings_dialog = Dialog::builder()
+            .title(t!("Stock Settings"))
+            .modal(true)
+            .resizable(true)
+            .build();
         stock_settings_dialog.set_default_size(520, 520);
         stock_settings_dialog.add_button(&t!("Close"), ResponseType::Close);
         stock_settings_dialog.connect_response(|d, _| d.hide());
@@ -651,7 +728,7 @@ impl DesignerToolbox {
 
         scrolled.set_child(Some(&content_box));
         main_container.append(&scrolled);
-        
+
         Rc::new(Self {
             widget: main_container,
             current_tool,
@@ -664,15 +741,15 @@ impl DesignerToolbox {
             _current_units: current_units,
         })
     }
-    
+
     pub fn connect_generate_clicked<F: Fn() + 'static>(&self, f: F) {
         self.generate_btn.connect_clicked(move |_| f());
     }
-    
+
     pub fn current_tool(&self) -> DesignerTool {
         *self.current_tool.borrow()
     }
-    
+
     pub fn active_tool_label(&self) -> Label {
         self.active_tool_label.clone()
     }
@@ -681,7 +758,7 @@ impl DesignerToolbox {
         *self.current_tool.borrow_mut() = tool;
         self.active_tool_label
             .set_text(&format!("{} {}", t!("Active tool:"), tool.tooltip()));
-        
+
         // Update button styles
         for (i, btn) in self.buttons.iter().enumerate() {
             if self.tools[i] == tool {

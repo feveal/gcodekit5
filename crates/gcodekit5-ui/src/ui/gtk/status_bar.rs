@@ -1,6 +1,6 @@
+use gcodekit5_core::units::{format_length, get_unit_label, MeasurementSystem};
 use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, Image, Label, Orientation, ProgressBar};
-use gcodekit5_core::units::{format_length, get_unit_label, MeasurementSystem};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -112,7 +112,8 @@ impl StatusBar {
         right_box.append(&progress_bar);
 
         // Cancel (for long-running, cancellable UI tasks)
-        let cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>> = Rc::new(RefCell::new(None));
+        let cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>> =
+            Rc::new(RefCell::new(None));
 
         let cancel_btn = Button::builder().tooltip_text("Cancel").build();
         cancel_btn.set_visible(false);
@@ -177,12 +178,13 @@ impl StatusBar {
     }
 
     pub fn set_version(&self, version: &str) {
-        self.version_label.set_text(&format!("Version: {}", version));
+        self.version_label
+            .set_text(&format!("Version: {}", version));
     }
 
     pub fn set_state(&self, state: &str) {
         self.state_label.set_text(state);
-        
+
         // Update color based on state
         self.state_label.remove_css_class("state-alarm");
         self.state_label.remove_css_class("state-run");
@@ -198,7 +200,16 @@ impl StatusBar {
         }
     }
 
-    pub fn set_position(&self, x: f32, y: f32, z: f32, a: f32, b: f32, c: f32, system: MeasurementSystem) {
+    pub fn set_position(
+        &self,
+        x: f32,
+        y: f32,
+        z: f32,
+        a: f32,
+        b: f32,
+        c: f32,
+        system: MeasurementSystem,
+    ) {
         let unit_label = get_unit_label(system);
         self.position_label.set_text(&format!(
             "X: {}  Y: {}  Z: {}  A: {}  B: {}  C: {} ({})",
@@ -215,18 +226,22 @@ impl StatusBar {
     pub fn set_progress(&self, progress: f64, elapsed: &str, remaining: &str) {
         if progress > 0.0 {
             self.progress_bar.set_visible(true);
-            self.progress_bar.set_fraction((progress / 100.0).clamp(0.0, 1.0));
-            self.progress_bar.set_text(Some(&format!("{:.1}%", progress)));
+            self.progress_bar
+                .set_fraction((progress / 100.0).clamp(0.0, 1.0));
+            self.progress_bar
+                .set_text(Some(&format!("{:.1}%", progress)));
 
             if elapsed.is_empty() {
                 self.elapsed_label.set_text("");
             } else {
-                self.elapsed_label.set_text(&format!("Elapsed: {}", elapsed));
+                self.elapsed_label
+                    .set_text(&format!("Elapsed: {}", elapsed));
             }
             if remaining.is_empty() {
                 self.remaining_label.set_text("");
             } else {
-                self.remaining_label.set_text(&format!("Remaining: {}", remaining));
+                self.remaining_label
+                    .set_text(&format!("Remaining: {}", remaining));
             }
         } else {
             self.progress_bar.set_visible(false);

@@ -3,6 +3,9 @@ use crate::ui::gtk::config_settings::ConfigSettingsView;
 use crate::ui::gtk::designer::DesignerView;
 use crate::ui::gtk::device_console::DeviceConsoleView;
 // DeviceInfoView is now embedded in the Device Config panel; standalone import removed.
+use crate::device_status;
+use crate::i18n;
+use crate::t;
 use crate::ui::gtk::device_manager::DeviceManagerWindow;
 use crate::ui::gtk::editor::GcodeEditor;
 use crate::ui::gtk::machine_control::MachineControlView;
@@ -12,19 +15,16 @@ use crate::ui::gtk::status_bar::StatusBar;
 use crate::ui::gtk::tools_manager::ToolsManagerView;
 use crate::ui::gtk::visualizer::GcodeVisualizer;
 use gcodekit5_communication::Communicator;
-use gcodekit5_settings::config::{Theme, StartupTab};
-use crate::device_status;
-use crate::i18n;
-use crate::t;
+use gcodekit5_settings::config::{StartupTab, Theme};
 use gtk4::gio;
 use gtk4::prelude::*;
 use gtk4::{
-    Application, ApplicationWindow, Box, CssProvider, Orientation, PopoverMenuBar, Stack,
+    glib, Application, ApplicationWindow, Box, CssProvider, Orientation, PopoverMenuBar, Stack,
     StackSwitcher,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 pub fn main() {
     let app = Application::builder()
@@ -35,7 +35,7 @@ pub fn main() {
         // Load settings early to get language preference
         let config_path = gcodekit5_settings::SettingsManager::config_file_path()
             .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
-        
+
         let language = if config_path.exists() {
             gcodekit5_settings::SettingsPersistence::load_from_file(&config_path)
                 .map(|p| p.config().ui.language.clone())
@@ -53,7 +53,7 @@ pub fn main() {
     app.connect_activate(|app| {
         // Initialize Controllers
         let settings_dialog = Rc::new(RefCell::new(gcodekit5_settings::SettingsDialog::new()));
-        
+
         // Load settings from file if it exists, otherwise use defaults
         let config_path = gcodekit5_settings::SettingsManager::config_file_path()
             .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
@@ -72,7 +72,7 @@ pub fn main() {
             info!("Config file not found at {:?}, using defaults", config_path);
             Rc::new(RefCell::new(gcodekit5_settings::SettingsPersistence::new()))
         };
-        
+
         let settings_controller = Rc::new(gcodekit5_settings::SettingsController::new(
             settings_dialog.clone(),
             settings_persistence.clone(),
@@ -149,8 +149,6 @@ pub fn main() {
         edit_menu.append(Some(&t!("Preferences")), Some("app.preferences"));
         menu_bar_model.append_submenu(Some(&t!("Edit")), &edit_menu);
 
-
-
         let machine_menu = gio::Menu::new();
         machine_menu.append(Some(&t!("Connect")), Some("app.machine_connect"));
         machine_menu.append(Some(&t!("Disconnect")), Some("app.machine_disconnect"));
@@ -201,7 +199,11 @@ pub fn main() {
             Some(visualizer.clone()),
             Some(settings_controller.clone()),
         );
-        stack.add_titled(&machine_control.widget, Some("machine"), &t!("Machine Control"));
+        stack.add_titled(
+            &machine_control.widget,
+            Some("machine"),
+            &t!("Machine Control"),
+        );
 
         // Machine Control event handlers are wired up internally in MachineControlView::new()
 
@@ -286,33 +288,43 @@ pub fn main() {
         let config_settings = ConfigSettingsView::new();
         config_settings.set_communicator(machine_control.communicator.clone());
         config_settings.set_device_console(device_console.clone());
-        stack.add_titled(&config_settings.container, Some("config"), &t!("Device Config"));
+        stack.add_titled(
+            &config_settings.container,
+            Some("config"),
+            &t!("Device Config"),
+        );
 
         // Connect device info and config to machine control connection state
         let config_settings_clone = config_settings.clone();
         let communicator_for_device = machine_control.communicator.clone();
-        
+
         // Update device info when connection changes
         glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
             let comm = communicator_for_device.lock().unwrap();
             let connected = comm.is_connected();
-            
+
             if connected {
                 // Get firmware info from device status
                 let status = device_status::get_status();
                 let firmware_type = status.firmware_type.as_deref().unwrap_or("GRBL");
                 let firmware_version = status.firmware_version.as_deref().unwrap_or("Unknown");
-                let device_name = status.device_name.as_deref().unwrap_or_else(|| {
-                    status.port_name.as_deref().unwrap_or("CNC Device")
-                });
-                
+                let device_name = status
+                    .device_name
+                    .as_deref()
+                    .unwrap_or_else(|| status.port_name.as_deref().unwrap_or("CNC Device"));
+
                 config_settings_clone.set_connected(true);
-                config_settings_clone.set_device_info(true, device_name, firmware_type, firmware_version);
+                config_settings_clone.set_device_info(
+                    true,
+                    device_name,
+                    firmware_type,
+                    firmware_version,
+                );
             } else {
                 config_settings_clone.set_connected(false);
                 config_settings_clone.set_device_info(false, "", "", "");
             }
-            
+
             glib::ControlFlow::Continue
         });
 
@@ -330,7 +342,11 @@ pub fn main() {
 
         // 11. Materials
         let materials_manager = MaterialsManagerView::new();
-        stack.add_titled(&materials_manager.widget, Some("materials"), &t!("Materials"));
+        stack.add_titled(
+            &materials_manager.widget,
+            Some("materials"),
+            &t!("Materials"),
+        );
 
         main_box.append(&content_box);
 
@@ -413,7 +429,7 @@ pub fn main() {
             machine_control_clone.send_btn.emit_clicked();
         });
         app.add_action(&run_action);
-        
+
         // File Actions
         let stack_clone = stack.clone();
         let designer_clone = designer.clone();
@@ -525,9 +541,26 @@ pub fn main() {
                 .website("https://github.com/thawkins/gcodekit5")
                 .license_type(gtk4::License::MitX11)
                 .authors(vec![t!("GCodeKit Contributors")])
-                .logo_icon_name("application-x-executable")
                 .build();
 
+            about_dialog.set_logo_icon_name(None);
+
+            fn right_align_labels(root: &gtk4::Widget) {
+                if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                    label.set_xalign(1.0);
+                    label.set_justify(gtk4::Justification::Right);
+                }
+
+                let mut child = root.first_child();
+                while let Some(w) = child {
+                    right_align_labels(&w);
+                    child = w.next_sibling();
+                }
+            }
+
+            right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
+
+            about_dialog.add_css_class("gk-about-dialog");
             about_dialog.set_transient_for(app_clone.active_window().as_ref());
             about_dialog.present();
         });
@@ -638,7 +671,7 @@ pub fn main() {
             }
             app.add_action(&action);
         }
-        
+
         // Enable/Disable actions based on active tab
         let app_clone = app.clone();
         stack.connect_visible_child_name_notify(move |stack| {
@@ -647,7 +680,7 @@ pub fn main() {
                 let is_designer = name_str == "designer";
                 let is_editor = name_str == "editor";
                 // let is_machine = name_str == "machine";
-                
+
                 let set_enabled = |action_name: &str, enabled: bool| {
                     if let Some(action) = app_clone.lookup_action(action_name) {
                         if let Some(simple_action) = action.downcast_ref::<gio::SimpleAction>() {
@@ -662,7 +695,7 @@ pub fn main() {
                 set_enabled("edit_cut", is_designer || is_editor);
                 set_enabled("edit_copy", is_designer || is_editor);
                 set_enabled("edit_paste", is_designer || is_editor);
-                
+
                 // File actions
                 set_enabled("file_new", is_designer || is_editor);
                 set_enabled("file_open", is_designer || is_editor);
@@ -673,17 +706,17 @@ pub fn main() {
                 set_enabled("file_export_svg", is_designer);
             }
         });
-        
+
         // Trigger initial update
         if let Some(_name) = stack.visible_child_name() {
-             // We can't easily trigger the signal manually with the same closure logic without extracting it.
-             // But the default state of actions is enabled.
-             // We should probably set them initially.
-             // For now, let's just let the first switch handle it, or duplicate the logic briefly if needed.
-             // Actually, SimpleAction defaults to enabled=true.
-             // If we start in "machine" tab (which is likely), we might want to disable them.
-             // But "machine" is the first tab added?
-             // "machine" is added first.
+            // We can't easily trigger the signal manually with the same closure logic without extracting it.
+            // But the default state of actions is enabled.
+            // We should probably set them initially.
+            // For now, let's just let the first switch handle it, or duplicate the logic briefly if needed.
+            // Actually, SimpleAction defaults to enabled=true.
+            // If we start in "machine" tab (which is likely), we might want to disable them.
+            // But "machine" is the first tab added?
+            // "machine" is added first.
         }
 
         // Set Keyboard Shortcuts (Accelerators)
@@ -722,6 +755,61 @@ pub fn main() {
         stack.set_visible_child_name(tab_name);
 
         window.present();
+
+        if settings_persistence
+            .borrow()
+            .config()
+            .ui
+            .show_about_on_startup
+        {
+            let window_weak = window.downgrade();
+            glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                let Some(window) = window_weak.upgrade() else {
+                    return glib::ControlFlow::Break;
+                };
+
+                let about_dialog = gtk4::AboutDialog::builder()
+                    .program_name(t!("GCodeKit5"))
+                    .version(env!("CARGO_PKG_VERSION"))
+                    .comments(t!("GCode Toolkit for CNC/Laser Machines"))
+                    .website("https://github.com/thawkins/gcodekit5")
+                    .license_type(gtk4::License::MitX11)
+                    .authors(vec![t!("GCodeKit Contributors")])
+                    .build();
+
+                about_dialog.set_logo_icon_name(None);
+
+                fn right_align_labels(root: &gtk4::Widget) {
+                    if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                        label.set_xalign(1.0);
+                        label.set_justify(gtk4::Justification::Right);
+                    }
+
+                    let mut child = root.first_child();
+                    while let Some(w) = child {
+                        right_align_labels(&w);
+                        child = w.next_sibling();
+                    }
+                }
+
+                right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
+
+                about_dialog.add_css_class("gk-about-dialog");
+                about_dialog.set_transient_for(Some(&window));
+                about_dialog.set_modal(true);
+                about_dialog.present();
+
+                let about_dialog_weak = about_dialog.downgrade();
+                glib::timeout_add_seconds_local(15, move || {
+                    if let Some(dlg) = about_dialog_weak.upgrade() {
+                        dlg.close();
+                    }
+                    glib::ControlFlow::Break
+                });
+
+                glib::ControlFlow::Break
+            });
+        }
     });
 
     app.run();

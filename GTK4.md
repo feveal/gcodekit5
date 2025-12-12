@@ -24,6 +24,7 @@
     - `search_settings.set_search_text(Some("text"))` is required; passing `None` clears it.
 
 ## Useful GTK4 UI Patterns
+- **libadwaita**: `adw::Window` does not support `gtk_window_set_titlebar()`; use `adw::HeaderBar` / `WindowTitle` patterns instead of manually setting a titlebar.
 - **Theme palette colors in Cairo**: prefer `widget.style_context().lookup_color("accent_color"|"success_color"|"warning_color")` over hard-coded RGB.
 - **OSD overlays**: `Overlay` + `Box` with a shared CSS class works well for floating controls, status, and small progress panels.
 - **Non-blocking background work**:

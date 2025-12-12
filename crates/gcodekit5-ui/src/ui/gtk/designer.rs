@@ -1,27 +1,33 @@
-use gtk4::prelude::*;
-use gtk4::{DrawingArea, GestureClick, GestureDrag, EventControllerMotion, EventControllerKey, Box, Label, Orientation, FileChooserAction, FileChooserNative, ResponseType, Grid, Scrollbar, Adjustment, Overlay, Popover, Separator, Paned, Dialog, Entry, DropDown, StringList, CheckButton};
-use gtk4::gdk::{Key, ModifierType};
-use std::cell::{Cell, RefCell};
-use std::rc::Rc;
-use std::path::PathBuf;
-use gcodekit5_designer::designer_state::DesignerState;
-use gcodekit5_designer::shapes::{Shape, Point, Rectangle, Circle, Line, Ellipse, PathShape, OperationType, TextShape};
-use gcodekit5_designer::canvas::DrawingObject;
-use gcodekit5_designer::commands::{DesignerCommand, RemoveShape, PasteShapes};
-use gcodekit5_designer::serialization::DesignFile;
-use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegmentType};
-use gcodekit5_designer::font_manager;
-use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
-use gcodekit5_devicedb::DeviceManager;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use tracing::error;
-use gcodekit5_core::constants as core_constants;
-use crate::ui::gtk::designer_properties::PropertiesPanel;
-use crate::ui::gtk::designer_layers::LayersPanel;
-use crate::ui::gtk::osd_format::format_zoom_center_cursor;
 use crate::t;
+use crate::ui::gtk::designer_layers::LayersPanel;
+use crate::ui::gtk::designer_properties::PropertiesPanel;
+use crate::ui::gtk::designer_toolbox::{DesignerTool, DesignerToolbox};
+use crate::ui::gtk::osd_format::format_zoom_center_cursor;
+use gcodekit5_core::constants as core_constants;
+use gcodekit5_designer::canvas::DrawingObject;
+use gcodekit5_designer::commands::{DesignerCommand, PasteShapes, RemoveShape};
+use gcodekit5_designer::designer_state::DesignerState;
+use gcodekit5_designer::font_manager;
+use gcodekit5_designer::serialization::DesignFile;
+use gcodekit5_designer::shapes::{
+    Circle, Ellipse, Line, OperationType, PathShape, Point, Rectangle, Shape, TextShape,
+};
+use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegmentType};
+use gcodekit5_devicedb::DeviceManager;
 use gcodekit5_settings::controller::SettingsController;
+use gtk4::gdk::{Key, ModifierType};
+use gtk4::prelude::*;
+use gtk4::{
+    Adjustment, Box, CheckButton, Dialog, DrawingArea, DropDown, Entry, EventControllerKey,
+    EventControllerMotion, FileChooserAction, FileChooserNative, GestureClick, GestureDrag, Grid,
+    Label, Orientation, Overlay, Paned, Popover, ResponseType, Scrollbar, Separator, StringList,
+};
+use std::cell::{Cell, RefCell};
+use std::path::PathBuf;
+use std::rc::Rc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tracing::error;
 //use crate::ui::gtk::designer_file_ops; // Temporarily disabled
 
 const MM_PER_PT: f64 = 25.4 / 72.0;
@@ -46,7 +52,6 @@ fn parse_font_points_mm(s: &str) -> Option<f64> {
     }
     Some(pt_to_mm(pt))
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum ResizeHandle {
@@ -83,7 +88,15 @@ mod tests_designer {
     #[test]
     fn test_compute_device_bbox_default() {
         let bbox = compute_device_bbox(&None);
-        assert_eq!(bbox, (0.0, 0.0, gcodekit5_core::constants::DEFAULT_WORK_WIDTH_MM, gcodekit5_core::constants::DEFAULT_WORK_HEIGHT_MM));
+        assert_eq!(
+            bbox,
+            (
+                0.0,
+                0.0,
+                gcodekit5_core::constants::DEFAULT_WORK_WIDTH_MM,
+                gcodekit5_core::constants::DEFAULT_WORK_HEIGHT_MM
+            )
+        );
     }
 }
 
@@ -118,7 +131,8 @@ pub struct DesignerCanvas {
     preview_generating: Rc<std::cell::Cell<bool>>,
     preview_pending: Rc<std::cell::Cell<bool>>,
     preview_cancel: Arc<AtomicBool>,
-    text_tool_dialog: Rc<RefCell<Option<(Dialog, Entry, DropDown, CheckButton, CheckButton, Entry)>>>,
+    text_tool_dialog:
+        Rc<RefCell<Option<(Dialog, Entry, DropDown, CheckButton, CheckButton, Entry)>>>,
     text_tool_last_font_family: Rc<RefCell<String>>,
     text_tool_last_bold: Rc<RefCell<bool>>,
     text_tool_last_italic: Rc<RefCell<bool>>,
@@ -169,7 +183,7 @@ impl DesignerCanvas {
         let polyline_points_clone = polyline_points.clone();
         let preview_toolpaths_clone = preview_toolpaths.clone();
         let device_manager_draw = device_manager.clone();
-        
+
         let state_draw = state_clone.clone();
         widget.set_draw_func(move |drawing_area, cr, width, height| {
             // Update viewport size to match widget dimensions
@@ -184,10 +198,22 @@ impl DesignerCanvas {
             let poly_points = polyline_points_clone.borrow();
             let toolpaths = preview_toolpaths_clone.borrow();
             let bounds = compute_device_bbox(&device_manager_draw);
-            
+
             let style_context = drawing_area.style_context();
-            
-            Self::draw(cr, &state, width as f64, height as f64, mouse, preview_start, preview_current, &poly_points, &toolpaths, bounds, &style_context);
+
+            Self::draw(
+                cr,
+                &state,
+                width as f64,
+                height as f64,
+                mouse,
+                preview_start,
+                preview_current,
+                &poly_points,
+                &toolpaths,
+                bounds,
+                &style_context,
+            );
         });
 
         let canvas = Rc::new(Self {
@@ -233,7 +259,7 @@ impl DesignerCanvas {
             // Convert screen coords to canvas coords
             let _width = widget_motion.width() as f64;
             let height = widget_motion.height() as f64;
-            
+
             let state = state_motion.borrow();
             let zoom = state.canvas.zoom();
             let pan_x = state.canvas.pan_x();
@@ -244,9 +270,9 @@ impl DesignerCanvas {
             let y_flipped = height - y;
             let canvas_x = (x - pan_x) / zoom;
             let canvas_y = (y_flipped - pan_y) / zoom;
-            
+
             *mouse_pos_motion.borrow_mut() = (canvas_x, canvas_y);
-            
+
             // Update cursor based on tool
             let tool = canvas_motion
                 .toolbox
@@ -277,10 +303,13 @@ impl DesignerCanvas {
         widget.add_controller(motion_ctrl);
 
         // Scroll to pan (Ctrl+Scroll to zoom) — matches Visualizer
-        let scroll_ctrl = gtk4::EventControllerScroll::new(gtk4::EventControllerScrollFlags::BOTH_AXES);
+        let scroll_ctrl =
+            gtk4::EventControllerScroll::new(gtk4::EventControllerScrollFlags::BOTH_AXES);
         let canvas_scroll = canvas.clone();
         scroll_ctrl.connect_scroll(move |ctrl, dx, dy| {
-            let is_ctrl = ctrl.current_event_state().contains(ModifierType::CONTROL_MASK);
+            let is_ctrl = ctrl
+                .current_event_state()
+                .contains(ModifierType::CONTROL_MASK);
             if is_ctrl {
                 if dy > 0.0 {
                     canvas_scroll.zoom_out();
@@ -292,7 +321,9 @@ impl DesignerCanvas {
                 let mut state = canvas_scroll.state.borrow_mut();
                 let pan_x = state.canvas.pan_x();
                 let pan_y = state.canvas.pan_y();
-                state.canvas.set_pan(pan_x - dx * pan_step, pan_y + dy * pan_step);
+                state
+                    .canvas
+                    .set_pan(pan_x - dx * pan_step, pan_y + dy * pan_step);
                 let pan_x = state.canvas.pan_x();
                 let pan_y = state.canvas.pan_y();
                 drop(state);
@@ -319,14 +350,14 @@ impl DesignerCanvas {
             let ctrl_pressed = modifiers.contains(ModifierType::CONTROL_MASK);
             canvas_click.handle_click(x, y, ctrl_pressed, n_press);
         });
-        
+
         let canvas_release = canvas.clone();
         click_gesture.connect_released(move |gesture, _n_press, x, y| {
             let modifiers = gesture.current_event_state();
             let ctrl_pressed = modifiers.contains(ModifierType::CONTROL_MASK);
             canvas_release.handle_release(x, y, ctrl_pressed);
         });
-        
+
         widget.add_controller(click_gesture);
 
         // Right click gesture
@@ -343,18 +374,18 @@ impl DesignerCanvas {
         drag_gesture.connect_drag_begin(move |_gesture, x, y| {
             canvas_drag.handle_drag_begin(x, y);
         });
-        
+
         let canvas_drag_update = canvas.clone();
         drag_gesture.connect_drag_update(move |_gesture, offset_x, offset_y| {
             canvas_drag_update.handle_drag_update(offset_x, offset_y);
         });
-        
+
         let canvas_drag_end = canvas.clone();
         drag_gesture.connect_drag_end(move |_gesture, offset_x, offset_y| {
             canvas_drag_end.handle_drag_end(offset_x, offset_y);
         });
         widget.add_controller(drag_gesture);
-        
+
         // Keyboard controller for Delete, Escape, etc.
         let key_controller = gtk4::EventControllerKey::new();
         let state_key = state.clone();
@@ -363,7 +394,7 @@ impl DesignerCanvas {
         let ctrl_pressed_key = canvas.ctrl_pressed.clone();
         let polyline_points_key = canvas.polyline_points.clone();
         let layers_key = canvas.layers.clone();
-        
+
         key_controller.connect_key_pressed(move |_controller, keyval, _keycode, _modifier| {
             if keyval == gtk4::gdk::Key::Shift_L || keyval == gtk4::gdk::Key::Shift_R {
                 *shift_pressed_key.borrow_mut() = true;
@@ -375,19 +406,24 @@ impl DesignerCanvas {
             }
 
             let mut designer_state = state_key.borrow_mut();
-            
+
             match keyval {
                 gtk4::gdk::Key::Delete | gtk4::gdk::Key::BackSpace => {
                     // Delete selected shapes
-                    if designer_state.canvas.selection_manager.selected_id().is_some() {
+                    if designer_state
+                        .canvas
+                        .selection_manager
+                        .selected_id()
+                        .is_some()
+                    {
                         designer_state.canvas.remove_selected();
                         drop(designer_state);
-                        
+
                         // Refresh layers
                         if let Some(layers) = layers_key.borrow().as_ref() {
                             layers.refresh(&state_key);
                         }
-                        
+
                         widget_key.queue_draw();
                         return glib::Propagation::Stop;
                     }
@@ -407,12 +443,12 @@ impl DesignerCanvas {
                     // Deselect all
                     designer_state.canvas.deselect_all();
                     drop(designer_state);
-                    
+
                     // Refresh layers
                     if let Some(layers) = layers_key.borrow().as_ref() {
                         layers.refresh(&state_key);
                     }
-                    
+
                     widget_key.queue_draw();
                     return glib::Propagation::Stop;
                 }
@@ -424,9 +460,9 @@ impl DesignerCanvas {
                             // Create polyline
                             let path_shape = PathShape::from_points(&points, false);
                             let shape = Shape::Path(path_shape);
-                            
+
                             designer_state.canvas.add_shape(shape);
-                            
+
                             // Refresh layers
                             if let Some(layers) = layers_key.borrow().as_ref() {
                                 layers.refresh(&state_key);
@@ -441,7 +477,7 @@ impl DesignerCanvas {
                 }
                 _ => {}
             }
-            
+
             glib::Propagation::Proceed
         });
 
@@ -465,12 +501,18 @@ impl DesignerCanvas {
     pub fn fit_to_device_area(&self) {
         let (min_x, min_y, max_x, max_y) = compute_device_bbox(&self.device_manager);
 
-        self.state.borrow_mut().canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
+        self.state.borrow_mut().canvas.fit_to_bounds(
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            core_constants::VIEW_PADDING,
+        );
     }
     pub fn set_properties_panel(&self, panel: Rc<PropertiesPanel>) {
         *self.properties.borrow_mut() = Some(panel);
     }
-    
+
     pub fn set_layers_panel(&self, panel: Rc<LayersPanel>) {
         *self.layers.borrow_mut() = Some(panel);
     }
@@ -479,7 +521,7 @@ impl DesignerCanvas {
         *self.hadjustment.borrow_mut() = Some(hadj);
         *self.vadjustment.borrow_mut() = Some(vadj);
     }
-    
+
     pub fn zoom_in(&self) {
         let mut state = self.state.borrow_mut();
         let current_zoom = state.canvas.zoom();
@@ -536,7 +578,13 @@ impl DesignerCanvas {
 
             if has_shapes {
                 // Fit content using the viewport fit-to-bounds (5% padding)
-                state.canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
+                state.canvas.fit_to_bounds(
+                    min_x,
+                    min_y,
+                    max_x,
+                    max_y,
+                    core_constants::VIEW_PADDING,
+                );
             } else {
                 // No shapes: attempt device profile bounds, fallback to 250x250 mm
                 let (min_x, min_y, max_x, max_y) = if let Some(dm) = &self.device_manager {
@@ -548,18 +596,34 @@ impl DesignerCanvas {
                             profile.y_axis.max as f64,
                         )
                     } else {
-                        (0.0, 0.0, core_constants::DEFAULT_WORK_WIDTH_MM, core_constants::DEFAULT_WORK_HEIGHT_MM)
+                        (
+                            0.0,
+                            0.0,
+                            core_constants::DEFAULT_WORK_WIDTH_MM,
+                            core_constants::DEFAULT_WORK_HEIGHT_MM,
+                        )
                     }
                 } else {
-                    (0.0, 0.0, core_constants::DEFAULT_WORK_WIDTH_MM, core_constants::DEFAULT_WORK_HEIGHT_MM)
+                    (
+                        0.0,
+                        0.0,
+                        core_constants::DEFAULT_WORK_WIDTH_MM,
+                        core_constants::DEFAULT_WORK_HEIGHT_MM,
+                    )
                 };
 
-                state.canvas.fit_to_bounds(min_x, min_y, max_x, max_y, core_constants::VIEW_PADDING);
+                state.canvas.fit_to_bounds(
+                    min_x,
+                    min_y,
+                    max_x,
+                    max_y,
+                    core_constants::VIEW_PADDING,
+                );
             }
 
             (state.canvas.pan_x(), state.canvas.pan_y())
         };
-        
+
         // Update adjustments safely
         if let Some(adj) = self.hadjustment.borrow().as_ref() {
             adj.set_value(-target_pan_x);
@@ -567,7 +631,7 @@ impl DesignerCanvas {
         if let Some(adj) = self.vadjustment.borrow().as_ref() {
             adj.set_value(target_pan_y);
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -615,11 +679,11 @@ impl DesignerCanvas {
                     // Create polyline
                     let path_shape = PathShape::from_points(&points, false); // Open polyline
                     let shape = Shape::Path(path_shape);
-                    
+
                     let mut state = self.state.borrow_mut();
                     state.canvas.add_shape(shape);
                     drop(state);
-                    
+
                     // Refresh layers panel
                     if let Some(layers_panel) = self.layers.borrow().as_ref() {
                         layers_panel.refresh(&self.state);
@@ -658,11 +722,11 @@ impl DesignerCanvas {
                 .halign(gtk4::Align::Start)
                 .build();
             btn.set_sensitive(enabled);
-            
+
             let canvas = self.clone();
             let menu_clone = menu.clone();
             let action_name = action.to_string();
-            
+
             btn.connect_clicked(move |_| {
                 menu_clone.popdown();
                 match action_name.as_str() {
@@ -687,7 +751,7 @@ impl DesignerCanvas {
                     _ => {}
                 }
             });
-            
+
             btn
         };
 
@@ -729,15 +793,15 @@ impl DesignerCanvas {
                 .has_frame(false)
                 .halign(gtk4::Align::Start)
                 .build();
-            
+
             let align_menu = Popover::new();
             align_menu.set_parent(&align_btn);
             align_menu.set_has_arrow(false);
             align_menu.set_position(gtk4::PositionType::Right);
-            
+
             let align_vbox = Box::new(Orientation::Vertical, 0);
             align_vbox.add_css_class("context-menu");
-            
+
             // Helper for align items
             let create_align_item = |label: &str, action: &str| {
                 let btn = gtk4::Button::builder()
@@ -745,12 +809,12 @@ impl DesignerCanvas {
                     .has_frame(false)
                     .halign(gtk4::Align::Start)
                     .build();
-                
+
                 let canvas = self.clone();
                 let menu_clone = menu.clone(); // Main menu
                 let align_menu_clone = align_menu.clone();
                 let action_name = action.to_string();
-                
+
                 btn.connect_clicked(move |_| {
                     align_menu_clone.popdown();
                     menu_clone.popdown();
@@ -773,19 +837,27 @@ impl DesignerCanvas {
             align_vbox.append(&create_align_item("Align Bottom", "align_bottom"));
             align_vbox.append(&create_align_item("Align Center X", "align_center_x"));
             align_vbox.append(&create_align_item("Align Center Y", "align_center_y"));
-            
+
             align_menu.set_child(Some(&align_vbox));
-            
+
             align_btn.connect_clicked(move |_| {
                 align_menu.popup();
             });
-            
+
             vbox.append(&align_btn);
         }
 
         vbox.append(&Separator::new(Orientation::Horizontal));
-        vbox.append(&create_item("Convert to Path", "convert_to_path", has_selection));
-        vbox.append(&create_item("Convert to Rectangle", "convert_to_rectangle", has_selection));
+        vbox.append(&create_item(
+            "Convert to Path",
+            "convert_to_path",
+            has_selection,
+        ));
+        vbox.append(&create_item(
+            "Convert to Rectangle",
+            "convert_to_rectangle",
+            has_selection,
+        ));
 
         menu.set_child(Some(&vbox));
         menu.popup();
@@ -938,8 +1010,14 @@ impl DesignerCanvas {
                 d.hide();
             });
 
-            *self.text_tool_dialog.borrow_mut() =
-                Some((dialog, entry, font_combo, bold_check, italic_check, size_entry));
+            *self.text_tool_dialog.borrow_mut() = Some((
+                dialog,
+                entry,
+                font_combo,
+                bold_check,
+                italic_check,
+                size_entry,
+            ));
         }
 
         if let Some((dialog, entry, font_combo, bold_check, italic_check, size_entry)) =
@@ -979,7 +1057,7 @@ impl DesignerCanvas {
     fn handle_click(&self, x: f64, y: f64, ctrl_pressed_arg: bool, n_press: i32) {
         // Combine gesture modifier state with tracked keyboard state for reliability
         let ctrl_pressed = ctrl_pressed_arg || *self.ctrl_pressed.borrow();
-        
+
         // Reset drag flag
         *self.did_drag.borrow_mut() = false;
 
@@ -987,30 +1065,34 @@ impl DesignerCanvas {
         if let Some(ref props) = *self.properties.borrow() {
             props.clear_focus();
         }
-        
-        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
-        
+
+        let tool = self
+            .toolbox
+            .as_ref()
+            .map(|t| t.current_tool())
+            .unwrap_or(DesignerTool::Select);
+
         // Convert screen coords to canvas coords
         let _width = self.widget.width() as f64;
         let height = self.widget.height() as f64;
-        
+
         let state = self.state.borrow();
         let zoom = state.canvas.zoom();
         let pan_x = state.canvas.pan_x();
         let pan_y = state.canvas.pan_y();
         drop(state);
-        
+
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
         let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
-        
+
         match tool {
             DesignerTool::Select => {
                 // Handle selection
                 let mut state = self.state.borrow_mut();
                 let point = Point::new(canvas_x, canvas_y);
-                
+
                 // Check if we clicked on an existing shape
                 let mut clicked_shape_id = None;
                 let tolerance = 3.0;
@@ -1019,36 +1101,37 @@ impl DesignerCanvas {
                         clicked_shape_id = Some(obj.id);
                     }
                 }
-                
+
                 if let Some(id) = clicked_shape_id {
                     // Check if it's already selected
-                    let is_selected = state.canvas.selection_manager.selected_id() == Some(id) || 
-                                      state.canvas.shapes().any(|s| s.id == id && s.selected);
-                    
+                    let is_selected = state.canvas.selection_manager.selected_id() == Some(id)
+                        || state.canvas.shapes().any(|s| s.id == id && s.selected);
+
                     if is_selected && !ctrl_pressed {
                         // Clicked on already selected item, and no Ctrl.
                         // Do NOT change selection yet. Wait for release.
                         // This allows dragging the current selection group.
-                        return; 
+                        return;
                     }
                 }
-                
+
                 // Try to select shape at click point with multi-select if Ctrl is held
-                if let Some(_selected_id) = state.canvas.select_at(&point, tolerance, ctrl_pressed) {
+                if let Some(_selected_id) = state.canvas.select_at(&point, tolerance, ctrl_pressed)
+                {
                     // Shape selected
                 } else if !ctrl_pressed {
                     // Click on empty space without Ctrl - deselect all
                     state.canvas.deselect_all();
                 }
-                
+
                 drop(state);
                 self.widget.queue_draw();
-                
+
                 // Update properties panel
                 if let Some(ref props) = *self.properties.borrow() {
                     props.update_from_selection();
                 }
-                
+
                 // Update layers panel
                 if let Some(ref layers) = *self.layers.borrow() {
                     layers.refresh(&self.state);
@@ -1062,11 +1145,11 @@ impl DesignerCanvas {
                         // Create polyline
                         let path_shape = PathShape::from_points(&points, false);
                         let shape = Shape::Path(path_shape);
-                        
+
                         let mut state = self.state.borrow_mut();
                         state.canvas.add_shape(shape);
                         drop(state);
-                        
+
                         // Refresh layers panel
                         if let Some(layers_panel) = self.layers.borrow().as_ref() {
                             layers_panel.refresh(&self.state);
@@ -1090,70 +1173,74 @@ impl DesignerCanvas {
             }
         }
     }
-    
+
     fn handle_release(&self, x: f64, y: f64, ctrl_pressed_arg: bool) {
         let ctrl_pressed = ctrl_pressed_arg || *self.ctrl_pressed.borrow();
 
         if *self.did_drag.borrow() {
             return;
         }
-        
-        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
-        
+
+        let tool = self
+            .toolbox
+            .as_ref()
+            .map(|t| t.current_tool())
+            .unwrap_or(DesignerTool::Select);
+
         // Convert screen coords to canvas coords
         let _width = self.widget.width() as f64;
         let height = self.widget.height() as f64;
-        
+
         let state = self.state.borrow();
         let zoom = state.canvas.zoom();
         let pan_x = state.canvas.pan_x();
         let pan_y = state.canvas.pan_y();
         drop(state);
-        
+
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
         let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
-        
+
         if tool == DesignerTool::Select {
-             let mut state = self.state.borrow_mut();
-             let point = Point::new(canvas_x, canvas_y);
-             
-             // Check if we clicked on an existing shape
-             let mut clicked_shape_id = None;
-             let tolerance = 3.0;
-             for obj in state.canvas.shapes() {
-                 if obj.shape.contains_point(&point, tolerance) {
-                     clicked_shape_id = Some(obj.id);
-                 }
-             }
-             
-             if let Some(id) = clicked_shape_id {
-                 let is_selected = state.canvas.shapes().any(|s| s.id == id && s.selected);
-                 
-                 if is_selected && !ctrl_pressed {
-                     // We clicked on a selected item and didn't drag.
-                     // Now we select ONLY this item (deselect others).
-                     state.canvas.deselect_all();
-                     state.canvas.select_shape(id, false);
-                     
-                     drop(state);
-                     self.widget.queue_draw();
-                     
-                     // Update properties panel
-                     if let Some(ref props) = *self.properties.borrow() {
-                         props.update_from_selection();
-                     }
-                     
-                     // Update layers panel
-                     if let Some(ref layers) = *self.layers.borrow() {
-                         layers.refresh(&self.state);
-                     }
-                 }
-             }
+            let mut state = self.state.borrow_mut();
+            let point = Point::new(canvas_x, canvas_y);
+
+            // Check if we clicked on an existing shape
+            let mut clicked_shape_id = None;
+            let tolerance = 3.0;
+            for obj in state.canvas.shapes() {
+                if obj.shape.contains_point(&point, tolerance) {
+                    clicked_shape_id = Some(obj.id);
+                }
+            }
+
+            if let Some(id) = clicked_shape_id {
+                let is_selected = state.canvas.shapes().any(|s| s.id == id && s.selected);
+
+                if is_selected && !ctrl_pressed {
+                    // We clicked on a selected item and didn't drag.
+                    // Now we select ONLY this item (deselect others).
+                    state.canvas.deselect_all();
+                    state.canvas.select_shape(id, false);
+
+                    drop(state);
+                    self.widget.queue_draw();
+
+                    // Update properties panel
+                    if let Some(ref props) = *self.properties.borrow() {
+                        props.update_from_selection();
+                    }
+
+                    // Update layers panel
+                    if let Some(ref layers) = *self.layers.borrow() {
+                        layers.refresh(&self.state);
+                    }
+                }
+            }
         }
     }
-    
+
     fn handle_drag_begin(&self, x: f64, y: f64) {
         // Set drag flag
         *self.did_drag.borrow_mut() = true;
@@ -1162,24 +1249,28 @@ impl DesignerCanvas {
         if let Some(ref props) = *self.properties.borrow() {
             props.clear_focus();
         }
-        
-        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
-        
+
+        let tool = self
+            .toolbox
+            .as_ref()
+            .map(|t| t.current_tool())
+            .unwrap_or(DesignerTool::Select);
+
         // Convert screen coords to canvas coords
         let _width = self.widget.width() as f64;
         let height = self.widget.height() as f64;
-        
+
         let state = self.state.borrow();
         let zoom = state.canvas.zoom();
         let pan_x = state.canvas.pan_x();
         let pan_y = state.canvas.pan_y();
         drop(state);
-        
+
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
         let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
-        
+
         match tool {
             DesignerTool::Select => {
                 // Check if we're clicking on a resize handle first
@@ -1196,28 +1287,25 @@ impl DesignerCanvas {
                         (None, None)
                     }
                 };
-                
+
                 if let (Some(selected_id), Some(bounds)) = (selected_id_opt, bounds_opt) {
                     if let Some(handle) = self.get_resize_handle_at(canvas_x, canvas_y, &bounds) {
                         // Start resizing
                         *self.active_resize_handle.borrow_mut() = Some((handle, selected_id));
                         let (min_x, min_y, max_x, max_y) = bounds;
-                        *self.resize_original_bounds.borrow_mut() = Some((
-                            min_x, min_y,
-                            max_x - min_x,
-                            max_y - min_y
-                        ));
+                        *self.resize_original_bounds.borrow_mut() =
+                            Some((min_x, min_y, max_x - min_x, max_y - min_y));
                         *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
                         return;
                     }
                 }
-                
+
                 // Check if clicking on a selected shape for moving
                 let has_selected = {
                     let state = self.state.borrow();
                     state.canvas.selection_manager.selected_id().is_some()
                 };
-                
+
                 if has_selected {
                     // Start dragging selected shapes
                     *self.creation_start.borrow_mut() = Some((canvas_x, canvas_y));
@@ -1239,32 +1327,36 @@ impl DesignerCanvas {
             }
         }
     }
-    
+
     fn handle_drag_update(&self, offset_x: f64, offset_y: f64) {
-        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
+        let tool = self
+            .toolbox
+            .as_ref()
+            .map(|t| t.current_tool())
+            .unwrap_or(DesignerTool::Select);
         let shift_pressed = *self.shift_pressed.borrow();
-        
+
         // Get start point without holding the borrow
         let start_opt = *self.creation_start.borrow();
-        
+
         if let Some(start) = start_opt {
             let state = self.state.borrow();
             let zoom = state.canvas.zoom();
             drop(state);
-            
+
             // Convert offsets to canvas units
             let canvas_offset_x = offset_x / zoom;
             let canvas_offset_y = offset_y / zoom;
-            
+
             // Update current position (offset is from drag start)
             let mut current_x = start.0 + canvas_offset_x;
             let mut current_y = start.1 - canvas_offset_y; // Flip Y offset
-            
+
             // Apply Shift key constraints for creation
             if shift_pressed && tool != DesignerTool::Select {
                 let dx = current_x - start.0;
                 let dy = current_y - start.1;
-                
+
                 if tool == DesignerTool::Rectangle || tool == DesignerTool::Ellipse {
                     // Square/Circle constraint (1:1 aspect ratio)
                     let max_dim = dx.abs().max(dy.abs());
@@ -1273,8 +1365,9 @@ impl DesignerCanvas {
                 } else if tool == DesignerTool::Line || tool == DesignerTool::Polyline {
                     // Snap to 45 degree increments
                     let angle = dy.atan2(dx);
-                    let snap_angle = (angle / (std::f64::consts::PI / 4.0)).round() * (std::f64::consts::PI / 4.0);
-                    let dist = (dx*dx + dy*dy).sqrt();
+                    let snap_angle = (angle / (std::f64::consts::PI / 4.0)).round()
+                        * (std::f64::consts::PI / 4.0);
+                    let dist = (dx * dx + dy * dy).sqrt();
                     current_x = start.0 + dist * snap_angle.cos();
                     current_y = start.1 + dist * snap_angle.sin();
                 }
@@ -1284,7 +1377,7 @@ impl DesignerCanvas {
                 (current_x, current_y) = self.snap_canvas_point(current_x, current_y);
                 *self.creation_current.borrow_mut() = Some((current_x, current_y));
             }
-            
+
             // If in select mode, handle resizing or moving
             if tool == DesignerTool::Select {
                 // Check if we're resizing
@@ -1298,12 +1391,12 @@ impl DesignerCanvas {
                         let last_offset = *self.last_drag_offset.borrow();
                         let mut delta_x = (offset_x - last_offset.0) / zoom;
                         let mut delta_y = (offset_y - last_offset.1) / zoom;
-                        
+
                         if shift_pressed {
                             // Constrain movement to X or Y axis based on total drag
                             let total_dx = current_x - start.0;
                             let total_dy = current_y - start.1;
-                            
+
                             if total_dx.abs() > total_dy.abs() {
                                 delta_y = 0.0;
                             } else {
@@ -1313,7 +1406,7 @@ impl DesignerCanvas {
 
                         // Apply incremental movement
                         state.canvas.move_selected(delta_x, -delta_y);
-                        
+
                         // Update last offset
                         *self.last_drag_offset.borrow_mut() = (offset_x, offset_y);
                     }
@@ -1329,14 +1422,14 @@ impl DesignerCanvas {
                 // So current screen pos = start + offset.
                 // Previous screen pos = start + previous_offset.
                 // Delta = current - previous.
-                
+
                 // Actually, let's use last_drag_offset to store the *previous offset value*.
                 // In begin, offset is 0. So last_drag_offset = (0,0).
-                
+
                 let last_offset = *self.last_drag_offset.borrow();
                 let delta_x = offset_x - last_offset.0;
                 let delta_y = offset_y - last_offset.1;
-                
+
                 let mut state = self.state.borrow_mut();
                 // Drag right (+x) -> move content right -> pan_x increases
                 // Drag down (+y) -> move content down -> pan_y increases (because Y is flipped)
@@ -1350,7 +1443,7 @@ impl DesignerCanvas {
                 // height - (wy*z + (py - d)) = height - wy*z - py + d = old_sy + d.
                 // So decreasing pan_y moves content down on screen.
                 // So drag down (+dy) -> pan_y -= dy.
-                
+
                 // Let's verify with scrollbars.
                 // Scrollbar down -> value increases.
                 // v_adj value -> state.canvas.set_pan(px, val).
@@ -1358,29 +1451,29 @@ impl DesignerCanvas {
                 // If pan_y increases, Screen Y = height - (wy*z + py).
                 // Screen Y decreases. Content moves UP.
                 // So scrollbar down moves content UP. This is standard scrolling (view moves down).
-                
+
                 // Panning with hand: Drag UP -> content moves UP.
                 // Drag UP means dy is negative.
                 // If dy is negative, we want content to move UP (Screen Y decreases).
                 // So pan_y should increase.
                 // So pan_y -= dy (since dy is negative, -= is +=).
-                
+
                 // Drag DOWN means dy is positive.
                 // We want content to move DOWN (Screen Y increases).
                 // So pan_y should decrease.
                 // So pan_y -= dy.
-                
+
                 // Drag RIGHT means dx is positive.
                 // We want content to move RIGHT (Screen X increases).
                 // Screen X = (wx * z + px).
                 // So pan_x should increase.
                 // So pan_x += dx.
-                
+
                 state.canvas.pan_by(delta_x, -delta_y);
                 let new_pan_x = state.canvas.pan_x();
                 let new_pan_y = state.canvas.pan_y();
                 drop(state);
-                
+
                 // Update scrollbars
                 if let Some(adj) = self.hadjustment.borrow().as_ref() {
                     adj.set_value(-new_pan_x);
@@ -1388,44 +1481,48 @@ impl DesignerCanvas {
                 if let Some(adj) = self.vadjustment.borrow().as_ref() {
                     adj.set_value(new_pan_y);
                 }
-                
+
                 *self.last_drag_offset.borrow_mut() = (offset_x, offset_y);
             }
-            
+
             self.widget.queue_draw();
         }
     }
-    
+
     fn handle_drag_end(&self, offset_x: f64, offset_y: f64) {
-        let tool = self.toolbox.as_ref().map(|t| t.current_tool()).unwrap_or(DesignerTool::Select);
-        
+        let tool = self
+            .toolbox
+            .as_ref()
+            .map(|t| t.current_tool())
+            .unwrap_or(DesignerTool::Select);
+
         if tool == DesignerTool::Pan {
             *self.creation_start.borrow_mut() = None;
             *self.last_drag_offset.borrow_mut() = (0.0, 0.0);
             self.widget.set_cursor_from_name(Some("grab"));
             return;
         }
-        
+
         // Get start point and release the borrow immediately
         let start_opt = *self.creation_start.borrow();
-        
+
         if let Some(start) = start_opt {
             let state = self.state.borrow();
             let zoom = state.canvas.zoom();
             drop(state);
-            
+
             let canvas_offset_x = offset_x / zoom;
             let canvas_offset_y = offset_y / zoom;
-            
+
             let end_x = start.0 + canvas_offset_x;
             let end_y = start.1 - canvas_offset_y; // Flip Y offset
-            
+
             match tool {
                 DesignerTool::Select => {
                     // Clear resize state
                     *self.active_resize_handle.borrow_mut() = None;
                     *self.resize_original_bounds.borrow_mut() = None;
-                    
+
                     // If we didn't have a selection and we dragged, perform marquee selection
                     let mut state = self.state.borrow_mut();
                     if state.canvas.selection_manager.selected_id().is_none() {
@@ -1434,34 +1531,42 @@ impl DesignerCanvas {
                         let max_x = start.0.max(end_x);
                         let min_y = start.1.min(end_y);
                         let max_y = start.1.max(end_y);
-                        
+
                         // Find all shapes intersecting the marquee rectangle
-                        let selected_shapes: Vec<_> = state.canvas.shapes()
+                        let selected_shapes: Vec<_> = state
+                            .canvas
+                            .shapes()
                             .filter(|obj| {
-                                let (shape_min_x, shape_min_y, shape_max_x, shape_max_y) = obj.shape.bounding_box();
+                                let (shape_min_x, shape_min_y, shape_max_x, shape_max_y) =
+                                    obj.shape.bounding_box();
                                 // Check if bounding boxes intersect
-                                !(shape_max_x < min_x || shape_min_x > max_x || 
-                                  shape_max_y < min_y || shape_min_y > max_y)
+                                !(shape_max_x < min_x
+                                    || shape_min_x > max_x
+                                    || shape_max_y < min_y
+                                    || shape_min_y > max_y)
                             })
                             .map(|obj| obj.id)
                             .collect();
-                        
+
                         // Select the shapes
                         if !selected_shapes.is_empty() {
                             // Deselect all shapes first
                             for obj in state.canvas.shape_store.iter_mut() {
                                 obj.selected = false;
                             }
-                            
+
                             // Then select the marquee-selected shapes
                             for &shape_id in &selected_shapes {
                                 if let Some(shape) = state.canvas.shape_store.get_mut(shape_id) {
                                     shape.selected = true;
                                 }
                             }
-                            
+
                             // Set primary selection to first selected shape
-                            state.canvas.selection_manager.set_selected_id(selected_shapes.first().copied());
+                            state
+                                .canvas
+                                .selection_manager
+                                .set_selected_id(selected_shapes.first().copied());
                         }
                     }
                 }
@@ -1470,128 +1575,130 @@ impl DesignerCanvas {
                     self.create_shape(tool, start, (end_x, end_y));
                 }
             }
-            
+
             // Clear creation state (now safe - no borrows held)
             *self.creation_start.borrow_mut() = None;
             *self.creation_current.borrow_mut() = None;
-            
+
             // Update properties panel after resize/move
             if let Some(ref props) = *self.properties.borrow() {
                 props.update_from_selection();
             }
-            
+
             // Update toolpaths if enabled
             let show_toolpaths = self.state.borrow().show_toolpaths;
             if show_toolpaths {
                 self.generate_preview_toolpaths();
             }
-            
+
             // Queue draw after clearing state
             self.widget.queue_draw();
         }
     }
-    
+
     fn create_shape(&self, tool: DesignerTool, start: (f64, f64), end: (f64, f64)) {
         // Scope the borrow to release it before queue_draw
         {
             let mut state = self.state.borrow_mut();
-        
-        let shape = match tool {
-            DesignerTool::Rectangle => {
-                let x = start.0.min(end.0);
-                let y = start.1.min(end.1);
-                let width = (end.0 - start.0).abs();
-                let height = (end.1 - start.1).abs();
-                
-                if width > 1.0 && height > 1.0 {
-                    Some(Shape::Rectangle(Rectangle::new(x, y, width, height)))
-                } else {
-                    None
+
+            let shape = match tool {
+                DesignerTool::Rectangle => {
+                    let x = start.0.min(end.0);
+                    let y = start.1.min(end.1);
+                    let width = (end.0 - start.0).abs();
+                    let height = (end.1 - start.1).abs();
+
+                    if width > 1.0 && height > 1.0 {
+                        Some(Shape::Rectangle(Rectangle::new(x, y, width, height)))
+                    } else {
+                        None
+                    }
                 }
-            }
-            DesignerTool::Circle => {
-                let cx = start.0;
-                let cy = start.1;
-                let dx = end.0 - start.0;
-                let dy = end.1 - start.1;
-                let radius = (dx * dx + dy * dy).sqrt();
-                
-                if radius > 1.0 {
-                    Some(Shape::Circle(Circle::new(Point::new(cx, cy), radius)))
-                } else {
-                    None
+                DesignerTool::Circle => {
+                    let cx = start.0;
+                    let cy = start.1;
+                    let dx = end.0 - start.0;
+                    let dy = end.1 - start.1;
+                    let radius = (dx * dx + dy * dy).sqrt();
+
+                    if radius > 1.0 {
+                        Some(Shape::Circle(Circle::new(Point::new(cx, cy), radius)))
+                    } else {
+                        None
+                    }
                 }
-            }
-            DesignerTool::Line => {
-                Some(Shape::Line(Line::new(
+                DesignerTool::Line => Some(Shape::Line(Line::new(
                     Point::new(start.0, start.1),
                     Point::new(end.0, end.1),
-                )))
-            }
-            DesignerTool::Ellipse => {
-                let cx = (start.0 + end.0) / 2.0;
-                let cy = (start.1 + end.1) / 2.0;
-                let rx = (end.0 - start.0).abs() / 2.0;
-                let ry = (end.1 - start.1).abs() / 2.0;
-                
-                if rx > 1.0 && ry > 1.0 {
-                    Some(Shape::Ellipse(Ellipse::new(Point::new(cx, cy), rx, ry)))
-                } else {
-                    None
+                ))),
+                DesignerTool::Ellipse => {
+                    let cx = (start.0 + end.0) / 2.0;
+                    let cy = (start.1 + end.1) / 2.0;
+                    let rx = (end.0 - start.0).abs() / 2.0;
+                    let ry = (end.1 - start.1).abs() / 2.0;
+
+                    if rx > 1.0 && ry > 1.0 {
+                        Some(Shape::Ellipse(Ellipse::new(Point::new(cx, cy), rx, ry)))
+                    } else {
+                        None
+                    }
                 }
-            }
-            _ => None,
-        };
-        
+                _ => None,
+            };
+
             if let Some(shape) = shape {
                 state.canvas.add_shape(shape);
             }
         } // Drop the mutable borrow here
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
     }
-    
+
     pub fn delete_selected(&self) {
         let mut state = self.state.borrow_mut();
-        let selected_ids: Vec<u64> = state.canvas.shapes()
+        let selected_ids: Vec<u64> = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .map(|s| s.id)
             .collect();
-        
+
         for id in selected_ids {
             let cmd = DesignerCommand::RemoveShape(RemoveShape { id, object: None });
             state.push_command(cmd);
         }
-        
+
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         self.widget.queue_draw();
     }
-    
+
     pub fn duplicate_selected(&self) {
         let mut state = self.state.borrow_mut();
-        let selected: Vec<DrawingObject> = state.canvas.shapes()
+        let selected: Vec<DrawingObject> = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .cloned()
             .collect();
-        
+
         if selected.is_empty() {
             return;
         }
-        
+
         // Deselect all current shapes
         for obj in state.canvas.shapes_mut() {
             obj.selected = false;
         }
-        
+
         // Create duplicates with offset
         let offset = 10.0;
         let mut new_objects = Vec::new();
@@ -1601,47 +1708,49 @@ impl DesignerCanvas {
             obj.selected = true;
             new_objects.push(obj);
         }
-        
+
         let cmd = DesignerCommand::PasteShapes(PasteShapes {
             ids: new_objects.iter().map(|o| o.id).collect(),
             objects: new_objects.into_iter().map(Some).collect(),
         });
         state.push_command(cmd);
-        
+
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
     pub fn create_linear_array(&self, count: usize, dx: f64, dy: f64) {
         let mut state = self.state.borrow_mut();
-        let selected: Vec<DrawingObject> = state.canvas.shapes()
+        let selected: Vec<DrawingObject> = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .cloned()
             .collect();
-        
+
         if selected.is_empty() {
             return;
         }
-        
+
         // Deselect original shapes
         for obj in state.canvas.shapes_mut() {
             obj.selected = false;
         }
-        
+
         let mut new_objects = Vec::new();
-        
+
         // For each selected object, create count copies
         for i in 1..count {
             for obj in &selected {
@@ -1652,7 +1761,7 @@ impl DesignerCanvas {
                 new_objects.push(new_obj);
             }
         }
-        
+
         // Re-select original items
         for obj in state.canvas.shapes_mut() {
             if selected.iter().any(|s| s.id == obj.id) {
@@ -1667,43 +1776,47 @@ impl DesignerCanvas {
             });
             state.push_command(cmd);
         }
-        
+
         drop(state);
-        
+
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
     pub fn create_grid_array(&self, rows: usize, cols: usize, dx: f64, dy: f64) {
         let mut state = self.state.borrow_mut();
-        let selected: Vec<DrawingObject> = state.canvas.shapes()
+        let selected: Vec<DrawingObject> = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .cloned()
             .collect();
-        
+
         if selected.is_empty() {
             return;
         }
-        
+
         for obj in state.canvas.shapes_mut() {
             obj.selected = false;
         }
-        
+
         let mut new_objects = Vec::new();
-        
+
         for r in 0..rows {
             for c in 0..cols {
-                if r == 0 && c == 0 { continue; } // Skip original position
-                
+                if r == 0 && c == 0 {
+                    continue;
+                } // Skip original position
+
                 for obj in &selected {
                     let mut new_obj = obj.clone();
                     new_obj.id = state.canvas.generate_id();
@@ -1713,7 +1826,7 @@ impl DesignerCanvas {
                 }
             }
         }
-        
+
         // Re-select original items
         for obj in state.canvas.shapes_mut() {
             if selected.iter().any(|s| s.id == obj.id) {
@@ -1728,43 +1841,51 @@ impl DesignerCanvas {
             });
             state.push_command(cmd);
         }
-        
+
         drop(state);
-        
+
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
-    pub fn create_circular_array(&self, count: usize, center_x: f64, center_y: f64, total_angle: f64) {
+    pub fn create_circular_array(
+        &self,
+        count: usize,
+        center_x: f64,
+        center_y: f64,
+        total_angle: f64,
+    ) {
         let mut state = self.state.borrow_mut();
-        let selected: Vec<DrawingObject> = state.canvas.shapes()
+        let selected: Vec<DrawingObject> = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .cloned()
             .collect();
-        
+
         if selected.is_empty() {
             return;
         }
-        
+
         for obj in state.canvas.shapes_mut() {
             obj.selected = false;
         }
-        
+
         let mut new_objects = Vec::new();
         let angle_step = total_angle / count as f64;
-        
+
         for i in 1..count {
             let angle = angle_step * i as f64;
-            
+
             for obj in &selected {
                 let mut new_obj = obj.clone();
                 new_obj.id = state.canvas.generate_id();
@@ -1773,7 +1894,7 @@ impl DesignerCanvas {
                 new_objects.push(new_obj);
             }
         }
-        
+
         // Re-select original items
         for obj in state.canvas.shapes_mut() {
             if selected.iter().any(|s| s.id == obj.id) {
@@ -1788,19 +1909,19 @@ impl DesignerCanvas {
             });
             state.push_command(cmd);
         }
-        
+
         drop(state);
-        
+
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -1808,18 +1929,18 @@ impl DesignerCanvas {
         let mut state = self.state.borrow_mut();
         state.group_selected();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -1827,18 +1948,18 @@ impl DesignerCanvas {
         let mut state = self.state.borrow_mut();
         state.ungroup_selected();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -1846,18 +1967,18 @@ impl DesignerCanvas {
         let mut state = self.state.borrow_mut();
         state.convert_selected_to_path();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -1865,18 +1986,18 @@ impl DesignerCanvas {
         let mut state = self.state.borrow_mut();
         state.convert_selected_to_rectangle();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -1921,10 +2042,12 @@ impl DesignerCanvas {
         drop(state);
         self.widget.queue_draw();
     }
-    
+
     pub fn copy_selected(&self) {
         let mut state = self.state.borrow_mut();
-        state.clipboard = state.canvas.shapes()
+        state.clipboard = state
+            .canvas
+            .shapes()
             .filter(|s| s.selected)
             .cloned()
             .collect();
@@ -1934,21 +2057,21 @@ impl DesignerCanvas {
         self.copy_selected();
         self.delete_selected();
     }
-    
+
     pub fn paste(&self) {
         let mut state = self.state.borrow_mut();
         if state.clipboard.is_empty() {
             return;
         }
-        
+
         // Clone clipboard before using it
         let clipboard = state.clipboard.clone();
-        
+
         // Deselect all current shapes
         for obj in state.canvas.shapes_mut() {
             obj.selected = false;
         }
-        
+
         // Create copies with offset
         let offset = 10.0;
         let mut new_objects = Vec::new();
@@ -1959,64 +2082,64 @@ impl DesignerCanvas {
             new_obj.selected = true;
             new_objects.push(new_obj);
         }
-        
+
         let cmd = DesignerCommand::PasteShapes(PasteShapes {
             ids: new_objects.iter().map(|o| o.id).collect(),
             objects: new_objects.into_iter().map(Some).collect(),
         });
         state.push_command(cmd);
-        
+
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
-    
+
     pub fn undo(&self) {
         let mut state = self.state.borrow_mut();
         state.undo();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
-    
+
     pub fn redo(&self) {
         let mut state = self.state.borrow_mut();
         state.redo();
         drop(state);
-        
+
         // Refresh layers panel
         if let Some(layers_panel) = self.layers.borrow().as_ref() {
             layers_panel.refresh(&self.state);
         }
-        
+
         // Update toolpaths if enabled
         let show_toolpaths = self.state.borrow().show_toolpaths;
         if show_toolpaths {
             self.generate_preview_toolpaths();
         }
-        
+
         self.widget.queue_draw();
     }
 
@@ -2044,7 +2167,8 @@ impl DesignerCanvas {
         };
 
         let total_shapes = shapes.len().max(1);
-        let done_shapes: Arc<std::sync::atomic::AtomicUsize> = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let done_shapes: Arc<std::sync::atomic::AtomicUsize> =
+            Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
         // Global status bar progress + cancel (non-blocking)
         if let Some(sb) = self.status_bar.as_ref() {
@@ -2059,7 +2183,8 @@ impl DesignerCanvas {
 
         let cancel = self.preview_cancel.clone();
         let done_shapes_thread = done_shapes.clone();
-        let result_arc: Arc<std::sync::Mutex<Option<Vec<Toolpath>>>> = Arc::new(std::sync::Mutex::new(None));
+        let result_arc: Arc<std::sync::Mutex<Option<Vec<Toolpath>>>> =
+            Arc::new(std::sync::Mutex::new(None));
         let result_arc_thread = result_arc.clone();
 
         std::thread::spawn(move || {
@@ -2080,6 +2205,7 @@ impl DesignerCanvas {
                 gen.set_pocket_strategy(shape.pocket_strategy);
                 gen.set_start_depth(shape.start_depth);
                 gen.set_cut_depth(shape.pocket_depth);
+                gen.set_step_in(shape.step_in as f64);
 
                 let shape_toolpaths = match &shape.shape {
                     Shape::Rectangle(rect) => {
@@ -2127,7 +2253,13 @@ impl DesignerCanvas {
                             gen.generate_path_contour(path_shape, shape.step_down as f64)
                         }
                     }
-                    Shape::Text(text) => gen.generate_text_toolpath(text, shape.step_down as f64),
+                    Shape::Text(text) => {
+                        if shape.operation_type == OperationType::Pocket {
+                            gen.generate_text_pocket_toolpath(text, shape.step_down as f64)
+                        } else {
+                            gen.generate_text_toolpath(text, shape.step_down as f64)
+                        }
+                    }
                 };
                 toolpaths.extend(shape_toolpaths);
                 done_shapes_thread.fetch_add(1, Ordering::Relaxed);
@@ -2203,9 +2335,21 @@ impl DesignerCanvas {
         });
     }
 
-    fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>, polyline_points: &[Point], toolpaths: &[Toolpath], device_bounds: (f64, f64, f64, f64), style_context: &gtk4::StyleContext) {
+    fn draw(
+        cr: &gtk4::cairo::Context,
+        state: &DesignerState,
+        width: f64,
+        height: f64,
+        mouse_pos: (f64, f64),
+        preview_start: Option<(f64, f64)>,
+        preview_current: Option<(f64, f64)>,
+        polyline_points: &[Point],
+        toolpaths: &[Toolpath],
+        device_bounds: (f64, f64, f64, f64),
+        style_context: &gtk4::StyleContext,
+    ) {
         // Background handled by CSS
-        
+
         let fg_color = style_context.color();
         let accent_color = style_context
             .lookup_color("accent_color")
@@ -2222,7 +2366,7 @@ impl DesignerCanvas {
 
         // Setup coordinate system
         // Designer uses Y-up (Cartesian), Cairo uses Y-down
-        
+
         let zoom = state.canvas.zoom();
         let pan_x = state.canvas.pan_x();
         let pan_y = state.canvas.pan_y();
@@ -2231,10 +2375,10 @@ impl DesignerCanvas {
         // Origin is bottom-left of the widget
         cr.translate(0.0, height);
         cr.scale(1.0, -1.0);
-        
+
         // Apply Pan (in screen pixels, but Y is flipped so +Y pan moves up)
         cr.translate(pan_x, pan_y);
-        
+
         // Apply Zoom
         cr.scale(zoom, zoom);
 
@@ -2242,27 +2386,27 @@ impl DesignerCanvas {
         if state.show_grid {
             Self::draw_grid(cr, width, height, state.grid_spacing_mm.max(0.1), &fg_color);
         }
-        
+
         // Draw Device Bounds
         let (min_x, min_y, max_x, max_y) = device_bounds;
         let width = max_x - min_x;
         let height = max_y - min_y;
-        
+
         cr.save().unwrap();
         cr.set_source_rgb(0.0, 0.0, 1.0); // Blue
         cr.set_line_width(2.0 / zoom); // 2px wide on screen
         cr.rectangle(min_x, min_y, width, height);
         cr.stroke().unwrap();
         cr.restore().unwrap();
-        
+
         // Draw Origin Crosshair
         Self::draw_origin_crosshair(cr, zoom);
-        
+
         // Draw Toolpaths (if enabled)
         if state.show_toolpaths {
             cr.save().unwrap();
             cr.set_line_width(2.0 / zoom); // Constant screen width
-            
+
             for toolpath in toolpaths {
                 for segment in &toolpath.segments {
                     match segment.segment_type {
@@ -2298,16 +2442,18 @@ impl DesignerCanvas {
                                 0.7,
                             );
                             cr.set_dash(&[], 0.0);
-                            
+
                             if let Some(center) = segment.center {
                                 let radius = center.distance_to(&segment.start);
-                                let angle1 = (segment.start.y - center.y).atan2(segment.start.x - center.x);
-                                let angle2 = (segment.end.y - center.y).atan2(segment.end.x - center.x);
-                                
+                                let angle1 =
+                                    (segment.start.y - center.y).atan2(segment.start.x - center.x);
+                                let angle2 =
+                                    (segment.end.y - center.y).atan2(segment.end.x - center.x);
+
                                 cr.move_to(segment.start.x, segment.start.y); // Ensure we start at correct point
-                                // Note: Cairo adds a line from current point to start of arc if they differ.
-                                // But we just moved there.
-                                
+                                                                              // Note: Cairo adds a line from current point to start of arc if they differ.
+                                                                              // But we just moved there.
+
                                 if segment.segment_type == ToolpathSegmentType::ArcCW {
                                     cr.arc_negative(center.x, center.y, radius, angle1, angle2);
                                 } else {
@@ -2322,10 +2468,10 @@ impl DesignerCanvas {
                     }
                 }
             }
-            
+
             cr.restore().unwrap();
         }
-        
+
         // Draw polyline in progress
         if !polyline_points.is_empty() {
             cr.save().unwrap();
@@ -2336,33 +2482,33 @@ impl DesignerCanvas {
                 1.0,
             );
             cr.set_line_width(2.0 / zoom);
-            
+
             // Draw existing segments
             if let Some(first) = polyline_points.first() {
                 cr.move_to(first.x, first.y);
                 for p in polyline_points.iter().skip(1) {
                     cr.line_to(p.x, p.y);
                 }
-                
+
                 // Draw rubber band to mouse
                 cr.line_to(mouse_pos.0, mouse_pos.1);
             }
-            
+
             cr.stroke().unwrap();
-            
+
             // Draw points
             for p in polyline_points {
                 cr.arc(p.x, p.y, 3.0 / zoom, 0.0, 2.0 * std::f64::consts::PI);
                 cr.fill().unwrap();
             }
-            
+
             cr.restore().unwrap();
         }
 
         // Draw Shapes
         for obj in state.canvas.shape_store.iter() {
             cr.save().unwrap();
-            
+
             if obj.selected {
                 cr.set_source_rgba(
                     error_color.red() as f64,
@@ -2380,7 +2526,12 @@ impl DesignerCanvas {
                 );
                 cr.set_line_width(2.0 / zoom);
             } else {
-                cr.set_source_rgba(fg_color.red() as f64, fg_color.green() as f64, fg_color.blue() as f64, fg_color.alpha() as f64);
+                cr.set_source_rgba(
+                    fg_color.red() as f64,
+                    fg_color.green() as f64,
+                    fg_color.blue() as f64,
+                    fg_color.alpha() as f64,
+                );
                 cr.set_line_width(2.0 / zoom);
             }
 
@@ -2397,9 +2548,9 @@ impl DesignerCanvas {
                         cr.new_sub_path();
                         // Start at right edge, bottom of TR corner
                         cr.arc(x + w - r, y + h - r, r, 0.0, 0.5 * pi); // TR
-                        cr.arc(x + r, y + h - r, r, 0.5 * pi, pi);      // TL
-                        cr.arc(x + r, y + r, r, pi, 1.5 * pi);          // BL
-                        cr.arc(x + w - r, y + r, r, 1.5 * pi, 2.0 * pi);// BR
+                        cr.arc(x + r, y + h - r, r, 0.5 * pi, pi); // TL
+                        cr.arc(x + r, y + r, r, pi, 1.5 * pi); // BL
+                        cr.arc(x + w - r, y + r, r, 1.5 * pi, 2.0 * pi); // BR
                         cr.close_path();
                         cr.stroke().unwrap();
                     } else {
@@ -2408,7 +2559,13 @@ impl DesignerCanvas {
                     }
                 }
                 Shape::Circle(circle) => {
-                    cr.arc(circle.center.x, circle.center.y, circle.radius, 0.0, 2.0 * std::f64::consts::PI);
+                    cr.arc(
+                        circle.center.x,
+                        circle.center.y,
+                        circle.radius,
+                        0.0,
+                        2.0 * std::f64::consts::PI,
+                    );
                     cr.stroke().unwrap();
                 }
                 Shape::Line(line) => {
@@ -2439,7 +2596,7 @@ impl DesignerCanvas {
                                 // Cairo doesn't have quadratic, convert to cubic
                                 // CP1 = from + 2/3 * (ctrl - from)
                                 // CP2 = to + 2/3 * (ctrl - to)
-                                // But we don't have 'from' easily available in all events? 
+                                // But we don't have 'from' easily available in all events?
                                 // Lyon Event::Quadratic gives 'from'.
                                 // Wait, cairo has curve_to (cubic).
                                 // Q to C conversion:
@@ -2451,16 +2608,32 @@ impl DesignerCanvas {
                                 // cr.curve_to(c1.x, c1.y, c2.x, c2.y, c3.x, c3.y)
                                 // Actually we can just use current point as from.
                                 let (x0, y0) = cr.current_point().unwrap();
-                                let x1 = x0 + (2.0/3.0) * (ctrl.x as f64 - x0);
-                                let y1 = y0 + (2.0/3.0) * (ctrl.y as f64 - y0);
-                                let x2 = to.x as f64 + (2.0/3.0) * (ctrl.x as f64 - to.x as f64);
-                                let y2 = to.y as f64 + (2.0/3.0) * (ctrl.y as f64 - to.y as f64);
+                                let x1 = x0 + (2.0 / 3.0) * (ctrl.x as f64 - x0);
+                                let y1 = y0 + (2.0 / 3.0) * (ctrl.y as f64 - y0);
+                                let x2 = to.x as f64 + (2.0 / 3.0) * (ctrl.x as f64 - to.x as f64);
+                                let y2 = to.y as f64 + (2.0 / 3.0) * (ctrl.y as f64 - to.y as f64);
                                 cr.curve_to(x1, y1, x2, y2, to.x as f64, to.y as f64);
                             }
-                            lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
-                                cr.curve_to(ctrl1.x as f64, ctrl1.y as f64, ctrl2.x as f64, ctrl2.y as f64, to.x as f64, to.y as f64);
+                            lyon::path::Event::Cubic {
+                                from: _,
+                                ctrl1,
+                                ctrl2,
+                                to,
+                            } => {
+                                cr.curve_to(
+                                    ctrl1.x as f64,
+                                    ctrl1.y as f64,
+                                    ctrl2.x as f64,
+                                    ctrl2.y as f64,
+                                    to.x as f64,
+                                    to.y as f64,
+                                );
                             }
-                            lyon::path::Event::End { last: _, first: _, close } => {
+                            lyon::path::Event::End {
+                                last: _,
+                                first: _,
+                                close,
+                            } => {
                                 if close {
                                     cr.close_path();
                                 }
@@ -2474,29 +2647,37 @@ impl DesignerCanvas {
                     cr.save().unwrap();
                     // Flip Y back for text so it's not upside down
                     cr.translate(text.x, text.y);
-                    cr.scale(1.0, -1.0); 
-                    let slant = if text.italic { gtk4::cairo::FontSlant::Italic } else { gtk4::cairo::FontSlant::Normal };
-                    let weight = if text.bold { gtk4::cairo::FontWeight::Bold } else { gtk4::cairo::FontWeight::Normal };
+                    cr.scale(1.0, -1.0);
+                    let slant = if text.italic {
+                        gtk4::cairo::FontSlant::Italic
+                    } else {
+                        gtk4::cairo::FontSlant::Normal
+                    };
+                    let weight = if text.bold {
+                        gtk4::cairo::FontWeight::Bold
+                    } else {
+                        gtk4::cairo::FontWeight::Normal
+                    };
                     cr.select_font_face(&text.font_family, slant, weight);
                     cr.set_font_size(text.font_size);
                     cr.show_text(&text.text).unwrap();
                     cr.restore().unwrap();
                 }
             }
-            
+
             // Draw resize handles for selected shapes
             if obj.selected {
                 let bounds = obj.shape.bounding_box();
                 Self::draw_resize_handles(cr, &bounds, zoom, &accent_color);
             }
-            
+
             cr.restore().unwrap();
         }
-        
+
         // Draw preview marquee if creating a shape
         if let (Some(start), Some(current)) = (preview_start, preview_current) {
             cr.save().unwrap();
-            
+
             // Draw dashed preview outline
             cr.set_source_rgba(
                 accent_color.red() as f64,
@@ -2506,36 +2687,47 @@ impl DesignerCanvas {
             );
             cr.set_line_width(2.0 / zoom);
             cr.set_dash(&[5.0 / zoom, 5.0 / zoom], 0.0); // Dashed line
-            
+
             // Draw bounding box for the preview
             let x1 = start.0.min(current.0);
             let y1 = start.1.min(current.1);
             let x2 = start.0.max(current.0);
             let y2 = start.1.max(current.1);
-            
+
             cr.rectangle(x1, y1, x2 - x1, y2 - y1);
             cr.stroke().unwrap();
-            
+
             cr.restore().unwrap();
         }
     }
 
-    fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64, grid_spacing: f64, fg_color: &gtk4::gdk::RGBA) {
+    fn draw_grid(
+        cr: &gtk4::cairo::Context,
+        width: f64,
+        height: f64,
+        grid_spacing: f64,
+        fg_color: &gtk4::gdk::RGBA,
+    ) {
         cr.save().unwrap();
-        
+
         let minor_spacing = grid_spacing / 5.0;
-        
+
         // Get current transform to find canvas bounds
         let matrix = cr.matrix();
         let x0 = -matrix.x0() / matrix.xx();
         let x1 = (width - matrix.x0()) / matrix.xx();
         let y0 = -matrix.y0() / matrix.yy();
         let y1 = (height - matrix.y0()) / matrix.yy();
-        
+
         // Minor grid lines (lighter)
-        cr.set_source_rgba(fg_color.red() as f64, fg_color.green() as f64, fg_color.blue() as f64, 0.2);
+        cr.set_source_rgba(
+            fg_color.red() as f64,
+            fg_color.green() as f64,
+            fg_color.blue() as f64,
+            0.2,
+        );
         cr.set_line_width(0.5);
-        
+
         // Vertical minor grid lines
         let start_x = (x0 / minor_spacing).floor() * minor_spacing;
         let mut x = start_x;
@@ -2547,7 +2739,7 @@ impl DesignerCanvas {
             }
             x += minor_spacing;
         }
-        
+
         // Horizontal minor grid lines
         let start_y = (y1 / minor_spacing).floor() * minor_spacing;
         let mut y = start_y;
@@ -2559,11 +2751,16 @@ impl DesignerCanvas {
             }
             y += minor_spacing;
         }
-        
+
         // Major grid lines (darker)
-        cr.set_source_rgba(fg_color.red() as f64, fg_color.green() as f64, fg_color.blue() as f64, 0.4);
+        cr.set_source_rgba(
+            fg_color.red() as f64,
+            fg_color.green() as f64,
+            fg_color.blue() as f64,
+            0.4,
+        );
         cr.set_line_width(1.0);
-        
+
         // Vertical major grid lines
         x = (x0 / grid_spacing).floor() * grid_spacing;
         while x <= x1 {
@@ -2572,7 +2769,7 @@ impl DesignerCanvas {
             cr.stroke().unwrap();
             x += grid_spacing;
         }
-        
+
         // Horizontal major grid lines
         y = (y1 / grid_spacing).floor() * grid_spacing;
         while y <= y0 {
@@ -2581,17 +2778,22 @@ impl DesignerCanvas {
             cr.stroke().unwrap();
             y += grid_spacing;
         }
-        
+
         // Draw axes (thicker, darker) - only if they're visible
-        cr.set_source_rgba(fg_color.red() as f64, fg_color.green() as f64, fg_color.blue() as f64, 0.8);
+        cr.set_source_rgba(
+            fg_color.red() as f64,
+            fg_color.green() as f64,
+            fg_color.blue() as f64,
+            0.8,
+        );
         cr.set_line_width(2.0);
-        
+
         // X-axis (y=0)
         if y1 <= 0.0 && y0 >= 0.0 {
             cr.move_to(x0, 0.0);
             cr.line_to(x1, 0.0);
         }
-        
+
         // Y-axis (x=0)
         if x0 <= 0.0 && x1 >= 0.0 {
             cr.move_to(0.0, y1);
@@ -2601,42 +2803,47 @@ impl DesignerCanvas {
 
         cr.restore().unwrap();
     }
-    
+
     fn draw_origin_crosshair(cr: &gtk4::cairo::Context, zoom: f64) {
         cr.save().unwrap();
-        
+
         // Draw Origin Axes (Full World Extent)
         let extent = core_constants::WORLD_EXTENT_MM as f64;
         cr.set_line_width(1.0 / zoom); // Thinner line for full axes
-        
+
         // X Axis Red
-        cr.set_source_rgb(1.0, 0.0, 0.0); 
+        cr.set_source_rgb(1.0, 0.0, 0.0);
         cr.move_to(-extent, 0.0);
         cr.line_to(extent, 0.0);
         cr.stroke().unwrap();
 
         // Y Axis Green
-        cr.set_source_rgb(0.0, 1.0, 0.0); 
+        cr.set_source_rgb(0.0, 1.0, 0.0);
         cr.move_to(0.0, -extent);
         cr.line_to(0.0, extent);
         cr.stroke().unwrap();
-        
+
         cr.restore().unwrap();
     }
-    
-    fn get_resize_handle_at(&self, x: f64, y: f64, bounds: &(f64, f64, f64, f64)) -> Option<ResizeHandle> {
+
+    fn get_resize_handle_at(
+        &self,
+        x: f64,
+        y: f64,
+        bounds: &(f64, f64, f64, f64),
+    ) -> Option<ResizeHandle> {
         const HANDLE_SIZE: f64 = 8.0;
         const HANDLE_TOLERANCE: f64 = HANDLE_SIZE / 2.0;
-        
+
         let (min_x, min_y, max_x, max_y) = *bounds;
-        
+
         let corners = [
-            (min_x, max_y, ResizeHandle::TopLeft),      // Top-left (Y-up coords)
-            (max_x, max_y, ResizeHandle::TopRight),     // Top-right
-            (min_x, min_y, ResizeHandle::BottomLeft),   // Bottom-left
-            (max_x, min_y, ResizeHandle::BottomRight),  // Bottom-right
+            (min_x, max_y, ResizeHandle::TopLeft), // Top-left (Y-up coords)
+            (max_x, max_y, ResizeHandle::TopRight), // Top-right
+            (min_x, min_y, ResizeHandle::BottomLeft), // Bottom-left
+            (max_x, min_y, ResizeHandle::BottomRight), // Bottom-right
         ];
-        
+
         for (cx, cy, handle) in corners {
             let dx = x - cx;
             let dy = y - cy;
@@ -2644,46 +2851,57 @@ impl DesignerCanvas {
                 return Some(handle);
             }
         }
-        
+
         None
     }
-    
-    fn apply_resize(&self, handle: ResizeHandle, shape_id: u64, current_x: f64, current_y: f64, shift_pressed: bool) {
+
+    fn apply_resize(
+        &self,
+        handle: ResizeHandle,
+        shape_id: u64,
+        current_x: f64,
+        current_y: f64,
+        shift_pressed: bool,
+    ) {
         let orig_bounds = match *self.resize_original_bounds.borrow() {
             Some(b) => b,
             None => return,
         };
-        
+
         let start = match *self.creation_start.borrow() {
             Some(s) => s,
             None => return,
         };
-        
+
         let (orig_x, orig_y, orig_width, orig_height) = orig_bounds;
-        
+
         // Calculate deltas
         let mut dx = current_x - start.0;
         let mut dy = current_y - start.1;
-        
+
         if shift_pressed {
             // Maintain aspect ratio
-            let ratio = if orig_height.abs() > 0.001 { orig_width / orig_height } else { 1.0 };
-            
+            let ratio = if orig_height.abs() > 0.001 {
+                orig_width / orig_height
+            } else {
+                1.0
+            };
+
             // Calculate "natural" new dimensions based on mouse position
             let natural_w = match handle {
                 ResizeHandle::TopLeft | ResizeHandle::BottomLeft => orig_width - dx,
                 ResizeHandle::TopRight | ResizeHandle::BottomRight => orig_width + dx,
             };
-            
+
             let natural_h = match handle {
                 ResizeHandle::TopLeft | ResizeHandle::TopRight => orig_height + dy,
                 ResizeHandle::BottomLeft | ResizeHandle::BottomRight => orig_height - dy,
             };
-            
+
             // Determine which dimension to follow (use the one with larger relative change)
             let w_scale = (natural_w / orig_width).abs();
             let h_scale = (natural_h / orig_height).abs();
-            
+
             let (new_w, new_h) = if w_scale > h_scale {
                 // Width is dominant, adjust height
                 (natural_w, natural_w / ratio)
@@ -2691,7 +2909,7 @@ impl DesignerCanvas {
                 // Height is dominant, adjust width
                 (natural_h * ratio, natural_h)
             };
-            
+
             // Back-calculate dx and dy to achieve new_w and new_h
             match handle {
                 ResizeHandle::TopLeft => {
@@ -2712,7 +2930,7 @@ impl DesignerCanvas {
                 }
             }
         }
-        
+
         // Calculate new bounds based on which handle is being dragged
         let (new_x, new_y, new_width, new_height) = match handle {
             ResizeHandle::TopLeft => {
@@ -2748,15 +2966,15 @@ impl DesignerCanvas {
                 (orig_x, new_min_y, new_width, new_height)
             }
         };
-        
+
         // Apply minimum size constraints
         if new_width.abs() < 5.0 || new_height.abs() < 5.0 {
             return;
         }
-        
+
         // Update the shape
         let mut state = self.state.borrow_mut();
-        
+
         if let Some(obj) = state.canvas.shape_store.get_mut(shape_id) {
             match &mut obj.shape {
                 Shape::Rectangle(rect) => {
@@ -2805,36 +3023,46 @@ impl DesignerCanvas {
             }
         }
     }
-    
-    fn draw_resize_handles(cr: &gtk4::cairo::Context, bounds: &(f64, f64, f64, f64), zoom: f64, accent_color: &gtk4::gdk::RGBA) {
+
+    fn draw_resize_handles(
+        cr: &gtk4::cairo::Context,
+        bounds: &(f64, f64, f64, f64),
+        zoom: f64,
+        accent_color: &gtk4::gdk::RGBA,
+    ) {
         let handle_size = 8.0 / zoom;
         let half_size = handle_size / 2.0;
-        
+
         let (min_x, min_y, max_x, max_y) = *bounds;
-        
+
         cr.save().unwrap();
-        
+
         // Draw handles at corners
         let corners = [
-            (min_x, max_y),  // Top-left (Y-up)
-            (max_x, max_y),  // Top-right
-            (min_x, min_y),  // Bottom-left
-            (max_x, min_y),  // Bottom-right
+            (min_x, max_y), // Top-left (Y-up)
+            (max_x, max_y), // Top-right
+            (min_x, min_y), // Bottom-left
+            (max_x, min_y), // Bottom-right
         ];
-        
+
         for (cx, cy) in corners {
             // Draw white fill
             cr.set_source_rgb(1.0, 1.0, 1.0);
             cr.rectangle(cx - half_size, cy - half_size, handle_size, handle_size);
             cr.fill().unwrap();
-            
+
             // Draw accent border
-            cr.set_source_rgba(accent_color.red() as f64, accent_color.green() as f64, accent_color.blue() as f64, accent_color.alpha() as f64);
+            cr.set_source_rgba(
+                accent_color.red() as f64,
+                accent_color.green() as f64,
+                accent_color.blue() as f64,
+                accent_color.alpha() as f64,
+            );
             cr.set_line_width(2.0 / zoom);
             cr.rectangle(cx - half_size, cy - half_size, handle_size, handle_size);
             cr.stroke().unwrap();
         }
-        
+
         cr.restore().unwrap();
     }
 }
@@ -2848,15 +3076,15 @@ impl DesignerView {
         let container = Box::new(Orientation::Vertical, 0);
         container.set_hexpand(true);
         container.set_vexpand(true);
-        
+
         // Create designer state
         let state = Rc::new(RefCell::new(DesignerState::new()));
-        
+
         // Create main horizontal layout (toolbox + canvas + properties)
         let main_box = Box::new(Orientation::Horizontal, 0);
         main_box.set_hexpand(true);
         main_box.set_vexpand(true);
-        
+
         // Create toolbox + left sidebar container (toolbox + view/legend)
         let toolbox = DesignerToolbox::new(state.clone(), settings_controller.clone());
         let left_sidebar = Box::new(Orientation::Vertical, 0);
@@ -2892,7 +3120,7 @@ impl DesignerView {
         }
 
         main_box.append(&left_sidebar);
-        
+
         // Create canvas
         let canvas = DesignerCanvas::new(
             state.clone(),
@@ -2900,12 +3128,12 @@ impl DesignerView {
             device_manager.clone(),
             status_bar.clone(),
         );
-        
+
         // Create Grid for Canvas + Scrollbars
         let canvas_grid = Grid::new();
         canvas_grid.set_hexpand(true);
         canvas_grid.set_vexpand(true);
-        
+
         canvas.widget.set_hexpand(true);
         canvas.widget.set_vexpand(true);
 
@@ -2944,14 +3172,16 @@ impl DesignerView {
             .icon_name("preferences-desktop-display-symbolic")
             .tooltip_text(t!("Fit to Device Working Area"))
             .build();
-        float_fit_device
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Fit to Device Working Area"))]);
+        float_fit_device.update_property(&[gtk4::accessible::Property::Label(&t!(
+            "Fit to Device Working Area"
+        ))]);
 
         let scrollbars_btn = gtk4::Button::builder()
             .icon_name("view-list-symbolic")
             .tooltip_text(t!("Toggle Scrollbars"))
             .build();
-        scrollbars_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Toggle Scrollbars"))]);
+        scrollbars_btn
+            .update_property(&[gtk4::accessible::Property::Label(&t!("Toggle Scrollbars"))]);
 
         let help_btn = gtk4::Button::builder()
             .label("?")
@@ -2990,7 +3220,15 @@ impl DesignerView {
             .build();
         float_zoom_in.update_property(&[gtk4::accessible::Property::Label(&t!("Zoom In"))]);
 
-        for b in [&float_zoom_out, &float_fit, &float_reset, &float_fit_device, &scrollbars_btn, &help_btn, &float_zoom_in] {
+        for b in [
+            &float_zoom_out,
+            &float_fit,
+            &float_reset,
+            &float_fit_device,
+            &scrollbars_btn,
+            &help_btn,
+            &float_zoom_in,
+        ] {
             b.set_size_request(28, 28);
         }
 
@@ -3014,7 +3252,9 @@ impl DesignerView {
         empty_box.set_margin_top(20);
         empty_box.set_margin_bottom(20);
         empty_box.append(&Label::new(Some(&t!("No shapes yet"))));
-        empty_box.append(&Label::new(Some(&t!("Use the toolbox on the left to start drawing."))));
+        empty_box.append(&Label::new(Some(&t!(
+            "Use the toolbox on the left to start drawing."
+        ))));
 
         let empty_actions = Box::new(Orientation::Horizontal, 8);
         empty_actions.set_halign(gtk4::Align::Center);
@@ -3054,28 +3294,28 @@ impl DesignerView {
         status_box.append(&units_badge);
 
         overlay.add_overlay(&status_box);
-        
+
         // Attach Overlay to Grid (instead of direct canvas)
         canvas_grid.attach(&overlay, 0, 0, 1, 1);
-        
+
         // Scrollbars
         // Range: use shared world extent (±WORLD_EXTENT_MM)
         let world_extent = gcodekit5_core::constants::WORLD_EXTENT_MM as f64;
         let h_adjustment = Adjustment::new(0.0, -world_extent, world_extent, 10.0, 100.0, 100.0);
         let v_adjustment = Adjustment::new(0.0, -world_extent, world_extent, 10.0, 100.0, 100.0);
-        
+
         let h_scrollbar = Scrollbar::new(Orientation::Horizontal, Some(&h_adjustment));
         let v_scrollbar = Scrollbar::new(Orientation::Vertical, Some(&v_adjustment));
 
         // Default hidden (toggleable) to maximize canvas space
         h_scrollbar.set_visible(false);
         v_scrollbar.set_visible(false);
-        
+
         canvas_grid.attach(&v_scrollbar, 1, 0, 1, 1);
         canvas_grid.attach(&h_scrollbar, 0, 1, 1, 1);
-        
+
         main_box.append(&canvas_grid);
-        
+
         // Connect scrollbars to canvas pan
         let canvas_h = canvas.clone();
         h_adjustment.connect_value_changed(move |adj| {
@@ -3087,7 +3327,7 @@ impl DesignerView {
             drop(state);
             canvas_h.widget.queue_draw();
         });
-        
+
         let canvas_v = canvas.clone();
         v_adjustment.connect_value_changed(move |adj| {
             let val = adj.value();
@@ -3098,21 +3338,21 @@ impl DesignerView {
             drop(state);
             canvas_v.widget.queue_draw();
         });
-        
+
         // Pass adjustments to canvas
         canvas.set_adjustments(h_adjustment.clone(), v_adjustment.clone());
-        
+
         // Connect Floating Zoom Buttons
         let canvas_zoom = canvas.clone();
         float_zoom_in.connect_clicked(move |_| {
             canvas_zoom.zoom_in();
         });
-        
+
         let canvas_zoom = canvas.clone();
         float_zoom_out.connect_clicked(move |_| {
             canvas_zoom.zoom_out();
         });
-        
+
         let canvas_zoom = canvas.clone();
         float_fit.connect_clicked(move |_| {
             canvas_zoom.zoom_fit();
@@ -3161,7 +3401,7 @@ impl DesignerView {
                 gtk4::glib::ControlFlow::Break
             });
         });
-        
+
         // Create right sidebar with properties and layers
         let right_sidebar = Box::new(Orientation::Vertical, 5);
         right_sidebar.set_hexpand(false);
@@ -3192,12 +3432,13 @@ impl DesignerView {
                 });
             });
         }
-        
+
         // Create properties panel
-        let properties = PropertiesPanel::new(state.clone(), settings_controller.persistence.clone());
+        let properties =
+            PropertiesPanel::new(state.clone(), settings_controller.persistence.clone());
         properties.widget.set_vexpand(true);
         properties.widget.set_valign(gtk4::Align::Fill);
-        
+
         // Set up redraw callback for properties
         let canvas_redraw = canvas.clone();
         properties.set_redraw_callback(move || {
@@ -3207,7 +3448,7 @@ impl DesignerView {
             }
             canvas_redraw.widget.queue_draw();
         });
-        
+
         // Inspector header + hide button (matches DeviceConsole / Visualizer sidebar UX)
         let props_hidden = Rc::new(Cell::new(false));
 
@@ -3224,8 +3465,11 @@ impl DesignerView {
         inspector_label.set_hexpand(true);
         inspector_header.append(&inspector_label);
 
-        let props_hide_btn = gtk4::Button::builder().tooltip_text(t!("Hide Properties")).build();
-        props_hide_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Hide Properties"))]);
+        let props_hide_btn = gtk4::Button::builder()
+            .tooltip_text(t!("Hide Properties"))
+            .build();
+        props_hide_btn
+            .update_property(&[gtk4::accessible::Property::Label(&t!("Hide Properties"))]);
         {
             let child = Box::new(Orientation::Horizontal, 6);
             child.append(&gtk4::Image::from_icon_name("view-conceal-symbolic"));
@@ -3255,8 +3499,11 @@ impl DesignerView {
         right_sidebar.append(&inspector_paned);
 
         // Floating unhide button (top-right of canvas)
-        let props_show_btn = gtk4::Button::builder().tooltip_text(t!("Unhide Properties")).build();
-        props_show_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Unhide Properties"))]);
+        let props_show_btn = gtk4::Button::builder()
+            .tooltip_text(t!("Unhide Properties"))
+            .build();
+        props_show_btn
+            .update_property(&[gtk4::accessible::Property::Label(&t!("Unhide Properties"))]);
         {
             let child = Box::new(Orientation::Horizontal, 6);
             child.append(&gtk4::Image::from_icon_name("view-reveal-symbolic"));
@@ -3308,15 +3555,15 @@ impl DesignerView {
         }
 
         // Legend moved to left sidebar
-        
+
         // Give canvas references to panels
         canvas.set_properties_panel(properties.clone());
         canvas.set_layers_panel(layers.clone());
-        
+
         main_box.append(&right_sidebar);
-        
+
         container.append(&main_box);
-        
+
         // Hidden labels retained for internal status messages (status bar removed)
         let status_label = Label::new(None);
         let coord_label = Label::new(None);
@@ -3368,7 +3615,9 @@ impl DesignerView {
             let state_grid_spacing = state.clone();
             let canvas_grid_spacing = canvas.clone();
             grid_spacing_combo.connect_changed(move |cb| {
-                let Some(id) = cb.active_id() else { return; };
+                let Some(id) = cb.active_id() else {
+                    return;
+                };
                 if let Ok(mm) = id.parse::<f64>() {
                     state_grid_spacing.borrow_mut().grid_spacing_mm = mm;
                     canvas_grid_spacing.widget.queue_draw();
@@ -3397,7 +3646,9 @@ impl DesignerView {
         snap_threshold.set_tooltip_text(Some(&t!("Snap threshold")));
         let snap_display = match system {
             gcodekit5_core::units::MeasurementSystem::Metric => state.borrow().snap_threshold_mm,
-            gcodekit5_core::units::MeasurementSystem::Imperial => state.borrow().snap_threshold_mm / 25.4,
+            gcodekit5_core::units::MeasurementSystem::Imperial => {
+                state.borrow().snap_threshold_mm / 25.4
+            }
         };
         snap_threshold.set_value(snap_display);
         {
@@ -3442,8 +3693,7 @@ impl DesignerView {
             .tooltip_text(t!("Cancel"))
             .build();
         preview_cancel_btn.set_visible(false);
-        preview_cancel_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Cancel"))]);
+        preview_cancel_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Cancel"))]);
 
         {
             let cancel_flag = canvas.preview_cancel.clone();
@@ -3484,7 +3734,6 @@ impl DesignerView {
             .build();
         left_sidebar.append(&view_controls_expander);
 
-
         // Update status OSD + empty state
         let status_osd_clone = status_label_osd.clone();
         let units_badge_osd = units_badge.clone();
@@ -3511,7 +3760,12 @@ impl DesignerView {
 
             let (cursor_x, cursor_y) = *canvas_osd.mouse_pos.borrow();
 
-            let system = settings_osd.persistence.borrow().config().ui.measurement_system;
+            let system = settings_osd
+                .persistence
+                .borrow()
+                .config()
+                .ui
+                .measurement_system;
             let mut status = format_zoom_center_cursor(
                 zoom,
                 center_x as f32,
@@ -3538,25 +3792,26 @@ impl DesignerView {
 
             gtk4::glib::ControlFlow::Continue
         });
-        
+
         let current_file = Rc::new(RefCell::new(None));
-        let on_gcode_generated: Rc<RefCell<Option<std::boxed::Box<dyn Fn(String)>>>> = Rc::new(RefCell::new(None));
+        let on_gcode_generated: Rc<RefCell<Option<std::boxed::Box<dyn Fn(String)>>>> =
+            Rc::new(RefCell::new(None));
 
         // Connect Generate G-Code button
         let canvas_gen = canvas.clone();
         let on_gen = on_gcode_generated.clone();
         let status_label_gen = status_label.clone();
-        
+
         toolbox.connect_generate_clicked(move || {
             let mut state = canvas_gen.state.borrow_mut();
-            
+
             // Copy settings to avoid borrow issues
             let feed_rate = state.tool_settings.feed_rate;
             let spindle_speed = state.tool_settings.spindle_speed;
             let tool_diameter = state.tool_settings.tool_diameter;
             let cut_depth = state.tool_settings.cut_depth;
             let start_depth = state.tool_settings.start_depth;
-            
+
             // Update toolpath generator settings from state
             state.toolpath_generator.set_feed_rate(feed_rate);
             state.toolpath_generator.set_spindle_speed(spindle_speed);
@@ -3564,12 +3819,12 @@ impl DesignerView {
             state.toolpath_generator.set_cut_depth(cut_depth);
             state.toolpath_generator.set_start_depth(start_depth);
             state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
-            
+
             let gcode = state.generate_gcode();
             drop(state);
-            
+
             status_label_gen.set_text(&t!("G-Code generated"));
-            
+
             if let Some(callback) = on_gen.borrow().as_ref() {
                 callback(gcode);
             }
@@ -3614,13 +3869,13 @@ impl DesignerView {
             props_update.update_from_selection();
             gtk4::glib::ControlFlow::Continue
         });
-        
+
         // Setup keyboard shortcuts
         let key_controller = EventControllerKey::new();
         let canvas_keys = canvas.clone();
         key_controller.connect_key_pressed(move |_, key, _code, modifiers| {
             let ctrl = modifiers.contains(ModifierType::CONTROL_MASK);
-            
+
             match (key, ctrl) {
                 // Ctrl+Z - Undo
                 (Key::z, true) | (Key::Z, true) => {
@@ -3709,28 +3964,34 @@ impl DesignerView {
                     canvas_keys.zoom_out();
                     gtk4::glib::Propagation::Stop
                 }
-                (Key::f, false) | (Key::F, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                (Key::f, false) | (Key::F, false)
+                    if !modifiers.contains(ModifierType::ALT_MASK) =>
+                {
                     canvas_keys.zoom_fit();
                     gtk4::glib::Propagation::Stop
                 }
-                (Key::r, false) | (Key::R, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                (Key::r, false) | (Key::R, false)
+                    if !modifiers.contains(ModifierType::ALT_MASK) =>
+                {
                     canvas_keys.reset_view();
                     gtk4::glib::Propagation::Stop
                 }
-                (Key::d, false) | (Key::D, false) if !modifiers.contains(ModifierType::ALT_MASK) => {
+                (Key::d, false) | (Key::D, false)
+                    if !modifiers.contains(ModifierType::ALT_MASK) =>
+                {
                     canvas_keys.fit_to_device_area();
                     canvas_keys.widget.queue_draw();
                     gtk4::glib::Propagation::Stop
                 }
-                _ => gtk4::glib::Propagation::Proceed
+                _ => gtk4::glib::Propagation::Proceed,
             }
         });
-        
+
         // Add keyboard controller to canvas so it receives focus
         canvas.widget.set_focusable(true);
         canvas.widget.set_can_focus(true);
         canvas.widget.add_controller(key_controller);
-        
+
         // Grab focus on canvas when clicked
         let canvas_focus = canvas.clone();
         let click_for_focus = GestureClick::new();
@@ -3738,21 +3999,21 @@ impl DesignerView {
             canvas_focus.widget.grab_focus();
         });
         canvas.widget.add_controller(click_for_focus);
-        
+
         // Grab focus initially
         canvas.widget.grab_focus();
-        
+
         view
     }
-    
+
     pub fn current_tool(&self) -> DesignerTool {
         self.toolbox.current_tool()
     }
-    
+
     pub fn set_tool(&self, tool: DesignerTool) {
         self.toolbox.set_tool(tool);
     }
-    
+
     pub fn set_status(&self, message: &str) {
         self.status_label.set_text(message);
     }
@@ -3796,7 +4057,7 @@ impl DesignerView {
         state.canvas.clear();
         *self.current_file.borrow_mut() = None;
         drop(state);
-        
+
         // Refresh layers
         self.layers.refresh(&self.canvas.state);
         self.canvas.widget.queue_draw();
@@ -3809,13 +4070,13 @@ impl DesignerView {
             .action(FileChooserAction::Open)
             .modal(true)
             .build();
-            
+
         if let Some(root) = self.widget.root() {
             if let Some(window) = root.downcast_ref::<gtk4::Window>() {
                 dialog.set_transient_for(Some(window));
             }
         }
-        
+
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
             if let Ok(settings_ref) = settings.try_borrow() {
@@ -3826,23 +4087,23 @@ impl DesignerView {
                 }
             }
         }
-        
+
         let filter = gtk4::FileFilter::new();
         filter.set_name(Some(&t!("GCodeKit Design Files")));
         filter.add_pattern("*.gckd");
         filter.add_pattern("*.gck5");
         dialog.add_filter(&filter);
-        
+
         let all_filter = gtk4::FileFilter::new();
         all_filter.set_name(Some(&t!("All Files")));
         all_filter.add_pattern("*");
         dialog.add_filter(&all_filter);
-        
+
         let canvas = self.canvas.clone();
         let current_file = self.current_file.clone();
         let layers = self.layers.clone();
         let status_label = self.status_label.clone();
-        
+
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
@@ -3851,33 +4112,47 @@ impl DesignerView {
                             Ok(design) => {
                                 let mut state = canvas.state.borrow_mut();
                                 state.canvas.clear();
-                                
+
                                 let mut max_id = 0;
                                 for shape_data in design.shapes {
                                     let id = shape_data.id as u64;
-                                    if id > max_id { max_id = id; }
-                                    
-                                    if let Ok(obj) = DesignFile::to_drawing_object(&shape_data, id as i32) {
+                                    if id > max_id {
+                                        max_id = id;
+                                    }
+
+                                    if let Ok(obj) =
+                                        DesignFile::to_drawing_object(&shape_data, id as i32)
+                                    {
                                         state.canvas.restore_shape(obj);
                                     }
                                 }
-                                
+
                                 state.canvas.set_next_id(max_id + 1);
-                                
+
                                 // Update viewport
                                 state.canvas.set_zoom(design.viewport.zoom);
-                                state.canvas.set_pan(design.viewport.pan_x, design.viewport.pan_y);
-                                
+                                state
+                                    .canvas
+                                    .set_pan(design.viewport.pan_x, design.viewport.pan_y);
+
                                 *current_file.borrow_mut() = Some(path.clone());
                                 drop(state);
-                                
+
                                 layers.refresh(&canvas.state);
                                 canvas.widget.queue_draw();
-                                status_label.set_text(&format!("{} {}", t!("Loaded:"), path.display()));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Loaded:"),
+                                    path.display()
+                                ));
                             }
                             Err(e) => {
                                 error!("Error loading file: {}", e);
-                                status_label.set_text(&format!("{} {}", t!("Error loading file:"), e));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Error loading file:"),
+                                    e
+                                ));
                             }
                         }
                     }
@@ -3885,7 +4160,7 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-        
+
         dialog.show();
     }
 
@@ -3901,13 +4176,13 @@ impl DesignerView {
             .action(FileChooserAction::Open)
             .modal(true)
             .build();
-            
+
         if let Some(root) = self.widget.root() {
             if let Some(window) = root.downcast_ref::<gtk4::Window>() {
                 dialog.set_transient_for(Some(window));
             }
         }
-        
+
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
             if let Ok(settings_ref) = settings.try_borrow() {
@@ -3918,7 +4193,7 @@ impl DesignerView {
                 }
             }
         }
-        
+
         match kind {
             Some("svg") => {
                 let svg_filter = gtk4::FileFilter::new();
@@ -3955,30 +4230,31 @@ impl DesignerView {
         all_filter.set_name(Some(&t!("All Files")));
         all_filter.add_pattern("*");
         dialog.add_filter(&all_filter);
-        
+
         let canvas = self.canvas.clone();
         let layers = self.layers.clone();
         let status_label = self.status_label.clone();
-        
+
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
                     if let Some(path) = file.path() {
                         let result = if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
                             match ext.to_lowercase().as_str() {
-                                "svg" => {
-                                    match std::fs::read_to_string(&path) {
-                                        Ok(content) => {
-                                            let importer = gcodekit5_designer::import::SvgImporter::new(1.0, 0.0, 0.0);
-                                            importer.import_string(&content)
-                                        },
-                                        Err(e) => Err(anyhow::anyhow!("Failed to read file: {}", e)),
+                                "svg" => match std::fs::read_to_string(&path) {
+                                    Ok(content) => {
+                                        let importer = gcodekit5_designer::import::SvgImporter::new(
+                                            1.0, 0.0, 0.0,
+                                        );
+                                        importer.import_string(&content)
                                     }
+                                    Err(e) => Err(anyhow::anyhow!("Failed to read file: {}", e)),
                                 },
                                 "dxf" => {
-                                    let importer = gcodekit5_designer::import::DxfImporter::new(1.0, 0.0, 0.0);
+                                    let importer =
+                                        gcodekit5_designer::import::DxfImporter::new(1.0, 0.0, 0.0);
                                     importer.import_file(path.to_str().unwrap_or(""))
-                                },
+                                }
                                 _ => Err(anyhow::anyhow!("Unsupported file format")),
                             }
                         } else {
@@ -3988,21 +4264,29 @@ impl DesignerView {
                         match result {
                             Ok(design) => {
                                 let mut state = canvas.state.borrow_mut();
-                                
+
                                 // Add imported shapes to canvas
                                 for shape in design.shapes {
                                     state.canvas.add_shape(shape);
                                 }
-                                
+
                                 drop(state);
-                                
+
                                 layers.refresh(&canvas.state);
                                 canvas.widget.queue_draw();
-                                status_label.set_text(&format!("{} {}", t!("Imported:"), path.display()));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Imported:"),
+                                    path.display()
+                                ));
                             }
                             Err(e) => {
                                 error!("Error importing file: {}", e);
-                                status_label.set_text(&format!("{} {}", t!("Error importing file:"), e));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Error importing file:"),
+                                    e
+                                ));
                             }
                         }
                     }
@@ -4010,7 +4294,7 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-        
+
         dialog.show();
     }
 
@@ -4028,7 +4312,7 @@ impl DesignerView {
 
     pub fn save_file(&self) {
         let current_path = self.current_file.borrow().clone();
-        
+
         if let Some(path) = current_path {
             self.save_to_path(path);
         } else {
@@ -4042,13 +4326,13 @@ impl DesignerView {
             .action(FileChooserAction::Save)
             .modal(true)
             .build();
-            
+
         if let Some(root) = self.widget.root() {
             if let Some(window) = root.downcast_ref::<gtk4::Window>() {
                 dialog.set_transient_for(Some(window));
             }
         }
-        
+
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
             if let Ok(settings_ref) = settings.try_borrow() {
@@ -4059,16 +4343,16 @@ impl DesignerView {
                 }
             }
         }
-        
+
         let filter = gtk4::FileFilter::new();
         filter.set_name(Some(&t!("GCodeKit Design Files")));
         filter.add_pattern("*.gckd");
         dialog.add_filter(&filter);
-        
+
         let canvas = self.canvas.clone();
         let current_file = self.current_file.clone();
         let status_label = self.status_label.clone();
-        
+
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
@@ -4076,30 +4360,39 @@ impl DesignerView {
                         if path.extension().is_none() {
                             path.set_extension("gckd");
                         }
-                        
+
                         // Save logic
                         let state = canvas.state.borrow();
-                        let mut design = DesignFile::new(path.file_stem().unwrap_or_default().to_string_lossy());
-                        
+                        let mut design =
+                            DesignFile::new(path.file_stem().unwrap_or_default().to_string_lossy());
+
                         // Viewport
                         design.viewport.zoom = state.canvas.zoom();
                         design.viewport.pan_x = state.canvas.pan_x();
                         design.viewport.pan_y = state.canvas.pan_y();
-                        
+
                         // Shapes
                         for obj in state.canvas.shapes() {
                             let shape_data = DesignFile::from_drawing_object(obj);
                             design.shapes.push(shape_data);
                         }
-                        
+
                         match design.save_to_file(&path) {
                             Ok(_) => {
                                 *current_file.borrow_mut() = Some(path.clone());
-                                status_label.set_text(&format!("{} {}", t!("Saved:"), path.display()));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Saved:"),
+                                    path.display()
+                                ));
                             }
                             Err(e) => {
                                 error!("Error saving file: {}", e);
-                                status_label.set_text(&format!("{} {}", t!("Error saving file:"), e));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Error saving file:"),
+                                    e
+                                ));
                             }
                         }
                     }
@@ -4107,25 +4400,25 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-        
+
         dialog.show();
     }
-    
+
     fn save_to_path(&self, path: PathBuf) {
         let state = self.canvas.state.borrow();
         let mut design = DesignFile::new(path.file_stem().unwrap_or_default().to_string_lossy());
-        
+
         // Viewport
         design.viewport.zoom = state.canvas.zoom();
         design.viewport.pan_x = state.canvas.pan_x();
         design.viewport.pan_y = state.canvas.pan_y();
-        
+
         // Shapes
         for obj in state.canvas.shapes() {
             let shape_data = DesignFile::from_drawing_object(obj);
             design.shapes.push(shape_data);
         }
-        
+
         match design.save_to_file(&path) {
             Ok(_) => {
                 self.set_status(&format!("{} {}", t!("Saved:"), path.display()));
@@ -4138,7 +4431,10 @@ impl DesignerView {
     }
 
     pub fn export_gcode(&self) {
-        let window = self.widget.root().and_then(|w| w.downcast::<gtk4::Window>().ok());
+        let window = self
+            .widget
+            .root()
+            .and_then(|w| w.downcast::<gtk4::Window>().ok());
         let dialog = FileChooserNative::new(
             Some("Export G-Code"),
             window.as_ref(),
@@ -4167,14 +4463,14 @@ impl DesignerView {
 
                         // Generate G-code
                         let mut state = canvas.state.borrow_mut();
-                        
+
                         // Copy settings to avoid borrow issues
                         let feed_rate = state.tool_settings.feed_rate;
                         let spindle_speed = state.tool_settings.spindle_speed;
                         let tool_diameter = state.tool_settings.tool_diameter;
                         let cut_depth = state.tool_settings.cut_depth;
                         let start_depth = state.tool_settings.start_depth;
-                        
+
                         // Update toolpath generator settings from state
                         state.toolpath_generator.set_feed_rate(feed_rate);
                         state.toolpath_generator.set_spindle_speed(spindle_speed);
@@ -4182,16 +4478,24 @@ impl DesignerView {
                         state.toolpath_generator.set_cut_depth(cut_depth);
                         state.toolpath_generator.set_start_depth(start_depth);
                         state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
-                        
+
                         let gcode = state.generate_gcode();
-                        
+
                         match std::fs::write(&path, gcode) {
                             Ok(_) => {
-                                status_label.set_text(&format!("{} {}", t!("Exported G-Code:"), path.display()));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Exported G-Code:"),
+                                    path.display()
+                                ));
                             }
                             Err(e) => {
                                 error!("Error exporting G-Code: {}", e);
-                                status_label.set_text(&format!("{} {}", t!("Error exporting G-Code:"), e));
+                                status_label.set_text(&format!(
+                                    "{} {}",
+                                    t!("Error exporting G-Code:"),
+                                    e
+                                ));
                             }
                         }
                     }
@@ -4199,12 +4503,15 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-        
+
         dialog.show();
     }
 
     pub fn export_svg(&self) {
-        let window = self.widget.root().and_then(|w| w.downcast::<gtk4::Window>().ok());
+        let window = self
+            .widget
+            .root()
+            .and_then(|w| w.downcast::<gtk4::Window>().ok());
         let dialog = FileChooserNative::new(
             Some("Export SVG"),
             window.as_ref(),
@@ -4230,13 +4537,13 @@ impl DesignerView {
                         }
 
                         let state = canvas.state.borrow();
-                        
+
                         // Calculate bounds
                         let mut min_x = f64::INFINITY;
                         let mut min_y = f64::INFINITY;
                         let mut max_x = f64::NEG_INFINITY;
                         let mut max_y = f64::NEG_INFINITY;
-                        
+
                         let shapes: Vec<_> = state.canvas.shapes().collect();
                         if shapes.is_empty() {
                             status_label.set_text(&t!("Nothing to export"));
@@ -4251,17 +4558,17 @@ impl DesignerView {
                             max_x = max_x.max(x2);
                             max_y = max_y.max(y2);
                         }
-                        
+
                         // Add some padding
                         let padding = 10.0;
                         min_x -= padding;
                         min_y -= padding;
                         max_x += padding;
                         max_y += padding;
-                        
+
                         let width = max_x - min_x;
                         let height = max_y - min_y;
-                        
+
                         let mut svg = String::new();
                         svg.push_str(&format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <svg width="{:.2}mm" height="{:.2}mm" viewBox="{:.2} {:.2} {:.2} {:.2}" xmlns="http://www.w3.org/2000/svg">
@@ -4307,7 +4614,7 @@ impl DesignerView {
                                     let rect = lyon::algorithms::aabb::bounding_box(&p.path);
                                     let cx = (rect.min.x + rect.max.x) / 2.0;
                                     let cy = (rect.min.y + rect.max.y) / 2.0;
-                                    
+
                                     svg.push_str(&format!(r#"<path d="{}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
                                         d, style, p.rotation, cx, cy
                                     ));
@@ -4322,9 +4629,9 @@ impl DesignerView {
                             }
                             svg.push('\n');
                         }
-                        
+
                         svg.push_str("</svg>");
-                        
+
                         match std::fs::write(&path, svg) {
                             Ok(_) => {
                                 status_label.set_text(&format!("{} {}", t!("Exported SVG:"), path.display()));
@@ -4339,10 +4646,10 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-        
+
         dialog.show();
     }
-    
+
     // File operations - TODO: Implement once shape structures are aligned
     // Phase 8 infrastructure is in place but needs shape struct updates
 }

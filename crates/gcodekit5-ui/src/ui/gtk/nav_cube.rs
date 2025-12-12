@@ -1,8 +1,8 @@
-use gtk4::prelude::*;
-use gtk4::{Button, Grid, Orientation, Box, Align};
-use std::rc::Rc;
-use std::cell::RefCell;
 use gcodekit5_visualizer::Camera3D;
+use gtk4::prelude::*;
+use gtk4::{Align, Box, Button, Grid, Orientation};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 pub struct NavCube {
     pub widget: Box,
@@ -68,7 +68,7 @@ impl NavCube {
         // Zoom Controls
         let zoom_box = Box::new(Orientation::Horizontal, 2);
         zoom_box.set_halign(Align::Center);
-        
+
         let btn_zoom_in = create_btn("+", "Zoom In");
         let btn_fit = create_btn("Fit", "Fit to Content");
         let btn_zoom_out = create_btn("-", "Zoom Out");
@@ -94,7 +94,7 @@ impl NavCube {
         connect_view(&btn_left, 180.0, 0.0);
         connect_view(&btn_top, -90.0, 90.0);
         connect_view(&btn_bottom, -90.0, -90.0);
-        
+
         connect_view(&btn_iso_nw, 135.0, 35.264);
         connect_view(&btn_iso_ne, 45.0, 35.264);
         connect_view(&btn_iso_sw, -135.0, 35.264);
@@ -114,7 +114,10 @@ impl NavCube {
             cam_z_out.borrow_mut().zoom(-10.0);
             area_z_out.queue_render();
         });
-        
-        Self { widget: container, fit_btn: btn_fit }
+
+        Self {
+            widget: container,
+            fit_btn: btn_fit,
+        }
     }
 }

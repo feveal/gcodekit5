@@ -1,14 +1,17 @@
+use crate::t;
+use gcodekit5_core::units;
+use gcodekit5_designer::designer_state::DesignerState;
+use gcodekit5_designer::font_manager;
+use gcodekit5_designer::pocket_operations::PocketStrategy;
+use gcodekit5_designer::shapes::{OperationType, Point, Shape};
+use gcodekit5_settings::SettingsPersistence;
 use gtk4::prelude::*;
-use gtk4::{Box, Label, Orientation, Frame, ScrolledWindow, EventControllerFocus, DropDown, StringList, Expression, Entry, CheckButton};
+use gtk4::{
+    Box, CheckButton, DropDown, Entry, EventControllerFocus, Expression, Frame, Label, Orientation,
+    ScrolledWindow, StringList,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
-use gcodekit5_designer::designer_state::DesignerState;
-use gcodekit5_designer::shapes::{Shape, Point, OperationType};
-use gcodekit5_designer::pocket_operations::PocketStrategy;
-use gcodekit5_designer::font_manager;
-use gcodekit5_settings::SettingsPersistence;
-use gcodekit5_core::units;
-use crate::t;
 
 const MM_PER_PT: f64 = 25.4 / 72.0;
 
@@ -89,7 +92,10 @@ pub struct PropertiesPanel {
 }
 
 impl PropertiesPanel {
-    pub fn new(state: Rc<RefCell<DesignerState>>, settings: Rc<RefCell<SettingsPersistence>>) -> Rc<Self> {
+    pub fn new(
+        state: Rc<RefCell<DesignerState>>,
+        settings: Rc<RefCell<SettingsPersistence>>,
+    ) -> Rc<Self> {
         let scrolled = ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
             .vscrollbar_policy(gtk4::PolicyType::Automatic)
@@ -438,13 +444,13 @@ impl PropertiesPanel {
 
         // Connect value change handlers
         panel.setup_handlers();
-        
+
         // Setup focus tracking for all spin buttons
         panel.setup_focus_tracking();
 
         panel
     }
-    
+
     pub fn set_redraw_callback<F>(&self, callback: F)
     where
         F: Fn() + 'static,
@@ -469,7 +475,9 @@ impl PropertiesPanel {
 
         // Position X changed
         self.pos_x_entry.connect_changed(move |entry| {
-            if *updating1.borrow() { return; }
+            if *updating1.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -505,7 +513,9 @@ impl PropertiesPanel {
 
         // Position Y changed
         self.pos_y_entry.connect_changed(move |entry| {
-            if *updating2.borrow() { return; }
+            if *updating2.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -540,7 +550,9 @@ impl PropertiesPanel {
 
         // Width changed
         self.width_entry.connect_changed(move |entry| {
-            if *updating3.borrow() { return; }
+            if *updating3.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -575,7 +587,9 @@ impl PropertiesPanel {
 
         // Height changed
         self.height_entry.connect_changed(move |entry| {
-            if *updating4.borrow() { return; }
+            if *updating4.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -602,10 +616,12 @@ impl PropertiesPanel {
         let state = self.state.clone();
         let redraw5 = self.redraw_callback.clone();
         let updating5 = self.updating.clone();
-        
+
         // Rotation changed
         self.rotation_entry.connect_changed(move |entry| {
-            if *updating5.borrow() { return; }
+            if *updating5.borrow() {
+                return;
+            }
             if let Ok(val) = entry.text().parse::<f64>() {
                 entry.remove_css_class("entry-invalid");
                 let mut designer_state = state.borrow_mut();
@@ -638,7 +654,9 @@ impl PropertiesPanel {
 
         // Corner Radius changed
         self.corner_radius_entry.connect_changed(move |entry| {
-            if *updating_cr.borrow() { return; }
+            if *updating_cr.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -659,7 +677,9 @@ impl PropertiesPanel {
 
         // Is Slot changed
         self.is_slot_check.connect_toggled(move |check| {
-            if *updating_slot.borrow() { return; }
+            if *updating_slot.borrow() {
+                return;
+            }
             let mut designer_state = state.borrow_mut();
             designer_state.set_selected_is_slot(check.is_active());
             drop(designer_state);
@@ -674,11 +694,13 @@ impl PropertiesPanel {
 
         // Text Content changed
         self.text_entry.connect_changed(move |entry| {
-            if *updating6.borrow() { return; }
+            if *updating6.borrow() {
+                return;
+            }
             let mut designer_state = state.borrow_mut();
             if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
                 let text = entry.text().to_string();
-                
+
                 if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
                     if let Shape::Text(text_shape) = &mut obj.shape {
                         text_shape.text = text;
@@ -727,32 +749,35 @@ impl PropertiesPanel {
         let italic_check = self.font_italic_check.clone();
 
         // Font family changed
-        self.font_family_combo.connect_selected_notify(move |combo| {
-            if *updating_font.borrow() { return; }
-            let family = combo
-                .selected_item()
-                .and_downcast::<gtk4::StringObject>()
-                .map(|s| s.string().to_string())
-                .unwrap_or_else(|| "Sans".to_string());
+        self.font_family_combo
+            .connect_selected_notify(move |combo| {
+                if *updating_font.borrow() {
+                    return;
+                }
+                let family = combo
+                    .selected_item()
+                    .and_downcast::<gtk4::StringObject>()
+                    .map(|s| s.string().to_string())
+                    .unwrap_or_else(|| "Sans".to_string());
 
-            let bold = bold_check.is_active();
-            let italic = italic_check.is_active();
+                let bold = bold_check.is_active();
+                let italic = italic_check.is_active();
 
-            let mut designer_state = state.borrow_mut();
-            if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
-                if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
-                    if let Shape::Text(text_shape) = &mut obj.shape {
-                        text_shape.font_family = family;
-                        text_shape.bold = bold;
-                        text_shape.italic = italic;
+                let mut designer_state = state.borrow_mut();
+                if let Some(id) = designer_state.canvas.selection_manager.selected_id() {
+                    if let Some(obj) = designer_state.canvas.shape_store.get_mut(id) {
+                        if let Shape::Text(text_shape) = &mut obj.shape {
+                            text_shape.font_family = family;
+                            text_shape.bold = bold;
+                            text_shape.italic = italic;
+                        }
                     }
                 }
-            }
-            drop(designer_state);
-            if let Some(ref cb) = *redraw_font.borrow() {
-                cb();
-            }
-        });
+                drop(designer_state);
+                if let Some(ref cb) = *redraw_font.borrow() {
+                    cb();
+                }
+            });
 
         let state = self.state.clone();
         let redraw_style = self.redraw_callback.clone();
@@ -763,7 +788,9 @@ impl PropertiesPanel {
 
         // Font style changed (bold)
         bold_check.clone().connect_toggled(move |_| {
-            if *updating_style.borrow() { return; }
+            if *updating_style.borrow() {
+                return;
+            }
             let family = font_combo
                 .selected_item()
                 .and_downcast::<gtk4::StringObject>()
@@ -797,7 +824,9 @@ impl PropertiesPanel {
 
         // Font style changed (italic)
         italic_check2.clone().connect_toggled(move |_| {
-            if *updating_style2.borrow() { return; }
+            if *updating_style2.borrow() {
+                return;
+            }
             let family = font_combo2
                 .selected_item()
                 .and_downcast::<gtk4::StringObject>()
@@ -824,13 +853,20 @@ impl PropertiesPanel {
 
         let state = self.state.clone();
         let updating8 = self.updating.clone();
-        
+
         // Operation Type changed
         self.op_type_combo.connect_selected_notify(move |combo| {
-            if *updating8.borrow() { return; }
+            if *updating8.borrow() {
+                return;
+            }
             let mut designer_state = state.borrow_mut();
             let is_pocket = combo.selected() == 1;
-            let depth = designer_state.canvas.shapes().find(|s| s.selected).map(|s| s.pocket_depth).unwrap_or(0.0);
+            let depth = designer_state
+                .canvas
+                .shapes()
+                .find(|s| s.selected)
+                .map(|s| s.pocket_depth)
+                .unwrap_or(0.0);
             designer_state.set_selected_pocket_properties(is_pocket, depth);
         });
 
@@ -841,7 +877,9 @@ impl PropertiesPanel {
 
         // Pocket Depth changed
         self.depth_entry.connect_changed(move |entry| {
-            if *updating9.borrow() { return; }
+            if *updating9.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -859,7 +897,9 @@ impl PropertiesPanel {
 
         // Step Down changed
         self.step_down_entry.connect_changed(move |entry| {
-            if *updating10.borrow() { return; }
+            if *updating10.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -876,7 +916,9 @@ impl PropertiesPanel {
 
         // Step In changed
         self.step_in_entry.connect_changed(move |entry| {
-            if *updating11.borrow() { return; }
+            if *updating11.borrow() {
+                return;
+            }
             let system = settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&entry.text(), system) {
                 entry.remove_css_class("entry-invalid");
@@ -892,10 +934,15 @@ impl PropertiesPanel {
 
         // Strategy changed
         self.strategy_combo.connect_selected_notify(move |combo| {
-            if *updating12.borrow() { return; }
+            if *updating12.borrow() {
+                return;
+            }
             let mut designer_state = state.borrow_mut();
             let strategy = match combo.selected() {
-                0 => PocketStrategy::Raster { angle: 0.0, bidirectional: true },
+                0 => PocketStrategy::Raster {
+                    angle: 0.0,
+                    bidirectional: true,
+                },
                 1 => PocketStrategy::ContourParallel,
                 2 => PocketStrategy::Adaptive,
                 _ => PocketStrategy::ContourParallel,
@@ -943,11 +990,11 @@ impl PropertiesPanel {
         if *self.has_focus.borrow() {
             return;
         }
-        
+
         // Get current measurement system
         let system = self.settings.borrow().config().ui.measurement_system;
         let unit_label = units::get_unit_label(system);
-        
+
         // Update unit labels
         self.x_unit_label.set_text(unit_label);
         self.y_unit_label.set_text(unit_label);
@@ -958,14 +1005,16 @@ impl PropertiesPanel {
         self.depth_unit_label.set_text(unit_label);
         self.step_down_unit_label.set_text(unit_label);
         self.step_in_unit_label.set_text(unit_label);
-        
+
         // Extract data first to avoid holding the borrow while updating widgets
         let selection_data = {
             let designer_state = self.state.borrow();
-            let selected: Vec<_> = designer_state.canvas.shapes()
+            let selected: Vec<_> = designer_state
+                .canvas
+                .shapes()
                 .filter(|s| s.selected)
                 .collect();
-            
+
             if selected.is_empty() {
                 None
             } else if selected.len() == 1 {
@@ -995,7 +1044,8 @@ impl PropertiesPanel {
             }
         };
 
-        if let Some((ids, shape_opt, op_type, depth, step_down, step_in, strategy)) = selection_data {
+        if let Some((ids, shape_opt, op_type, depth, step_down, step_in, strategy)) = selection_data
+        {
             // Set flag to prevent feedback loop during updates
             *self.updating.borrow_mut() = true;
 
@@ -1056,140 +1106,178 @@ impl PropertiesPanel {
 
                 // Update spin buttons based on shape type
                 match shape {
-                Shape::Rectangle(rect) => {
-                    self.corner_frame.set_visible(true);
-                    self.text_frame.set_visible(false);
+                    Shape::Rectangle(rect) => {
+                        self.corner_frame.set_visible(true);
+                        self.text_frame.set_visible(false);
 
-                    self.pos_x_entry.set_text(&units::format_length(rect.x as f32, system));
-                    self.pos_y_entry.set_text(&units::format_length(rect.y as f32, system));
-                    self.width_entry.set_text(&units::format_length(rect.width as f32, system));
-                    self.height_entry.set_text(&units::format_length(rect.height as f32, system));
-                    self.rotation_entry.set_text(&format!("{:.1}", rect.rotation.to_degrees()));
-                    
-                    self.corner_radius_entry.set_text(&units::format_length(rect.corner_radius as f32, system));
-                    self.is_slot_check.set_active(rect.is_slot);
-                    
-                    self.corner_radius_entry.set_sensitive(!rect.is_slot);
-                    self.is_slot_check.set_sensitive(true);
-                    
-                    self.text_entry.set_text("");
-                    self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&units::format_length(0.0, system));
-                    self.font_size_entry.set_sensitive(false);
-                }
-                Shape::Circle(circle) => {
-                    self.corner_frame.set_visible(false);
-                    self.text_frame.set_visible(false);
+                        self.pos_x_entry
+                            .set_text(&units::format_length(rect.x as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(rect.y as f32, system));
+                        self.width_entry
+                            .set_text(&units::format_length(rect.width as f32, system));
+                        self.height_entry
+                            .set_text(&units::format_length(rect.height as f32, system));
+                        self.rotation_entry
+                            .set_text(&format!("{:.1}", rect.rotation.to_degrees()));
 
-                    self.pos_x_entry.set_text(&units::format_length(circle.center.x as f32, system));
-                    self.pos_y_entry.set_text(&units::format_length(circle.center.y as f32, system));
-                    self.width_entry.set_text(&units::format_length((circle.radius * 2.0) as f32, system));
-                    self.height_entry.set_text(&units::format_length((circle.radius * 2.0) as f32, system));
-                    self.rotation_entry.set_text(&format!("{:.1}", circle.rotation.to_degrees()));
-                    
-                    self.corner_radius_entry.set_sensitive(false);
-                    self.is_slot_check.set_sensitive(false);
-                    
-                    self.text_entry.set_text("");
-                    self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&format_font_points(0.0));
-                    self.font_size_entry.set_sensitive(false);
-                }
-                Shape::Ellipse(ellipse) => {
-                    self.corner_frame.set_visible(false);
-                    self.text_frame.set_visible(false);
+                        self.corner_radius_entry
+                            .set_text(&units::format_length(rect.corner_radius as f32, system));
+                        self.is_slot_check.set_active(rect.is_slot);
 
-                    self.pos_x_entry.set_text(&units::format_length(ellipse.center.x as f32, system));
-                    self.pos_y_entry.set_text(&units::format_length(ellipse.center.y as f32, system));
-                    self.width_entry.set_text(&units::format_length((ellipse.rx * 2.0) as f32, system));
-                    self.height_entry.set_text(&units::format_length((ellipse.ry * 2.0) as f32, system));
-                    self.rotation_entry.set_text(&format!("{:.1}", ellipse.rotation.to_degrees()));
-                    
-                    self.corner_radius_entry.set_sensitive(false);
-                    self.is_slot_check.set_sensitive(false);
-                    
-                    self.text_entry.set_text("");
-                    self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&format_font_points(0.0));
-                    self.font_size_entry.set_sensitive(false);
-                }
-                Shape::Line(line) => {
-                    self.corner_frame.set_visible(false);
-                    self.text_frame.set_visible(false);
+                        self.corner_radius_entry.set_sensitive(!rect.is_slot);
+                        self.is_slot_check.set_sensitive(true);
 
-                    self.pos_x_entry.set_text(&units::format_length(line.start.x as f32, system));
-                    self.pos_y_entry.set_text(&units::format_length(line.start.y as f32, system));
-                    self.width_entry.set_text(&units::format_length((line.end.x - line.start.x) as f32, system));
-                    self.height_entry.set_text(&units::format_length((line.end.y - line.start.y) as f32, system));
-                    self.rotation_entry.set_text("0.0");
-                    
-                    self.corner_radius_entry.set_sensitive(false);
-                    self.is_slot_check.set_sensitive(false);
-                    
-                    self.text_entry.set_text("");
-                    self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&format_font_points(0.0));
-                    self.font_size_entry.set_sensitive(false);
-                }
-                Shape::Text(text) => {
-                    self.corner_frame.set_visible(false);
-                    self.text_frame.set_visible(true);
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry
+                            .set_text(&units::format_length(0.0, system));
+                        self.font_size_entry.set_sensitive(false);
+                    }
+                    Shape::Circle(circle) => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(false);
 
-                    self.pos_x_entry.set_text(&units::format_length(text.x as f32, system));
-                    self.pos_y_entry.set_text(&units::format_length(text.y as f32, system));
-                    // Width/Height are derived, maybe show bounding box size?
-                    let (x1, y1, x2, y2) = text.bounding_box();
-                    self.width_entry.set_text(&units::format_length((x2 - x1) as f32, system));
-                    self.height_entry.set_text(&units::format_length((y2 - y1) as f32, system));
-                    self.rotation_entry.set_text(&format!("{:.1}", text.rotation.to_degrees()));
-                    
-                    self.width_entry.set_sensitive(false);
-                    self.height_entry.set_sensitive(false);
-                    
-                    self.corner_radius_entry.set_sensitive(false);
-                    self.is_slot_check.set_sensitive(false);
-                    
-                    self.text_entry.set_text(&text.text);
-                    self.text_entry.set_sensitive(true);
-                    self.font_size_entry.set_text(&format_font_points(text.font_size));
-                    self.font_size_entry.set_sensitive(true);
+                        self.pos_x_entry
+                            .set_text(&units::format_length(circle.center.x as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(circle.center.y as f32, system));
+                        self.width_entry
+                            .set_text(&units::format_length((circle.radius * 2.0) as f32, system));
+                        self.height_entry
+                            .set_text(&units::format_length((circle.radius * 2.0) as f32, system));
+                        self.rotation_entry
+                            .set_text(&format!("{:.1}", circle.rotation.to_degrees()));
 
-                    self.font_family_combo.set_sensitive(true);
-                    self.font_bold_check.set_sensitive(true);
-                    self.font_italic_check.set_sensitive(true);
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
 
-                    let family = if text.font_family.is_empty() { "Sans" } else { &text.font_family };
-                    let mut family_idx = 0;
-                    if let Some(model) = self.font_family_combo.model().and_downcast::<StringList>() {
-                        for i in 0..model.n_items() {
-                            if let Some(obj) = model.item(i) {
-                                if let Ok(s) = obj.downcast::<gtk4::StringObject>() {
-                                    if s.string() == family {
-                                        family_idx = i;
-                                        break;
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry.set_text(&format_font_points(0.0));
+                        self.font_size_entry.set_sensitive(false);
+                    }
+                    Shape::Ellipse(ellipse) => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(false);
+
+                        self.pos_x_entry
+                            .set_text(&units::format_length(ellipse.center.x as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(ellipse.center.y as f32, system));
+                        self.width_entry
+                            .set_text(&units::format_length((ellipse.rx * 2.0) as f32, system));
+                        self.height_entry
+                            .set_text(&units::format_length((ellipse.ry * 2.0) as f32, system));
+                        self.rotation_entry
+                            .set_text(&format!("{:.1}", ellipse.rotation.to_degrees()));
+
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
+
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry.set_text(&format_font_points(0.0));
+                        self.font_size_entry.set_sensitive(false);
+                    }
+                    Shape::Line(line) => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(false);
+
+                        self.pos_x_entry
+                            .set_text(&units::format_length(line.start.x as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(line.start.y as f32, system));
+                        self.width_entry.set_text(&units::format_length(
+                            (line.end.x - line.start.x) as f32,
+                            system,
+                        ));
+                        self.height_entry.set_text(&units::format_length(
+                            (line.end.y - line.start.y) as f32,
+                            system,
+                        ));
+                        self.rotation_entry.set_text("0.0");
+
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
+
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry.set_text(&format_font_points(0.0));
+                        self.font_size_entry.set_sensitive(false);
+                    }
+                    Shape::Text(text) => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(true);
+
+                        self.pos_x_entry
+                            .set_text(&units::format_length(text.x as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(text.y as f32, system));
+                        // Width/Height are derived, maybe show bounding box size?
+                        let (x1, y1, x2, y2) = text.bounding_box();
+                        self.width_entry
+                            .set_text(&units::format_length((x2 - x1) as f32, system));
+                        self.height_entry
+                            .set_text(&units::format_length((y2 - y1) as f32, system));
+                        self.rotation_entry
+                            .set_text(&format!("{:.1}", text.rotation.to_degrees()));
+
+                        self.width_entry.set_sensitive(false);
+                        self.height_entry.set_sensitive(false);
+
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
+
+                        self.text_entry.set_text(&text.text);
+                        self.text_entry.set_sensitive(true);
+                        self.font_size_entry
+                            .set_text(&format_font_points(text.font_size));
+                        self.font_size_entry.set_sensitive(true);
+
+                        self.font_family_combo.set_sensitive(true);
+                        self.font_bold_check.set_sensitive(true);
+                        self.font_italic_check.set_sensitive(true);
+
+                        let family = if text.font_family.is_empty() {
+                            "Sans"
+                        } else {
+                            &text.font_family
+                        };
+                        let mut family_idx = 0;
+                        if let Some(model) =
+                            self.font_family_combo.model().and_downcast::<StringList>()
+                        {
+                            for i in 0..model.n_items() {
+                                if let Some(obj) = model.item(i) {
+                                    if let Ok(s) = obj.downcast::<gtk4::StringObject>() {
+                                        if s.string() == family {
+                                            family_idx = i;
+                                            break;
+                                        }
                                     }
                                 }
                             }
                         }
+                        self.font_family_combo.set_selected(family_idx);
+                        self.font_bold_check.set_active(text.bold);
+                        self.font_italic_check.set_active(text.italic);
                     }
-                    self.font_family_combo.set_selected(family_idx);
-                    self.font_bold_check.set_active(text.bold);
-                    self.font_italic_check.set_active(text.italic);
-                }
-                _ => {
-                    self.corner_frame.set_visible(false);
-                    self.text_frame.set_visible(false);
+                    _ => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(false);
 
-                    // Other shapes
-                    self.corner_radius_entry.set_sensitive(false);
-                    self.is_slot_check.set_sensitive(false);
-                    
-                    self.text_entry.set_text("");
-                    self.text_entry.set_sensitive(false);
-                    self.font_size_entry.set_text(&units::format_length(0.0, system));
-                    self.font_size_entry.set_sensitive(false);
+                        // Other shapes
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
+
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry
+                            .set_text(&units::format_length(0.0, system));
+                        self.font_size_entry.set_sensitive(false);
+                    }
                 }
-            }
             } else {
                 // Multiple selection - disable geometry properties
                 self.pos_x_entry.set_sensitive(false);
@@ -1201,7 +1289,7 @@ impl PropertiesPanel {
                 self.is_slot_check.set_sensitive(false);
                 self.text_entry.set_sensitive(false);
                 self.font_size_entry.set_sensitive(false);
-                
+
                 // Clear values
                 self.pos_x_entry.set_text("");
                 self.pos_y_entry.set_text("");
@@ -1212,15 +1300,18 @@ impl PropertiesPanel {
                 self.text_entry.set_text("");
                 self.font_size_entry.set_text("");
             }
-            
+
             // Update CAM properties (always enabled for single or multi-selection)
             self.op_type_combo.set_selected(match op_type {
                 OperationType::Profile => 0,
                 OperationType::Pocket => 1,
             });
-            self.depth_entry.set_text(&units::format_length(depth as f32, system));
-            self.step_down_entry.set_text(&units::format_length(step_down as f32, system));
-            self.step_in_entry.set_text(&units::format_length(step_in as f32, system));
+            self.depth_entry
+                .set_text(&units::format_length(depth as f32, system));
+            self.step_down_entry
+                .set_text(&units::format_length(step_down as f32, system));
+            self.step_in_entry
+                .set_text(&units::format_length(step_in as f32, system));
             self.strategy_combo.set_selected(match strategy {
                 PocketStrategy::Raster { .. } => 0,
                 PocketStrategy::ContourParallel => 1,
@@ -1253,13 +1344,13 @@ impl PropertiesPanel {
             self.width_entry.set_sensitive(false);
             self.height_entry.set_sensitive(false);
             self.rotation_entry.set_sensitive(false);
-            
+
             self.corner_radius_entry.set_sensitive(false);
             self.is_slot_check.set_sensitive(false);
-            
+
             self.text_entry.set_sensitive(false);
             self.font_size_entry.set_sensitive(false);
-            
+
             self.op_type_combo.set_sensitive(false);
             self.depth_entry.set_sensitive(false);
             self.step_down_entry.set_sensitive(false);
@@ -1267,7 +1358,7 @@ impl PropertiesPanel {
             self.strategy_combo.set_sensitive(false);
         }
     }
-    
+
     fn setup_focus_tracking(&self) {
         // Track focus for all entries to prevent updates while user is editing
         let entries = vec![
@@ -1282,19 +1373,19 @@ impl PropertiesPanel {
             &self.step_down_entry,
             &self.step_in_entry,
         ];
-        
+
         for entry in entries {
             let focus_controller = EventControllerFocus::new();
             let has_focus_enter = self.has_focus.clone();
             focus_controller.connect_enter(move |_| {
                 *has_focus_enter.borrow_mut() = true;
             });
-            
+
             let has_focus_leave = self.has_focus.clone();
             focus_controller.connect_leave(move |_| {
                 *has_focus_leave.borrow_mut() = false;
             });
-            
+
             entry.add_controller(focus_controller);
         }
 
@@ -1304,14 +1395,14 @@ impl PropertiesPanel {
         focus_controller.connect_enter(move |_| {
             *has_focus_enter.borrow_mut() = true;
         });
-        
+
         let has_focus_leave = self.has_focus.clone();
         focus_controller.connect_leave(move |_| {
             *has_focus_leave.borrow_mut() = false;
         });
         self.text_entry.add_controller(focus_controller);
     }
-    
+
     /// Clear the focus flag - call this when user interacts with the canvas
     pub fn clear_focus(&self) {
         *self.has_focus.borrow_mut() = false;

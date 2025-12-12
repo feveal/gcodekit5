@@ -18,7 +18,6 @@ impl DeviceConsoleView {
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
         widget.set_vexpand(true);
-    
 
         // We'll move 'Clear' and 'Copy' buttons into the main console area (above the output)
         let clear_btn = Button::from_icon_name("user-trash-symbolic");
@@ -62,14 +61,14 @@ impl DeviceConsoleView {
         // console_text.set_top_margin(10);
         // console_text.set_left_margin(10);
         // console_text.set_right_margin(10);
-        
+
         scroll.set_child(Some(&console_text));
         main_area.append(&console_toolbar);
         main_area.append(&scroll);
 
         // Command Input
         let input_box = Box::new(Orientation::Horizontal, 10);
-        
+
         let prompt_label = Label::new(Some(">"));
         prompt_label.add_css_class("accent-color"); // Or similar
         prompt_label.add_css_class("title-2");
@@ -87,7 +86,7 @@ impl DeviceConsoleView {
         main_area.append(&input_box);
 
         // Setup Paned
-      
+
         widget.set_end_child(Some(&main_area));
 
         // Dynamic resizing for 20% sidebar width
@@ -140,20 +139,20 @@ impl DeviceConsoleView {
         let mut iter = buffer.end_iter();
         buffer.insert(&mut iter, msg.as_ref());
     }
-    
+
     pub fn get_log_text(&self) -> String {
         let buffer = self.console_text.buffer();
         let start = buffer.start_iter();
         let end = buffer.end_iter();
         buffer.text(&start, &end, true).to_string()
     }
-    
+
     pub fn clear_log(&self) {
         let buffer = self.console_text.buffer();
         let start = buffer.start_iter();
         let end = buffer.end_iter();
         buffer.delete(&mut start.clone(), &mut end.clone());
-        
+
         // Auto-scroll to bottom
         let mark = buffer.create_mark(None, &buffer.end_iter(), false);
         self.console_text.scroll_to_mark(&mark, 0.0, true, 0.0, 1.0);

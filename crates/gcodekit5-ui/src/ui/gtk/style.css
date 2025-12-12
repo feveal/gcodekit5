@@ -26,6 +26,14 @@
     --status-bar-fg: @headerbar_fg_color;
 }
 
+/* About dialog background */
+window.gk-about-dialog {
+    background-image: url("resource:///com/gcodekit5/images/gcodekit5.png");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
 /* Visualizer Container */
 .visualizer-container {
     background-color: var(--view-bg-color);

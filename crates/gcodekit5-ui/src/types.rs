@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Vector engraving parameters used by the UI form layer (string fields where appropriate)
 #[derive(Serialize, Deserialize, Debug, Clone)]

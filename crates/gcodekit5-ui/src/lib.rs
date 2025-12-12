@@ -2,13 +2,13 @@
 //!
 //! GTK-based user interface for GCodeKit4.
 
-pub mod gtk_app;
-pub mod ui;
-pub mod editor;
 pub mod device_status;
+pub mod editor;
+pub mod gtk_app;
 pub mod helpers;
-pub mod types;
 pub mod i18n;
+pub mod types;
+pub mod ui;
 
 // Re-export settings for convenience if needed
 pub use gcodekit5_settings::{
@@ -17,12 +17,11 @@ pub use gcodekit5_settings::{
 };
 
 pub use gcodekit5_gcodeeditor::{
-    EditorState, TextBuffer, TextChange, TextLine, UndoManager,
-    Viewport,
+    EditorState, TextBuffer, TextChange, TextLine, UndoManager, Viewport,
 };
 
 pub use crate::types::{
-    VectorEngravingParams, BitmapEngravingParams, TabbedBoxParams, JigsawPuzzleParams,
+    BitmapEngravingParams, JigsawPuzzleParams, TabbedBoxParams, VectorEngravingParams,
 };
 
 // Re-export EditorBridge so UI and examples can continue importing from gcodekit5_ui

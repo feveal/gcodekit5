@@ -1,6 +1,6 @@
+use gtk4::gdk::ModifierType;
 use gtk4::prelude::*;
 use gtk4::{Box, Button, DrawingArea, Entry, Label, ListBox, Orientation, ScrolledWindow};
-use gtk4::gdk::ModifierType;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
@@ -240,7 +240,9 @@ impl LayersPanel {
                 let mut state_mut = state_clone.borrow_mut();
                 let canvas = &mut state_mut.canvas;
 
-                canvas.selection_manager.deselect_all(&mut canvas.shape_store);
+                canvas
+                    .selection_manager
+                    .deselect_all(&mut canvas.shape_store);
 
                 let mut first: Option<u64> = None;
                 for row in rows {
@@ -261,10 +263,7 @@ impl LayersPanel {
             });
         }
 
-        Self {
-            widget,
-            list_box,
-        }
+        Self { widget, list_box }
     }
 
     pub fn refresh(&self, state: &Rc<RefCell<DesignerState>>) {
