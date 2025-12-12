@@ -1,12 +1,12 @@
 //! Geometric shapes for the designer tool.
 
-use lyon::path::Path;
-use lyon::math::point;
-use lyon::algorithms::aabb::bounding_box;
-use lyon::path::iterator::PathIterator;
-use std::any::Any;
 use crate::font_manager;
-use rusttype::{Scale, point as rt_point};
+use lyon::algorithms::aabb::bounding_box;
+use lyon::math::point;
+use lyon::path::iterator::PathIterator;
+use lyon::path::Path;
+use rusttype::{point as rt_point, Scale};
+use std::any::Any;
 
 /// Represents a 2D point with X and Y coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -38,7 +38,7 @@ pub fn rotate_point(p: Point, center: Point, angle_deg: f64) -> Point {
     let dy = p.y - center.y;
     Point {
         x: center.x + dx * cos_a - dy * sin_a,
-        y: center.y + dx * sin_a + dy * cos_a
+        y: center.y + dx * sin_a + dy * cos_a,
     }
 }
 
@@ -160,17 +160,21 @@ impl Shape {
         // We might need to replace `self` with a new variant.
         // Let's handle special cases.
         if let Shape::Circle(c) = self {
-             if (sx - sy).abs() > 1e-6 {
-                 // Convert to Ellipse
-                 let new_center_x = center.x + (c.center.x - center.x) * sx;
-                 let new_center_y = center.y + (c.center.y - center.y) * sy;
-                 let new_rx = c.radius * sx;
-                 let new_ry = c.radius * sy;
-                 *self = Shape::Ellipse(Ellipse::new(Point::new(new_center_x, new_center_y), new_rx, new_ry));
-                 return;
-             }
+            if (sx - sy).abs() > 1e-6 {
+                // Convert to Ellipse
+                let new_center_x = center.x + (c.center.x - center.x) * sx;
+                let new_center_y = center.y + (c.center.y - center.y) * sy;
+                let new_rx = c.radius * sx;
+                let new_ry = c.radius * sy;
+                *self = Shape::Ellipse(Ellipse::new(
+                    Point::new(new_center_x, new_center_y),
+                    new_rx,
+                    new_ry,
+                ));
+                return;
+            }
         }
-        
+
         match self {
             Shape::Rectangle(s) => s.scale(sx, sy, center),
             Shape::Circle(s) => s.scale(sx, sy, center),
@@ -240,7 +244,15 @@ pub struct Rectangle {
 
 impl Rectangle {
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Self {
-        Self { x, y, width, height, corner_radius: 0.0, is_slot: false, rotation: 0.0 }
+        Self {
+            x,
+            y,
+            width,
+            height,
+            corner_radius: 0.0,
+            is_slot: false,
+            rotation: 0.0,
+        }
     }
 
     pub fn corners(&self) -> [Point; 4] {
@@ -251,11 +263,11 @@ impl Rectangle {
             Point::new(self.x + self.width, self.y + self.height),
             Point::new(self.x, self.y + self.height),
         ];
-        
+
         if self.rotation.abs() < 1e-6 {
             return corners;
         }
-        
+
         [
             rotate_point(corners[0], center, self.rotation),
             rotate_point(corners[1], center, self.rotation),
@@ -279,7 +291,7 @@ impl Rectangle {
         let mut min_y = f64::INFINITY;
         let mut max_x = f64::NEG_INFINITY;
         let mut max_y = f64::NEG_INFINITY;
-        
+
         for c in corners {
             let p = rotate_point(c, center, self.rotation);
             min_x = min_x.min(p.x);
@@ -298,27 +310,31 @@ impl Rectangle {
         // Only select if near the boundary, not inside
         let center = Point::new(self.x + self.width / 2.0, self.y + self.height / 2.0);
         let p = rotate_point(*point, center, -self.rotation);
-        
+
         // Check if point is near any of the four edges
         let left = self.x;
         let right = self.x + self.width;
         let top = self.y;
         let bottom = self.y + self.height;
-        
+
         // Distance to each edge
         let dist_to_left = (p.x - left).abs();
         let dist_to_right = (p.x - right).abs();
         let dist_to_top = (p.y - top).abs();
         let dist_to_bottom = (p.y - bottom).abs();
-        
+
         // Check if near vertical edges (and within vertical bounds)
-        let near_left = dist_to_left <= tolerance && p.y >= top - tolerance && p.y <= bottom + tolerance;
-        let near_right = dist_to_right <= tolerance && p.y >= top - tolerance && p.y <= bottom + tolerance;
-        
+        let near_left =
+            dist_to_left <= tolerance && p.y >= top - tolerance && p.y <= bottom + tolerance;
+        let near_right =
+            dist_to_right <= tolerance && p.y >= top - tolerance && p.y <= bottom + tolerance;
+
         // Check if near horizontal edges (and within horizontal bounds)
-        let near_top = dist_to_top <= tolerance && p.x >= left - tolerance && p.x <= right + tolerance;
-        let near_bottom = dist_to_bottom <= tolerance && p.x >= left - tolerance && p.x <= right + tolerance;
-        
+        let near_top =
+            dist_to_top <= tolerance && p.x >= left - tolerance && p.x <= right + tolerance;
+        let near_bottom =
+            dist_to_bottom <= tolerance && p.x >= left - tolerance && p.x <= right + tolerance;
+
         near_left || near_right || near_top || near_bottom
     }
 
@@ -336,7 +352,7 @@ impl Rectangle {
         self.y = new_y;
         self.width = new_width;
         self.height = new_height;
-        
+
         // Re-constrain radius if dimensions shrink
         let max_radius = self.width.min(self.height).abs() / 2.0;
         if self.is_slot {
@@ -361,7 +377,7 @@ impl Rectangle {
         self.height = (new_y2 - new_y1).abs();
         self.x = new_x1.min(new_x2);
         self.y = new_y1.min(new_y2);
-        
+
         // Re-constrain radius
         let max_radius = self.width.min(self.height) / 2.0;
         if self.is_slot {
@@ -387,7 +403,7 @@ impl Rectangle {
             let y = self.y as f32;
             let w = self.width as f32;
             let h = self.height as f32;
-            
+
             builder.begin(point(x + r, y));
             builder.line_to(point(x + w - r, y));
             builder.quadratic_bezier_to(point(x + w, y), point(x + w, y + r));
@@ -401,11 +417,17 @@ impl Rectangle {
         } else {
             builder.begin(point(self.x as f32, self.y as f32));
             builder.line_to(point((self.x + self.width) as f32, self.y as f32));
-            builder.line_to(point((self.x + self.width) as f32, (self.y + self.height) as f32));
+            builder.line_to(point(
+                (self.x + self.width) as f32,
+                (self.y + self.height) as f32,
+            ));
             builder.line_to(point(self.x as f32, (self.y + self.height) as f32));
             builder.close();
         }
-        PathShape { path: builder.build(), rotation: self.rotation }
+        PathShape {
+            path: builder.build(),
+            rotation: self.rotation,
+        }
     }
 }
 
@@ -419,7 +441,11 @@ pub struct Circle {
 
 impl Circle {
     pub fn new(center: Point, radius: f64) -> Self {
-        Self { center, radius, rotation: 0.0 }
+        Self {
+            center,
+            radius,
+            rotation: 0.0,
+        }
     }
 
     pub fn bounding_box(&self) -> (f64, f64, f64, f64) {
@@ -489,7 +515,10 @@ impl Circle {
             self.radius as f32,
             lyon::path::Winding::Positive,
         );
-        PathShape { path: builder.build(), rotation: self.rotation }
+        PathShape {
+            path: builder.build(),
+            rotation: self.rotation,
+        }
     }
 }
 
@@ -503,7 +532,11 @@ pub struct Line {
 
 impl Line {
     pub fn new(start: Point, end: Point) -> Self {
-        Self { start, end, rotation: 0.0 }
+        Self {
+            start,
+            end,
+            rotation: 0.0,
+        }
     }
 
     pub fn length(&self) -> f64 {
@@ -519,15 +552,15 @@ impl Line {
                 self.start.y.max(self.end.y),
             );
         }
-        
+
         let center = Point::new(
             (self.start.x + self.end.x) / 2.0,
             (self.start.y + self.end.y) / 2.0,
         );
-        
+
         let p1 = rotate_point(self.start, center, self.rotation);
         let p2 = rotate_point(self.end, center, self.rotation);
-        
+
         (
             p1.x.min(p2.x),
             p1.y.min(p2.y),
@@ -569,15 +602,18 @@ impl Line {
 
     pub fn resize(&mut self, handle: usize, dx: f64, dy: f64) {
         match handle {
-            0 => { // Start
+            0 => {
+                // Start
                 self.start.x += dx;
                 self.start.y += dy;
             }
-            1 => { // End
+            1 => {
+                // End
                 self.end.x += dx;
                 self.end.y += dy;
             }
-            4 => { // Move
+            4 => {
+                // Move
                 self.translate(dx, dy);
             }
             _ => {}
@@ -595,7 +631,10 @@ impl Line {
         builder.begin(point(self.start.x as f32, self.start.y as f32));
         builder.line_to(point(self.end.x as f32, self.end.y as f32));
         builder.end(false);
-        PathShape { path: builder.build(), rotation: self.rotation }
+        PathShape {
+            path: builder.build(),
+            rotation: self.rotation,
+        }
     }
 }
 
@@ -610,7 +649,12 @@ pub struct Ellipse {
 
 impl Ellipse {
     pub fn new(center: Point, rx: f64, ry: f64) -> Self {
-        Self { center, rx, ry, rotation: 0.0 }
+        Self {
+            center,
+            rx,
+            ry,
+            rotation: 0.0,
+        }
     }
 
     pub fn bounding_box(&self) -> (f64, f64, f64, f64) {
@@ -622,7 +666,7 @@ impl Ellipse {
                 self.center.y + self.ry,
             );
         }
-        
+
         // For rotated ellipse, we calculate the bounding box of the rotated shape
         // Parametric equation:
         // x = cx + rx*cos(t)*cos(rot) - ry*sin(t)*sin(rot)
@@ -630,7 +674,7 @@ impl Ellipse {
         // To find min/max x/y, we differentiate and solve for t.
         // Or we can just rotate the 4 extreme points? No, extreme points change.
         // But we can approximate by rotating the unrotated bounding box corners? No, that's loose.
-        
+
         // Exact solution:
         // Max x occurs when dx/dt = 0.
         // tan(t) = -(ry*sin(rot)) / (rx*cos(rot)) = - (ry/rx) * tan(rot)
@@ -644,17 +688,17 @@ impl Ellipse {
         // If we use loose bounds, the center is still (cx, cy).
         // So for Ellipse, the center is stable regardless of rotation.
         // But for consistency with other shapes (like Rectangle), we should return the rotated bounds.
-        
+
         let rot_rad = self.rotation.to_radians();
         let cos_r = rot_rad.cos();
         let sin_r = rot_rad.sin();
-        
+
         let ux = (self.rx * cos_r).powi(2) + (self.ry * sin_r).powi(2);
         let uy = (self.rx * sin_r).powi(2) + (self.ry * cos_r).powi(2);
-        
+
         let w_half = ux.sqrt();
         let h_half = uy.sqrt();
-        
+
         (
             self.center.x - w_half,
             self.center.y - h_half,
@@ -676,14 +720,14 @@ impl Ellipse {
         // Only select if near the boundary (ellipse stroke), not inside
         let dx = point.x - self.center.x;
         let dy = point.y - self.center.y;
-        
+
         // Calculate the distance from point to ellipse boundary
         // Approximate using parametric form
         let theta = dy.atan2(dx);
         let boundary_x = self.center.x + self.rx * theta.cos();
         let boundary_y = self.center.y + self.ry * theta.sin();
         let boundary_point = Point::new(boundary_x, boundary_y);
-        
+
         point.distance_to(&boundary_point) <= tolerance
     }
 
@@ -702,23 +746,28 @@ impl Ellipse {
     pub fn resize(&mut self, handle: usize, dx: f64, dy: f64) {
         let (x1, y1, x2, y2) = self.bounding_box();
         match handle {
-            0 => { // Top-left
+            0 => {
+                // Top-left
                 self.rx = ((self.center.x - (x1 + dx)) / 1.0).abs().max(5.0);
                 self.ry = ((self.center.y - (y1 + dy)) / 1.0).abs().max(5.0);
             }
-            1 => { // Top-right
+            1 => {
+                // Top-right
                 self.rx = ((self.center.x - (x2 + dx)) / 1.0).abs().max(5.0);
                 self.ry = ((self.center.y - (y1 + dy)) / 1.0).abs().max(5.0);
             }
-            2 => { // Bottom-left
+            2 => {
+                // Bottom-left
                 self.rx = ((self.center.x - (x1 + dx)) / 1.0).abs().max(5.0);
                 self.ry = ((self.center.y - (y2 + dy)) / 1.0).abs().max(5.0);
             }
-            3 => { // Bottom-right
+            3 => {
+                // Bottom-right
                 self.rx = ((self.center.x - (x2 + dx)) / 1.0).abs().max(5.0);
                 self.ry = ((self.center.y - (y2 + dy)) / 1.0).abs().max(5.0);
             }
-            4 => { // Center
+            4 => {
+                // Center
                 self.translate(dx, dy);
             }
             _ => {}
@@ -738,7 +787,10 @@ impl Ellipse {
             lyon::math::Angle::radians(0.0),
             lyon::path::Winding::Positive,
         );
-        PathShape { path: builder.build(), rotation: self.rotation }
+        PathShape {
+            path: builder.build(),
+            rotation: self.rotation,
+        }
     }
 }
 
@@ -751,7 +803,10 @@ pub struct PathShape {
 
 impl PathShape {
     pub fn new(path: Path) -> Self {
-        Self { path, rotation: 0.0 }
+        Self {
+            path,
+            rotation: 0.0,
+        }
     }
 
     pub fn from_points(points: &[Point], closed: bool) -> Self {
@@ -767,68 +822,105 @@ impl PathShape {
                 builder.end(false);
             }
         }
-        Self { path: builder.build(), rotation: 0.0 }
+        Self {
+            path: builder.build(),
+            rotation: 0.0,
+        }
     }
 
     pub fn bounding_box(&self) -> (f64, f64, f64, f64) {
         let aabb = bounding_box(self.path.iter());
-        let (x1, y1, x2, y2) = (aabb.min.x as f64, aabb.min.y as f64, aabb.max.x as f64, aabb.max.y as f64);
-        
+        let (x1, y1, x2, y2) = (
+            aabb.min.x as f64,
+            aabb.min.y as f64,
+            aabb.max.x as f64,
+            aabb.max.y as f64,
+        );
+
         if self.rotation.abs() < 1e-6 {
             return (x1, y1, x2, y2);
         }
-        
+
         let center_x = (x1 + x2) / 2.0;
         let center_y = (y1 + y2) / 2.0;
         let center = Point::new(center_x, center_y);
-        
+
         let mut min_x = f64::INFINITY;
         let mut min_y = f64::INFINITY;
         let mut max_x = f64::NEG_INFINITY;
         let mut max_y = f64::NEG_INFINITY;
-        
+
         for event in self.path.iter() {
             match event {
                 lyon::path::Event::Begin { at } => {
-                    let p = rotate_point(Point::new(at.x as f64, at.y as f64), center, self.rotation);
-                    min_x = min_x.min(p.x); min_y = min_y.min(p.y);
-                    max_x = max_x.max(p.x); max_y = max_y.max(p.y);
+                    let p =
+                        rotate_point(Point::new(at.x as f64, at.y as f64), center, self.rotation);
+                    min_x = min_x.min(p.x);
+                    min_y = min_y.min(p.y);
+                    max_x = max_x.max(p.x);
+                    max_y = max_y.max(p.y);
                 }
                 lyon::path::Event::Line { to, .. } => {
-                    let p = rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
-                    min_x = min_x.min(p.x); min_y = min_y.min(p.y);
-                    max_x = max_x.max(p.x); max_y = max_y.max(p.y);
+                    let p =
+                        rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
+                    min_x = min_x.min(p.x);
+                    min_y = min_y.min(p.y);
+                    max_x = max_x.max(p.x);
+                    max_y = max_y.max(p.y);
                 }
                 lyon::path::Event::Quadratic { ctrl, to, .. } => {
-                    let p1 = rotate_point(Point::new(ctrl.x as f64, ctrl.y as f64), center, self.rotation);
-                    let p2 = rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
-                    min_x = min_x.min(p1.x).min(p2.x); min_y = min_y.min(p1.y).min(p2.y);
-                    max_x = max_x.max(p1.x).max(p2.x); max_y = max_y.max(p1.y).max(p2.y);
+                    let p1 = rotate_point(
+                        Point::new(ctrl.x as f64, ctrl.y as f64),
+                        center,
+                        self.rotation,
+                    );
+                    let p2 =
+                        rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
+                    min_x = min_x.min(p1.x).min(p2.x);
+                    min_y = min_y.min(p1.y).min(p2.y);
+                    max_x = max_x.max(p1.x).max(p2.x);
+                    max_y = max_y.max(p1.y).max(p2.y);
                 }
-                lyon::path::Event::Cubic { ctrl1, ctrl2, to, .. } => {
-                    let p1 = rotate_point(Point::new(ctrl1.x as f64, ctrl1.y as f64), center, self.rotation);
-                    let p2 = rotate_point(Point::new(ctrl2.x as f64, ctrl2.y as f64), center, self.rotation);
-                    let p3 = rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
-                    min_x = min_x.min(p1.x).min(p2.x).min(p3.x); 
+                lyon::path::Event::Cubic {
+                    ctrl1, ctrl2, to, ..
+                } => {
+                    let p1 = rotate_point(
+                        Point::new(ctrl1.x as f64, ctrl1.y as f64),
+                        center,
+                        self.rotation,
+                    );
+                    let p2 = rotate_point(
+                        Point::new(ctrl2.x as f64, ctrl2.y as f64),
+                        center,
+                        self.rotation,
+                    );
+                    let p3 =
+                        rotate_point(Point::new(to.x as f64, to.y as f64), center, self.rotation);
+                    min_x = min_x.min(p1.x).min(p2.x).min(p3.x);
                     min_y = min_y.min(p1.y).min(p2.y).min(p3.y);
-                    max_x = max_x.max(p1.x).max(p2.x).max(p3.x); 
+                    max_x = max_x.max(p1.x).max(p2.x).max(p3.x);
                     max_y = max_y.max(p1.y).max(p2.y).max(p3.y);
                 }
                 _ => {}
             }
         }
-        
+
         // If path is empty or invalid, return unrotated box
         if min_x == f64::INFINITY {
             return (x1, y1, x2, y2);
         }
-        
+
         (min_x, min_y, max_x, max_y)
     }
 
     pub fn local_bounding_box(&self) -> (f64, f64, f64, f64) {
         let aabb = bounding_box(self.path.iter());
-        (aabb.min.x as f64, aabb.min.y as f64, aabb.max.x as f64, aabb.max.y as f64)
+        (
+            aabb.min.x as f64,
+            aabb.min.y as f64,
+            aabb.max.x as f64,
+            aabb.max.y as f64,
+        )
     }
 
     pub fn contains_point(&self, p: &Point, tolerance: f64) -> bool {
@@ -849,21 +941,21 @@ impl PathShape {
 
         // Only check distance to stroke (path boundary), not fill
         let mut min_dist_sq = f64::INFINITY;
-        
+
         // Flatten the path to line segments
         let tolerance_flat = 0.1; // Flattening tolerance
         for event in self.path.iter().flattened(tolerance_flat) {
-             match event {
-                 lyon::path::Event::Line { from, to } => {
-                     let dist_sq = distance_sq_to_segment(target, from, to);
-                     if dist_sq < min_dist_sq {
-                         min_dist_sq = dist_sq;
-                     }
-                 }
-                 _ => {}
-             }
+            match event {
+                lyon::path::Event::Line { from, to } => {
+                    let dist_sq = distance_sq_to_segment(target, from, to);
+                    if dist_sq < min_dist_sq {
+                        min_dist_sq = dist_sq;
+                    }
+                }
+                _ => {}
+            }
         }
-        
+
         min_dist_sq <= (tolerance * tolerance)
     }
 
@@ -883,14 +975,23 @@ impl PathShape {
                         point(to.x + dx as f32, to.y + dy as f32),
                     );
                 }
-                lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
+                lyon::path::Event::Cubic {
+                    from: _,
+                    ctrl1,
+                    ctrl2,
+                    to,
+                } => {
                     builder.cubic_bezier_to(
                         point(ctrl1.x + dx as f32, ctrl1.y + dy as f32),
                         point(ctrl2.x + dx as f32, ctrl2.y + dy as f32),
                         point(to.x + dx as f32, to.y + dy as f32),
                     );
                 }
-                lyon::path::Event::End { last: _, first: _, close } => {
+                lyon::path::Event::End {
+                    last: _,
+                    first: _,
+                    close,
+                } => {
                     if close {
                         builder.close();
                     } else {
@@ -921,10 +1022,19 @@ impl PathShape {
                 lyon::path::Event::Quadratic { from: _, ctrl, to } => {
                     builder.quadratic_bezier_to(transform(ctrl), transform(to));
                 }
-                lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
+                lyon::path::Event::Cubic {
+                    from: _,
+                    ctrl1,
+                    ctrl2,
+                    to,
+                } => {
                     builder.cubic_bezier_to(transform(ctrl1), transform(ctrl2), transform(to));
                 }
-                lyon::path::Event::End { last: _, first: _, close } => {
+                lyon::path::Event::End {
+                    last: _,
+                    first: _,
+                    close,
+                } => {
                     if close {
                         builder.close();
                     } else {
@@ -974,10 +1084,10 @@ impl PathShape {
         let (final_x1, final_y1, final_x2, final_y2) = self.bounding_box();
         let final_center_x = (final_x1 + final_x2) / 2.0;
         let final_center_y = (final_y1 + final_y2) / 2.0;
-        
+
         let target_center_x = (new_x1 + new_x2) / 2.0;
         let target_center_y = (new_y1 + new_y2) / 2.0;
-        
+
         let t_dx = target_center_x - final_center_x;
         let t_dy = target_center_y - final_center_y;
 
@@ -989,37 +1099,81 @@ impl PathShape {
         for event in self.path.iter() {
             match event {
                 lyon::path::Event::Begin { at } => {
-                    let p = rotate_point(Point::new(at.x as f64, at.y as f64), Point::new(cx, cy), angle);
+                    let p = rotate_point(
+                        Point::new(at.x as f64, at.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
                     builder.begin(point(p.x as f32, p.y as f32));
-                },
+                }
                 lyon::path::Event::Line { from: _, to } => {
-                    let p = rotate_point(Point::new(to.x as f64, to.y as f64), Point::new(cx, cy), angle);
+                    let p = rotate_point(
+                        Point::new(to.x as f64, to.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
                     builder.line_to(point(p.x as f32, p.y as f32));
-                },
+                }
                 lyon::path::Event::Quadratic { from: _, ctrl, to } => {
-                    let c = rotate_point(Point::new(ctrl.x as f64, ctrl.y as f64), Point::new(cx, cy), angle);
-                    let p = rotate_point(Point::new(to.x as f64, to.y as f64), Point::new(cx, cy), angle);
-                    builder.quadratic_bezier_to(point(c.x as f32, c.y as f32), point(p.x as f32, p.y as f32));
-                },
-                lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
-                    let c1 = rotate_point(Point::new(ctrl1.x as f64, ctrl1.y as f64), Point::new(cx, cy), angle);
-                    let c2 = rotate_point(Point::new(ctrl2.x as f64, ctrl2.y as f64), Point::new(cx, cy), angle);
-                    let p = rotate_point(Point::new(to.x as f64, to.y as f64), Point::new(cx, cy), angle);
-                    builder.cubic_bezier_to(point(c1.x as f32, c1.y as f32), point(c2.x as f32, c2.y as f32), point(p.x as f32, p.y as f32));
-                },
-                lyon::path::Event::End { last: _, first: _, close } => {
+                    let c = rotate_point(
+                        Point::new(ctrl.x as f64, ctrl.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
+                    let p = rotate_point(
+                        Point::new(to.x as f64, to.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
+                    builder.quadratic_bezier_to(
+                        point(c.x as f32, c.y as f32),
+                        point(p.x as f32, p.y as f32),
+                    );
+                }
+                lyon::path::Event::Cubic {
+                    from: _,
+                    ctrl1,
+                    ctrl2,
+                    to,
+                } => {
+                    let c1 = rotate_point(
+                        Point::new(ctrl1.x as f64, ctrl1.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
+                    let c2 = rotate_point(
+                        Point::new(ctrl2.x as f64, ctrl2.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
+                    let p = rotate_point(
+                        Point::new(to.x as f64, to.y as f64),
+                        Point::new(cx, cy),
+                        angle,
+                    );
+                    builder.cubic_bezier_to(
+                        point(c1.x as f32, c1.y as f32),
+                        point(c2.x as f32, c2.y as f32),
+                        point(p.x as f32, p.y as f32),
+                    );
+                }
+                lyon::path::Event::End {
+                    last: _,
+                    first: _,
+                    close,
+                } => {
                     if close {
                         builder.close();
                     } else {
                         builder.end(false);
                     }
-                },
+                }
             }
         }
         self.path = builder.build();
         self.rotation += angle;
     }
-    
+
     // SVG path helpers kept as is
     pub fn to_svg_path(&self) -> String {
         let mut path_str = String::new();
@@ -1034,10 +1188,22 @@ impl PathShape {
                 lyon::path::Event::Quadratic { from: _, ctrl, to } => {
                     path_str.push_str(&format!("Q {} {} {} {} ", ctrl.x, ctrl.y, to.x, to.y));
                 }
-                lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
-                    path_str.push_str(&format!("C {} {} {} {} {} {} ", ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, to.x, to.y));
+                lyon::path::Event::Cubic {
+                    from: _,
+                    ctrl1,
+                    ctrl2,
+                    to,
+                } => {
+                    path_str.push_str(&format!(
+                        "C {} {} {} {} {} {} ",
+                        ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, to.x, to.y
+                    ));
                 }
-                lyon::path::Event::End { last: _, first: _, close } => {
+                lyon::path::Event::End {
+                    last: _,
+                    first: _,
+                    close,
+                } => {
                     if close {
                         path_str.push_str("Z ");
                     }
@@ -1074,11 +1240,11 @@ impl PathShape {
                             current_x = x;
                             current_y = y;
                         }
-                        
+
                         if subpath_active {
                             builder.end(false);
                         }
-                        
+
                         start_x = current_x;
                         start_y = current_y;
                         builder.begin(point(current_x, current_y));
@@ -1191,7 +1357,7 @@ impl PathShape {
                         builder.cubic_bezier_to(
                             point(cp1_x, cp1_y),
                             point(cp2_x, cp2_y),
-                            point(end_x, end_y)
+                            point(end_x, end_y),
                         );
 
                         current_x = end_x;
@@ -1235,10 +1401,7 @@ impl PathShape {
                             end_y += current_y;
                         }
 
-                        builder.quadratic_bezier_to(
-                            point(cp_x, cp_y),
-                            point(end_x, end_y)
-                        );
+                        builder.quadratic_bezier_to(point(cp_x, cp_y), point(end_x, end_y));
 
                         current_x = end_x;
                         current_y = end_y;
@@ -1269,11 +1432,14 @@ impl PathShape {
                 _ => i += 1,
             }
         }
-        
+
         if subpath_active {
             builder.end(false);
         }
-        Some(Self { path: builder.build(), rotation: 0.0 })
+        Some(Self {
+            path: builder.build(),
+            rotation: 0.0,
+        })
     }
 
     fn tokenize_svg_path(path_data: &str) -> Vec<String> {
@@ -1332,19 +1498,19 @@ impl TextShape {
         let font = font_manager::get_font();
         let scale = Scale::uniform(self.font_size as f32);
         let v_metrics = font.v_metrics(scale);
-        
+
         let start = rt_point(self.x as f32, self.y as f32 + v_metrics.ascent);
-        
+
         let glyphs: Vec<_> = font.layout(&self.text, scale, start).collect();
-        
+
         let (min_x, min_y, max_x, max_y) = if glyphs.is_empty() {
-             (self.x, self.y, self.x, self.y + self.font_size)
+            (self.x, self.y, self.x, self.y + self.font_size)
         } else {
             let mut min_x = f32::MAX;
             let mut min_y = f32::MAX;
             let mut max_x = f32::MIN;
             let mut max_y = f32::MIN;
-            
+
             let mut has_bounds = false;
 
             for glyph in &glyphs {
@@ -1357,19 +1523,19 @@ impl TextShape {
                     has_bounds = true;
                 }
             }
-            
+
             if !has_bounds {
-                 let width = self.text.len() as f64 * self.font_size * 0.6;
-                 (self.x, self.y, self.x + width, self.y + self.font_size)
+                let width = self.text.len() as f64 * self.font_size * 0.6;
+                (self.x, self.y, self.x + width, self.y + self.font_size)
             } else {
                 (min_x as f64, min_y as f64, max_x as f64, max_y as f64)
             }
         };
-        
+
         if self.rotation.abs() < 1e-6 {
             return (min_x, min_y, max_x, max_y);
         }
-        
+
         let center = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
         let corners = [
             Point::new(min_x, min_y),
@@ -1377,12 +1543,12 @@ impl TextShape {
             Point::new(max_x, max_y),
             Point::new(min_x, max_y),
         ];
-        
+
         let mut r_min_x = f64::INFINITY;
         let mut r_min_y = f64::INFINITY;
         let mut r_max_x = f64::NEG_INFINITY;
         let mut r_max_y = f64::NEG_INFINITY;
-        
+
         for c in corners {
             let p = rotate_point(c, center, self.rotation);
             r_min_x = r_min_x.min(p.x);
@@ -1397,20 +1563,20 @@ impl TextShape {
         let font = font_manager::get_font();
         let scale = Scale::uniform(self.font_size as f32);
         let v_metrics = font.v_metrics(scale);
-        
+
         let start = rt_point(self.x as f32, self.y as f32 + v_metrics.ascent);
-        
+
         let glyphs: Vec<_> = font.layout(&self.text, scale, start).collect();
-        
+
         if glyphs.is_empty() {
-              return (self.x, self.y, self.x, self.y + self.font_size);
+            return (self.x, self.y, self.x, self.y + self.font_size);
         }
-        
+
         let mut min_x = f32::MAX;
         let mut min_y = f32::MAX;
         let mut max_x = f32::MIN;
         let mut max_y = f32::MIN;
-        
+
         let mut has_bounds = false;
 
         for glyph in &glyphs {
@@ -1423,10 +1589,10 @@ impl TextShape {
                 has_bounds = true;
             }
         }
-        
+
         if !has_bounds {
-             let width = self.text.len() as f64 * self.font_size * 0.6;
-             (self.x, self.y, self.x + width, self.y + self.font_size)
+            let width = self.text.len() as f64 * self.font_size * 0.6;
+            (self.x, self.y, self.x + width, self.y + self.font_size)
         } else {
             (min_x as f64, min_y as f64, max_x as f64, max_y as f64)
         }
@@ -1439,9 +1605,9 @@ impl TextShape {
         let v_metrics = font.v_metrics(scale);
         let start = rt_point(self.x as f32, self.y as f32 + v_metrics.ascent);
         let glyphs: Vec<_> = font.layout(&self.text, scale, start).collect();
-        
+
         let (min_x, min_y, max_x, max_y) = if glyphs.is_empty() {
-             (self.x, self.y, self.x, self.y + self.font_size)
+            (self.x, self.y, self.x, self.y + self.font_size)
         } else {
             let mut min_x = f32::MAX;
             let mut min_y = f32::MAX;
@@ -1459,27 +1625,31 @@ impl TextShape {
                 }
             }
             if !has_bounds {
-                 let width = self.text.len() as f64 * self.font_size * 0.6;
-                 (self.x, self.y, self.x + width, self.y + self.font_size)
+                let width = self.text.len() as f64 * self.font_size * 0.6;
+                (self.x, self.y, self.x + width, self.y + self.font_size)
             } else {
                 (min_x as f64, min_y as f64, max_x as f64, max_y as f64)
             }
         };
-        
+
         let center = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
         let p = rotate_point(*point, center, -self.rotation);
-        
+
         // Check if near the boundary edges
         let dist_to_left = (p.x - min_x).abs();
         let dist_to_right = (p.x - max_x).abs();
         let dist_to_top = (p.y - min_y).abs();
         let dist_to_bottom = (p.y - max_y).abs();
-        
-        let near_left = dist_to_left <= tolerance && p.y >= min_y - tolerance && p.y <= max_y + tolerance;
-        let near_right = dist_to_right <= tolerance && p.y >= min_y - tolerance && p.y <= max_y + tolerance;
-        let near_top = dist_to_top <= tolerance && p.x >= min_x - tolerance && p.x <= max_x + tolerance;
-        let near_bottom = dist_to_bottom <= tolerance && p.x >= min_x - tolerance && p.x <= max_x + tolerance;
-        
+
+        let near_left =
+            dist_to_left <= tolerance && p.y >= min_y - tolerance && p.y <= max_y + tolerance;
+        let near_right =
+            dist_to_right <= tolerance && p.y >= min_y - tolerance && p.y <= max_y + tolerance;
+        let near_top =
+            dist_to_top <= tolerance && p.x >= min_x - tolerance && p.x <= max_x + tolerance;
+        let near_bottom =
+            dist_to_bottom <= tolerance && p.x >= min_x - tolerance && p.x <= max_x + tolerance;
+
         near_left || near_right || near_top || near_bottom
     }
 

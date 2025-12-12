@@ -1,4 +1,4 @@
-use gcodekit5_devicedb::{DeviceManager, DeviceProfile, DeviceType, ControllerType};
+use gcodekit5_devicedb::{ControllerType, DeviceManager, DeviceProfile, DeviceType};
 use tempfile::tempdir;
 
 #[test]
@@ -12,7 +12,7 @@ fn test_device_manager_crud() {
     let profiles = manager.get_all_profiles();
     assert_eq!(profiles.len(), 1);
     assert_eq!(profiles[0].name, "New Device");
-    
+
     let active = manager.get_active_profile();
     assert!(active.is_some());
     assert_eq!(active.unwrap().id, profiles[0].id);
@@ -35,9 +35,12 @@ fn test_device_manager_crud() {
     let mut updated = fetched.clone();
     updated.controller_type = ControllerType::Smoothieware;
     manager.save_profile(updated).unwrap();
-    
+
     let fetched_updated = manager.get_profile(&new_profile.id).unwrap();
-    assert_eq!(fetched_updated.controller_type, ControllerType::Smoothieware);
+    assert_eq!(
+        fetched_updated.controller_type,
+        ControllerType::Smoothieware
+    );
 
     // Test Set Active
     manager.set_active_profile(&new_profile.id).unwrap();

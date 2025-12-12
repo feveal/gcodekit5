@@ -5,17 +5,14 @@
 
 use super::shapes::{Circle, Point, Rectangle};
 use super::toolpath::{Toolpath, ToolpathSegment, ToolpathSegmentType};
+use cavalier_contours::polyline::{PlineSource, PlineSourceMut, PlineVertex, Polyline};
 use std::f64::consts::PI;
-use cavalier_contours::polyline::{Polyline, PlineSource, PlineVertex, PlineSourceMut};
 
 /// Strategy for pocket milling.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PocketStrategy {
     /// Zig-Zag or Raster milling.
-    Raster {
-        angle: f64,
-        bidirectional: bool,
-    },
+    Raster { angle: f64, bidirectional: bool },
     /// Contour-parallel (offset) milling.
     ContourParallel,
     /// Adaptive clearing (trochoidal-like).
@@ -68,7 +65,7 @@ impl PocketOperation {
     pub fn set_climb_milling(&mut self, enable: bool) {
         self.climb_milling = enable;
     }
-    
+
     /// Sets the pocket strategy.
     pub fn set_strategy(&mut self, strategy: PocketStrategy) {
         self.strategy = strategy;
@@ -143,16 +140,21 @@ impl PocketGenerator {
 
             let half_tool = self.operation.tool_diameter / 2.0;
             let max_offset = rect.width.min(rect.height) / 2.0;
-            
+
             // Calculate Z passes
             let total_depth = self.operation.depth.abs();
-            let z_step = if step_down > 0.0 { step_down } else { total_depth };
+            let z_step = if step_down > 0.0 {
+                step_down
+            } else {
+                total_depth
+            };
             let z_passes = (total_depth / z_step).ceil() as u32;
-            
+
             for z_pass in 1..=z_passes {
-                let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
+                let current_z =
+                    self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
                 let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
-                
+
                 // Start from the outside (boundary) and work inwards
                 let mut current_offset = half_tool;
 
@@ -176,7 +178,7 @@ impl PocketGenerator {
 
                     // Add rapid move to start of this loop to avoid cutting across
                     if let Some(first_point) = points.first() {
-                         toolpath.add_segment(ToolpathSegment::new(
+                        toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::RapidMove,
                             Point::new(0.0, 0.0), // Start point ignored for Rapid in current logic? No, it uses end.
                             *first_point,
@@ -200,7 +202,7 @@ impl PocketGenerator {
                             toolpath.add_segment(segment);
                         }
                     }
-                    
+
                     current_offset += self.operation.stepover;
                 }
                 toolpaths.push(toolpath);
@@ -208,14 +210,14 @@ impl PocketGenerator {
 
             toolpaths
         } else {
-             // Convert to polygon and use generic generator
-             let vertices = vec![
-                 Point::new(rect.x, rect.y),
-                 Point::new(rect.x + rect.width, rect.y),
-                 Point::new(rect.x + rect.width, rect.y + rect.height),
-                 Point::new(rect.x, rect.y + rect.height),
-             ];
-             self.generate_polygon_pocket(&vertices, step_down)
+            // Convert to polygon and use generic generator
+            let vertices = vec![
+                Point::new(rect.x, rect.y),
+                Point::new(rect.x + rect.width, rect.y),
+                Point::new(rect.x + rect.width, rect.y + rect.height),
+                Point::new(rect.x, rect.y + rect.height),
+            ];
+            self.generate_polygon_pocket(&vertices, step_down)
         }
     }
 
@@ -226,16 +228,21 @@ impl PocketGenerator {
 
             let half_tool = self.operation.tool_diameter / 2.0;
             let max_offset = circle.radius;
-            
+
             // Calculate Z passes
             let total_depth = self.operation.depth.abs();
-            let z_step = if step_down > 0.0 { step_down } else { total_depth };
+            let z_step = if step_down > 0.0 {
+                step_down
+            } else {
+                total_depth
+            };
             let z_passes = (total_depth / z_step).ceil() as u32;
-            
+
             for z_pass in 1..=z_passes {
-                let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
+                let current_z =
+                    self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
                 let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
-                
+
                 let mut current_offset = half_tool;
 
                 while current_offset < max_offset {
@@ -245,12 +252,12 @@ impl PocketGenerator {
                     }
 
                     let segments = 36;
-                    
+
                     // Add rapid move to start of circle
                     let start_angle: f64 = 0.0;
                     let start_x = circle.center.x + inset_radius * start_angle.cos();
                     let start_y = circle.center.y + inset_radius * start_angle.sin();
-                    
+
                     toolpath.add_segment(ToolpathSegment::new(
                         ToolpathSegmentType::RapidMove,
                         Point::new(0.0, 0.0),
@@ -282,7 +289,7 @@ impl PocketGenerator {
                             toolpath.add_segment(segment);
                         }
                     }
-                    
+
                     current_offset += self.operation.stepover;
                 }
                 toolpaths.push(toolpath);
@@ -290,31 +297,30 @@ impl PocketGenerator {
 
             toolpaths
         } else {
-             // Convert to polygon (approximate circle)
-             let segments = 64;
-             let mut vertices = Vec::with_capacity(segments);
-             for i in 0..segments {
-                 let angle = (i as f64 / segments as f64) * 2.0 * PI;
-                 let x = circle.center.x + circle.radius * angle.cos();
-                 let y = circle.center.y + circle.radius * angle.sin();
-                 vertices.push(Point::new(x, y));
-             }
-             self.generate_polygon_pocket(&vertices, step_down)
+            // Convert to polygon (approximate circle)
+            let segments = 64;
+            let mut vertices = Vec::with_capacity(segments);
+            for i in 0..segments {
+                let angle = (i as f64 / segments as f64) * 2.0 * PI;
+                let x = circle.center.x + circle.radius * angle.cos();
+                let y = circle.center.y + circle.radius * angle.sin();
+                vertices.push(Point::new(x, y));
+            }
+            self.generate_polygon_pocket(&vertices, step_down)
         }
     }
 
     /// Generates a pocket toolpath for a polygon defined by vertices.
     pub fn generate_polygon_pocket(&self, vertices: &[Point], step_down: f64) -> Vec<Toolpath> {
         match self.operation.strategy {
-            PocketStrategy::Raster { angle, bidirectional } => {
-                self.generate_raster_pocket(vertices, step_down, angle, bidirectional)
-            },
+            PocketStrategy::Raster {
+                angle,
+                bidirectional,
+            } => self.generate_raster_pocket(vertices, step_down, angle, bidirectional),
             PocketStrategy::ContourParallel => {
                 self.generate_contour_parallel_pocket(vertices, step_down)
-            },
-            PocketStrategy::Adaptive => {
-                self.generate_adaptive_pocket(vertices, step_down)
             }
+            PocketStrategy::Adaptive => self.generate_adaptive_pocket(vertices, step_down),
         }
     }
 
@@ -322,7 +328,7 @@ impl PocketGenerator {
     fn prepare_polygon(vertices: &[Point]) -> Polyline {
         let mut clean_vertices = Vec::new();
         let tolerance = 0.01; // 0.01mm tolerance for duplicate detection
-        
+
         if let Some(first) = vertices.first() {
             clean_vertices.push(*first);
             for p in vertices.iter().skip(1) {
@@ -332,7 +338,7 @@ impl PocketGenerator {
                     clean_vertices.push(*p);
                 }
             }
-            
+
             // Remove closing vertex if it's the same as the first
             if clean_vertices.len() > 1 {
                 let first = clean_vertices.first().unwrap();
@@ -352,7 +358,7 @@ impl PocketGenerator {
                 signed_area += p1.x * p2.y - p2.x * p1.y;
             }
         }
-        
+
         if signed_area > 0.0 {
             clean_vertices.reverse();
         }
@@ -365,30 +371,39 @@ impl PocketGenerator {
         polyline
     }
 
-    fn generate_contour_parallel_pocket(&self, vertices: &[Point], step_down: f64) -> Vec<Toolpath> {
+    fn generate_contour_parallel_pocket(
+        &self,
+        vertices: &[Point],
+        step_down: f64,
+    ) -> Vec<Toolpath> {
         let mut toolpaths = Vec::new();
-        if vertices.is_empty() { return toolpaths; }
+        if vertices.is_empty() {
+            return toolpaths;
+        }
 
         let polyline = Self::prepare_polygon(vertices);
 
         // Calculate Z passes
         let total_depth = self.operation.depth.abs();
-        let z_step = if step_down > 0.0 { step_down } else { total_depth };
+        let z_step = if step_down > 0.0 {
+            step_down
+        } else {
+            total_depth
+        };
         let z_passes = (total_depth / z_step).ceil() as u32;
         let tool_radius = self.operation.tool_diameter / 2.0;
 
         for z_pass in 1..=z_passes {
             let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
-            
+
             let mut current_offset = tool_radius;
             let has_paths = true;
-
 
             while has_paths {
                 // Offset inwards
                 let offsets = polyline.parallel_offset(-current_offset);
-                
+
                 if offsets.is_empty() {
                     break;
                 }
@@ -398,8 +413,10 @@ impl PocketGenerator {
                     for v in &offset_path.vertex_data {
                         points.push(Point::new(v.x, v.y));
                     }
-                    
-                    if points.len() < 2 { continue; }
+
+                    if points.len() < 2 {
+                        continue;
+                    }
 
                     // Close the loop
                     points.push(points[0]);
@@ -424,7 +441,7 @@ impl PocketGenerator {
                         ));
                     }
                 }
-                
+
                 current_offset += self.operation.stepover;
             }
             toolpaths.push(toolpath);
@@ -434,20 +451,26 @@ impl PocketGenerator {
 
     fn generate_adaptive_pocket(&self, vertices: &[Point], step_down: f64) -> Vec<Toolpath> {
         let mut toolpaths = Vec::new();
-        if vertices.is_empty() { return toolpaths; }
+        if vertices.is_empty() {
+            return toolpaths;
+        }
 
         let polyline = Self::prepare_polygon(vertices);
 
         // Calculate Z passes
         let total_depth = self.operation.depth.abs();
-        let z_step = if step_down > 0.0 { step_down } else { total_depth };
+        let z_step = if step_down > 0.0 {
+            step_down
+        } else {
+            total_depth
+        };
         let z_passes = (total_depth / z_step).ceil() as u32;
         let tool_radius = self.operation.tool_diameter / 2.0;
 
         // Generate all offset levels first (Outside-In)
         let mut levels = Vec::new();
         let mut current_offset = tool_radius;
-        
+
         loop {
             let offsets = polyline.parallel_offset(-current_offset);
             if offsets.is_empty() {
@@ -463,20 +486,21 @@ impl PocketGenerator {
         for z_pass in 1..=z_passes {
             let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
-            
+
             // Helical Entry for the first (innermost) level
             if let Some(first_level) = levels.first() {
                 if let Some(first_path) = first_level.first() {
                     if !first_path.vertex_data.is_empty() {
-                        let start_pt = Point::new(first_path.vertex_data[0].x, first_path.vertex_data[0].y);
-                        
+                        let start_pt =
+                            Point::new(first_path.vertex_data[0].x, first_path.vertex_data[0].y);
+
                         // Generate helix
                         // let helix_radius = self.operation.tool_diameter * 0.25;
-                        // let helix_center = start_pt; 
-                        // Ideally helix should be inside the pocket. 
+                        // let helix_center = start_pt;
+                        // Ideally helix should be inside the pocket.
                         // But start_pt is on the path.
                         // For now, just ramp down to start_pt
-                        
+
                         // Rapid to start XY, Safe Z
                         toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::RapidMove,
@@ -495,8 +519,10 @@ impl PocketGenerator {
                     for v in &offset_path.vertex_data {
                         points.push(Point::new(v.x, v.y));
                     }
-                    
-                    if points.len() < 2 { continue; }
+
+                    if points.len() < 2 {
+                        continue;
+                    }
 
                     // Close the loop
                     points.push(points[0]);
@@ -537,9 +563,15 @@ impl PocketGenerator {
         toolpaths
     }
 
-    fn generate_raster_pocket(&self, vertices: &[Point], step_down: f64, angle: f64, bidirectional: bool) -> Vec<Toolpath> {
+    fn generate_raster_pocket(
+        &self,
+        vertices: &[Point],
+        step_down: f64,
+        angle: f64,
+        bidirectional: bool,
+    ) -> Vec<Toolpath> {
         let mut toolpaths = Vec::new();
-        
+
         if vertices.is_empty() {
             return toolpaths;
         }
@@ -547,21 +579,15 @@ impl PocketGenerator {
         // Rotate vertices to align with X axis
         let cos_a = (-angle).to_radians().cos();
         let sin_a = (-angle).to_radians().sin();
-        
+
         let rotate = |p: Point| -> Point {
-            Point::new(
-                p.x * cos_a - p.y * sin_a,
-                p.x * sin_a + p.y * cos_a
-            )
+            Point::new(p.x * cos_a - p.y * sin_a, p.x * sin_a + p.y * cos_a)
         };
 
         let inv_rotate = |p: Point| -> Point {
             let cos_inv = angle.to_radians().cos();
             let sin_inv = angle.to_radians().sin();
-            Point::new(
-                p.x * cos_inv - p.y * sin_inv,
-                p.x * sin_inv + p.y * cos_inv
-            )
+            Point::new(p.x * cos_inv - p.y * sin_inv, p.x * sin_inv + p.y * cos_inv)
         };
 
         let rotated_vertices: Vec<Point> = vertices.iter().map(|&p| rotate(p)).collect();
@@ -573,56 +599,72 @@ impl PocketGenerator {
         let mut max_y = rotated_vertices[0].y;
 
         for v in &rotated_vertices {
-            if v.x < min_x { min_x = v.x; }
-            if v.x > max_x { max_x = v.x; }
-            if v.y < min_y { min_y = v.y; }
-            if v.y > max_y { max_y = v.y; }
+            if v.x < min_x {
+                min_x = v.x;
+            }
+            if v.x > max_x {
+                max_x = v.x;
+            }
+            if v.y < min_y {
+                min_y = v.y;
+            }
+            if v.y > max_y {
+                max_y = v.y;
+            }
         }
-        
+
         // Calculate Z passes
         let total_depth = self.operation.depth.abs();
-        let z_step = if step_down > 0.0 { step_down } else { total_depth };
+        let z_step = if step_down > 0.0 {
+            step_down
+        } else {
+            total_depth
+        };
         let z_passes = (total_depth / z_step).ceil() as u32;
-        
+
         let tool_radius = self.operation.tool_diameter / 2.0;
-        
+
         for z_pass in 1..=z_passes {
             let current_z = self.operation.start_depth - (z_step * z_pass as f64).min(total_depth);
             let mut toolpath = Toolpath::new(self.operation.tool_diameter, current_z);
-            
+
             // Scanline fill
             let mut current_y = min_y + tool_radius;
             let limit_y = max_y - tool_radius;
             let mut forward = true;
-            
+
             while current_y <= limit_y {
                 let mut intersections = Vec::new();
-                
-                if rotated_vertices.len() < 3 { break; }
-                
+
+                if rotated_vertices.len() < 3 {
+                    break;
+                }
+
                 for i in 0..rotated_vertices.len() {
                     let p1 = rotated_vertices[i];
                     let p2 = rotated_vertices[(i + 1) % rotated_vertices.len()];
-                    
-                    if (p1.y <= current_y && p2.y > current_y) || (p2.y <= current_y && p1.y > current_y) {
+
+                    if (p1.y <= current_y && p2.y > current_y)
+                        || (p2.y <= current_y && p1.y > current_y)
+                    {
                         if (p2.y - p1.y).abs() > 1e-9 {
                             let x = p1.x + (current_y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
                             intersections.push(x);
                         }
                     }
                 }
-                
+
                 intersections.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-                
+
                 let mut segments = Vec::new();
                 for i in (0..intersections.len()).step_by(2) {
                     if i + 1 < intersections.len() {
                         let x_start = intersections[i];
-                        let x_end = intersections[i+1];
-                        
+                        let x_end = intersections[i + 1];
+
                         let seg_start_x = x_start + tool_radius;
                         let seg_end_x = x_end - tool_radius;
-                        
+
                         if seg_start_x < seg_end_x {
                             segments.push((seg_start_x, seg_end_x));
                         }
@@ -642,7 +684,7 @@ impl PocketGenerator {
 
                     let start_pt = inv_rotate(Point::new(start_x, current_y));
                     let end_pt = inv_rotate(Point::new(end_x, current_y));
-                    
+
                     if !self.is_in_island(&start_pt) && !self.is_in_island(&end_pt) {
                         // If bidirectional and close to previous end, linear move, else rapid
                         let is_connected = if let Some(last_seg) = toolpath.segments.last() {
@@ -652,7 +694,7 @@ impl PocketGenerator {
                         };
 
                         if bidirectional && is_connected {
-                             toolpath.add_segment(ToolpathSegment::new(
+                            toolpath.add_segment(ToolpathSegment::new(
                                 ToolpathSegmentType::LinearMove,
                                 toolpath.segments.last().unwrap().end,
                                 start_pt,
@@ -668,7 +710,7 @@ impl PocketGenerator {
                                 self.operation.spindle_speed,
                             ));
                         }
-                        
+
                         toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::LinearMove,
                             start_pt,
@@ -678,14 +720,14 @@ impl PocketGenerator {
                         ));
                     }
                 }
-                
+
                 current_y += self.operation.stepover;
                 forward = !forward;
             }
-            
+
             toolpaths.push(toolpath);
         }
-        
+
         toolpaths
     }
 
@@ -721,5 +763,3 @@ impl PocketGenerator {
         paths
     }
 }
-
-

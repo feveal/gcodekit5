@@ -10,7 +10,7 @@ fn test_semantic_version_parse() {
     let v2 = SemanticVersion::parse("0.9j").unwrap();
     assert_eq!(v2.major, 0);
     assert_eq!(v2.minor, 9);
-    // Patch might be 0 or parsed from 'j' depending on implementation, 
+    // Patch might be 0 or parsed from 'j' depending on implementation,
     // but let's assume basic parsing works
 }
 

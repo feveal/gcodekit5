@@ -663,11 +663,11 @@ impl DxfParser {
 
             let code = lines[*index].trim();
             *index += 1;
-            
+
             if *index >= lines.len() {
                 break;
             }
-            
+
             let value = lines[*index].trim();
             *index += 1;
 
@@ -681,18 +681,20 @@ impl DxfParser {
 
             if value == "VERTEX" {
                 let mut current_x: Option<f64> = None;
-                
+
                 // Parse VERTEX body
                 while *index < lines.len() {
                     let v_code = lines[*index].trim();
-                    
+
                     if v_code == "0" {
                         break; // End of VERTEX
                     }
-                    
+
                     *index += 1;
-                    if *index >= lines.len() { break; }
-                    
+                    if *index >= lines.len() {
+                        break;
+                    }
+
                     let v_value = lines[*index].trim();
                     *index += 1;
 
@@ -782,5 +784,3 @@ impl DxfParser {
         Ok(())
     }
 }
-
-

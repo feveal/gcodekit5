@@ -156,5 +156,3 @@ impl Default for GCodeValidator {
         Self::new(ValidatorConfig::default())
     }
 }
-
-

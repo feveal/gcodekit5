@@ -9,8 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::canvas::DrawingObject;
-use super::shapes::*;
 use super::pocket_operations::PocketStrategy;
+use super::shapes::*;
 
 /// Design file format version
 const FILE_FORMAT_VERSION: &str = "1.0";
@@ -206,9 +206,9 @@ impl DesignFile {
         };
 
         let (text_content, font_size) = if let Shape::Text(text_shape) = &obj.shape {
-             (text_shape.text.clone(), text_shape.font_size)
+            (text_shape.text.clone(), text_shape.font_size)
         } else {
-             (String::new(), 0.0)
+            (String::new(), 0.0)
         };
 
         let path_data = if let Shape::Path(path_shape) = &obj.shape {
@@ -259,7 +259,7 @@ impl DesignFile {
                 rect.corner_radius = data.corner_radius;
                 rect.is_slot = data.is_slot;
                 Shape::Rectangle(rect)
-            },
+            }
             "circle" => {
                 let radius = data.width.min(data.height) / 2.0;
                 let center = Point::new(data.x + radius, data.y + radius);
@@ -303,10 +303,10 @@ impl DesignFile {
                     rect.is_slot = data.is_slot;
                     Shape::Rectangle(rect)
                 }
-            },
+            }
             _ => anyhow::bail!("Unknown shape type: {}", data.shape_type),
         };
-        
+
         // Apply rotation
         let mut shape = shape;
         match &mut shape {
@@ -333,7 +333,8 @@ impl DesignFile {
                 crate::shapes::ShapeType::Ellipse => "Ellipse",
                 crate::shapes::ShapeType::Path => "Path",
                 crate::shapes::ShapeType::Text => "Text",
-            }.to_string(),
+            }
+            .to_string(),
             shape,
             selected: data.selected,
             operation_type,

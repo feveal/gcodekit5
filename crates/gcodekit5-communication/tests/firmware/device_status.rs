@@ -2,11 +2,26 @@ use gcodekit5_communication::firmware::device_status::*;
 
 #[test]
 fn test_machine_state_parse() {
-    assert_eq!(MachineStateType::from_grbl_state("Idle"), MachineStateType::Idle);
-    assert_eq!(MachineStateType::from_grbl_state("Run"), MachineStateType::Run);
-    assert_eq!(MachineStateType::from_grbl_state("Hold"), MachineStateType::Hold);
-    assert_eq!(MachineStateType::from_grbl_state("Alarm"), MachineStateType::Alarm);
-    assert_eq!(MachineStateType::from_grbl_state("Unknown"), MachineStateType::Unknown);
+    assert_eq!(
+        MachineStateType::from_grbl_state("Idle"),
+        MachineStateType::Idle
+    );
+    assert_eq!(
+        MachineStateType::from_grbl_state("Run"),
+        MachineStateType::Run
+    );
+    assert_eq!(
+        MachineStateType::from_grbl_state("Hold"),
+        MachineStateType::Hold
+    );
+    assert_eq!(
+        MachineStateType::from_grbl_state("Alarm"),
+        MachineStateType::Alarm
+    );
+    assert_eq!(
+        MachineStateType::from_grbl_state("Unknown"),
+        MachineStateType::Unknown
+    );
 }
 
 #[test]

@@ -304,5 +304,3 @@ impl ArrayGenerator {
         }
     }
 }
-
-

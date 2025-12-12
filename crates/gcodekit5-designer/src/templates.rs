@@ -512,5 +512,3 @@ impl TemplateManager {
         Ok(())
     }
 }
-
-

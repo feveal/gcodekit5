@@ -1,4 +1,4 @@
-use gcodekit5_settings::{SettingsPersistence, SettingsDialog, SettingValue, SettingsCategory};
+use gcodekit5_settings::{SettingValue, SettingsCategory, SettingsDialog, SettingsPersistence};
 
 #[test]
 fn test_persistence_new() {

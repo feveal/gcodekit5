@@ -17,7 +17,7 @@ fn test_spoilboard_grid_generation_metric() {
     assert!(gcode.contains("G21 ; Set units to millimeters"));
     assert!(gcode.contains("X100.0"));
     assert!(gcode.contains("Y100.0"));
-    
+
     // Check for specific line coordinates (Zigzag pattern)
     // X=0: Up (Start Y=0)
     assert!(gcode.contains("G0 X0.000 Y0.000"));
@@ -45,10 +45,10 @@ fn test_spoilboard_grid_generation_imperial_converted() {
     let gcode = generator.generate().unwrap();
 
     assert!(gcode.contains("G21 ; Set units to millimeters")); // Always generates metric G-code
-    
+
     // Check dimensions in comment
     assert!(gcode.contains("; Dimensions: 101.6 x 101.6 mm"));
-    
+
     // Check for 1 inch spacing (25.4 mm) with Zigzag pattern
     // X=0: Up (Start Y=0)
     assert!(gcode.contains("G0 X0.000 Y0.000"));
@@ -66,8 +66,8 @@ fn test_spoilboard_grid_generation_imperial_converted() {
 fn test_spoilboard_grid_generation_fractional_inch_converted() {
     // Simulate 0.5 inch spacing (12.7 mm)
     let params = SpoilboardGridParameters {
-        width: 25.4, // 1 inch
-        height: 25.4, // 1 inch
+        width: 25.4,        // 1 inch
+        height: 25.4,       // 1 inch
         grid_spacing: 12.7, // 0.5 inch
         feed_rate: 1000.0,
         laser_power: 500.0,

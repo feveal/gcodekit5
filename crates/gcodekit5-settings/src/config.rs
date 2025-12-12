@@ -170,6 +170,10 @@ pub struct UiSettings {
     /// Startup tab
     #[serde(default)]
     pub startup_tab: StartupTab,
+
+    /// Visualizer sidebar splitter position (Paned position in pixels)
+    #[serde(default)]
+    pub visualizer_sidebar_position: Option<i32>,
 }
 
 impl Default for UiSettings {
@@ -179,6 +183,7 @@ impl Default for UiSettings {
         visibility.insert("dro".to_string(), true);
         visibility.insert("jog".to_string(), true);
         visibility.insert("console".to_string(), true);
+        visibility.insert("visualizer_sidebar".to_string(), true);
 
         Self {
             window_width: 1400,
@@ -191,6 +196,7 @@ impl Default for UiSettings {
             measurement_system: MeasurementSystem::default(),
             feed_rate_units: FeedRateUnits::default(),
             startup_tab: StartupTab::default(),
+            visualizer_sidebar_position: None,
         }
     }
 }
@@ -413,9 +419,9 @@ impl Config {
         if other.connection.timeout_ms > 0 {
             self.connection = other.connection.clone();
         }
-        // Theme is an enum, so we can't check for empty string. 
-        // We assume if it's not default (System), we might want to merge it, 
-        // but merging logic is tricky with enums. 
+        // Theme is an enum, so we can't check for empty string.
+        // We assume if it's not default (System), we might want to merge it,
+        // but merging logic is tricky with enums.
         // For now, let's assume if the other config has a specific theme set (not System), we take it.
         if other.ui.theme != Theme::System {
             self.ui = other.ui.clone();

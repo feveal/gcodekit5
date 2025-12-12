@@ -1,7 +1,7 @@
 //! Test to reproduce user-reported bug: thickness=1.5mm produces 6.7mm tabs
 
 use gcodekit5_camtools::tabbed_box::{
-    BoxParameters, BoxType, FingerJointSettings, TabbedBoxMaker, KeyDividerType,
+    BoxParameters, BoxType, FingerJointSettings, KeyDividerType, TabbedBoxMaker,
 };
 
 #[test]
@@ -59,11 +59,8 @@ fn test_user_reported_bug_thickness_1_5mm() {
     let min_y = y_coords.iter().cloned().fold(f32::INFINITY, f32::min);
     let _min_x = x_coords.iter().cloned().fold(f32::INFINITY, f32::min);
 
-
-
     if min_y < 0.0 {
         let tab_depth = min_y.abs();
-
 
         if (tab_depth - 6.7).abs() < 0.5 {
             panic!(
@@ -71,9 +68,6 @@ fn test_user_reported_bug_thickness_1_5mm() {
                 tab_depth
             );
         } else if (tab_depth - 1.5).abs() > 0.1 {
-
         }
     }
-
-
 }

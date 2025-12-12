@@ -1,4 +1,7 @@
-use gcodekit5_designer::arrays::{ArrayGenerator, ArrayOperation, ArrayType, CircularArrayParams, GridArrayParams, LinearArrayParams};
+use gcodekit5_designer::arrays::{
+    ArrayGenerator, ArrayOperation, ArrayType, CircularArrayParams, GridArrayParams,
+    LinearArrayParams,
+};
 use gcodekit5_designer::shapes::Point;
 
 #[test]
@@ -144,8 +147,7 @@ fn test_array_operation_enum() {
     assert_eq!(linear.total_copies(), 4);
 
     let center = Point::new(0.0, 0.0);
-    let circular =
-        ArrayOperation::Circular(CircularArrayParams::new(6, center, 20.0, 0.0, false));
+    let circular = ArrayOperation::Circular(CircularArrayParams::new(6, center, 20.0, 0.0, false));
     assert_eq!(circular.array_type(), ArrayType::Circular);
     assert!(circular.is_valid());
     assert_eq!(circular.total_copies(), 6);

@@ -2,8 +2,7 @@ use gcodekit5_designer::history::{ActionType, HistoryAction, HistoryTransaction,
 
 #[test]
 fn test_create_history_action() {
-    let action =
-        HistoryAction::simple(ActionType::ShapeCreated, "Created rectangle".to_string());
+    let action = HistoryAction::simple(ActionType::ShapeCreated, "Created rectangle".to_string());
 
     assert_eq!(action.action_type, ActionType::ShapeCreated);
     assert_eq!(action.description, "Created rectangle");
@@ -63,8 +62,7 @@ fn test_multiple_undo_redo() {
     let mut manager = UndoRedoManager::new(50);
 
     for i in 0..5 {
-        let action =
-            HistoryAction::simple(ActionType::ShapeCreated, format!("Create shape {}", i));
+        let action = HistoryAction::simple(ActionType::ShapeCreated, format!("Create shape {}", i));
         manager.record(action);
     }
 
@@ -243,12 +241,10 @@ fn test_full_history() {
 
 #[test]
 fn test_serialization() {
-    let action =
-        HistoryAction::simple(ActionType::ShapeCreated, "Create rectangle".to_string());
+    let action = HistoryAction::simple(ActionType::ShapeCreated, "Create rectangle".to_string());
 
     let json = serde_json::to_string(&action).expect("Failed to serialize");
-    let deserialized: HistoryAction =
-        serde_json::from_str(&json).expect("Failed to deserialize");
+    let deserialized: HistoryAction = serde_json::from_str(&json).expect("Failed to deserialize");
 
     assert_eq!(action.description, deserialized.description);
     assert_eq!(action.action_type, deserialized.action_type);

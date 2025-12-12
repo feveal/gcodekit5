@@ -329,11 +329,32 @@ pub fn main() {
         // Append the StatusBar (created earlier before MachineControlView)
         main_box.append(&status_bar.widget);
 
-        // Connect eStop
-        status_bar.estop_btn.connect_clicked(|_| {
-            info!("Emergency Stop Triggered!");
-            // TODO: Implement actual eStop logic
-        });
+        // Connect eStop (Ctrl-X / 0x18), same behavior as MachineControlView's E-Stop.
+        {
+            let communicator = machine_control.communicator.clone();
+            let is_streaming = machine_control.is_streaming.clone();
+            let is_paused = machine_control.is_paused.clone();
+            let waiting_for_ack = machine_control.waiting_for_ack.clone();
+            let send_queue = machine_control.send_queue.clone();
+            let sb = status_bar.clone();
+            let estop_btn = status_bar.estop_btn.clone();
+            let device_console = device_console.clone();
+
+            estop_btn.connect_clicked(move |_| {
+                if let Ok(mut comm) = communicator.lock() {
+                    let _ = comm.send(&[0x18]);
+                }
+
+                *is_streaming.lock().unwrap() = false;
+                *is_paused.lock().unwrap() = false;
+                *waiting_for_ack.lock().unwrap() = false;
+                send_queue.lock().unwrap().clear();
+
+                sb.set_progress(0.0, "", "");
+
+                device_console.append_log(&format!("{}\n", t!("Emergency stop (Ctrl-X)")));
+            });
+        }
 
         window.set_child(Some(&main_box));
 

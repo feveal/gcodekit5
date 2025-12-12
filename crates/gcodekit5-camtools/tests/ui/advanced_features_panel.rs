@@ -1,4 +1,6 @@
-use gcodekit5_camtools::advanced_features_panel::{AdvancedFeaturesPanel, SoftLimits, WorkCoordinateSystem, Tool, SimulationState};
+use gcodekit5_camtools::advanced_features_panel::{
+    AdvancedFeaturesPanel, SimulationState, SoftLimits, Tool, WorkCoordinateSystem,
+};
 
 #[test]
 fn test_soft_limits_new() {

@@ -141,7 +141,11 @@ impl SettingsPersistence {
         let ui = &self.config.ui;
 
         // Theme
-        let themes = vec!["System".to_string(), "Light".to_string(), "Dark".to_string()];
+        let themes = vec![
+            "System".to_string(),
+            "Light".to_string(),
+            "Dark".to_string(),
+        ];
         dialog.add_setting(
             Setting::new(
                 "theme",
@@ -184,22 +188,33 @@ impl SettingsPersistence {
         // Startup Tab
         let startup_tabs = vec![
             "Machine".to_string(),
-            "Console".to_string(),
             "Editor".to_string(),
             "Visualizer".to_string(),
             "CamTools".to_string(),
             "Designer".to_string(),
-            "DeviceInfo".to_string(),
             "Config".to_string(),
             "Devices".to_string(),
             "Tools".to_string(),
             "Materials".to_string(),
         ];
+        let current_startup_tab = match ui.startup_tab {
+            crate::config::StartupTab::Console => "Machine",
+            crate::config::StartupTab::DeviceInfo => "Config",
+            crate::config::StartupTab::Machine => "Machine",
+            crate::config::StartupTab::Editor => "Editor",
+            crate::config::StartupTab::Visualizer => "Visualizer",
+            crate::config::StartupTab::CamTools => "CamTools",
+            crate::config::StartupTab::Designer => "Designer",
+            crate::config::StartupTab::Config => "Config",
+            crate::config::StartupTab::Devices => "Devices",
+            crate::config::StartupTab::Tools => "Tools",
+            crate::config::StartupTab::Materials => "Materials",
+        };
         dialog.add_setting(
             Setting::new(
                 "startup_tab",
                 "Startup Tab",
-                SettingValue::Enum(ui.startup_tab.to_string(), startup_tabs),
+                SettingValue::Enum(current_startup_tab.to_string(), startup_tabs),
             )
             .with_description("Tab to show when application starts")
             .with_category(SettingsCategory::UserInterface),
@@ -467,4 +482,3 @@ impl Default for SettingsPersistence {
         Self::new()
     }
 }
-

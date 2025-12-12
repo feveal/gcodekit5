@@ -1,10 +1,11 @@
-use gcodekit5_designer::designer_editor_integration::{DesignEditorIntegration, DesignExport, ExportParameters};
+use gcodekit5_designer::designer_editor_integration::{
+    DesignEditorIntegration, DesignExport, ExportParameters,
+};
 
 #[test]
 fn test_design_export_creation() {
     let params = ExportParameters::default();
-    let export =
-        DesignExport::new("Test Design".to_string(), "G00 X0 Y0\n".to_string(), params);
+    let export = DesignExport::new("Test Design".to_string(), "G00 X0 Y0\n".to_string(), params);
 
     assert_eq!(export.name, "Test Design");
     assert_eq!(export.gcode_lines(), 1);

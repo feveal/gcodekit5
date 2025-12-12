@@ -24,7 +24,7 @@ fn test_svg_import_empty_string() {
     assert!(result.is_ok());
     let design = result.unwrap();
     assert_eq!(design.format, FileFormat::Svg);
-        // Layer count not asserted here; importer may return 0 layers for empty SVGs
+    // Layer count not asserted here; importer may return 0 layers for empty SVGs
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn test_imported_design_properties() {
     assert_eq!(design.dimensions.0, 100.0);
     assert_eq!(design.dimensions.1, 100.0);
     assert_eq!(design.format, FileFormat::Svg);
-        // Layer count not asserted here; importer may return 0 layers for empty SVGs
+    // Layer count not asserted here; importer may return 0 layers for empty SVGs
 }
 
 #[test]

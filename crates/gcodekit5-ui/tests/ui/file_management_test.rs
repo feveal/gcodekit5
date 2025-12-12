@@ -1,5 +1,7 @@
 #![cfg(feature = "slint_legacy_tests")]
-use gcodekit5_ui::ui::file_management::{RecentFilesManager, RecentFile, FileStatistics, FileComparison, FileTemplate};
+use gcodekit5_ui::ui::file_management::{
+    FileComparison, FileStatistics, FileTemplate, RecentFile, RecentFilesManager,
+};
 use std::path::PathBuf;
 
 #[test]

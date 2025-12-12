@@ -1,4 +1,7 @@
-use gcodekit5_designer::designer_visualizer_integration::{DesignVisualization, DesignerVisualizerIntegration, MaterialSettings, SimulationState, ToolpathViewSettings, VisualizationBounds};
+use gcodekit5_designer::designer_visualizer_integration::{
+    DesignVisualization, DesignerVisualizerIntegration, MaterialSettings, SimulationState,
+    ToolpathViewSettings, VisualizationBounds,
+};
 
 #[test]
 fn test_visualization_bounds_creation() {

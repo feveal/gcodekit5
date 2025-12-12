@@ -1,6 +1,6 @@
 use gcodekit5_camtools::hatch_generator::generate_hatch;
-use lyon::path::Path;
 use lyon::math::point;
+use lyon::path::Path;
 
 #[test]
 fn test_hatch_square() {
@@ -14,9 +14,13 @@ fn test_hatch_square() {
 
     // Hatch with 1.0mm spacing at 0 degrees
     let hatches = generate_hatch(&path, 0.0, 1.0, 0.1);
-    
+
     // Should have roughly 10 lines (allow some margin for boundary conditions)
-    assert!(hatches.len() >= 9 && hatches.len() <= 13, "Expected around 10 lines, got {}", hatches.len());
+    assert!(
+        hatches.len() >= 9 && hatches.len() <= 13,
+        "Expected around 10 lines, got {}",
+        hatches.len()
+    );
 }
 
 #[test]
@@ -31,6 +35,6 @@ fn test_hatch_rotated() {
 
     // Hatch with 1.0mm spacing at 45 degrees
     let hatches = generate_hatch(&path, 45.0, 1.0, 0.1);
-    
+
     assert!(!hatches.is_empty());
 }

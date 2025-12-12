@@ -1,4 +1,7 @@
-use gcodekit5_designer::parametric::{Parameter, ParameterConstraint, ParameterSet, ParameterType, ParametricGenerator, ParametricTemplate, TemplateLibrary};
+use gcodekit5_designer::parametric::{
+    Parameter, ParameterConstraint, ParameterSet, ParameterType, ParametricGenerator,
+    ParametricTemplate, TemplateLibrary,
+};
 
 #[test]
 fn test_parameter_constraint_creation() {

@@ -1,9 +1,9 @@
 //! Integration tests for the Designer tool
 
+use gcodekit5_core::Units;
 use gcodekit5_designer::{
     Canvas, Circle, DrawingMode, Line, Point, Rectangle, ToolpathGenerator, ToolpathToGcode,
 };
-use gcodekit5_core::Units;
 
 #[test]
 fn test_designer_workflow_rectangle() {
@@ -151,11 +151,20 @@ fn test_canvas_multi_shapes() {
 
     // Select each shape
     // Select rect on edge (0, 5)
-    assert_eq!(canvas.select_at(&Point::new(0.0, 5.0), 0.0, false), Some(rect_id));
+    assert_eq!(
+        canvas.select_at(&Point::new(0.0, 5.0), 0.0, false),
+        Some(rect_id)
+    );
     // Select circle on edge (30, 25)
-    assert_eq!(canvas.select_at(&Point::new(30.0, 25.0), 0.0, false), Some(circle_id));
+    assert_eq!(
+        canvas.select_at(&Point::new(30.0, 25.0), 0.0, false),
+        Some(circle_id)
+    );
     // Select line on the line (50, 25)
-    assert_eq!(canvas.select_at(&Point::new(50.0, 25.0), 0.0, false), Some(line_id));
+    assert_eq!(
+        canvas.select_at(&Point::new(50.0, 25.0), 0.0, false),
+        Some(line_id)
+    );
 
     // Remove the selected shape (line)
     assert!(canvas.remove_shape(line_id));

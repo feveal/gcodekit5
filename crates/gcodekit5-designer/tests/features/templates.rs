@@ -265,8 +265,7 @@ fn test_template_library_advanced_search() {
     library.add_template(t1).ok();
     library.add_template(t2).ok();
 
-    let results =
-        library.search_advanced(None, Some(TemplateCategory::Mechanical), None, false);
+    let results = library.search_advanced(None, Some(TemplateCategory::Mechanical), None, false);
     assert_eq!(results.len(), 1);
 
     let results = library.search_advanced(None, None, None, true);

@@ -1,9 +1,8 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, Entry, Frame, Label, Orientation, Paned, ScrolledWindow, TextView,
-    WrapMode,
+    Align, Box, Button, Entry, Label, Orientation, Paned, ScrolledWindow, TextView, WrapMode,
 };
-use std::rc::Rc;
+use std::{borrow::Cow, rc::Rc};
 
 pub struct DeviceConsoleView {
     pub widget: Paned,
@@ -130,9 +129,16 @@ impl DeviceConsoleView {
 
     pub fn append_log(&self, message: &str) {
         let buffer = self.console_text.buffer();
+        // GTK/glib strings must not contain NUL bytes.
+        let msg: Cow<'_, str> = if message.contains('\0') {
+            Cow::Owned(message.replace('\0', ""))
+        } else {
+            Cow::Borrowed(message)
+        };
+
         // Append to bottom and auto-scroll
         let mut iter = buffer.end_iter();
-        buffer.insert(&mut iter, message);
+        buffer.insert(&mut iter, msg.as_ref());
     }
     
     pub fn get_log_text(&self) -> String {

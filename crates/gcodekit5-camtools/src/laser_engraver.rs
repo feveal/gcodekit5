@@ -177,7 +177,12 @@ impl BitmapImageEngraver {
 
         // Resize image to output dimensions BEFORE halftoning
         // Use Lanczos3 for high quality downscaling/upscaling of continuous tone images
-        gray = image::imageops::resize(&gray, output_width, output_height, image::imageops::FilterType::Lanczos3);
+        gray = image::imageops::resize(
+            &gray,
+            output_width,
+            output_height,
+            image::imageops::FilterType::Lanczos3,
+        );
 
         if params.transformations.invert {
             image::imageops::invert(&mut gray);
@@ -185,8 +190,8 @@ impl BitmapImageEngraver {
 
         if params.transformations.halftone != HalftoneMethod::None {
             Self::apply_halftoning_image(
-                &mut gray, 
-                params.transformations.halftone, 
+                &mut gray,
+                params.transformations.halftone,
                 params.transformations.halftone_threshold,
                 params.transformations.halftone_dot_size,
             )?;
@@ -201,10 +206,7 @@ impl BitmapImageEngraver {
     }
 
     /// Apply rotation to image
-    pub fn apply_rotation_image(
-        image: GrayImage,
-        rotation: RotationAngle,
-    ) -> GrayImage {
+    pub fn apply_rotation_image(image: GrayImage, rotation: RotationAngle) -> GrayImage {
         match rotation {
             RotationAngle::Degrees0 => image,
             RotationAngle::Degrees90 => image::imageops::rotate90(&image),
@@ -214,27 +216,42 @@ impl BitmapImageEngraver {
     }
 
     /// Apply halftoning
-    fn apply_halftoning_image(image: &mut GrayImage, method: HalftoneMethod, threshold: u8, dot_size: usize) -> Result<()> {
+    fn apply_halftoning_image(
+        image: &mut GrayImage,
+        method: HalftoneMethod,
+        threshold: u8,
+        dot_size: usize,
+    ) -> Result<()> {
         if dot_size > 1 {
             let width = image.width();
             let height = image.height();
             let new_width = std::cmp::max(1, width / dot_size as u32);
             let new_height = std::cmp::max(1, height / dot_size as u32);
-            
+
             // Downscale
-            let mut small = image::imageops::resize(image, new_width, new_height, image::imageops::FilterType::Lanczos3);
-            
+            let mut small = image::imageops::resize(
+                image,
+                new_width,
+                new_height,
+                image::imageops::FilterType::Lanczos3,
+            );
+
             // Apply halftone to small image
             match method {
                 HalftoneMethod::Threshold => Self::apply_threshold_image(&mut small, threshold)?,
                 HalftoneMethod::Bayer4x4 => Self::apply_bayer_image(&mut small)?,
                 HalftoneMethod::FloydSteinberg => Self::apply_floyd_steinberg_image(&mut small)?,
                 HalftoneMethod::Atkinson => Self::apply_atkinson_image(&mut small)?,
-                HalftoneMethod::None => {},
+                HalftoneMethod::None => {}
             }
-            
+
             // Upscale back
-            *image = image::imageops::resize(&small, width, height, image::imageops::FilterType::Nearest);
+            *image = image::imageops::resize(
+                &small,
+                width,
+                height,
+                image::imageops::FilterType::Nearest,
+            );
             return Ok(());
         }
 
@@ -250,7 +267,11 @@ impl BitmapImageEngraver {
     /// Apply simple thresholding
     fn apply_threshold_image(image: &mut GrayImage, threshold: u8) -> Result<()> {
         for pixel in image.pixels_mut() {
-            *pixel = if pixel.0[0] >= threshold { image::Luma([255]) } else { image::Luma([0]) };
+            *pixel = if pixel.0[0] >= threshold {
+                image::Luma([255])
+            } else {
+                image::Luma([0])
+            };
         }
         Ok(())
     }
@@ -259,25 +280,24 @@ impl BitmapImageEngraver {
     fn apply_bayer_image(image: &mut GrayImage) -> Result<()> {
         let width = image.width();
         let height = image.height();
-        
+
         // Bayer 4x4 matrix
-        let bayer_matrix = [
-            [ 0,  8,  2, 10],
-            [12,  4, 14,  6],
-            [ 3, 11,  1,  9],
-            [15,  7, 13,  5],
-        ];
+        let bayer_matrix = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
 
         for y in 0..height {
             for x in 0..width {
                 let pixel = image.get_pixel_mut(x, y);
                 let val = pixel.0[0];
-                
+
                 // Scale matrix value to 0-255 range
                 let matrix_val = bayer_matrix[(y % 4) as usize][(x % 4) as usize];
                 let threshold = (matrix_val as f32 * 16.0 + 8.0) as u8;
-                
-                *pixel = if val >= threshold { image::Luma([255]) } else { image::Luma([0]) };
+
+                *pixel = if val >= threshold {
+                    image::Luma([255])
+                } else {
+                    image::Luma([0])
+                };
             }
         }
         Ok(())
@@ -287,20 +307,20 @@ impl BitmapImageEngraver {
     fn apply_floyd_steinberg_image(image: &mut GrayImage) -> Result<()> {
         let width = image.width();
         let height = image.height();
-        
+
         // We need to work with i16 to handle error propagation without overflow
         // Copy to buffer
         let mut buffer: Vec<i16> = image.as_raw().iter().map(|&p| p as i16).collect();
-        
+
         for y in 0..height {
             for x in 0..width {
                 let idx = (y * width + x) as usize;
                 let old_pixel = buffer[idx];
                 let new_pixel = if old_pixel > 127 { 255 } else { 0 };
-                
+
                 buffer[idx] = new_pixel;
                 let error = old_pixel - new_pixel;
-                
+
                 // Distribute error
                 if x + 1 < width {
                     let neighbor_idx = (y * width + (x + 1)) as usize;
@@ -320,7 +340,7 @@ impl BitmapImageEngraver {
                 }
             }
         }
-        
+
         // Copy back
         for (i, &val) in buffer.iter().enumerate() {
             let x = (i as u32) % width;
@@ -334,29 +354,25 @@ impl BitmapImageEngraver {
     fn apply_atkinson_image(image: &mut GrayImage) -> Result<()> {
         let width = image.width();
         let height = image.height();
-        
+
         let mut buffer: Vec<i16> = image.as_raw().iter().map(|&p| p as i16).collect();
-        
+
         for y in 0..height {
             for x in 0..width {
                 let idx = (y * width + x) as usize;
                 let old_pixel = buffer[idx];
                 let new_pixel = if old_pixel > 127 { 255 } else { 0 };
-                
+
                 buffer[idx] = new_pixel;
                 let error = old_pixel - new_pixel;
-                
+
                 // Atkinson distributes 1/8 of error to 6 neighbors
-                let neighbors = [
-                    (1, 0), (2, 0),
-                    (-1, 1), (0, 1), (1, 1),
-                    (0, 2)
-                ];
-                
+                let neighbors = [(1, 0), (2, 0), (-1, 1), (0, 1), (1, 1), (0, 2)];
+
                 for (dx, dy) in neighbors {
                     let nx = x as isize + dx;
                     let ny = y as isize + dy;
-                    
+
                     if nx >= 0 && nx < width as isize && ny >= 0 && ny < height as isize {
                         let n_idx = ny as usize * width as usize + nx as usize;
                         buffer[n_idx] = buffer[n_idx].saturating_add(error / 8);
@@ -364,7 +380,7 @@ impl BitmapImageEngraver {
                 }
             }
         }
-        
+
         for (i, &val) in buffer.iter().enumerate() {
             let x = (i as u32) % width;
             let y = (i as u32) / width;
@@ -538,13 +554,12 @@ impl BitmapImageEngraver {
             let mut in_burn = false;
             let mut last_power = 0;
 
-            let x_range: Box<dyn Iterator<Item = u32>> = if left_to_right
-                || !self.params.bidirectional
-            {
-                Box::new(0..width)
-            } else {
-                Box::new((0..width).rev())
-            };
+            let x_range: Box<dyn Iterator<Item = u32>> =
+                if left_to_right || !self.params.bidirectional {
+                    Box::new(0..width)
+                } else {
+                    Box::new((0..width).rev())
+                };
 
             for x in x_range {
                 let intensity = image.get_pixel(x, y).0[0];
@@ -616,13 +631,12 @@ impl BitmapImageEngraver {
             let mut in_burn = false;
             let mut last_power = 0;
 
-            let y_range: Box<dyn Iterator<Item = u32>> = if top_to_bottom
-                || !self.params.bidirectional
-            {
-                Box::new(0..height)
-            } else {
-                Box::new((0..height).rev())
-            };
+            let y_range: Box<dyn Iterator<Item = u32>> =
+                if top_to_bottom || !self.params.bidirectional {
+                    Box::new(0..height)
+                } else {
+                    Box::new((0..height).rev())
+                };
 
             for y_reversed in y_range {
                 let y = height - 1 - y_reversed;
@@ -666,5 +680,3 @@ impl BitmapImageEngraver {
         self.params.min_power + (normalized * (self.params.max_power - self.params.min_power))
     }
 }
-
-

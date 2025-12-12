@@ -1,0 +1,135 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the GCodeKit5 package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: GCodeKit5 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-12-12 09:36+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "About"
+msgstr ""
+
+msgid "CAM Tools"
+msgstr ""
+
+msgid "CNC Tools"
+msgstr ""
+
+msgid "Connect"
+msgstr ""
+
+msgid "Copy"
+msgstr ""
+
+msgid "Cut"
+msgstr ""
+
+msgid "Designer"
+msgstr ""
+
+msgid "Device Config"
+msgstr ""
+
+msgid "Device Manager"
+msgstr ""
+
+msgid "Disconnect"
+msgstr ""
+
+msgid "Documentation"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Emergency stop (Ctrl-X)"
+msgstr ""
+
+msgid "Export G-Code..."
+msgstr ""
+
+msgid "Export SVG..."
+msgstr ""
+
+msgid "File"
+msgstr ""
+
+#. Polling is now handled centrally by MachineControlView to avoid race conditions on serial read
+#. Add Editor to Stack
+msgid "G-Code Editor"
+msgstr ""
+
+msgid "GCode Toolkit for CNC/Laser Machines"
+msgstr ""
+
+msgid "GCodeKit Contributors"
+msgstr ""
+
+msgid "GCodeKit5"
+msgstr ""
+
+msgid "Help"
+msgstr ""
+
+msgid "Home"
+msgstr ""
+
+msgid "Import"
+msgstr ""
+
+msgid "Machine"
+msgstr ""
+
+msgid "Machine Control"
+msgstr ""
+
+msgid "Materials"
+msgstr ""
+
+msgid "New"
+msgstr ""
+
+msgid "Open"
+msgstr ""
+
+msgid "Paste"
+msgstr ""
+
+msgid "Preferences"
+msgstr ""
+
+msgid "Quit"
+msgstr ""
+
+msgid "Redo"
+msgstr ""
+
+msgid "Reset"
+msgstr ""
+
+msgid "Run"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "Save As..."
+msgstr ""
+
+msgid "Undo"
+msgstr ""
+
+#. 4. Visualizer (Already created)
+msgid "Visualizer"
+msgstr ""

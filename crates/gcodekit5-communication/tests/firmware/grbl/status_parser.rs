@@ -105,44 +105,56 @@ fn test_status_parser_machine_state() {
     );
 
     let run_status = "<Run|MPos:10,20,30|F:1500>";
-        assert_eq!(
-            StatusParser::parse_machine_state(run_status).unwrap(),
-            "Run"
-        );
+    assert_eq!(
+        StatusParser::parse_machine_state(run_status).unwrap(),
+        "Run"
+    );
 
-        let hold_status = "<Hold:0|MPos:10,20,30>";
-        assert_eq!(
-            StatusParser::parse_machine_state(hold_status).unwrap(),
-            "Hold:0"
-        );
+    let hold_status = "<Hold:0|MPos:10,20,30>";
+    assert_eq!(
+        StatusParser::parse_machine_state(hold_status).unwrap(),
+        "Hold:0"
+    );
 
-        let alarm_status = "<Alarm|MPos:0,0,0>";
-        assert_eq!(
-            StatusParser::parse_machine_state(alarm_status).unwrap(),
-            "Alarm"
-        );
-    }
+    let alarm_status = "<Alarm|MPos:0,0,0>";
+    assert_eq!(
+        StatusParser::parse_machine_state(alarm_status).unwrap(),
+        "Alarm"
+    );
+}
 
-    #[test]
-    fn test_status_parser_full_parse() {
-        let status = "<Run|MPos:10,20,30|WPos:5,8,2|Buf:10:100|F:1500|S:1000>";
-        let full = StatusParser::parse_full(status);
+#[test]
+fn test_status_parser_full_parse() {
+    let status = "<Run|MPos:10,20,30|WPos:5,8,2|Buf:10:100|F:1500|S:1000>";
+    let full = StatusParser::parse_full(status);
 
-        assert_eq!(full.machine_state.as_deref(), Some("Run"));
-        assert!(full.mpos.is_some());
-        assert!(full.wpos.is_some());
-        assert!(full.buffer.is_some());
-        assert_eq!(full.feed_rate, Some(1500.0));
-        assert_eq!(full.spindle_speed, Some(1000));
-    }
+    assert_eq!(full.machine_state.as_deref(), Some("Run"));
+    assert!(full.mpos.is_some());
+    assert!(full.wpos.is_some());
+    assert!(full.buffer.is_some());
+    assert_eq!(full.feed_rate, Some(1500.0));
+    assert_eq!(full.spindle_speed, Some(1000));
+}
 
-    #[test]
-    fn test_work_coordinate_offset_to_cncpoint() {
-        let wco = WorkCoordinateOffset::parse("10.000,20.000,30.000").unwrap();
-        let point = wco.to_cncpoint(Units::MM);
+#[test]
+fn test_status_parser_derives_wpos_from_mpos_wco() {
+    // GRBL can omit WPos depending on $10; when WCO is present we can derive it.
+    let status = "<Idle|MPos:10.000,20.000,30.000|WCO:1.000,2.000,3.000>";
+    let full = StatusParser::parse_full(status);
+    let wpos = full.wpos.unwrap();
 
-        assert_eq!(point.x, 10.0);
-        assert_eq!(point.y, 20.0);
-        assert_eq!(point.z, 30.0);
-        assert_eq!(point.unit, Units::MM);
-    }
+    assert_eq!(wpos.x, 9.0);
+    assert_eq!(wpos.y, 18.0);
+    assert_eq!(wpos.z, 27.0);
+}
+
+#[test]
+fn test_work_coordinate_offset_to_cncpoint() {
+    let wco = WorkCoordinateOffset::parse("10.000,20.000,30.000").unwrap();
+    let point = wco.to_cncpoint(Units::MM);
+
+    assert_eq!(point.x, 10.0);
+    assert_eq!(point.y, 20.0);
+    assert_eq!(point.z, 30.0);
+    assert_eq!(point.unit, Units::MM);
+}

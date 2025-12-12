@@ -263,9 +263,48 @@ impl StatusParser {
         Some(&rest[..end])
     }
 
-    /// Parse complete status line into all components
+    fn sub_opt(pos: Option<f64>, offset: Option<f64>) -> Option<f64> {
+        match (pos, offset) {
+            (Some(p), Some(o)) => Some(p - o),
+            _ => None,
+        }
+    }
+
+    fn add_opt(pos: Option<f64>, offset: Option<f64>) -> Option<f64> {
+        match (pos, offset) {
+            (Some(p), Some(o)) => Some(p + o),
+            _ => None,
+        }
+    }
+
+    fn wpos_from_mpos_wco(mpos: MachinePosition, wco: WorkCoordinateOffset) -> WorkPosition {
+        WorkPosition {
+            x: mpos.x - wco.x,
+            y: mpos.y - wco.y,
+            z: mpos.z - wco.z,
+            a: Self::sub_opt(mpos.a, wco.a),
+            b: Self::sub_opt(mpos.b, wco.b),
+            c: Self::sub_opt(mpos.c, wco.c),
+        }
+    }
+
+    fn mpos_from_wpos_wco(wpos: WorkPosition, wco: WorkCoordinateOffset) -> MachinePosition {
+        MachinePosition {
+            x: wpos.x + wco.x,
+            y: wpos.y + wco.y,
+            z: wpos.z + wco.z,
+            a: Self::add_opt(wpos.a, wco.a),
+            b: Self::add_opt(wpos.b, wco.b),
+            c: Self::add_opt(wpos.c, wco.c),
+        }
+    }
+
+    /// Parse complete status line into all components.
+    ///
+    /// Note: GRBL can be configured (via $10) to report either `MPos` or `WPos`.
+    /// If only `MPos` and `WCO` are present, we derive `WPos = MPos - WCO`.
     pub fn parse_full(status_line: &str) -> FullStatus {
-        FullStatus {
+        let mut full = FullStatus {
             machine_state: Self::parse_machine_state(status_line),
             mpos: Self::parse_mpos(status_line),
             wpos: Self::parse_wpos(status_line),
@@ -273,7 +312,22 @@ impl StatusParser {
             buffer: Self::parse_buffer(status_line),
             feed_rate: Self::parse_feed_rate(status_line),
             spindle_speed: Self::parse_spindle_speed(status_line),
+        };
+
+        // Derive missing coordinate space when possible.
+        if full.wpos.is_none() {
+            if let (Some(mpos), Some(wco)) = (full.mpos, full.wco) {
+                full.wpos = Some(Self::wpos_from_mpos_wco(mpos, wco));
+            }
         }
+
+        if full.mpos.is_none() {
+            if let (Some(wpos), Some(wco)) = (full.wpos, full.wco) {
+                full.mpos = Some(Self::mpos_from_wpos_wco(wpos, wco));
+            }
+        }
+
+        full
     }
 }
 
@@ -295,5 +349,3 @@ pub struct FullStatus {
     /// Spindle speed
     pub spindle_speed: Option<u32>,
 }
-
-

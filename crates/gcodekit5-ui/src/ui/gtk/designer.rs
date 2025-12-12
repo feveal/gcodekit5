@@ -13,10 +13,13 @@ use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegmentType};
 use crate::ui::gtk::designer_toolbox::{DesignerToolbox, DesignerTool};
 use gcodekit5_devicedb::DeviceManager;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tracing::error;
 use gcodekit5_core::constants as core_constants;
 use crate::ui::gtk::designer_properties::PropertiesPanel;
 use crate::ui::gtk::designer_layers::LayersPanel;
+use crate::ui::gtk::osd_format::format_zoom_center_cursor;
+use crate::t;
 use gcodekit5_settings::controller::SettingsController;
 //use crate::ui::gtk::designer_file_ops; // Temporarily disabled
 
@@ -87,6 +90,9 @@ pub struct DesignerCanvas {
     polyline_points: Rc<RefCell<Vec<Point>>>,
     // Toolpath preview
     preview_toolpaths: Rc<RefCell<Vec<Toolpath>>>,
+    preview_generating: Rc<std::cell::Cell<bool>>,
+    preview_pending: Rc<std::cell::Cell<bool>>,
+    preview_cancel: Arc<AtomicBool>,
     device_manager: Option<Arc<DeviceManager>>,
 }
 
@@ -166,6 +172,9 @@ impl DesignerCanvas {
             ctrl_pressed: Rc::new(RefCell::new(false)),
             polyline_points: polyline_points.clone(),
             preview_toolpaths: preview_toolpaths.clone(),
+            preview_generating: Rc::new(std::cell::Cell::new(false)),
+            preview_pending: Rc::new(std::cell::Cell::new(false)),
+            preview_cancel: Arc::new(AtomicBool::new(false)),
             device_manager: device_manager.clone(),
         });
 
@@ -210,14 +219,35 @@ impl DesignerCanvas {
         });
         widget.add_controller(motion_ctrl);
 
-        // Mouse wheel zoom
-        let scroll_ctrl = gtk4::EventControllerScroll::new(gtk4::EventControllerScrollFlags::VERTICAL);
+        // Scroll to pan (Ctrl+Scroll to zoom) — matches Visualizer
+        let scroll_ctrl = gtk4::EventControllerScroll::new(gtk4::EventControllerScrollFlags::BOTH_AXES);
         let canvas_scroll = canvas.clone();
-        scroll_ctrl.connect_scroll(move |_ctrl, _dx, dy| {
-            if dy > 0.0 {
-                canvas_scroll.zoom_out();
-            } else if dy < 0.0 {
-                canvas_scroll.zoom_in();
+        scroll_ctrl.connect_scroll(move |ctrl, dx, dy| {
+            let is_ctrl = ctrl.current_event_state().contains(ModifierType::CONTROL_MASK);
+            if is_ctrl {
+                if dy > 0.0 {
+                    canvas_scroll.zoom_out();
+                } else if dy < 0.0 {
+                    canvas_scroll.zoom_in();
+                }
+            } else {
+                let pan_step = 20.0;
+                let mut state = canvas_scroll.state.borrow_mut();
+                let pan_x = state.canvas.pan_x();
+                let pan_y = state.canvas.pan_y();
+                state.canvas.set_pan(pan_x - dx * pan_step, pan_y + dy * pan_step);
+                let pan_x = state.canvas.pan_x();
+                let pan_y = state.canvas.pan_y();
+                drop(state);
+
+                if let Some(adj) = canvas_scroll.hadjustment.borrow().as_ref() {
+                    adj.set_value(-pan_x);
+                }
+                if let Some(adj) = canvas_scroll.vadjustment.borrow().as_ref() {
+                    adj.set_value(pan_y);
+                }
+
+                canvas_scroll.widget.queue_draw();
             }
             gtk4::glib::Propagation::Stop
         });
@@ -406,6 +436,24 @@ impl DesignerCanvas {
         let current_zoom = state.canvas.zoom();
         state.canvas.set_zoom(current_zoom / 1.2);
         drop(state);
+        self.widget.queue_draw();
+    }
+
+    pub fn reset_view(&self) {
+        let (pan_x, pan_y) = {
+            let mut state = self.state.borrow_mut();
+            state.canvas.set_zoom(1.0);
+            state.canvas.set_pan(0.0, 0.0);
+            (state.canvas.pan_x(), state.canvas.pan_y())
+        };
+
+        if let Some(adj) = self.hadjustment.borrow().as_ref() {
+            adj.set_value(-pan_x);
+        }
+        if let Some(adj) = self.vadjustment.borrow().as_ref() {
+            adj.set_value(pan_y);
+        }
+
         self.widget.queue_draw();
     }
 
@@ -622,6 +670,25 @@ impl DesignerCanvas {
         menu.popup();
     }
 
+    fn snap_canvas_point(&self, x: f64, y: f64) -> (f64, f64) {
+        let state = self.state.borrow();
+        if !state.snap_enabled {
+            return (x, y);
+        }
+        let spacing = state.grid_spacing_mm;
+        if spacing <= 0.0 {
+            return (x, y);
+        }
+        let threshold = state.snap_threshold_mm.max(0.0);
+
+        let sx = (x / spacing).round() * spacing;
+        let sy = (y / spacing).round() * spacing;
+
+        let out_x = if (sx - x).abs() <= threshold { sx } else { x };
+        let out_y = if (sy - y).abs() <= threshold { sy } else { y };
+        (out_x, out_y)
+    }
+
     fn handle_click(&self, x: f64, y: f64, ctrl_pressed_arg: bool, n_press: i32) {
         // Combine gesture modifier state with tracked keyboard state for reliability
         let ctrl_pressed = ctrl_pressed_arg || *self.ctrl_pressed.borrow();
@@ -649,6 +716,7 @@ impl DesignerCanvas {
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
+        let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
         
         match tool {
             DesignerTool::Select => {
@@ -754,6 +822,7 @@ impl DesignerCanvas {
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
+        let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
         
         if tool == DesignerTool::Select {
              let mut state = self.state.borrow_mut();
@@ -818,6 +887,7 @@ impl DesignerCanvas {
         let y_flipped = height - y;
         let canvas_x = (x - pan_x) / zoom;
         let canvas_y = (y_flipped - pan_y) / zoom;
+        let (canvas_x, canvas_y) = self.snap_canvas_point(canvas_x, canvas_y);
         
         match tool {
             DesignerTool::Select => {
@@ -920,6 +990,7 @@ impl DesignerCanvas {
             }
 
             if tool != DesignerTool::Pan {
+                (current_x, current_y) = self.snap_canvas_point(current_x, current_y);
                 *self.creation_current.borrow_mut() = Some((current_x, current_y));
             }
             
@@ -1659,95 +1730,165 @@ impl DesignerCanvas {
     }
 
     pub fn generate_preview_toolpaths(&self) {
-        let mut state = self.state.borrow_mut();
-        let mut toolpaths = Vec::new();
-        
-        // Copy settings to avoid borrow issues
-        let feed_rate = state.tool_settings.feed_rate;
-        let spindle_speed = state.tool_settings.spindle_speed;
-        let tool_diameter = state.tool_settings.tool_diameter;
-        let cut_depth = state.tool_settings.cut_depth;
-        
-        // Update toolpath generator settings from state
-        state.toolpath_generator.set_feed_rate(feed_rate);
-        state.toolpath_generator.set_spindle_speed(spindle_speed);
-        state.toolpath_generator.set_tool_diameter(tool_diameter);
-        state.toolpath_generator.set_cut_depth(cut_depth);
-        state.toolpath_generator.set_step_in(tool_diameter * 0.4); // Default stepover
-        
-        let shapes: Vec<_> = state.canvas.shapes().cloned().collect();
-        
-        for shape in shapes {
-            // Set strategy for this shape
-            state.toolpath_generator.set_pocket_strategy(shape.pocket_strategy);
-            state.toolpath_generator.set_start_depth(shape.start_depth);
-            state.toolpath_generator.set_cut_depth(shape.pocket_depth);
-
-            let shape_toolpaths = match &shape.shape {
-                Shape::Rectangle(rect) => {
-                    if shape.operation_type == OperationType::Pocket {
-                        state.toolpath_generator.generate_rectangle_pocket(
-                            rect,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
-                        )
-                    } else {
-                        state.toolpath_generator.generate_rectangle_contour(rect, shape.step_down as f64)
-                    }
-                }
-                Shape::Circle(circle) => {
-                    if shape.operation_type == OperationType::Pocket {
-                        state.toolpath_generator.generate_circle_pocket(
-                            circle,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
-                        )
-                    } else {
-                        state.toolpath_generator.generate_circle_contour(circle, shape.step_down as f64)
-                    }
-                }
-                Shape::Line(line) => {
-                    state.toolpath_generator.generate_line_contour(line, shape.step_down as f64)
-                }
-                Shape::Ellipse(ellipse) => {
-                    let (x1, y1, x2, y2) = ellipse.bounding_box();
-                    let cx = (x1 + x2) / 2.0;
-                    let cy = (y1 + y2) / 2.0;
-                    let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
-                    let circle = Circle::new(Point::new(cx, cy), radius);
-                    state.toolpath_generator.generate_circle_contour(&circle, shape.step_down as f64)
-                }
-                Shape::Path(path_shape) => {
-                    if shape.operation_type == OperationType::Pocket {
-                        state.toolpath_generator.generate_path_pocket(
-                            path_shape,
-                            shape.pocket_depth,
-                            shape.step_down as f64,
-                            shape.step_in as f64,
-                        )
-                    } else {
-                        state.toolpath_generator.generate_path_contour(path_shape, shape.step_down as f64)
-                    }
-                }
-                Shape::Text(text) => {
-                    state.toolpath_generator.generate_text_toolpath(text, shape.step_down as f64)
-                }
-            };
-            toolpaths.extend(shape_toolpaths);
+        if self.preview_generating.get() {
+            self.preview_pending.set(true);
+            self.preview_cancel.store(true, Ordering::SeqCst);
+            return;
         }
-        
-        drop(state);
-        *self.preview_toolpaths.borrow_mut() = toolpaths;
-        self.widget.queue_draw();
+
+        self.preview_generating.set(true);
+        self.preview_cancel.store(false, Ordering::SeqCst);
+
+        let (shapes, feed_rate, spindle_speed, tool_diameter, cut_depth) = {
+            let state = self.state.borrow();
+            (
+                state.canvas.shapes().cloned().collect::<Vec<_>>(),
+                state.tool_settings.feed_rate,
+                state.tool_settings.spindle_speed,
+                state.tool_settings.tool_diameter,
+                state.tool_settings.cut_depth,
+            )
+        };
+
+        let cancel = self.preview_cancel.clone();
+        let result_arc: Arc<std::sync::Mutex<Option<Vec<Toolpath>>>> = Arc::new(std::sync::Mutex::new(None));
+        let result_arc_thread = result_arc.clone();
+
+        std::thread::spawn(move || {
+            use gcodekit5_designer::toolpath::ToolpathGenerator;
+            let mut gen = ToolpathGenerator::new();
+            gen.set_feed_rate(feed_rate);
+            gen.set_spindle_speed(spindle_speed);
+            gen.set_tool_diameter(tool_diameter);
+            gen.set_cut_depth(cut_depth);
+            gen.set_step_in(tool_diameter * 0.4);
+
+            let mut toolpaths = Vec::new();
+            for shape in shapes {
+                if cancel.load(Ordering::SeqCst) {
+                    return;
+                }
+
+                gen.set_pocket_strategy(shape.pocket_strategy);
+                gen.set_start_depth(shape.start_depth);
+                gen.set_cut_depth(shape.pocket_depth);
+
+                let shape_toolpaths = match &shape.shape {
+                    Shape::Rectangle(rect) => {
+                        if shape.operation_type == OperationType::Pocket {
+                            gen.generate_rectangle_pocket(
+                                rect,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            )
+                        } else {
+                            gen.generate_rectangle_contour(rect, shape.step_down as f64)
+                        }
+                    }
+                    Shape::Circle(circle) => {
+                        if shape.operation_type == OperationType::Pocket {
+                            gen.generate_circle_pocket(
+                                circle,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            )
+                        } else {
+                            gen.generate_circle_contour(circle, shape.step_down as f64)
+                        }
+                    }
+                    Shape::Line(line) => gen.generate_line_contour(line, shape.step_down as f64),
+                    Shape::Ellipse(ellipse) => {
+                        let (x1, y1, x2, y2) = ellipse.bounding_box();
+                        let cx = (x1 + x2) / 2.0;
+                        let cy = (y1 + y2) / 2.0;
+                        let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
+                        let circle = Circle::new(Point::new(cx, cy), radius);
+                        gen.generate_circle_contour(&circle, shape.step_down as f64)
+                    }
+                    Shape::Path(path_shape) => {
+                        if shape.operation_type == OperationType::Pocket {
+                            gen.generate_path_pocket(
+                                path_shape,
+                                shape.pocket_depth,
+                                shape.step_down as f64,
+                                shape.step_in as f64,
+                            )
+                        } else {
+                            gen.generate_path_contour(path_shape, shape.step_down as f64)
+                        }
+                    }
+                    Shape::Text(text) => gen.generate_text_toolpath(text, shape.step_down as f64),
+                };
+                toolpaths.extend(shape_toolpaths);
+            }
+
+            *result_arc_thread.lock().unwrap() = Some(toolpaths);
+        });
+
+        // Poll for completion (non-blocking)
+        let poll_count = Rc::new(RefCell::new(0u32));
+        let poll_count_clone = poll_count.clone();
+        let result_arc_poll = result_arc.clone();
+        let canvas = self.widget.clone();
+        let out = self.preview_toolpaths.clone();
+        let generating = self.preview_generating.clone();
+        let pending = self.preview_pending.clone();
+        let cancel_poll = self.preview_cancel.clone();
+        let self_ref = self.clone();
+
+        gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+            *poll_count_clone.borrow_mut() += 1;
+
+            if cancel_poll.load(Ordering::SeqCst) {
+                generating.set(false);
+                if pending.replace(false) {
+                    self_ref.generate_preview_toolpaths();
+                }
+                return gtk4::glib::ControlFlow::Break;
+            }
+
+            if *poll_count_clone.borrow() > 400 {
+                generating.set(false);
+                return gtk4::glib::ControlFlow::Break;
+            }
+
+            if let Ok(mut guard) = result_arc_poll.try_lock() {
+                if let Some(tp) = guard.take() {
+                    if !cancel_poll.load(Ordering::SeqCst) {
+                        *out.borrow_mut() = tp;
+                        canvas.queue_draw();
+                    }
+
+                    generating.set(false);
+                    if pending.replace(false) {
+                        self_ref.generate_preview_toolpaths();
+                    }
+                    return gtk4::glib::ControlFlow::Break;
+                }
+            }
+
+            gtk4::glib::ControlFlow::Continue
+        });
     }
 
     fn draw(cr: &gtk4::cairo::Context, state: &DesignerState, width: f64, height: f64, mouse_pos: (f64, f64), preview_start: Option<(f64, f64)>, preview_current: Option<(f64, f64)>, polyline_points: &[Point], toolpaths: &[Toolpath], device_bounds: (f64, f64, f64, f64), style_context: &gtk4::StyleContext) {
         // Background handled by CSS
         
         let fg_color = style_context.color();
-        let accent_color = style_context.lookup_color("accent_color").unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.5, 1.0, 1.0));
+        let accent_color = style_context
+            .lookup_color("accent_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.5, 1.0, 1.0));
+        let success_color = style_context
+            .lookup_color("success_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.8, 0.0, 1.0));
+        let warning_color = style_context
+            .lookup_color("warning_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(1.0, 1.0, 0.0, 1.0));
+        let error_color = style_context
+            .lookup_color("error_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(1.0, 0.0, 0.0, 1.0));
 
         // Setup coordinate system
         // Designer uses Y-up (Cartesian), Cairo uses Y-down
@@ -1769,7 +1910,7 @@ impl DesignerCanvas {
 
         // Draw Grid
         if state.show_grid {
-            Self::draw_grid(cr, width, height, &fg_color);
+            Self::draw_grid(cr, width, height, state.grid_spacing_mm.max(0.1), &fg_color);
         }
         
         // Draw Device Bounds
@@ -1796,21 +1937,36 @@ impl DesignerCanvas {
                 for segment in &toolpath.segments {
                     match segment.segment_type {
                         ToolpathSegmentType::RapidMove => {
-                            cr.set_source_rgba(1.0, 0.0, 0.0, 0.5); // Red for rapid
+                            cr.set_source_rgba(
+                                warning_color.red() as f64,
+                                warning_color.green() as f64,
+                                warning_color.blue() as f64,
+                                0.5,
+                            );
                             cr.set_dash(&[2.0 / zoom, 2.0 / zoom], 0.0);
                             cr.move_to(segment.start.x, segment.start.y);
                             cr.line_to(segment.end.x, segment.end.y);
                             cr.stroke().unwrap();
                         }
                         ToolpathSegmentType::LinearMove => {
-                            cr.set_source_rgba(0.0, 0.8, 0.0, 0.7); // Green for cut
+                            cr.set_source_rgba(
+                                success_color.red() as f64,
+                                success_color.green() as f64,
+                                success_color.blue() as f64,
+                                0.7,
+                            );
                             cr.set_dash(&[], 0.0);
                             cr.move_to(segment.start.x, segment.start.y);
                             cr.line_to(segment.end.x, segment.end.y);
                             cr.stroke().unwrap();
                         }
                         ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
-                            cr.set_source_rgba(0.0, 0.8, 0.0, 0.7); // Green for cut
+                            cr.set_source_rgba(
+                                success_color.red() as f64,
+                                success_color.green() as f64,
+                                success_color.blue() as f64,
+                                0.7,
+                            );
                             cr.set_dash(&[], 0.0);
                             
                             if let Some(center) = segment.center {
@@ -1843,7 +1999,12 @@ impl DesignerCanvas {
         // Draw polyline in progress
         if !polyline_points.is_empty() {
             cr.save().unwrap();
-            cr.set_source_rgb(0.0, 0.0, 1.0); // Blue for creation
+            cr.set_source_rgba(
+                accent_color.red() as f64,
+                accent_color.green() as f64,
+                accent_color.blue() as f64,
+                1.0,
+            );
             cr.set_line_width(2.0 / zoom);
             
             // Draw existing segments
@@ -1873,10 +2034,20 @@ impl DesignerCanvas {
             cr.save().unwrap();
             
             if obj.selected {
-                cr.set_source_rgb(1.0, 0.0, 0.0); // Red for selected
+                cr.set_source_rgba(
+                    error_color.red() as f64,
+                    error_color.green() as f64,
+                    error_color.blue() as f64,
+                    1.0,
+                );
                 cr.set_line_width(3.0 / zoom);
             } else if obj.group_id.is_some() {
-                cr.set_source_rgb(0.0, 0.5, 0.0); // Green for grouped
+                cr.set_source_rgba(
+                    success_color.red() as f64,
+                    success_color.green() as f64,
+                    success_color.blue() as f64,
+                    1.0,
+                );
                 cr.set_line_width(2.0 / zoom);
             } else {
                 cr.set_source_rgba(fg_color.red() as f64, fg_color.green() as f64, fg_color.blue() as f64, fg_color.alpha() as f64);
@@ -1995,7 +2166,12 @@ impl DesignerCanvas {
             cr.save().unwrap();
             
             // Draw dashed preview outline
-            cr.set_source_rgba(0.5, 0.7, 1.0, 0.7); // Light blue semi-transparent
+            cr.set_source_rgba(
+                accent_color.red() as f64,
+                accent_color.green() as f64,
+                accent_color.blue() as f64,
+                0.7,
+            );
             cr.set_line_width(2.0 / zoom);
             cr.set_dash(&[5.0 / zoom, 5.0 / zoom], 0.0); // Dashed line
             
@@ -2012,12 +2188,10 @@ impl DesignerCanvas {
         }
     }
 
-    fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64, fg_color: &gtk4::gdk::RGBA) {
+    fn draw_grid(cr: &gtk4::cairo::Context, width: f64, height: f64, grid_spacing: f64, fg_color: &gtk4::gdk::RGBA) {
         cr.save().unwrap();
         
-        // Grid spacing in mm (10mm major grid)
-        let grid_spacing = 10.0;
-        let minor_spacing = grid_spacing / 5.0; // 2mm minor grid
+        let minor_spacing = grid_spacing / 5.0;
         
         // Get current transform to find canvas bounds
         let matrix = cr.matrix();
@@ -2375,29 +2549,65 @@ impl DesignerView {
         floating_box.set_margin_end(20);
 
         let float_zoom_out = gtk4::Button::builder()
-            .label("-")
-            .tooltip_text("Zoom Out")
+            .icon_name("zoom-out-symbolic")
+            .tooltip_text(t!("Zoom Out"))
             .build();
+        float_zoom_out.update_property(&[gtk4::accessible::Property::Label(&t!("Zoom Out"))]);
+
         let float_fit = gtk4::Button::builder()
-            .label("Fit")
-            .tooltip_text("Fit to View")
+            .icon_name("zoom-fit-best-symbolic")
+            .tooltip_text(t!("Fit to View"))
             .build();
+        float_fit.update_property(&[gtk4::accessible::Property::Label(&t!("Fit to View"))]);
+
+        let float_reset = gtk4::Button::builder()
+            .icon_name("view-restore-symbolic")
+            .tooltip_text(t!("Reset View"))
+            .build();
+        float_reset.update_property(&[gtk4::accessible::Property::Label(&t!("Reset View"))]);
+
         let float_fit_device = gtk4::Button::builder()
             .icon_name("preferences-desktop-display-symbolic")
-            .tooltip_text("Fit to Device Working Area")
+            .tooltip_text(t!("Fit to Device Working Area"))
             .build();
+        float_fit_device
+            .update_property(&[gtk4::accessible::Property::Label(&t!("Fit to Device Working Area"))]);
+
+        let scrollbars_btn = gtk4::Button::builder()
+            .icon_name("view-list-symbolic")
+            .tooltip_text(t!("Toggle Scrollbars"))
+            .build();
+        scrollbars_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Toggle Scrollbars"))]);
+
         let float_zoom_in = gtk4::Button::builder()
-            .label("+")
-            .tooltip_text("Zoom In")
+            .icon_name("zoom-in-symbolic")
+            .tooltip_text(t!("Zoom In"))
             .build();
+        float_zoom_in.update_property(&[gtk4::accessible::Property::Label(&t!("Zoom In"))]);
 
         floating_box.append(&float_zoom_out);
         floating_box.append(&float_fit);
+        floating_box.append(&float_reset);
         if device_manager.is_some() {
             floating_box.append(&float_fit_device);
         }
+        floating_box.append(&scrollbars_btn);
         floating_box.append(&float_zoom_in);
 
+        // Empty state (shown when no shapes)
+        let empty_box = Box::new(Orientation::Vertical, 8);
+        empty_box.add_css_class("visualizer-osd");
+        empty_box.set_halign(gtk4::Align::Center);
+        empty_box.set_valign(gtk4::Align::Center);
+        empty_box.set_margin_start(20);
+        empty_box.set_margin_end(20);
+        empty_box.set_margin_top(20);
+        empty_box.set_margin_bottom(20);
+        empty_box.append(&Label::new(Some(&t!("No shapes yet"))));
+        empty_box.append(&Label::new(Some(&t!("Use the toolbox on the left to start drawing."))));
+        empty_box.set_visible(true);
+
+        overlay.add_overlay(&empty_box);
         overlay.add_overlay(&floating_box);
 
         // Status Panel (Bottom Left)
@@ -2408,10 +2618,14 @@ impl DesignerView {
         status_box.set_margin_bottom(20);
         status_box.set_margin_start(20);
 
-        let status_label_osd = Label::builder()
-            .label("100%   X: 0.0   Y: 0.0   10.0mm")
-            .build();
+        let status_label_osd = Label::builder().label(" ").build();
+        status_label_osd.set_hexpand(true);
+
+        let units_badge = Label::new(Some(""));
+        units_badge.add_css_class("osd-units-badge");
+
         status_box.append(&status_label_osd);
+        status_box.append(&units_badge);
 
         overlay.add_overlay(&status_box);
         
@@ -2426,6 +2640,10 @@ impl DesignerView {
         
         let h_scrollbar = Scrollbar::new(Orientation::Horizontal, Some(&h_adjustment));
         let v_scrollbar = Scrollbar::new(Orientation::Vertical, Some(&v_adjustment));
+
+        // Default hidden (toggleable) to maximize canvas space
+        h_scrollbar.set_visible(false);
+        v_scrollbar.set_visible(false);
         
         canvas_grid.attach(&v_scrollbar, 1, 0, 1, 1);
         canvas_grid.attach(&h_scrollbar, 0, 1, 1, 1);
@@ -2474,10 +2692,27 @@ impl DesignerView {
             canvas_zoom.zoom_fit();
         });
 
+        let canvas_reset = canvas.clone();
+        float_reset.connect_clicked(move |_| {
+            canvas_reset.reset_view();
+        });
+
         let canvas_fitdev = canvas.clone();
         float_fit_device.connect_clicked(move |_| {
             canvas_fitdev.fit_to_device_area();
             canvas_fitdev.widget.queue_draw();
+        });
+
+        // Scrollbars toggle
+        let show_scrollbars = Rc::new(std::cell::Cell::new(false));
+        let show_scrollbars_btn = show_scrollbars.clone();
+        let hsb = h_scrollbar.clone();
+        let vsb = v_scrollbar.clone();
+        scrollbars_btn.connect_clicked(move |_| {
+            let next = !show_scrollbars_btn.get();
+            show_scrollbars_btn.set(next);
+            hsb.set_visible(next);
+            vsb.set_visible(next);
         });
 
         // Auto-fit when designer is mapped (visible) — schedule after layout like Visualizer
@@ -2520,6 +2755,13 @@ impl DesignerView {
             canvas_redraw.widget.queue_draw();
         });
         
+        let inspector_label = Label::builder()
+            .label(t!("Inspector"))
+            .css_classes(vec!["heading"])
+            .halign(gtk4::Align::Start)
+            .build();
+        right_sidebar.append(&inspector_label);
+
         right_sidebar.append(&properties.widget);
         
         // Create layers panel below properties
@@ -2527,6 +2769,36 @@ impl DesignerView {
         layers.widget.set_vexpand(false);
         layers.widget.set_valign(gtk4::Align::Fill);
         right_sidebar.append(&layers.widget);
+
+        // Legend (collapsible)
+        let legend_box = Box::new(Orientation::Vertical, 6);
+        legend_box.set_margin_start(6);
+        legend_box.set_margin_end(6);
+        legend_box.set_margin_top(6);
+        legend_box.set_margin_bottom(6);
+
+        let mk_row = |css: &str, text: &str| {
+            let row = Box::new(Orientation::Horizontal, 6);
+            let swatch = Box::new(Orientation::Horizontal, 0);
+            swatch.set_size_request(12, 12);
+            swatch.add_css_class("legend-swatch");
+            swatch.add_css_class(css);
+            row.append(&swatch);
+            row.append(&Label::new(Some(text)));
+            row
+        };
+
+        legend_box.append(&mk_row("legend-selection", &t!("Selection")));
+        legend_box.append(&mk_row("legend-toolpath", &t!("Toolpath")));
+        legend_box.append(&mk_row("legend-grid", &t!("Grid")));
+        legend_box.append(&mk_row("legend-bounds", &t!("Device bounds")));
+
+        let legend_expander = gtk4::Expander::builder()
+            .label(t!("Legend"))
+            .expanded(false)
+            .child(&legend_box)
+            .build();
+        right_sidebar.append(&legend_expander);
         
         // Give canvas references to panels
         canvas.set_properties_panel(properties.clone());
@@ -2544,13 +2816,13 @@ impl DesignerView {
         status_bar.set_margin_bottom(5);
         status_bar.add_css_class("statusbar");
         
-        let status_label = Label::new(Some("Ready"));
+        let status_label = Label::new(Some(&t!("Ready")));
         status_label.set_halign(gtk4::Align::Start);
         status_label.set_hexpand(true);
         status_bar.append(&status_label);
         
         // Grid toggle
-        let grid_toggle = gtk4::CheckButton::with_label("Show Grid");
+        let grid_toggle = gtk4::CheckButton::with_label(&t!("Show Grid"));
         grid_toggle.set_active(true);
         let state_grid = state.clone();
         let canvas_grid = canvas.clone();
@@ -2560,8 +2832,77 @@ impl DesignerView {
         });
         status_bar.append(&grid_toggle);
 
+        // Grid spacing
+        let system = settings_controller
+            .persistence
+            .borrow()
+            .config()
+            .ui
+            .measurement_system;
+        let unit_label = gcodekit5_core::units::get_unit_label(system);
+
+        let grid_spacing_combo = gtk4::ComboBoxText::new();
+        grid_spacing_combo.set_tooltip_text(Some(&t!("Grid spacing")));
+
+        let grid_options_mm = [1.0_f64, 5.0, 10.0, 25.0, 50.0];
+        for mm in grid_options_mm {
+            let label = format!(
+                "{} {}",
+                gcodekit5_core::units::format_length(mm as f32, system),
+                unit_label
+            );
+            grid_spacing_combo.append(Some(&mm.to_string()), &label);
+        }
+
+        // Default 10mm
+        grid_spacing_combo.set_active_id(Some("10"));
+        {
+            let state_grid_spacing = state.clone();
+            let canvas_grid_spacing = canvas.clone();
+            grid_spacing_combo.connect_changed(move |cb| {
+                let Some(id) = cb.active_id() else { return; };
+                if let Ok(mm) = id.parse::<f64>() {
+                    state_grid_spacing.borrow_mut().grid_spacing_mm = mm;
+                    canvas_grid_spacing.widget.queue_draw();
+                }
+            });
+        }
+        status_bar.append(&grid_spacing_combo);
+
+        // Snap controls
+        let snap_toggle = gtk4::CheckButton::with_label(&t!("Snap"));
+        snap_toggle.set_tooltip_text(Some(&t!("Snap to grid")));
+        snap_toggle.set_active(state.borrow().snap_enabled);
+        {
+            let state_snap = state.clone();
+            snap_toggle.connect_toggled(move |btn| {
+                state_snap.borrow_mut().snap_enabled = btn.is_active();
+            });
+        }
+        status_bar.append(&snap_toggle);
+
+        let snap_threshold = gtk4::SpinButton::with_range(0.0, 5.0, 0.1);
+        snap_threshold.set_tooltip_text(Some(&t!("Snap threshold")));
+        let snap_display = match system {
+            gcodekit5_core::units::MeasurementSystem::Metric => state.borrow().snap_threshold_mm,
+            gcodekit5_core::units::MeasurementSystem::Imperial => state.borrow().snap_threshold_mm / 25.4,
+        };
+        snap_threshold.set_value(snap_display);
+        {
+            let state_snap = state.clone();
+            snap_threshold.connect_value_changed(move |sp| {
+                let val = sp.value();
+                let mm = match system {
+                    gcodekit5_core::units::MeasurementSystem::Metric => val,
+                    gcodekit5_core::units::MeasurementSystem::Imperial => val * 25.4,
+                };
+                state_snap.borrow_mut().snap_threshold_mm = mm.max(0.0);
+            });
+        }
+        status_bar.append(&snap_threshold);
+
         // Toolpath toggle
-        let toolpath_toggle = gtk4::CheckButton::with_label("Show Toolpaths");
+        let toolpath_toggle = gtk4::CheckButton::with_label(&t!("Show Toolpaths"));
         toolpath_toggle.set_active(false);
         let state_toolpath = state.clone();
         let canvas_toolpath = canvas.clone();
@@ -2575,9 +2916,51 @@ impl DesignerView {
             }
         });
         status_bar.append(&toolpath_toggle);
+
+        // Preview generation progress + cancel
+        let preview_spinner = gtk4::Spinner::new();
+        preview_spinner.set_visible(false);
+
+        let preview_cancel_btn = gtk4::Button::builder()
+            .icon_name("process-stop-symbolic")
+            .tooltip_text(t!("Cancel"))
+            .build();
+        preview_cancel_btn.set_visible(false);
+        preview_cancel_btn
+            .update_property(&[gtk4::accessible::Property::Label(&t!("Cancel"))]);
+
+        {
+            let cancel_flag = canvas.preview_cancel.clone();
+            let generating = canvas.preview_generating.clone();
+            preview_cancel_btn.connect_clicked(move |_| {
+                cancel_flag.store(true, Ordering::SeqCst);
+                generating.set(false);
+            });
+        }
+
+        status_bar.append(&preview_spinner);
+        status_bar.append(&preview_cancel_btn);
+
+        // Keep widgets in sync
+        {
+            let generating = canvas.preview_generating.clone();
+            let spinner = preview_spinner.clone();
+            let cancel_btn = preview_cancel_btn.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                let on = generating.get();
+                spinner.set_visible(on);
+                cancel_btn.set_visible(on);
+                if on {
+                    spinner.start();
+                } else {
+                    spinner.stop();
+                }
+                gtk4::glib::ControlFlow::Continue
+            });
+        }
         
         // Coordinate display
-        let coord_label = Label::new(Some("X: 0.00  Y: 0.00"));
+        let coord_label = Label::new(Some(&format!("{}  {}", t!("X: 0.00"), t!("Y: 0.00"))));
         coord_label.set_halign(gtk4::Align::End);
         coord_label.add_css_class("monospace");
         status_bar.append(&coord_label);
@@ -2596,12 +2979,22 @@ impl DesignerView {
             let x_str = gcodekit5_core::units::format_length(x as f32, system);
             let y_str = gcodekit5_core::units::format_length(y as f32, system);
             
-            coord_label_clone.set_text(&format!("X: {} {}  Y: {} {}", x_str, unit_label, y_str, unit_label));
+            coord_label_clone.set_text(&format!(
+                "{} {} {}  {} {} {}",
+                t!("X:"),
+                x_str,
+                unit_label,
+                t!("Y:"),
+                y_str,
+                unit_label
+            ));
             gtk4::glib::ControlFlow::Continue
         });
 
-        // Update status OSD
+        // Update status OSD + empty state
         let status_osd_clone = status_label_osd.clone();
+        let units_badge_osd = units_badge.clone();
+        let empty_osd = empty_box.clone();
         let canvas_osd = canvas.clone();
         let settings_osd = settings_controller.clone();
         gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
@@ -2609,23 +3002,30 @@ impl DesignerView {
             let zoom = state.canvas.zoom();
             let pan_x = state.canvas.pan_x();
             let pan_y = state.canvas.pan_y();
-            
+            let has_shapes = !state.canvas.shape_store.is_empty();
+            drop(state);
+
+            let width = canvas_osd.widget.width() as f64;
+            let height = canvas_osd.widget.height() as f64;
+
+            // Center-of-viewport in canvas coordinates
+            let center_x = ((width / 2.0) - pan_x) / zoom;
+            let center_y = ((height / 2.0) - pan_y) / zoom;
+
+            let (cursor_x, cursor_y) = *canvas_osd.mouse_pos.borrow();
+
             let system = settings_osd.persistence.borrow().config().ui.measurement_system;
-            let unit_label = gcodekit5_core::units::get_unit_label(system);
-            let pan_x_str = gcodekit5_core::units::format_length(pan_x as f32, system);
-            let pan_y_str = gcodekit5_core::units::format_length(pan_y as f32, system);
-            
-            // Grid spacing is 10.0mm
-            let grid_str = gcodekit5_core::units::format_length(10.0, system);
-            
-            status_osd_clone.set_text(&format!(
-                "{:.0}%   X: {}   Y: {}   {} {}",
-                zoom * 100.0,
-                pan_x_str,
-                pan_y_str,
-                grid_str,
-                unit_label
+            status_osd_clone.set_text(&format_zoom_center_cursor(
+                zoom,
+                center_x as f32,
+                center_y as f32,
+                cursor_x as f32,
+                cursor_y as f32,
+                system,
             ));
+            units_badge_osd.set_text(gcodekit5_core::units::get_unit_label(system));
+            empty_osd.set_visible(!has_shapes);
+
             gtk4::glib::ControlFlow::Continue
         });
         
@@ -2658,7 +3058,7 @@ impl DesignerView {
             let gcode = state.generate_gcode();
             drop(state);
             
-            status_label_gen.set_text("G-Code generated");
+            status_label_gen.set_text(&t!("G-Code generated"));
             
             if let Some(callback) = on_gen.borrow().as_ref() {
                 callback(gcode);
@@ -2919,11 +3319,11 @@ impl DesignerView {
                                 
                                 layers.refresh(&canvas.state);
                                 canvas.widget.queue_draw();
-                                status_label.set_text(&format!("Loaded: {}", path.display()));
+                                status_label.set_text(&format!("{} {}", t!("Loaded:"), path.display()));
                             }
                             Err(e) => {
                                 error!("Error loading file: {}", e);
-                                status_label.set_text(&format!("Error loading file: {}", e));
+                                status_label.set_text(&format!("{} {}", t!("Error loading file:"), e));
                             }
                         }
                     }
@@ -3017,11 +3417,11 @@ impl DesignerView {
                                 
                                 layers.refresh(&canvas.state);
                                 canvas.widget.queue_draw();
-                                status_label.set_text(&format!("Imported: {}", path.display()));
+                                status_label.set_text(&format!("{} {}", t!("Imported:"), path.display()));
                             }
                             Err(e) => {
                                 error!("Error importing file: {}", e);
-                                status_label.set_text(&format!("Error importing file: {}", e));
+                                status_label.set_text(&format!("{} {}", t!("Error importing file:"), e));
                             }
                         }
                     }
@@ -3102,11 +3502,11 @@ impl DesignerView {
                         match design.save_to_file(&path) {
                             Ok(_) => {
                                 *current_file.borrow_mut() = Some(path.clone());
-                                status_label.set_text(&format!("Saved: {}", path.display()));
+                                status_label.set_text(&format!("{} {}", t!("Saved:"), path.display()));
                             }
                             Err(e) => {
                                 error!("Error saving file: {}", e);
-                                status_label.set_text(&format!("Error saving file: {}", e));
+                                status_label.set_text(&format!("{} {}", t!("Error saving file:"), e));
                             }
                         }
                     }
@@ -3135,11 +3535,11 @@ impl DesignerView {
         
         match design.save_to_file(&path) {
             Ok(_) => {
-                self.set_status(&format!("Saved: {}", path.display()));
+                self.set_status(&format!("{} {}", t!("Saved:"), path.display()));
             }
             Err(e) => {
                 error!("Error saving file: {}", e);
-                self.set_status(&format!("Error saving file: {}", e));
+                self.set_status(&format!("{} {}", t!("Error saving file:"), e));
             }
         }
     }
@@ -3194,11 +3594,11 @@ impl DesignerView {
                         
                         match std::fs::write(&path, gcode) {
                             Ok(_) => {
-                                status_label.set_text(&format!("Exported G-Code: {}", path.display()));
+                                status_label.set_text(&format!("{} {}", t!("Exported G-Code:"), path.display()));
                             }
                             Err(e) => {
                                 error!("Error exporting G-Code: {}", e);
-                                status_label.set_text(&format!("Error exporting G-Code: {}", e));
+                                status_label.set_text(&format!("{} {}", t!("Error exporting G-Code:"), e));
                             }
                         }
                     }
@@ -3246,7 +3646,7 @@ impl DesignerView {
                         
                         let shapes: Vec<_> = state.canvas.shapes().collect();
                         if shapes.is_empty() {
-                            status_label.set_text("Nothing to export");
+                            status_label.set_text(&t!("Nothing to export"));
                             dialog.destroy();
                             return;
                         }
@@ -3334,11 +3734,11 @@ impl DesignerView {
                         
                         match std::fs::write(&path, svg) {
                             Ok(_) => {
-                                status_label.set_text(&format!("Exported SVG: {}", path.display()));
+                                status_label.set_text(&format!("{} {}", t!("Exported SVG:"), path.display()));
                             }
                             Err(e) => {
                                 error!("Error exporting SVG: {}", e);
-                                status_label.set_text(&format!("Error exporting SVG: {}", e));
+                                status_label.set_text(&format!("{} {}", t!("Error exporting SVG:"), e));
                             }
                         }
                     }

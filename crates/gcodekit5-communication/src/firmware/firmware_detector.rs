@@ -68,7 +68,6 @@ impl FirmwareDetector {
     /// # Returns
     /// Parsed firmware detection result
     pub fn parse_grbl_version_info(response: &str) -> Result<FirmwareDetectionResult> {
-
         let mut version_string = String::new();
         let mut build_date = None;
         let mut build_info = None;
@@ -131,7 +130,6 @@ impl FirmwareDetector {
     /// # Returns
     /// Parsed firmware detection result
     pub fn parse_grbl_startup(message: &str) -> Result<FirmwareDetectionResult> {
-
         if !message.contains("Grbl") && !message.contains("grbl") {
             anyhow::bail!("Not a GRBL startup message");
         }
@@ -162,7 +160,6 @@ impl FirmwareDetector {
     /// EXTRUDER_COUNT:1
     /// ```
     pub fn parse_marlin_version_info(response: &str) -> Result<FirmwareDetectionResult> {
-
         let mut version_string = String::new();
 
         for line in response.lines() {
@@ -222,4 +219,3 @@ impl FirmwareDetector {
         anyhow::bail!("Unknown firmware response format")
     }
 }
-

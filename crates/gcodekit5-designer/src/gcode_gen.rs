@@ -45,7 +45,13 @@ impl ToolpathToGcode {
             .map(|s| s.feed_rate)
             .unwrap_or(100.0);
 
-        gcode.push_str(&self.generate_header(spindle_speed, feed_rate, toolpath.tool_diameter, toolpath.depth, toolpath.total_length()));
+        gcode.push_str(&self.generate_header(
+            spindle_speed,
+            feed_rate,
+            toolpath.tool_diameter,
+            toolpath.depth,
+            toolpath.total_length(),
+        ));
         gcode.push_str(&self.generate_body(toolpath, 10));
         gcode.push_str(&self.generate_footer());
 
@@ -53,20 +59,21 @@ impl ToolpathToGcode {
     }
 
     /// Generates the G-code header.
-    pub fn generate_header(&self, spindle_speed: u32, feed_rate: f64, tool_diameter: f64, depth: f64, total_length: f64) -> String {
+    pub fn generate_header(
+        &self,
+        spindle_speed: u32,
+        feed_rate: f64,
+        tool_diameter: f64,
+        depth: f64,
+        total_length: f64,
+    ) -> String {
         let mut gcode = String::new();
         gcode.push_str("; Generated G-code from Designer tool\n");
-        gcode.push_str(&format!(
-            "; Tool diameter: {:.3}mm\n",
-            tool_diameter
-        ));
+        gcode.push_str(&format!("; Tool diameter: {:.3}mm\n", tool_diameter));
         gcode.push_str(&format!("; Cut depth: {:.3}mm\n", depth));
         gcode.push_str(&format!("; Feed rate: {:.0} mm/min\n", feed_rate));
         gcode.push_str(&format!("; Spindle speed: {} RPM\n", spindle_speed));
-        gcode.push_str(&format!(
-            "; Total path length: {:.3}mm\n",
-            total_length
-        ));
+        gcode.push_str(&format!("; Total path length: {:.3}mm\n", total_length));
         gcode.push('\n');
 
         // Setup
@@ -175,9 +182,13 @@ impl ToolpathToGcode {
                     } else {
                         String::new()
                     };
-                    
-                    let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW { "G02" } else { "G03" };
-                    
+
+                    let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW {
+                        "G02"
+                    } else {
+                        "G03"
+                    };
+
                     if let Some(center) = segment.center {
                         let i = center.x - segment.start.x;
                         let j = center.y - segment.start.y;
@@ -217,5 +228,3 @@ impl Default for ToolpathToGcode {
         Self::new(Units::MM, 10.0)
     }
 }
-
-

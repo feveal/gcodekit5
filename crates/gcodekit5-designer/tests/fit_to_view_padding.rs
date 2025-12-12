@@ -26,11 +26,26 @@ fn test_fit_to_view_padding_5pct() {
     let (max_px, max_py) = canvas.world_to_pixel(min_x + w, min_y + h);
 
     // Left edge should be >= pad_x
-    assert!(min_px >= pad_x - 1.0, "left edge {} < pad {}", min_px, pad_x);
+    assert!(
+        min_px >= pad_x - 1.0,
+        "left edge {} < pad {}",
+        min_px,
+        pad_x
+    );
     // Right edge should be <= width - pad_x
-    assert!(max_px <= view_width - pad_x + 1.0, "right edge {} > width-pad {}", max_px, pad_x);
+    assert!(
+        max_px <= view_width - pad_x + 1.0,
+        "right edge {} > width-pad {}",
+        max_px,
+        pad_x
+    );
     // Top edge should be >= pad_y
     assert!(max_py >= pad_y - 1.0, "top edge {} < pad {}", max_py, pad_y);
     // Bottom edge should be <= height - pad_y
-    assert!(min_py <= view_height - pad_y + 1.0, "bottom edge {} > height-pad {}", min_py, pad_y);
+    assert!(
+        min_py <= view_height - pad_y + 1.0,
+        "bottom edge {} > height-pad {}",
+        min_py,
+        pad_y
+    );
 }

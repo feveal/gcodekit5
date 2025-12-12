@@ -11,8 +11,6 @@ fn test_console_output_format() {
 
     let output = console_manager.get_output();
 
-
-
     assert!(!output.is_empty(), "Console output should not be empty");
     assert!(
         output.contains("GCodeKit4"),
@@ -35,8 +33,6 @@ fn test_console_output_with_connection() {
     );
 
     let output = console_manager.get_output();
-
-
 
     assert!(
         output.contains("Connecting"),

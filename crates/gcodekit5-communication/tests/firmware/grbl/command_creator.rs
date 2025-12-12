@@ -1,7 +1,7 @@
 //! Tests for firmware::grbl::command_creator
 
-use gcodekit5_core::data::{CNCPoint, Units};
 use gcodekit5_communication::firmware::grbl::command_creator::*;
+use gcodekit5_core::data::{CNCPoint, Units};
 
 #[test]
 fn test_real_time_command_query_status() {

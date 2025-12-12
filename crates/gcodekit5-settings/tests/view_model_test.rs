@@ -1,4 +1,6 @@
-use gcodekit5_settings::{SettingsDialog, Setting, SettingValue, SettingsCategory, KeyboardShortcut};
+use gcodekit5_settings::{
+    KeyboardShortcut, Setting, SettingValue, SettingsCategory, SettingsDialog,
+};
 
 #[test]
 fn test_keyboard_shortcut() {

@@ -248,4 +248,3 @@ impl std::fmt::Display for FirmwareVersion {
         write!(f, "{}", self.display_string())
     }
 }
-

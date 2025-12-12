@@ -50,15 +50,23 @@ impl VoxelGrid {
         }
     }
 
-    pub fn width(&self) -> usize { self.width }
-    pub fn height(&self) -> usize { self.height }
-    pub fn depth(&self) -> usize { self.depth }
-    pub fn resolution(&self) -> f32 { self.resolution }
-    
+    pub fn width(&self) -> usize {
+        self.width
+    }
+    pub fn height(&self) -> usize {
+        self.height
+    }
+    pub fn depth(&self) -> usize {
+        self.depth
+    }
+    pub fn resolution(&self) -> f32 {
+        self.resolution
+    }
+
     pub fn dimensions(&self) -> (usize, usize, usize) {
         (self.width, self.height, self.depth)
     }
-    
+
     pub fn data(&self) -> &[u8] {
         &self.voxels
     }
@@ -97,8 +105,8 @@ impl VoxelGrid {
                     let dx = x as f32 - center.x / self.resolution;
                     let dy = y as f32 - center.y / self.resolution;
                     let dz = z as f32 - center.z / self.resolution;
-                    
-                    if dx*dx + dy*dy + dz*dz <= r_sq {
+
+                    if dx * dx + dy * dy + dz * dz <= r_sq {
                         self.set_at_position(x, y, z, 0);
                     }
                 }
@@ -109,42 +117,68 @@ impl VoxelGrid {
 
 pub fn generate_surface_mesh(grid: &VoxelGrid) -> Vec<f32> {
     let mut vertices = Vec::new();
-    
+
     // Color for the stock (steel gray)
-    let color = [0.44, 0.50, 0.56, 1.0]; 
+    let color = [0.44, 0.50, 0.56, 1.0];
 
     let mut add_quad = |v1: Vec3, v2: Vec3, v3: Vec3, v4: Vec3, normal: Vec3| {
         // Triangle 1: v1, v2, v3
-        vertices.push(v1.x); vertices.push(v1.y); vertices.push(v1.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v1.x);
+        vertices.push(v1.y);
+        vertices.push(v1.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
 
-        vertices.push(v2.x); vertices.push(v2.y); vertices.push(v2.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v2.x);
+        vertices.push(v2.y);
+        vertices.push(v2.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
 
-        vertices.push(v3.x); vertices.push(v3.y); vertices.push(v3.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v3.x);
+        vertices.push(v3.y);
+        vertices.push(v3.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
 
         // Triangle 2: v1, v3, v4
-        vertices.push(v1.x); vertices.push(v1.y); vertices.push(v1.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v1.x);
+        vertices.push(v1.y);
+        vertices.push(v1.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
 
-        vertices.push(v3.x); vertices.push(v3.y); vertices.push(v3.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v3.x);
+        vertices.push(v3.y);
+        vertices.push(v3.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
 
-        vertices.push(v4.x); vertices.push(v4.y); vertices.push(v4.z);
-        vertices.push(normal.x); vertices.push(normal.y); vertices.push(normal.z);
+        vertices.push(v4.x);
+        vertices.push(v4.y);
+        vertices.push(v4.z);
+        vertices.push(normal.x);
+        vertices.push(normal.y);
+        vertices.push(normal.z);
         vertices.extend_from_slice(&color);
     };
 
     for z in 0..grid.depth {
         for y in 0..grid.height {
             for x in 0..grid.width {
-                if grid.get_at_position(x, y, z) == 0 { continue; }
+                if grid.get_at_position(x, y, z) == 0 {
+                    continue;
+                }
 
                 let px = x as f32 * grid.resolution;
                 let py = y as f32 * grid.resolution;
@@ -152,22 +186,58 @@ pub fn generate_surface_mesh(grid: &VoxelGrid) -> Vec<f32> {
                 let s = grid.resolution;
 
                 if x == 0 || grid.get_at_position(x - 1, y, z) == 0 {
-                    add_quad(Vec3::new(px, py, pz), Vec3::new(px, py, pz + s), Vec3::new(px, py + s, pz + s), Vec3::new(px, py + s, pz), Vec3::new(-1.0, 0.0, 0.0));
+                    add_quad(
+                        Vec3::new(px, py, pz),
+                        Vec3::new(px, py, pz + s),
+                        Vec3::new(px, py + s, pz + s),
+                        Vec3::new(px, py + s, pz),
+                        Vec3::new(-1.0, 0.0, 0.0),
+                    );
                 }
                 if x == grid.width - 1 || grid.get_at_position(x + 1, y, z) == 0 {
-                    add_quad(Vec3::new(px + s, py, pz + s), Vec3::new(px + s, py, pz), Vec3::new(px + s, py + s, pz), Vec3::new(px + s, py + s, pz + s), Vec3::new(1.0, 0.0, 0.0));
+                    add_quad(
+                        Vec3::new(px + s, py, pz + s),
+                        Vec3::new(px + s, py, pz),
+                        Vec3::new(px + s, py + s, pz),
+                        Vec3::new(px + s, py + s, pz + s),
+                        Vec3::new(1.0, 0.0, 0.0),
+                    );
                 }
                 if y == 0 || grid.get_at_position(x, y - 1, z) == 0 {
-                    add_quad(Vec3::new(px, py, pz), Vec3::new(px + s, py, pz), Vec3::new(px + s, py, pz + s), Vec3::new(px, py, pz + s), Vec3::new(0.0, -1.0, 0.0));
+                    add_quad(
+                        Vec3::new(px, py, pz),
+                        Vec3::new(px + s, py, pz),
+                        Vec3::new(px + s, py, pz + s),
+                        Vec3::new(px, py, pz + s),
+                        Vec3::new(0.0, -1.0, 0.0),
+                    );
                 }
                 if y == grid.height - 1 || grid.get_at_position(x, y + 1, z) == 0 {
-                    add_quad(Vec3::new(px, py + s, pz + s), Vec3::new(px + s, py + s, pz + s), Vec3::new(px + s, py + s, pz), Vec3::new(px, py + s, pz), Vec3::new(0.0, 1.0, 0.0));
+                    add_quad(
+                        Vec3::new(px, py + s, pz + s),
+                        Vec3::new(px + s, py + s, pz + s),
+                        Vec3::new(px + s, py + s, pz),
+                        Vec3::new(px, py + s, pz),
+                        Vec3::new(0.0, 1.0, 0.0),
+                    );
                 }
                 if z == 0 || grid.get_at_position(x, y, z - 1) == 0 {
-                    add_quad(Vec3::new(px + s, py, pz), Vec3::new(px, py, pz), Vec3::new(px, py + s, pz), Vec3::new(px + s, py + s, pz), Vec3::new(0.0, 0.0, -1.0));
+                    add_quad(
+                        Vec3::new(px + s, py, pz),
+                        Vec3::new(px, py, pz),
+                        Vec3::new(px, py + s, pz),
+                        Vec3::new(px + s, py + s, pz),
+                        Vec3::new(0.0, 0.0, -1.0),
+                    );
                 }
                 if z == grid.depth - 1 || grid.get_at_position(x, y, z + 1) == 0 {
-                    add_quad(Vec3::new(px, py, pz + s), Vec3::new(px + s, py, pz + s), Vec3::new(px + s, py + s, pz + s), Vec3::new(px, py + s, pz + s), Vec3::new(0.0, 0.0, 1.0));
+                    add_quad(
+                        Vec3::new(px, py, pz + s),
+                        Vec3::new(px + s, py, pz + s),
+                        Vec3::new(px + s, py + s, pz + s),
+                        Vec3::new(px, py + s, pz + s),
+                        Vec3::new(0.0, 0.0, 1.0),
+                    );
                 }
             }
         }
@@ -194,33 +264,33 @@ impl StockSimulator3D {
 
     pub fn simulate_toolpath(&mut self, toolpath: &[ToolpathSegment]) {
         for segment in toolpath {
-             match segment.segment_type {
-                 ToolpathSegmentType::LinearMove => {
-                     let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
-                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
-                     self.remove_linear(start, end);
-                 },
-                 ToolpathSegmentType::ArcCW => {
-                     let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
-                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
-                     if let Some(center_tuple) = segment.center {
-                         let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
-                         self.remove_arc(start, end, center, true);
-                     }
-                 },
-                 ToolpathSegmentType::ArcCCW => {
-                     let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
-                     let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
-                     if let Some(center_tuple) = segment.center {
-                         let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
-                         self.remove_arc(start, end, center, false);
-                     }
-                 },
-                 _ => {}
-             }
+            match segment.segment_type {
+                ToolpathSegmentType::LinearMove => {
+                    let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
+                    let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
+                    self.remove_linear(start, end);
+                }
+                ToolpathSegmentType::ArcCW => {
+                    let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
+                    let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
+                    if let Some(center_tuple) = segment.center {
+                        let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
+                        self.remove_arc(start, end, center, true);
+                    }
+                }
+                ToolpathSegmentType::ArcCCW => {
+                    let start = Vec3::new(segment.start.0, segment.start.1, segment.start.2);
+                    let end = Vec3::new(segment.end.0, segment.end.1, segment.end.2);
+                    if let Some(center_tuple) = segment.center {
+                        let center = Vec3::new(center_tuple.0, center_tuple.1, start.z);
+                        self.remove_arc(start, end, center, false);
+                    }
+                }
+                _ => {}
+            }
         }
     }
-    
+
     fn remove_linear(&mut self, start: Vec3, end: Vec3) {
         let dist = start.distance(end);
         let steps = (dist / (self.grid.resolution * 0.5)).ceil() as usize;
@@ -236,9 +306,17 @@ impl StockSimulator3D {
         let start_angle = (start.y - center.y).atan2(start.x - center.x);
         let end_angle = (end.y - center.y).atan2(end.x - center.x);
         let angle_span = if clockwise {
-            if end_angle > start_angle { end_angle - start_angle - 2.0 * std::f32::consts::PI } else { end_angle - start_angle }
+            if end_angle > start_angle {
+                end_angle - start_angle - 2.0 * std::f32::consts::PI
+            } else {
+                end_angle - start_angle
+            }
         } else {
-            if end_angle < start_angle { end_angle - start_angle + 2.0 * std::f32::consts::PI } else { end_angle - start_angle }
+            if end_angle < start_angle {
+                end_angle - start_angle + 2.0 * std::f32::consts::PI
+            } else {
+                end_angle - start_angle
+            }
         };
         let arc_length = radius * angle_span.abs();
         let resolution = self.grid.resolution;
@@ -247,7 +325,11 @@ impl StockSimulator3D {
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
             let angle = start_angle + angle_span * t;
-            let point = Vec3::new(center.x + radius * angle.cos(), center.y + radius * angle.sin(), start.z + (end.z - start.z) * t);
+            let point = Vec3::new(
+                center.x + radius * angle.cos(),
+                center.y + radius * angle.sin(),
+                start.z + (end.z - start.z) * t,
+            );
             self.grid.remove_sphere(point, self.tool_radius);
         }
     }

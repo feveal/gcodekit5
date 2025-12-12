@@ -332,8 +332,10 @@ impl Default for SpatialIndex {
     fn default() -> Self {
         // Use a much larger range to cover typical CNC workspaces
         // +/- 1,000,000 mm should be sufficient for almost any machine
-        Self::new(Bounds::new(-1000000.0, -1000000.0, 1000000.0, 1000000.0), 8, 16)
+        Self::new(
+            Bounds::new(-1000000.0, -1000000.0, 1000000.0, 1000000.0),
+            8,
+            16,
+        )
     }
 }
-
-

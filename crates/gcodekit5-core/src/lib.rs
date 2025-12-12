@@ -4,11 +4,11 @@
 //! Provides the fundamental abstractions for controller management,
 //! state machines, events, and data models.
 
+pub mod constants;
 pub mod core;
 pub mod data;
 pub mod error;
 pub mod units;
-pub mod constants;
 
 pub use core::{
     event::{ControllerEvent, EventDispatcher},

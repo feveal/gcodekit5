@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GCodeKit5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-12-11 12:00+0000\n"
+"POT-Creation-Date: 2025-12-12 09:36+0700\n"
 "PO-Revision-Date: 2025-12-11 12:00+0000\n"
 "Last-Translator: \n"
 "Language-Team: French\n"
@@ -12,104 +12,26 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-msgid "GCodeKit5"
-msgstr "GCodeKit5"
-
-msgid "New"
-msgstr "Nouveau"
-
-msgid "Open"
-msgstr "Ouvrir"
-
-msgid "Save"
-msgstr "Enregistrer"
-
-msgid "Save As..."
-msgstr "Enregistrer sous..."
-
-msgid "Import"
-msgstr "Importer"
-
-msgid "Export G-Code..."
-msgstr "Exporter G-Code..."
-
-msgid "Export SVG..."
-msgstr "Exporter SVG..."
-
-msgid "Run"
-msgstr "Exécuter"
-
-msgid "Quit"
-msgstr "Quitter"
-
-msgid "File"
-msgstr "Fichier"
-
-msgid "Undo"
-msgstr "Annuler"
-
-msgid "Redo"
-msgstr "Rétablir"
-
-msgid "Cut"
-msgstr "Couper"
-
-msgid "Copy"
-msgstr "Copier"
-
-msgid "Paste"
-msgstr "Coller"
-
-msgid "Preferences"
-msgstr "Préférences"
-
-msgid "Edit"
-msgstr "Édition"
-
-msgid "Connect"
-msgstr "Connecter"
-
-msgid "Disconnect"
-msgstr "Déconnecter"
-
-msgid "Home"
-msgstr "Origine"
-
-msgid "Reset"
-msgstr "Réinitialiser"
-
-msgid "Machine"
-msgstr "Machine"
-
-msgid "Documentation"
-msgstr "Documentation"
-
 msgid "About"
 msgstr "À propos"
-
-msgid "Help"
-msgstr "Aide"
-
-msgid "Machine Control"
-msgstr "Contrôle machine"
-
-msgid "Device Console"
-msgstr "Console du périphérique"
-
-msgid "G-Code Editor"
-msgstr "Éditeur G-Code"
-
-msgid "Visualizer"
-msgstr "Visualiseur"
 
 msgid "CAM Tools"
 msgstr "Outils FAO"
 
+msgid "CNC Tools"
+msgstr "Outils CNC"
+
+msgid "Connect"
+msgstr "Connecter"
+
+msgid "Copy"
+msgstr "Copier"
+
+msgid "Cut"
+msgstr "Couper"
+
 msgid "Designer"
 msgstr "Concepteur"
-
-msgid "Device Info"
-msgstr "Info périphérique"
 
 msgid "Device Config"
 msgstr "Config périphérique"
@@ -117,14 +39,98 @@ msgstr "Config périphérique"
 msgid "Device Manager"
 msgstr "Gestionnaire de périphériques"
 
-msgid "CNC Tools"
-msgstr "Outils CNC"
+msgid "Disconnect"
+msgstr "Déconnecter"
 
-msgid "Materials"
-msgstr "Matériaux"
+msgid "Documentation"
+msgstr "Documentation"
+
+msgid "Edit"
+msgstr "Édition"
+
+msgid "Emergency stop (Ctrl-X)"
+msgstr ""
+
+msgid "Export G-Code..."
+msgstr "Exporter G-Code..."
+
+msgid "Export SVG..."
+msgstr "Exporter SVG..."
+
+msgid "File"
+msgstr "Fichier"
+
+#. Polling is now handled centrally by MachineControlView to avoid race conditions on serial read
+#. Add Editor to Stack
+msgid "G-Code Editor"
+msgstr "Éditeur G-Code"
 
 msgid "GCode Toolkit for CNC/Laser Machines"
 msgstr "Boîte à outils GCode pour machines CNC/Laser"
 
 msgid "GCodeKit Contributors"
 msgstr "Contributeurs GCodeKit"
+
+msgid "GCodeKit5"
+msgstr "GCodeKit5"
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Home"
+msgstr "Origine"
+
+msgid "Import"
+msgstr "Importer"
+
+msgid "Machine"
+msgstr "Machine"
+
+msgid "Machine Control"
+msgstr "Contrôle machine"
+
+msgid "Materials"
+msgstr "Matériaux"
+
+msgid "New"
+msgstr "Nouveau"
+
+msgid "Open"
+msgstr "Ouvrir"
+
+msgid "Paste"
+msgstr "Coller"
+
+msgid "Preferences"
+msgstr "Préférences"
+
+msgid "Quit"
+msgstr "Quitter"
+
+msgid "Redo"
+msgstr "Rétablir"
+
+msgid "Reset"
+msgstr "Réinitialiser"
+
+msgid "Run"
+msgstr "Exécuter"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Save As..."
+msgstr "Enregistrer sous..."
+
+msgid "Undo"
+msgstr "Annuler"
+
+#. 4. Visualizer (Already created)
+msgid "Visualizer"
+msgstr "Visualiseur"
+
+#~ msgid "Device Console"
+#~ msgstr "Console du périphérique"
+
+#~ msgid "Device Info"
+#~ msgstr "Info périphérique"

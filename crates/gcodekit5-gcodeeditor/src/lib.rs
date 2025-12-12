@@ -58,15 +58,15 @@
 //! let (start_line, lines) = editor.get_visible_lines();
 //! ```
 
+mod editor_bridge;
 mod text_buffer;
 mod undo_manager;
 mod viewport;
-mod editor_bridge;
 
+pub use editor_bridge::EditorBridgeBackend;
 pub use text_buffer::TextBuffer;
 pub use undo_manager::{TextChange, UndoManager};
 pub use viewport::Viewport;
-pub use editor_bridge::EditorBridgeBackend;
 
 // Re-export for Slint UI
 #[derive(Clone, Debug)]
@@ -251,12 +251,12 @@ impl EditorState {
         let range = self.viewport.overscan_range(5);
         let start_line = range.start;
         let mut lines = self.buffer.lines_in_range(range);
-        
+
         // If editor is empty, always provide at least one line with a space so cursor is visible
         if lines.is_empty() {
             lines.push(" ".to_string());
         }
-        
+
         (start_line, lines)
     }
 
@@ -330,4 +330,3 @@ impl EditorState {
         self.buffer.line(line_idx)
     }
 }
-

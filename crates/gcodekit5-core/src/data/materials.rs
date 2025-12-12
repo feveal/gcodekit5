@@ -447,5 +447,3 @@ pub fn init_standard_library() -> MaterialLibrary {
 
     library
 }
-
-

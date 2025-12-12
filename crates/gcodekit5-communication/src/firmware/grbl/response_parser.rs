@@ -286,5 +286,3 @@ impl Default for GrblResponseParser {
         Self::new()
     }
 }
-
-

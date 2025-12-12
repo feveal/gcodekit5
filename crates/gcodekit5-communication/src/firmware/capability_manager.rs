@@ -264,4 +264,3 @@ impl Default for CapabilityManager {
         Self::new()
     }
 }
-

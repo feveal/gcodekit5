@@ -361,4 +361,3 @@ impl Default for DeviceDatabase {
         Self::new()
     }
 }
-

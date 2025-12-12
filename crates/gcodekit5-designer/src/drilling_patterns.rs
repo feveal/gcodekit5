@@ -256,5 +256,3 @@ impl DrillingPatternGenerator {
         self.generate_toolpath(&pattern)
     }
 }
-
-

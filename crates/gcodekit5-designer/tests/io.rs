@@ -6,7 +6,7 @@ mod gcode_gen;
 mod import;
 #[path = "io/serialization.rs"]
 mod serialization;
-#[path = "io/svg_renderer.rs"]
-mod svg_renderer;
 #[path = "io/svg_import_integration.rs"]
 pub mod svg_import_integration;
+#[path = "io/svg_renderer.rs"]
+mod svg_renderer;

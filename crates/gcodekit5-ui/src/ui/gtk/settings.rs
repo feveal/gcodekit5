@@ -1,7 +1,7 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, Entry, FileChooserAction, FileChooserNative, Orientation, ResponseType,
-    StringList, Switch,
+    glib, Align, Box, Button, Entry, FileChooserAction, FileChooserNative, Orientation,
+    ResponseType, StringList, Switch,
 };
 use libadwaita::prelude::*;
 use libadwaita::{
@@ -27,8 +27,50 @@ impl SettingsWindow {
             .default_height(600)
             .build();
 
-        let settings_window = Self { window, controller };
+        // Add explicit Save/Cancel actions (avoid synchronous disk writes on every change).
+        let header_bar = gtk4::HeaderBar::new();
+        let cancel_btn = Button::with_label("Cancel");
+        let save_btn = Button::with_label("Save");
+        save_btn.add_css_class("suggested-action");
+        header_bar.pack_start(&cancel_btn);
+        header_bar.pack_end(&save_btn);
+        window.set_titlebar(Some(&header_bar));
+
+        let settings_window = Self {
+            window: window.clone(),
+            controller: controller.clone(),
+        };
         settings_window.setup_pages();
+
+        // Treat close as cancel (discard any un-saved changes).
+        {
+            let controller = controller.clone();
+            window.connect_close_request(move |_| {
+                controller.discard_changes();
+                glib::Propagation::Proceed
+            });
+        }
+
+        {
+            let controller = controller.clone();
+            let window = window.clone();
+            cancel_btn.connect_clicked(move |_| {
+                controller.discard_changes();
+                window.close();
+            });
+        }
+
+        {
+            let controller = controller.clone();
+            let window = window.clone();
+            save_btn.connect_clicked(move |_| {
+                if let Err(e) = controller.save() {
+                    error!("Failed to save settings: {}", e);
+                }
+                window.close();
+            });
+        }
+
         settings_window
     }
 
@@ -116,9 +158,6 @@ impl SettingsWindow {
 
                 switch.connect_state_set(move |_, state| {
                     controller_clone.update_setting(&id_clone, &state.to_string());
-                    if let Err(e) = controller_clone.save() {
-                        error!("Failed to save settings: {}", e);
-                    }
                     glib::Propagation::Proceed
                 });
 
@@ -147,7 +186,6 @@ impl SettingsWindow {
                     let idx = r.selected() as usize;
                     if let Some(val) = options.get(idx) {
                         controller_clone.update_setting(&id_clone, val);
-                        let _ = controller_clone.save();
                     }
                 });
 
@@ -202,7 +240,6 @@ impl SettingsWindow {
                 let controller_clone = controller.clone();
                 entry.connect_changed(move |e| {
                     controller_clone.update_setting(&id_clone, &e.text());
-                    let _ = controller_clone.save();
                 });
 
                 let box_container = Box::new(Orientation::Horizontal, 6);
@@ -229,7 +266,6 @@ impl SettingsWindow {
                 let controller_clone = controller.clone();
                 entry.connect_changed(move |e| {
                     controller_clone.update_setting(&id_clone, &e.text());
-                    let _ = controller_clone.save();
                 });
 
                 row.add_suffix(&entry);

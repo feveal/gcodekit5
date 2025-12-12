@@ -1,4 +1,4 @@
-use gcodekit5_gcodeeditor::{UndoManager, TextChange};
+use gcodekit5_gcodeeditor::{TextChange, UndoManager};
 
 #[test]
 fn test_record_and_undo() {

@@ -80,5 +80,3 @@ impl Default for CommentProcessor {
         Self::new(CommentMode::Remove)
     }
 }
-
-

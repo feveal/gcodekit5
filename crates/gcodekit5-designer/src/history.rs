@@ -325,5 +325,3 @@ impl HistoryTransaction {
         self.actions.is_empty()
     }
 }
-
-

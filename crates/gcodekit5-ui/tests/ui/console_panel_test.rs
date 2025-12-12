@@ -1,5 +1,7 @@
 #![cfg(feature = "slint_legacy_tests")]
-use gcodekit5_ui::ui::console_panel::{ConsoleMessage, MessageLevel, MessageFilter, ConsolePanel, HistoryEntry};
+use gcodekit5_ui::ui::console_panel::{
+    ConsoleMessage, ConsolePanel, HistoryEntry, MessageFilter, MessageLevel,
+};
 
 #[test]
 fn test_message_creation() {

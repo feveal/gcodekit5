@@ -1,4 +1,6 @@
-use gcodekit5_designer::drilling_patterns::{DrillOperation, DrillingPattern, DrillingPatternGenerator, PatternType};
+use gcodekit5_designer::drilling_patterns::{
+    DrillOperation, DrillingPattern, DrillingPatternGenerator, PatternType,
+};
 use gcodekit5_designer::shapes::Point;
 
 #[test]

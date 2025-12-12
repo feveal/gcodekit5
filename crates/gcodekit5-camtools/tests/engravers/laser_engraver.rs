@@ -1,4 +1,6 @@
-use gcodekit5_camtools::laser_engraver::{EngravingParameters, ImageTransformations, RotationAngle, HalftoneMethod};
+use gcodekit5_camtools::laser_engraver::{
+    EngravingParameters, HalftoneMethod, ImageTransformations, RotationAngle,
+};
 
 #[test]
 fn test_default_parameters() {
@@ -16,5 +18,3 @@ fn test_transformations_default() {
     assert_eq!(trans.rotation, RotationAngle::Degrees0);
     assert_eq!(trans.halftone, HalftoneMethod::None);
 }
-
-

@@ -1,12 +1,21 @@
 # GCodeKit5 - Specification Document
 
-**Version**: 0.26.0-alpha.0
-**Last Updated**: 2025-12-10
-**Status**: Feature Release
+**Version**: 0.30.0-alpha.0
+**Last Updated**: 2025-12-12
+**Status**: Alpha Release
 
-### Latest Release (v0.26.0-alpha.0) - Maintenance
+### Latest Release (v0.30.0-alpha.0) - UI Polish + Status
+- ✅ **Machine Control**
+  - Decode GRBL `WPos` (working coordinates) and update the working coordinate DRO.
+- ✅ **Visualizer**
+  - Sidebar hide/show UX (with floating unhide), grouped sidebar sections, legend, and empty-state messaging.
+  - Grid spacing control; theme-palette aligned draw colors.
+  - Stock removal now shows progress UI + cancel.
+- ✅ **Designer**
+  - Grid spacing + snap controls; legend; empty-state messaging.
+  - Toolbox shows active tool chip; toolpath preview generation runs async with cancel.
 - ✅ **Version**
-  - Bumped version to 0.26.0-alpha.0.
+  - Bumped version to 0.30.0-alpha.0.
 
 ### Previous Release (v0.2.5-alpha.4) - Refactoring & Integration
 - ✅ **Refactor**

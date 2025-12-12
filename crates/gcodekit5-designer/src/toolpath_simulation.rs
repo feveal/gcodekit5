@@ -308,4 +308,3 @@ impl ToolpathAnalyzer {
         total / self.toolpath.segments.len() as f64
     }
 }
-

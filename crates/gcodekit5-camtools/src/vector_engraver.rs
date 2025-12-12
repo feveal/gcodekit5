@@ -4,12 +4,12 @@
 //! Supports path stroking, fill patterns, and various vector formats.
 
 use anyhow::{Context, Result};
-use std::path::Path as StdPath;
-use lyon::path::Path;
-use lyon::math::point;
+use image::{Rgb, RgbImage};
 use lyon::algorithms::path::iterator::PathIterator;
 use lyon::geom::Arc;
-use image::{Rgb, RgbImage};
+use lyon::math::point;
+use lyon::path::Path;
+use std::path::Path as StdPath;
 
 /// Vector engraving parameters
 #[derive(Debug, Clone)]
@@ -114,10 +114,7 @@ impl VectorEngraver {
         let (paths, scale_factor) = match ext.as_str() {
             "svg" => Self::parse_svg(&path_str)?,
             "dxf" => Self::parse_dxf(&path_str)?,
-            _ => anyhow::bail!(
-                "Unsupported file format: {}. Supported: SVG, DXF",
-                ext
-            ),
+            _ => anyhow::bail!("Unsupported file format: {}. Supported: SVG, DXF", ext),
         };
 
         Ok(Self {
@@ -130,8 +127,8 @@ impl VectorEngraver {
 
     /// Parse SVG file and extract paths
     fn parse_svg(file_path: &str) -> Result<(Vec<Path>, f32)> {
-        use std::fs;
         use regex::Regex;
+        use std::fs;
 
         let path = std::path::Path::new(file_path);
         if !path.exists() {
@@ -178,13 +175,11 @@ impl VectorEngraver {
             let attrs = &cap[1];
             if let Some(d_cap) = re_d.captures(attrs) {
                 let d_value = &d_cap[1];
-                
+
                 if let Ok(path) = Self::build_path_from_svg_data(d_value) {
                     // Apply group transform if present
                     let final_path = if let Some((a, b, c, d_coeff, e, f)) = group_transform {
-                        let transform = lyon::math::Transform::new(
-                            a, b, c, d_coeff, e, f
-                        );
+                        let transform = lyon::math::Transform::new(a, b, c, d_coeff, e, f);
                         path.transformed(&transform)
                     } else {
                         path
@@ -226,17 +221,14 @@ impl VectorEngraver {
                 // Transform matrix:
                 // [ 1  0  0 ]
                 // [ 0 -1  2*center_y ]
-                let transform = lyon::math::Transform::new(
-                    1.0, 0.0,
-                    0.0, -1.0,
-                    0.0, 2.0 * center_y
-                );
+                let transform =
+                    lyon::math::Transform::new(1.0, 0.0, 0.0, -1.0, 0.0, 2.0 * center_y);
 
                 let mirrored_paths: Vec<Path> = all_paths
                     .into_iter()
                     .map(|p| p.transformed(&transform))
                     .collect();
-                
+
                 all_paths = mirrored_paths;
             }
         }
@@ -258,10 +250,8 @@ impl VectorEngraver {
         }
 
         let inner = &trimmed[7..trimmed.len() - 1];
-        let values: Result<Vec<f32>, _> = inner
-            .split(',')
-            .map(|s| s.trim().parse::<f32>())
-            .collect();
+        let values: Result<Vec<f32>, _> =
+            inner.split(',').map(|s| s.trim().parse::<f32>()).collect();
 
         if let Ok(vals) = values {
             if vals.len() == 6 {
@@ -299,11 +289,11 @@ impl VectorEngraver {
                             current_x = x;
                             current_y = y;
                         }
-                        
+
                         if subpath_active {
                             builder.end(false);
                         }
-                        
+
                         start_x = current_x;
                         start_y = current_y;
                         builder.begin(point(current_x, current_y));
@@ -416,7 +406,7 @@ impl VectorEngraver {
                         builder.cubic_bezier_to(
                             point(cp1_x, cp1_y),
                             point(cp2_x, cp2_y),
-                            point(end_x, end_y)
+                            point(end_x, end_y),
                         );
 
                         current_x = end_x;
@@ -460,10 +450,7 @@ impl VectorEngraver {
                             end_y += current_y;
                         }
 
-                        builder.quadratic_bezier_to(
-                            point(cp_x, cp_y),
-                            point(end_x, end_y)
-                        );
+                        builder.quadratic_bezier_to(point(cp_x, cp_y), point(end_x, end_y));
 
                         current_x = end_x;
                         current_y = end_y;
@@ -494,7 +481,7 @@ impl VectorEngraver {
                 _ => i += 1,
             }
         }
-        
+
         if subpath_active {
             builder.end(false);
         }
@@ -537,11 +524,9 @@ impl VectorEngraver {
     fn parse_dxf(file_path: &str) -> Result<(Vec<Path>, f32)> {
         use dxf::entities::EntityType;
 
-        let mut file = std::fs::File::open(file_path)
-            .context("Failed to open DXF file")?;
+        let mut file = std::fs::File::open(file_path).context("Failed to open DXF file")?;
 
-        let drawing = dxf::Drawing::load(&mut file)
-            .context("Failed to parse DXF file")?;
+        let drawing = dxf::Drawing::load(&mut file).context("Failed to parse DXF file")?;
 
         let mut all_paths = Vec::new();
 
@@ -572,14 +557,15 @@ impl VectorEngraver {
                     let start_angle = lyon::math::Angle::degrees(arc.start_angle as f32);
                     let end_angle = lyon::math::Angle::degrees(arc.end_angle as f32);
                     let sweep_angle = end_angle - start_angle;
-                    
-                    let start_point = center + lyon::math::vector(
-                        radius * start_angle.radians.cos(), 
-                        radius * start_angle.radians.sin()
-                    );
+
+                    let start_point = center
+                        + lyon::math::vector(
+                            radius * start_angle.radians.cos(),
+                            radius * start_angle.radians.sin(),
+                        );
 
                     builder.begin(start_point);
-                    
+
                     let arc = Arc {
                         center,
                         radii: lyon::math::vector(radius, radius),
@@ -587,7 +573,7 @@ impl VectorEngraver {
                         start_angle,
                         sweep_angle,
                     };
-                    
+
                     arc.for_each_cubic_bezier(&mut |ctrl| {
                         builder.cubic_bezier_to(ctrl.ctrl1, ctrl.ctrl2, ctrl.to);
                     });
@@ -596,7 +582,9 @@ impl VectorEngraver {
                     Some(builder.build())
                 }
                 EntityType::LwPolyline(polyline) => {
-                    if polyline.vertices.is_empty() { return None; }
+                    if polyline.vertices.is_empty() {
+                        return None;
+                    }
                     let start = polyline.vertices[0];
                     builder.begin(point(start.x as f32, start.y as f32));
                     for v in polyline.vertices.iter().skip(1) {
@@ -611,7 +599,9 @@ impl VectorEngraver {
                     Some(builder.build())
                 }
                 EntityType::Polyline(polyline) => {
-                    if polyline.vertices.is_empty() { return None; }
+                    if polyline.vertices.is_empty() {
+                        return None;
+                    }
                     let start = &polyline.vertices[0].location;
                     builder.begin(point(start.x as f32, start.y as f32));
                     for v in polyline.vertices.iter().skip(1) {
@@ -756,7 +746,7 @@ impl VectorEngraver {
                 }
             }
         }
-        
+
         (min_x, min_y, max_x, max_y)
     }
 
@@ -768,7 +758,7 @@ impl VectorEngraver {
     /// Render paths to an image for preview
     pub fn render_preview(&self, width: u32, height: u32) -> RgbImage {
         let mut img = RgbImage::new(width, height);
-        
+
         // Fill with background color (matches UI gray #808080)
         for pixel in img.pixels_mut() {
             *pixel = Rgb([128, 128, 128]);
@@ -806,12 +796,12 @@ impl VectorEngraver {
 
         let data_width = max_x - min_x;
         let data_height = max_y - min_y;
-        
+
         // Calculate scale to fit in image with padding
         let padding = 10.0;
         let avail_width = width as f32 - 2.0 * padding;
         let avail_height = height as f32 - 2.0 * padding;
-        
+
         let scale = if data_width > 0.0 && data_height > 0.0 {
             let scale_x = avail_width / data_width;
             let scale_y = avail_height / data_height;
@@ -825,7 +815,7 @@ impl VectorEngraver {
         // Usually we want to preserve the coordinate system orientation relative to each other,
         // but fit it on screen.
         // Let's just map min_x, min_y to top-left (plus padding/centering).
-        
+
         let offset_x = padding + (avail_width - data_width * scale) / 2.0 - min_x * scale;
         // For Y, if we want to flip it (standard Cartesian vs Image), we'd do:
         // y_screen = height - (y_world * scale + offset_y)
@@ -834,14 +824,14 @@ impl VectorEngraver {
         // VectorEngraver::parse_svg mirrors Y (lines 228-232).
         // So paths should be in a consistent orientation (Y up?).
         // If Y is up, we need to flip for image (Y down).
-        
+
         // Let's assume we map min_y to max_y on screen (bottom to top) if we want Y up.
         // Or just map min_y to top if we treat it as image coords.
-        // Let's map min_y to top (standard image coords) for simplicity, 
+        // Let's map min_y to top (standard image coords) for simplicity,
         // but if it looks upside down for DXF we might need to adjust.
         // Since parse_svg flips Y, it might be "Y up" internally.
         // Let's try standard mapping first.
-        
+
         let offset_y = padding + (avail_height - data_height * scale) / 2.0 - min_y * scale;
 
         // Draw paths
@@ -850,7 +840,7 @@ impl VectorEngraver {
         for path in &self.paths {
             let mut start_point = point(0.0, 0.0);
             let mut current_point = point(0.0, 0.0);
-            
+
             for event in path.iter().flattened(0.5) {
                 match event {
                     lyon::path::Event::Begin { at } => {
@@ -862,7 +852,7 @@ impl VectorEngraver {
                         let y0 = (current_point.y * scale + offset_y) as i32;
                         let x1 = (to.x * scale + offset_x) as i32;
                         let y1 = (to.y * scale + offset_y) as i32;
-                        
+
                         draw_line_segment(&mut img, x0, y0, x1, y1, color);
                         current_point = to;
                     }
@@ -872,7 +862,7 @@ impl VectorEngraver {
                             let y0 = (current_point.y * scale + offset_y) as i32;
                             let x1 = (start_point.x * scale + offset_x) as i32;
                             let y1 = (start_point.y * scale + offset_y) as i32;
-                            
+
                             draw_line_segment(&mut img, x0, y0, x1, y1, color);
                         }
                     }
@@ -880,7 +870,7 @@ impl VectorEngraver {
                 }
             }
         }
-        
+
         img
     }
 
@@ -908,10 +898,7 @@ impl VectorEngraver {
             "; Travel rate: {:.0} mm/min\n",
             self.params.travel_rate
         ));
-        gcode.push_str(&format!(
-            "; Cut power: {:.0}%\n",
-            self.params.cut_power
-        ));
+        gcode.push_str(&format!("; Cut power: {:.0}%\n", self.params.cut_power));
         gcode.push_str(&format!(
             "; Engrave power: {:.0}%\n",
             self.params.engrave_power
@@ -922,10 +909,7 @@ impl VectorEngraver {
                 self.params.num_passes, self.params.z_increment
             ));
         }
-        gcode.push_str(&format!(
-            "; Number of paths: {}\n",
-            self.paths.len()
-        ));
+        gcode.push_str(&format!("; Number of paths: {}\n", self.paths.len()));
         gcode.push_str(&format!(
             "; Estimated time: {:.1} seconds\n",
             self.estimate_time()
@@ -965,7 +949,7 @@ impl VectorEngraver {
 
         // Calculate scale factor for spacing adjustment
         let scale = self.calculate_actual_scale();
-        
+
         // Adjust hatch spacing to match SVG coordinate space
         // If we want 1mm spacing in output, and scale is 0.1 (10mm -> 1mm),
         // we need 10 units in SVG space. So spacing / scale.
@@ -985,7 +969,7 @@ impl VectorEngraver {
 
         for path in &self.paths {
             let mut hatches = Vec::new();
-            
+
             if self.params.enable_hatch {
                 // First pass
                 let h = crate::hatch_generator::generate_hatch(
@@ -995,7 +979,7 @@ impl VectorEngraver {
                     self.params.hatch_tolerance,
                 );
                 hatches.extend(h);
-                
+
                 // Second pass (Cross Hatch)
                 if self.params.cross_hatch {
                     let ch = crate::hatch_generator::generate_hatch(
@@ -1007,7 +991,7 @@ impl VectorEngraver {
                     hatches.extend(ch);
                 }
             }
-            
+
             processed_paths.push(ProcessedPath {
                 outline: path,
                 hatches,
@@ -1030,10 +1014,7 @@ impl VectorEngraver {
             };
 
             if pass == 0 && self.params.multi_pass {
-                gcode.push_str(&format!(
-                    "G0 Z{:.2} ; Move to first pass depth\n",
-                    z_depth
-                ));
+                gcode.push_str(&format!("G0 Z{:.2} ; Move to first pass depth\n", z_depth));
             } else if self.params.multi_pass && pass > 0 {
                 gcode.push_str(&format!("\n; Pass {} of {}\n", pass + 1, num_passes));
                 gcode.push_str(&format!(
@@ -1041,10 +1022,7 @@ impl VectorEngraver {
                     5.0, self.params.travel_rate
                 ));
                 gcode.push_str("; Lower Z for next pass\n");
-                gcode.push_str(&format!(
-                    "G0 Z{:.2} ; Move to pass depth\n",
-                    z_depth
-                ));
+                gcode.push_str(&format!("G0 Z{:.2} ; Move to pass depth\n", z_depth));
             }
 
             for (idx, item) in processed_paths.iter().enumerate() {
@@ -1057,23 +1035,28 @@ impl VectorEngraver {
                                 gcode.push_str("M5 ; Laser off\n");
                                 gcode.push_str(&format!(
                                     "G0 X{:.3} Y{:.3} ; Move to hatch start\n",
-                                    at.x * scale, at.y * scale
+                                    at.x * scale,
+                                    at.y * scale
                                 ));
                                 start_point = at;
                             }
                             lyon::path::Event::Line { to, .. } => {
                                 gcode.push_str(&format!(
                                     "G1 X{:.3} Y{:.3} F{:.0} M3 S{}\n",
-                                    to.x * scale, to.y * scale,
-                                    self.params.feed_rate, power_value
+                                    to.x * scale,
+                                    to.y * scale,
+                                    self.params.feed_rate,
+                                    power_value
                                 ));
                             }
                             lyon::path::Event::End { close, .. } => {
                                 if close {
                                     gcode.push_str(&format!(
                                         "G1 X{:.3} Y{:.3} F{:.0} M3 S{} ; Close hatch\n",
-                                        start_point.x * scale, start_point.y * scale,
-                                        self.params.feed_rate, power_value
+                                        start_point.x * scale,
+                                        start_point.y * scale,
+                                        self.params.feed_rate,
+                                        power_value
                                     ));
                                 }
                             }
@@ -1090,23 +1073,28 @@ impl VectorEngraver {
                             gcode.push_str("M5 ; Laser off\n");
                             gcode.push_str(&format!(
                                 "G0 X{:.3} Y{:.3} ; Move to path start\n",
-                                at.x * scale, at.y * scale
+                                at.x * scale,
+                                at.y * scale
                             ));
                             start_point = at;
                         }
                         lyon::path::Event::Line { to, .. } => {
                             gcode.push_str(&format!(
                                 "G1 X{:.3} Y{:.3} F{:.0} M3 S{}\n",
-                                to.x * scale, to.y * scale,
-                                self.params.feed_rate, power_value
+                                to.x * scale,
+                                to.y * scale,
+                                self.params.feed_rate,
+                                power_value
                             ));
                         }
                         lyon::path::Event::End { close, .. } => {
                             if close {
                                 gcode.push_str(&format!(
                                     "G1 X{:.3} Y{:.3} F{:.0} M3 S{} ; Close path\n",
-                                    start_point.x * scale, start_point.y * scale,
-                                    self.params.feed_rate, power_value
+                                    start_point.x * scale,
+                                    start_point.y * scale,
+                                    self.params.feed_rate,
+                                    power_value
                                 ));
                             }
                         }
@@ -1123,8 +1111,10 @@ impl VectorEngraver {
                     ));
                 }
 
-                let progress = 0.1 + ((pass as f32 * total_items + idx as f32) 
-                    / (num_passes as f32 * total_items)) * 0.8;
+                let progress = 0.1
+                    + ((pass as f32 * total_items + idx as f32)
+                        / (num_passes as f32 * total_items))
+                        * 0.8;
                 progress_callback(progress);
             }
         }
@@ -1153,7 +1143,9 @@ fn draw_line_segment(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, col
         if x >= 0 && x < img.width() as i32 && y >= 0 && y < img.height() as i32 {
             img.put_pixel(x as u32, y as u32, color);
         }
-        if x == x1 && y == y1 { break; }
+        if x == x1 && y == y1 {
+            break;
+        }
         let e2 = 2 * err;
         if e2 >= dy {
             err += dy;
@@ -1165,6 +1157,3 @@ fn draw_line_segment(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, col
         }
     }
 }
-
-
-

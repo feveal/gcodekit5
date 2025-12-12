@@ -28,17 +28,17 @@ pub mod advanced_features;
 pub mod arc_expander;
 pub mod comment_processor;
 pub mod core_infrastructure;
+pub mod hatch_generator;
 pub mod jigsaw_puzzle;
 pub mod laser_engraver;
 pub mod optimizer;
+pub mod speeds_feeds;
+pub mod spoilboard_grid;
+pub mod spoilboard_surfacing;
 pub mod stats;
 pub mod tabbed_box;
 pub mod validator;
 pub mod vector_engraver;
-pub mod hatch_generator;
-pub mod speeds_feeds;
-pub mod spoilboard_surfacing;
-pub mod spoilboard_grid;
 
 // UI module
 pub mod advanced_features_panel;
@@ -52,14 +52,16 @@ pub use comment_processor::CommentProcessor;
 pub use core_infrastructure::{AppConfig, ApplicationState, Logger, TelemetryData};
 pub use jigsaw_puzzle::{JigsawPuzzleMaker, PuzzleParameters};
 pub use laser_engraver::{
-    EngravingParameters, HalftoneMethod, ImageTransformations, BitmapImageEngraver, RotationAngle,
+    BitmapImageEngraver, EngravingParameters, HalftoneMethod, ImageTransformations, RotationAngle,
     ScanDirection,
 };
 pub use optimizer::GCodeOptimizer;
-pub use speeds_feeds::{SpeedsFeedsCalculator, CalculationResult};
-pub use spoilboard_surfacing::{SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters};
+pub use speeds_feeds::{CalculationResult, SpeedsFeedsCalculator};
 pub use spoilboard_grid::{SpoilboardGridGenerator, SpoilboardGridParameters};
+pub use spoilboard_surfacing::{SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters};
 pub use stats::StatsCalculator;
-pub use tabbed_box::{BoxParameters, BoxType, FingerJointSettings, FingerStyle, TabbedBoxMaker, KeyDividerType};
+pub use tabbed_box::{
+    BoxParameters, BoxType, FingerJointSettings, FingerStyle, KeyDividerType, TabbedBoxMaker,
+};
 pub use validator::GCodeValidator;
 pub use vector_engraver::{VectorEngraver, VectorEngravingParameters};

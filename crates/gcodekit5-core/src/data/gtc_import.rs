@@ -193,7 +193,10 @@ impl GtcImporter {
         Err("No catalog file found in GTC package".into())
     }
 
-    pub fn convert_gtc_tool(&mut self, gtc_tool: GtcTool) -> Result<Tool, Box<dyn std::error::Error>> {
+    pub fn convert_gtc_tool(
+        &mut self,
+        gtc_tool: GtcTool,
+    ) -> Result<Tool, Box<dyn std::error::Error>> {
         // Map GTC tool type to our ToolType
         let tool_type = self.map_tool_type(&gtc_tool.tool_type)?;
 
@@ -320,5 +323,3 @@ impl GtcImporter {
         }
     }
 }
-
-

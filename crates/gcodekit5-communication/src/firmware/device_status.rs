@@ -203,4 +203,3 @@ fn current_unix_timestamp() -> u64 {
         .unwrap_or_default()
         .as_secs()
 }
-

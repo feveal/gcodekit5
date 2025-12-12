@@ -1,4 +1,4 @@
-use gcodekit5_camtools::comment_processor::{CommentProcessor, CommentMode};
+use gcodekit5_camtools::comment_processor::{CommentMode, CommentProcessor};
 
 #[test]
 fn test_extract_parentheses_comment() {

@@ -13,11 +13,11 @@
 //! - Scale and offset adjustment
 
 use crate::dxf_parser::{DxfEntity, DxfFile, DxfParser};
-use crate::shapes::{Shape, PathShape, Rectangle, Circle, Line, Ellipse, Point};
+use crate::shapes::{Circle, Ellipse, Line, PathShape, Point, Rectangle, Shape};
 use anyhow::{anyhow, Result};
-use lyon::path::Path;
-use lyon::math::point;
 use lyon::geom::Arc;
+use lyon::math::point;
+use lyon::path::Path;
 
 /// Represents an imported design from a file
 #[derive(Debug)]
@@ -78,33 +78,39 @@ impl ImportedShape {
                 let new_y = -(r.y + r.height) + 2.0 * center_y + offset_y;
                 let new_x = r.x + offset_x;
                 Shape::Rectangle(Rectangle::new(new_x, new_y, r.width, r.height))
-            },
+            }
             Self::Circle(c) => {
                 let new_y = -c.center.y + 2.0 * center_y + offset_y;
                 let new_x = c.center.x + offset_x;
                 Shape::Circle(Circle::new(Point::new(new_x, new_y), c.radius))
-            },
+            }
             Self::Line(l) => {
                 let start_y = -l.start.y + 2.0 * center_y + offset_y;
                 let start_x = l.start.x + offset_x;
                 let end_y = -l.end.y + 2.0 * center_y + offset_y;
                 let end_x = l.end.x + offset_x;
-                Shape::Line(Line::new(Point::new(start_x, start_y), Point::new(end_x, end_y)))
-            },
+                Shape::Line(Line::new(
+                    Point::new(start_x, start_y),
+                    Point::new(end_x, end_y),
+                ))
+            }
             Self::Ellipse(e) => {
                 let new_y = -e.center.y + 2.0 * center_y + offset_y;
                 let new_x = e.center.x + offset_x;
                 Shape::Ellipse(Ellipse::new(Point::new(new_x, new_y), e.rx, e.ry))
-            },
+            }
             Self::Path(p) => {
                 // Transform: Translate(0, -c) -> Scale(1, -1) -> Translate(0, c) -> Translate(off_x, off_y)
                 // y' = -y + 2c + off_y
                 // x' = x + off_x
-                
+
                 let transform = lyon::math::Transform::new(
-                    1.0, 0.0,
-                    0.0, -1.0,
-                    offset_x as f32, (2.0 * center_y + offset_y) as f32
+                    1.0,
+                    0.0,
+                    0.0,
+                    -1.0,
+                    offset_x as f32,
+                    (2.0 * center_y + offset_y) as f32,
                 );
                 Shape::Path(PathShape::new(p.path.transformed(&transform)))
             }
@@ -137,7 +143,7 @@ impl SvgImporter {
         if let Some(svg_start) = svg_content.find("<svg") {
             if let Some(svg_end) = svg_content[svg_start..].find('>') {
                 let svg_tag = &svg_content[svg_start..svg_start + svg_end];
-                
+
                 if let Some(w) = Self::extract_attr_f64(svg_tag, "width") {
                     viewbox_width = w;
                 }
@@ -180,18 +186,18 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 let x = Self::extract_attr_f64(tag_content, "x").unwrap_or(0.0);
                 let y = Self::extract_attr_f64(tag_content, "y").unwrap_or(0.0);
                 let width = Self::extract_attr_f64(tag_content, "width").unwrap_or(0.0);
                 let height = Self::extract_attr_f64(tag_content, "height").unwrap_or(0.0);
-                
+
                 if width > 0.0 && height > 0.0 {
                     let rect = Rectangle::new(
                         x * self.scale,
                         y * self.scale,
                         width * self.scale,
-                        height * self.scale
+                        height * self.scale,
                     );
                     imported_shapes.push(ImportedShape::Rect(rect));
                 }
@@ -207,16 +213,14 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 let cx = Self::extract_attr_f64(tag_content, "cx").unwrap_or(0.0);
                 let cy = Self::extract_attr_f64(tag_content, "cy").unwrap_or(0.0);
                 let r = Self::extract_attr_f64(tag_content, "r").unwrap_or(0.0);
-                
+
                 if r > 0.0 {
-                    let circle = Circle::new(
-                        Point::new(cx * self.scale, cy * self.scale),
-                        r * self.scale
-                    );
+                    let circle =
+                        Circle::new(Point::new(cx * self.scale, cy * self.scale), r * self.scale);
                     imported_shapes.push(ImportedShape::Circle(circle));
                 }
                 search_pos = abs_tag_start + tag_end + 1;
@@ -231,18 +235,18 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 let x1 = Self::extract_attr_f64(tag_content, "x1").unwrap_or(0.0);
                 let y1 = Self::extract_attr_f64(tag_content, "y1").unwrap_or(0.0);
                 let x2 = Self::extract_attr_f64(tag_content, "x2").unwrap_or(0.0);
                 let y2 = Self::extract_attr_f64(tag_content, "y2").unwrap_or(0.0);
-                
+
                 let line = Line::new(
                     Point::new(x1 * self.scale, y1 * self.scale),
-                    Point::new(x2 * self.scale, y2 * self.scale)
+                    Point::new(x2 * self.scale, y2 * self.scale),
                 );
                 imported_shapes.push(ImportedShape::Line(line));
-                
+
                 search_pos = abs_tag_start + tag_end + 1;
             } else {
                 break;
@@ -255,17 +259,17 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 let cx = Self::extract_attr_f64(tag_content, "cx").unwrap_or(0.0);
                 let cy = Self::extract_attr_f64(tag_content, "cy").unwrap_or(0.0);
                 let rx = Self::extract_attr_f64(tag_content, "rx").unwrap_or(0.0);
                 let ry = Self::extract_attr_f64(tag_content, "ry").unwrap_or(0.0);
-                
+
                 if rx > 0.0 && ry > 0.0 {
                     let ellipse = Ellipse::new(
                         Point::new(cx * self.scale, cy * self.scale),
                         rx * self.scale,
-                        ry * self.scale
+                        ry * self.scale,
                     );
                     imported_shapes.push(ImportedShape::Ellipse(ellipse));
                 }
@@ -281,7 +285,7 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 if let Some(points_str) = Self::extract_attr_str(tag_content, "points") {
                     let points: Vec<Point> = points_str
                         .split(|c| c == ' ' || c == ',')
@@ -292,18 +296,16 @@ impl SvgImporter {
                             if chunk.len() == 2 {
                                 let x = chunk[0].parse::<f64>().ok()?;
                                 let y = chunk[1].parse::<f64>().ok()?;
-                                Some(Point::new(
-                                    x * self.scale,
-                                    y * self.scale
-                                ))
+                                Some(Point::new(x * self.scale, y * self.scale))
                             } else {
                                 None
                             }
                         })
                         .collect();
-                    
+
                     if !points.is_empty() {
-                        imported_shapes.push(ImportedShape::Path(PathShape::from_points(&points, false)));
+                        imported_shapes
+                            .push(ImportedShape::Path(PathShape::from_points(&points, false)));
                     }
                 }
                 search_pos = abs_tag_start + tag_end + 1;
@@ -318,7 +320,7 @@ impl SvgImporter {
             let abs_tag_start = search_pos + tag_start;
             if let Some(tag_end) = svg_content[abs_tag_start..].find('>') {
                 let tag_content = &svg_content[abs_tag_start..abs_tag_start + tag_end];
-                
+
                 if let Some(points_str) = Self::extract_attr_str(tag_content, "points") {
                     let points: Vec<Point> = points_str
                         .split(|c| c == ' ' || c == ',')
@@ -329,18 +331,16 @@ impl SvgImporter {
                             if chunk.len() == 2 {
                                 let x = chunk[0].parse::<f64>().ok()?;
                                 let y = chunk[1].parse::<f64>().ok()?;
-                                Some(Point::new(
-                                    x * self.scale,
-                                    y * self.scale
-                                ))
+                                Some(Point::new(x * self.scale, y * self.scale))
                             } else {
                                 None
                             }
                         })
                         .collect();
-                    
+
                     if !points.is_empty() {
-                        imported_shapes.push(ImportedShape::Path(PathShape::from_points(&points, true)));
+                        imported_shapes
+                            .push(ImportedShape::Path(PathShape::from_points(&points, true)));
                     }
                 }
                 search_pos = abs_tag_start + tag_end + 1;
@@ -365,17 +365,17 @@ impl SvgImporter {
                         // Parse SVG path data
                         if let Some(path) = PathShape::from_svg_path(d_value) {
                             // Apply group transform if present
-                            let final_path = if let Some((a, b, c, d_coeff, e, f)) = group_transform {
-                                let transform = lyon::math::Transform::new(
-                                    a, b, c, d_coeff, e, f
-                                );
+                            let final_path = if let Some((a, b, c, d_coeff, e, f)) = group_transform
+                            {
+                                let transform = lyon::math::Transform::new(a, b, c, d_coeff, e, f);
                                 path.path.clone().transformed(&transform)
                             } else {
                                 path.path
                             };
-                            
+
                             // Apply importer scale only
-                            let scale_transform = lyon::math::Transform::scale(self.scale as f32, self.scale as f32);
+                            let scale_transform =
+                                lyon::math::Transform::scale(self.scale as f32, self.scale as f32);
                             let scaled_path = final_path.clone().transformed(&scale_transform);
 
                             imported_shapes.push(ImportedShape::Path(PathShape::new(scaled_path)));
@@ -392,15 +392,23 @@ impl SvgImporter {
         // Calculate bounds and mirror
         let mut min_y = f64::MAX;
         let mut max_y = f64::MIN;
-        
+
         for shape in &imported_shapes {
             let (_, s_min_y, _, s_max_y) = shape.bounding_box();
-            if s_min_y < min_y { min_y = s_min_y; }
-            if s_max_y > max_y { max_y = s_max_y; }
+            if s_min_y < min_y {
+                min_y = s_min_y;
+            }
+            if s_max_y > max_y {
+                max_y = s_max_y;
+            }
         }
-        
-        let center_y = if min_y == f64::MAX { 0.0 } else { (min_y + max_y) / 2.0 };
-        
+
+        let center_y = if min_y == f64::MAX {
+            0.0
+        } else {
+            (min_y + max_y) / 2.0
+        };
+
         let shapes: Vec<Shape> = imported_shapes
             .into_iter()
             .map(|s| s.convert(center_y, self.offset_x, self.offset_y))
@@ -440,10 +448,8 @@ impl SvgImporter {
         }
 
         let inner = &trimmed[7..trimmed.len() - 1];
-        let values: Result<Vec<f32>, _> = inner
-            .split(',')
-            .map(|s| s.trim().parse::<f32>())
-            .collect();
+        let values: Result<Vec<f32>, _> =
+            inner.split(',').map(|s| s.trim().parse::<f32>()).collect();
 
         if let Ok(vals) = values {
             if vals.len() == 6 {
@@ -522,8 +528,10 @@ impl DxfImporter {
 
         // Transform to apply: negate X and add offset
         // Note: dxf_file is already scaled by self.scale
-        let transform = lyon::math::Transform::scale(-1.0, 1.0)
-            .then_translate(lyon::math::vector(self.offset_x as f32, self.offset_y as f32));
+        let transform = lyon::math::Transform::scale(-1.0, 1.0).then_translate(lyon::math::vector(
+            self.offset_x as f32,
+            self.offset_y as f32,
+        ));
 
         for entity in &dxf_file.entities {
             let path_opt = match entity {
@@ -538,7 +546,7 @@ impl DxfImporter {
                     let mut builder = Path::builder();
                     let center = point(circle.center.x as f32, circle.center.y as f32);
                     let radius = circle.radius as f32;
-                    
+
                     let start_point = center + lyon::math::vector(radius, 0.0);
                     builder.begin(start_point);
 
@@ -553,7 +561,7 @@ impl DxfImporter {
                     arc_geom.for_each_cubic_bezier(&mut |ctrl| {
                         builder.cubic_bezier_to(ctrl.ctrl1, ctrl.ctrl2, ctrl.to);
                     });
-                    
+
                     builder.close();
                     Some(builder.build())
                 }
@@ -564,14 +572,15 @@ impl DxfImporter {
                     let start_angle = lyon::math::Angle::degrees(arc.start_angle as f32);
                     let end_angle = lyon::math::Angle::degrees(arc.end_angle as f32);
                     let sweep_angle = end_angle - start_angle;
-                    
-                    let start_point = center + lyon::math::vector(
-                        radius * start_angle.radians.cos(), 
-                        radius * start_angle.radians.sin()
-                    );
+
+                    let start_point = center
+                        + lyon::math::vector(
+                            radius * start_angle.radians.cos(),
+                            radius * start_angle.radians.sin(),
+                        );
 
                     builder.begin(start_point);
-                    
+
                     let arc_geom = Arc {
                         center,
                         radii: lyon::math::vector(radius, radius),
@@ -579,7 +588,7 @@ impl DxfImporter {
                         start_angle,
                         sweep_angle,
                     };
-                    
+
                     arc_geom.for_each_cubic_bezier(&mut |ctrl| {
                         builder.cubic_bezier_to(ctrl.ctrl1, ctrl.ctrl2, ctrl.to);
                     });
@@ -588,8 +597,9 @@ impl DxfImporter {
                     Some(builder.build())
                 }
                 DxfEntity::Polyline(polyline) => {
-                    if polyline.vertices.is_empty() { None }
-                    else {
+                    if polyline.vertices.is_empty() {
+                        None
+                    } else {
                         let mut builder = Path::builder();
                         let start = polyline.vertices[0];
                         builder.begin(point(start.x as f32, start.y as f32));
@@ -616,5 +626,3 @@ impl DxfImporter {
         Ok(shapes)
     }
 }
-
-

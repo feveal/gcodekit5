@@ -11,7 +11,7 @@ fn test_calculation_with_defaults() {
         MaterialCategory::Wood,
         "Test".to_string(),
     );
-    
+
     let tool = Tool::new(
         ToolId("test".to_string()),
         1,
@@ -24,7 +24,7 @@ fn test_calculation_with_defaults() {
     let device = DeviceProfile::default();
 
     let result = SpeedsFeedsCalculator::calculate(&material, &tool, &device);
-    
+
     assert!(result.rpm > 0);
     assert!(result.feed_rate > 0.0);
     assert!(result.source.contains("Tool Defaults"));
@@ -38,12 +38,12 @@ fn test_calculation_with_material_properties() {
         MaterialCategory::Wood,
         "Test".to_string(),
     );
-    
+
     // Set explicit surface speed and chip load via CuttingParameters
     let mut params = gcodekit5_core::data::materials::CuttingParameters::default();
     params.surface_speed_m_min = Some(300.0); // High speed for wood
     params.chip_load_mm = Some(0.1);
-    
+
     material.set_cutting_params("endmill_flat".to_string(), params);
 
     let tool = Tool::new(
@@ -62,9 +62,9 @@ fn test_calculation_with_material_properties() {
 
     // RPM = (300 * 1000) / (pi * 6.35) ≈ 15037
     assert!(result.rpm > 15000 && result.rpm < 15100);
-    
+
     // Feed = 15037 * 0.1 * 2 ≈ 3007
     assert!(result.feed_rate > 3000.0 && result.feed_rate < 3020.0);
-    
+
     assert!(result.source.contains("Material Surface Speed"));
 }

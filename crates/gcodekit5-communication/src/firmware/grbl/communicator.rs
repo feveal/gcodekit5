@@ -174,5 +174,3 @@ impl GrblCommunicator {
         self.send_bytes(&[byte])
     }
 }
-
-

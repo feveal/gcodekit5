@@ -2,10 +2,10 @@
 //!
 //! Generates hatch lines (fill) for vector paths using a scanline algorithm.
 
-use lyon::path::Path;
-use lyon::math::{point, Transform, Angle};
-use lyon::algorithms::path::iterator::PathIterator;
 use lyon::algorithms::aabb::bounding_box;
+use lyon::algorithms::path::iterator::PathIterator;
+use lyon::math::{point, Angle, Transform};
+use lyon::path::Path;
 
 /// Generate hatch lines for a given path
 ///
@@ -17,12 +17,7 @@ use lyon::algorithms::aabb::bounding_box;
 ///
 /// # Returns
 /// A vector of paths representing the hatch lines
-pub fn generate_hatch(
-    path: &Path,
-    angle_degrees: f32,
-    spacing: f32,
-    tolerance: f32,
-) -> Vec<Path> {
+pub fn generate_hatch(path: &Path, angle_degrees: f32, spacing: f32, tolerance: f32) -> Vec<Path> {
     if spacing <= 0.0 {
         return Vec::new();
     }
@@ -50,7 +45,7 @@ pub fn generate_hatch(
     // Flatten path to line segments for intersection testing
     let mut segments = Vec::new();
     let mut start = point(0.0, 0.0);
-    
+
     for event in rotated_path.iter().flattened(tolerance) {
         match event {
             lyon::path::Event::Begin { at } => {
@@ -70,10 +65,10 @@ pub fn generate_hatch(
 
     for i in 0..=num_lines {
         let y = start_y + i as f32 * spacing;
-        
+
         // Find intersections with all segments
         let mut intersections = Vec::new();
-        
+
         for (p1, p2) in &segments {
             // Check if segment crosses scanline y
             // We handle horizontal segments by ignoring them (they don't contribute to crossing count for filling)
@@ -94,7 +89,7 @@ pub fn generate_hatch(
             if chunk.len() == 2 {
                 let x1 = chunk[0];
                 let x2 = chunk[1];
-                
+
                 // Create horizontal line segment
                 let start = point(x1, y);
                 let end = point(x2, y);
@@ -111,5 +106,3 @@ pub fn generate_hatch(
 
     hatch_paths
 }
-
-

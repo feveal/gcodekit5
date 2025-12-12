@@ -6,13 +6,13 @@ use crate::spatial_index::Bounds;
 pub trait Command {
     /// Executes the command.
     fn execute(&mut self, canvas: &mut Canvas);
-    
+
     /// Undoes the command.
     fn undo(&mut self, canvas: &mut Canvas);
-    
+
     /// Returns the name of the command for display.
     fn name(&self) -> &str;
-    
+
     /// Returns the size of the command in bytes (for memory management).
     fn size(&self) -> usize {
         std::mem::size_of_val(self)
@@ -45,7 +45,7 @@ impl Command for AddShapeCommand {
         // 3. Command is pushed to stack.
         // Undo: Revert change.
         // Redo: Apply change.
-        
+
         // Let's assume the Command encapsulates the action.
         // But `AddShape` usually happens via UI interaction (drag, click).
         // So the shape is created by `Canvas` methods.
@@ -57,7 +57,7 @@ impl Command for AddShapeCommand {
             self.shape = Some(shape);
         }
     }
-    
+
     fn name(&self) -> &str {
         "Add Shape"
     }
@@ -166,12 +166,12 @@ impl DesignerCommand {
                     if let Some(obj) = canvas.get_shape_mut(*id) {
                         let (x1, y1, x2, y2) = obj.shape.bounding_box();
                         let old_bounds = Bounds::new(x1, y1, x2, y2);
-                        
+
                         obj.shape.translate(cmd.dx, cmd.dy);
-                        
+
                         let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
                         let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                        
+
                         canvas.remove_from_index(*id, &old_bounds);
                         canvas.insert_into_index(*id, &new_bounds);
                     }
@@ -180,30 +180,30 @@ impl DesignerCommand {
             DesignerCommand::ResizeShape(cmd) => {
                 // If we stored shapes, swap them
                 if let Some(new_shape) = &cmd.new_shape {
-                     if let Some(obj) = canvas.get_shape_mut(cmd.id) {
-                         let (x1, y1, x2, y2) = obj.shape.bounding_box();
-                         let old_bounds = Bounds::new(x1, y1, x2, y2);
-                         
-                         obj.shape = new_shape.clone();
-                         
-                         let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
-                         let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                         
-                         canvas.remove_from_index(cmd.id, &old_bounds);
-                         canvas.insert_into_index(cmd.id, &new_bounds);
-                     }
+                    if let Some(obj) = canvas.get_shape_mut(cmd.id) {
+                        let (x1, y1, x2, y2) = obj.shape.bounding_box();
+                        let old_bounds = Bounds::new(x1, y1, x2, y2);
+
+                        obj.shape = new_shape.clone();
+
+                        let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
+                        let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
+
+                        canvas.remove_from_index(cmd.id, &old_bounds);
+                        canvas.insert_into_index(cmd.id, &new_bounds);
+                    }
                 }
             }
             DesignerCommand::ChangeProperty(cmd) => {
                 if let Some(obj) = canvas.get_shape_mut(cmd.id) {
                     let (x1, y1, x2, y2) = obj.shape.bounding_box();
                     let old_bounds = Bounds::new(x1, y1, x2, y2);
-                    
+
                     *obj = cmd.new_state.clone();
-                    
+
                     let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
                     let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                    
+
                     canvas.remove_from_index(cmd.id, &old_bounds);
                     canvas.insert_into_index(cmd.id, &new_bounds);
                 }
@@ -254,12 +254,12 @@ impl DesignerCommand {
                     if let Some(obj) = canvas.get_shape_mut(*id) {
                         let (x1, y1, x2, y2) = obj.shape.bounding_box();
                         let old_bounds = Bounds::new(x1, y1, x2, y2);
-                        
+
                         obj.shape.translate(-cmd.dx, -cmd.dy);
-                        
+
                         let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
                         let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                        
+
                         canvas.remove_from_index(*id, &old_bounds);
                         canvas.insert_into_index(*id, &new_bounds);
                     }
@@ -267,30 +267,30 @@ impl DesignerCommand {
             }
             DesignerCommand::ResizeShape(cmd) => {
                 if let Some(old_shape) = &cmd.old_shape {
-                     if let Some(obj) = canvas.get_shape_mut(cmd.id) {
-                         let (x1, y1, x2, y2) = obj.shape.bounding_box();
-                         let old_bounds = Bounds::new(x1, y1, x2, y2);
-                         
-                         obj.shape = old_shape.clone();
-                         
-                         let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
-                         let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                         
-                         canvas.remove_from_index(cmd.id, &old_bounds);
-                         canvas.insert_into_index(cmd.id, &new_bounds);
-                     }
+                    if let Some(obj) = canvas.get_shape_mut(cmd.id) {
+                        let (x1, y1, x2, y2) = obj.shape.bounding_box();
+                        let old_bounds = Bounds::new(x1, y1, x2, y2);
+
+                        obj.shape = old_shape.clone();
+
+                        let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
+                        let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
+
+                        canvas.remove_from_index(cmd.id, &old_bounds);
+                        canvas.insert_into_index(cmd.id, &new_bounds);
+                    }
                 }
             }
             DesignerCommand::ChangeProperty(cmd) => {
                 if let Some(obj) = canvas.get_shape_mut(cmd.id) {
                     let (x1, y1, x2, y2) = obj.shape.bounding_box();
                     let old_bounds = Bounds::new(x1, y1, x2, y2);
-                    
+
                     *obj = cmd.old_state.clone();
-                    
+
                     let (nx1, ny1, nx2, ny2) = obj.shape.bounding_box();
                     let new_bounds = Bounds::new(nx1, ny1, nx2, ny2);
-                    
+
                     canvas.remove_from_index(cmd.id, &old_bounds);
                     canvas.insert_into_index(cmd.id, &new_bounds);
                 }

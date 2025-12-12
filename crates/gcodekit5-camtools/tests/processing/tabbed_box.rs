@@ -1,7 +1,7 @@
 //! Test for verifying tabbed box tab protrusion dimensions
 
 use gcodekit5_camtools::tabbed_box::{
-    BoxParameters, BoxType, FingerJointSettings, TabbedBoxMaker, KeyDividerType,
+    BoxParameters, BoxType, FingerJointSettings, KeyDividerType, TabbedBoxMaker,
 };
 
 #[test]
@@ -62,8 +62,6 @@ fn test_tab_protrusion_equals_thickness_no_kerf() {
     let _min_x = x_coords.iter().cloned().fold(f32::INFINITY, f32::min);
     let _max_x = x_coords.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
 
-
-
     if min_y < 0.0 {
         let tab_depth = min_y.abs();
 
@@ -120,11 +118,8 @@ fn test_tab_protrusion_with_kerf() {
 
     let min_y = y_coords.iter().cloned().fold(f32::INFINITY, f32::min);
 
-
-
     if min_y < 0.0 {
         let _tab_depth = min_y.abs();
-
     }
 }
 
@@ -176,35 +171,35 @@ fn test_slots_containment_with_optimization() {
     maker.generate().expect("Failed to generate box");
 
     let paths = maker.get_paths();
-    
+
     // Identify paths
     let mut walls = Vec::new();
     let mut slots = Vec::new();
-    
+
     for path in &paths {
         let min_x = path.iter().map(|p| p.0).fold(f32::INFINITY, f32::min);
         let max_x = path.iter().map(|p| p.0).fold(f32::NEG_INFINITY, f32::max);
         let min_y = path.iter().map(|p| p.1).fold(f32::INFINITY, f32::min);
         let max_y = path.iter().map(|p| p.1).fold(f32::NEG_INFINITY, f32::max);
-        
+
         let width = max_x - min_x;
         let height = max_y - min_y;
         let area = width * height;
-        
+
         if area > 1000.0 {
             walls.push((min_x, max_x, min_y, max_y));
         } else if area > 0.0 && area < 100.0 {
             slots.push((min_x, max_x, min_y, max_y));
         }
     }
-    
+
     // We expect at least one slot to be inside a wall
     let mut contained_slots = 0;
     for slot in &slots {
         let (sx1, sx2, sy1, sy2) = slot;
         let sx_center = (sx1 + sx2) / 2.0;
         let sy_center = (sy1 + sy2) / 2.0;
-        
+
         for wall in &walls {
             let (wx1, wx2, wy1, wy2) = wall;
             if sx_center > *wx1 && sx_center < *wx2 && sy_center > *wy1 && sy_center < *wy2 {
@@ -213,6 +208,9 @@ fn test_slots_containment_with_optimization() {
             }
         }
     }
-    
-    assert!(contained_slots > 0, "No slots found inside walls! Optimization likely moved them.");
+
+    assert!(
+        contained_slots > 0,
+        "No slots found inside walls! Optimization likely moved them."
+    );
 }

@@ -1,5 +1,5 @@
-use gcodekit5_designer::viewport::Viewport;
 use gcodekit5_core::constants as core_constants;
+use gcodekit5_designer::viewport::Viewport;
 
 #[test]
 fn test_fit_to_default_bbox() {
@@ -15,5 +15,10 @@ fn test_fit_to_default_bbox() {
     let expected_zoom_y = (vp.canvas_height() * padding_factor) / height;
     let expected_zoom = expected_zoom_x.min(expected_zoom_y).max(0.1).min(50.0);
 
-    assert!((vp.zoom() - expected_zoom).abs() < 1e-10, "zoom {} expected {}", vp.zoom(), expected_zoom);
+    assert!(
+        (vp.zoom() - expected_zoom).abs() < 1e-10,
+        "zoom {} expected {}",
+        vp.zoom(),
+        expected_zoom
+    );
 }

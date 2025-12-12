@@ -130,30 +130,69 @@ textview {
     padding-left: 10px;
 }
 
+.mc-section {
+    background-color: var(--card-bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.mc-section-title {
+    color: alpha(var(--fg-color), 0.7);
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.mc-group-title {
+    color: alpha(var(--fg-color), 0.8);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.mc-status-strip {
+    background-color: alpha(var(--accent-bg-color), 0.08);
+    border: 1px solid alpha(var(--fg-color), 0.08);
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.mc-wcs-toggle:checked {
+    background-color: alpha(var(--accent-color), 0.25);
+    border-color: alpha(var(--accent-color), 0.6);
+}
+
 .dro-axis {
     background-color: var(--card-bg-color);
     border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 10px;
+    padding: 6px;
 }
 
 .dro-label {
-    font-size: 32px;
+    font-size: 28px;
     font-weight: bold;
     color: var(--success-color);
 }
 
 .dro-value {
-    font-size: 32px;
+    font-size: 28px;
     font-family: "Monospace";
     color: var(--fg-color);
+}
+
+/* Machine Control: smaller main DRO for FHD @ 125% */
+.mc-dro-label,
+.mc-dro-value {
+    font-size: 22px;
 }
 
 .estop-big {
     background-color: var(--error-color);
     color: white;
     font-weight: bold;
-    font-size: 18px;
+    font-size: 13px;
+    padding: 4px;
     border-radius: 10px;
     border: 2px solid alpha(var(--fg-color), 0.2);
 }
@@ -208,6 +247,23 @@ textview {
     font-size: 12px;
 }
 
+.visualizer-osd .osd-units-badge {
+    background-color: alpha(var(--accent-color), 0.15);
+    border: 1px solid alpha(var(--accent-color), 0.35);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-weight: 600;
+}
+
+.active-tool-chip {
+    background-color: alpha(var(--accent-color), 0.15);
+    border: 1px solid alpha(var(--accent-color), 0.35);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-weight: 600;
+    font-size: 12px;
+}
+
 .visualizer-osd button {
     min-width: 28px;
     min-height: 28px;
@@ -225,6 +281,37 @@ textview {
 
 .visualizer-osd button:active {
     background-color: alpha(var(--fg-color), 0.3);
+}
+
+/* Legend swatches */
+.legend-swatch {
+    border-radius: 3px;
+    border: 1px solid alpha(var(--fg-color), 0.2);
+    background-color: alpha(var(--fg-color), 0.15);
+}
+
+.legend-rapid {
+    background-color: alpha(@warning_color, 0.9);
+}
+
+.legend-cut {
+    background-color: alpha(@success_color, 0.9);
+}
+
+.legend-bounds {
+    background-color: alpha(@accent_color, 0.9);
+}
+
+.legend-grid {
+    background-color: alpha(var(--fg-color), 0.35);
+}
+
+.legend-selection {
+    background-color: alpha(@error_color, 0.9);
+}
+
+.legend-toolpath {
+    background-color: alpha(@success_color, 0.9);
 }
 
 /* Vector Preview Frame */

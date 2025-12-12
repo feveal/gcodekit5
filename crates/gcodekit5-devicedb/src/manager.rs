@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct DeviceManager {
@@ -33,14 +33,14 @@ impl DeviceManager {
             return Ok(());
         }
 
-        let content = fs::read_to_string(&self.config_path)
-            .context("Failed to read device profiles file")?;
-        
-        let data: serde_json::Value = serde_json::from_str(&content)
-            .context("Failed to parse device profiles JSON")?;
+        let content =
+            fs::read_to_string(&self.config_path).context("Failed to read device profiles file")?;
+
+        let data: serde_json::Value =
+            serde_json::from_str(&content).context("Failed to parse device profiles JSON")?;
 
         let mut profiles_map = HashMap::new();
-        
+
         if let Some(profiles_array) = data.get("profiles").and_then(|v| v.as_array()) {
             for p in profiles_array {
                 let profile: DeviceProfile = serde_json::from_value(p.clone())?;
@@ -48,12 +48,15 @@ impl DeviceManager {
             }
         }
 
-        let active_id = data.get("active_id").and_then(|v| v.as_str()).map(String::from);
+        let active_id = data
+            .get("active_id")
+            .and_then(|v| v.as_str())
+            .map(String::from);
 
         {
             let mut profiles_lock = self.profiles.write().unwrap();
             *profiles_lock = profiles_map;
-            
+
             let mut active_lock = self.active_profile_id.write().unwrap();
             *active_lock = active_id;
         }
@@ -69,7 +72,7 @@ impl DeviceManager {
         let active_lock = self.active_profile_id.read().unwrap();
 
         let profiles_vec: Vec<&DeviceProfile> = profiles_lock.values().collect();
-        
+
         let data = serde_json::json!({
             "profiles": profiles_vec,
             "active_id": *active_lock
@@ -80,8 +83,7 @@ impl DeviceManager {
         }
 
         let content = serde_json::to_string_pretty(&data)?;
-        fs::write(&self.config_path, content)
-            .context("Failed to write device profiles file")?;
+        fs::write(&self.config_path, content).context("Failed to write device profiles file")?;
 
         Ok(())
     }
@@ -107,7 +109,7 @@ impl DeviceManager {
             let mut lock = self.profiles.write().unwrap();
             lock.remove(id);
         }
-        
+
         // If active profile was deleted, clear active selection
         {
             let mut active_lock = self.active_profile_id.write().unwrap();
@@ -117,7 +119,7 @@ impl DeviceManager {
                 }
             }
         }
-        
+
         self.save()
     }
 

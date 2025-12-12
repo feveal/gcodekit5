@@ -5,8 +5,11 @@ use gcodekit5_visualizer::{Visualizer, Camera3D};
 use gcodekit5_designer::stock_removal::{StockMaterial, SimulationResult};
 // use gcodekit5_designer::stock_removal::visualization::generate_2d_contours;
 use gcodekit5_visualizer::visualizer::{StockSimulator3D, generate_surface_mesh};
+use crate::ui::gtk::osd_format::format_zoom_center_cursor;
 use crate::ui::gtk::shaders::StockRemovalShaderProgram;
+use crate::t;
 use gcodekit5_settings::controller::SettingsController;
+use gcodekit5_settings::manager::SettingsManager;
 use glam::Vec3;
 
 // Stock removal visualization cache
@@ -78,9 +81,30 @@ fn load_gl_func(name: &str) -> *const std::ffi::c_void {
 }
 use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
-    Box, Button, CheckButton, DrawingArea, EventControllerScroll, EventControllerScrollFlags,
-    GestureDrag, Grid, Adjustment, Scrollbar, Label, Orientation, Overlay, Paned,
-    Stack, StackSwitcher, GLArea,
+    accessible::Property as AccessibleProperty,
+    gdk::ModifierType,
+    Box,
+    Button,
+    CheckButton,
+    DrawingArea,
+    EventControllerMotion,
+    EventControllerScroll,
+    EventControllerScrollFlags,
+    GestureDrag,
+    Grid,
+    Adjustment,
+    ComboBoxText,
+    Expander,
+    Image,
+    Scrollbar,
+    Label,
+    Orientation,
+    Overlay,
+    Paned,
+    Stack,
+    ToggleButton,
+    Spinner,
+    GLArea,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -264,7 +288,7 @@ impl GcodeVisualizer {
 
         // View Controls
         let view_label = Label::builder()
-            .label("View Controls")
+            .label(t!("View Controls"))
             .css_classes(vec!["heading"])
             .halign(gtk4::Align::Start)
             .build();
@@ -273,16 +297,30 @@ impl GcodeVisualizer {
         let view_controls = Box::new(Orientation::Horizontal, 6);
         let fit_btn = Button::builder()
             .icon_name("zoom-fit-best-symbolic")
-            .tooltip_text("Fit to View")
+            .tooltip_text(t!("Fit to View"))
             .build();
+        fit_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to View"))]);
+
         let reset_btn = Button::builder()
             .icon_name("view-restore-symbolic")
-            .tooltip_text("Reset View")
+            .tooltip_text(t!("Reset View"))
             .build();
+        reset_btn.update_property(&[AccessibleProperty::Label(&t!("Reset View"))]);
+
         let fit_device_btn = Button::builder()
             .icon_name("preferences-desktop-display-symbolic")
-            .tooltip_text("Fit to Device Working Area")
+            .tooltip_text(t!("Fit to Device Working Area"))
             .build();
+        fit_device_btn.update_property(&[AccessibleProperty::Label(&t!("Fit to Device Working Area"))]);
+
+        let sidebar_hide_btn = Button::builder().tooltip_text(t!("Hide Sidebar")).build();
+        sidebar_hide_btn.update_property(&[AccessibleProperty::Label(&t!("Hide Sidebar"))]);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&Image::from_icon_name("view-conceal-symbolic"));
+            child.append(&Label::new(Some(&t!("Hide"))));
+            sidebar_hide_btn.set_child(Some(&child));
+        }
 
         view_controls.append(&fit_btn);
         view_controls.append(&reset_btn);
@@ -291,26 +329,48 @@ impl GcodeVisualizer {
         if device_manager.is_some() {
             view_controls.append(&fit_device_btn);
         }
+        view_controls.append(&sidebar_hide_btn);
         
         sidebar.append(&view_controls);
 
         // View Mode Switcher
         let mode_label = Label::builder()
-            .label("View Mode")
+            .label(t!("View Mode"))
             .css_classes(vec!["heading"])
             .halign(gtk4::Align::Start)
             .margin_top(12)
             .build();
         sidebar.append(&mode_label);
 
-        let stack_switcher = StackSwitcher::builder()
-            .halign(gtk4::Align::Fill)
-            .build();
-        sidebar.append(&stack_switcher);
+        // Compact 2D/3D segmented control
+        let mode_box = Box::new(Orientation::Horizontal, 0);
+        mode_box.add_css_class("linked");
 
-        // Visibility
+        let mode_2d_btn = ToggleButton::new();
+        mode_2d_btn.set_tooltip_text(Some(&t!("2D View")));
+        mode_2d_btn.update_property(&[AccessibleProperty::Label(&t!("2D View"))]);
+        let mode_2d_child = Box::new(Orientation::Horizontal, 4);
+        mode_2d_child.append(&Image::from_icon_name("view-grid-symbolic"));
+        mode_2d_child.append(&Label::new(Some(&t!("2D"))));
+        mode_2d_btn.set_child(Some(&mode_2d_child));
+
+        let mode_3d_btn = ToggleButton::new();
+        mode_3d_btn.set_tooltip_text(Some(&t!("3D View")));
+        mode_3d_btn.update_property(&[AccessibleProperty::Label(&t!("3D View"))]);
+        let mode_3d_child = Box::new(Orientation::Horizontal, 4);
+        mode_3d_child.append(&Image::from_icon_name("video-display-symbolic"));
+        mode_3d_child.append(&Label::new(Some(&t!("3D"))));
+        mode_3d_btn.set_child(Some(&mode_3d_child));
+
+        mode_2d_btn.set_active(true);
+
+        mode_box.append(&mode_2d_btn);
+        mode_box.append(&mode_3d_btn);
+        sidebar.append(&mode_box);
+
+        // Sidebar sections
         let vis_label = Label::builder()
-            .label("Visibility")
+            .label(t!("View"))
             .css_classes(vec!["heading"])
             .halign(gtk4::Align::Start)
             .margin_top(12)
@@ -318,106 +378,218 @@ impl GcodeVisualizer {
         sidebar.append(&vis_label);
 
         let show_rapid = CheckButton::builder()
-            .label("Show Rapid Moves")
+            .label(t!("Show Rapid Moves"))
             .active(true)
             .build();
         let show_cut = CheckButton::builder()
-            .label("Show Cutting Moves")
+            .label(t!("Show Cutting Moves"))
             .active(true)
             .build();
         let show_grid = CheckButton::builder()
-            .label("Show Grid")
+            .label(t!("Show Grid"))
             .active(true)
             .build();
+
+        let grid_spacing_mm = Rc::new(std::cell::Cell::new(10.0_f64));
+        let grid_spacing_row = Box::new(Orientation::Horizontal, 6);
+        let grid_spacing_label = Label::new(Some(&t!("Grid spacing")));
+        grid_spacing_label.add_css_class("caption");
+
+        let grid_spacing_combo = ComboBoxText::new();
+        grid_spacing_combo.set_tooltip_text(Some(&t!("Grid spacing")));
+
+        let system = settings_controller
+            .persistence
+            .borrow()
+            .config()
+            .ui
+            .measurement_system;
+        let unit_label = gcodekit5_core::units::get_unit_label(system);
+        let grid_options_mm = [1.0_f64, 5.0, 10.0, 25.0, 50.0];
+        for mm in grid_options_mm {
+            let label = format!(
+                "{} {}",
+                gcodekit5_core::units::format_length(mm as f32, system),
+                unit_label
+            );
+            grid_spacing_combo.append(Some(&mm.to_string()), &label);
+        }
+        grid_spacing_combo.set_active_id(Some("10"));
+
+        {
+            let grid_spacing_mm = grid_spacing_mm.clone();
+            grid_spacing_combo.connect_changed(move |cb| {
+                let Some(id) = cb.active_id() else { return; };
+                if let Ok(mm) = id.parse::<f64>() {
+                    grid_spacing_mm.set(mm);
+                }
+            });
+        }
+
+        grid_spacing_row.append(&grid_spacing_label);
+        grid_spacing_row.append(&grid_spacing_combo);
+
         let show_bounds = CheckButton::builder()
-            .label("Show Machine Bounds")
+            .label(t!("Show Machine Bounds"))
             .active(true)
             .build();
         let show_intensity = CheckButton::builder()
-            .label("Show Intensity")
+            .label(t!("Show Intensity"))
             .active(false)
             .build();
         let show_laser = CheckButton::builder()
-            .label("Show Laser/Spindle")
+            .label(t!("Show Laser/Spindle"))
             .active(true)
             .build();
         let show_stock_removal = CheckButton::builder()
-            .label("Show Stock Removal")
+            .label(t!("Show Stock Removal"))
             .active(false)
+            .build();
+
+        // Legend (collapsible)
+        let legend_box = Box::new(Orientation::Vertical, 6);
+        legend_box.set_margin_start(6);
+        legend_box.set_margin_end(6);
+        legend_box.set_margin_top(6);
+        legend_box.set_margin_bottom(6);
+
+        let mk_row = |css: &str, text: &str| {
+            let row = Box::new(Orientation::Horizontal, 6);
+            let swatch = Box::new(Orientation::Horizontal, 0);
+            swatch.set_size_request(12, 12);
+            swatch.add_css_class("legend-swatch");
+            swatch.add_css_class(css);
+            row.append(&swatch);
+            row.append(&Label::new(Some(text)));
+            row
+        };
+
+        legend_box.append(&mk_row("legend-rapid", &t!("Rapid")));
+        legend_box.append(&mk_row("legend-cut", &t!("Cut")));
+        legend_box.append(&mk_row("legend-bounds", &t!("Machine bounds")));
+        legend_box.append(&mk_row("legend-grid", &t!("Grid")));
+
+        let legend_expander = Expander::builder()
+            .label(t!("Legend"))
+            .expanded(false)
+            .child(&legend_box)
             .build();
         
         // Stock configuration
         let stock_config_label = Label::builder()
-            .label("Stock Dimensions (mm)")
+            .label(t!("Stock Dimensions (mm)"))
             .css_classes(vec!["heading"])
             .halign(gtk4::Align::Start)
             .margin_top(12)
             .build();
         
         let stock_width_entry = gtk4::Entry::builder()
-            .placeholder_text("Width")
+            .placeholder_text(t!("Width"))
             .text("200.0")
             .build();
         let stock_height_entry = gtk4::Entry::builder()
-            .placeholder_text("Height")
+            .placeholder_text(t!("Height"))
             .text("200.0")
             .build();
         let stock_thickness_entry = gtk4::Entry::builder()
-            .placeholder_text("Thickness")
+            .placeholder_text(t!("Thickness"))
             .text("10.0")
             .build();
         let stock_tool_radius_entry = gtk4::Entry::builder()
-            .placeholder_text("Tool Radius")
+            .placeholder_text(t!("Tool Radius"))
             .text("1.5875")
             .build();
 
-        sidebar.append(&show_rapid);
-        sidebar.append(&show_cut);
-        sidebar.append(&show_grid);
-        sidebar.append(&show_bounds);
-        sidebar.append(&show_intensity);
-        sidebar.append(&show_laser);
-        sidebar.append(&show_stock_removal);
-        sidebar.append(&stock_config_label);
-        sidebar.append(&stock_width_entry);
-        sidebar.append(&stock_height_entry);
-        sidebar.append(&stock_thickness_entry);
-        sidebar.append(&stock_tool_radius_entry);
+        // Group toggles into sections
+        let toolpath_box = Box::new(Orientation::Vertical, 6);
+        toolpath_box.set_margin_start(6);
+        toolpath_box.set_margin_end(6);
+        toolpath_box.set_margin_top(6);
+        toolpath_box.set_margin_bottom(6);
+        toolpath_box.append(&show_rapid);
+        toolpath_box.append(&show_cut);
+        toolpath_box.append(&show_laser);
 
-        // Bounds Info
+        let toolpath_expander = Expander::builder()
+            .label(t!("Toolpath"))
+            .expanded(true)
+            .child(&toolpath_box)
+            .build();
+        sidebar.append(&toolpath_expander);
+
+        let guides_box = Box::new(Orientation::Vertical, 6);
+        guides_box.set_margin_start(6);
+        guides_box.set_margin_end(6);
+        guides_box.set_margin_top(6);
+        guides_box.set_margin_bottom(6);
+        guides_box.append(&show_grid);
+        guides_box.append(&grid_spacing_row);
+        guides_box.append(&show_bounds);
+        guides_box.append(&legend_expander);
+
+        let guides_expander = Expander::builder()
+            .label(t!("Guides"))
+            .expanded(true)
+            .child(&guides_box)
+            .build();
+        sidebar.append(&guides_expander);
+
+        let simulation_box = Box::new(Orientation::Vertical, 6);
+        simulation_box.set_margin_start(6);
+        simulation_box.set_margin_end(6);
+        simulation_box.set_margin_top(6);
+        simulation_box.set_margin_bottom(6);
+        simulation_box.append(&show_intensity);
+        simulation_box.append(&show_stock_removal);
+        simulation_box.append(&stock_config_label);
+        simulation_box.append(&stock_width_entry);
+        simulation_box.append(&stock_height_entry);
+        simulation_box.append(&stock_thickness_entry);
+        simulation_box.append(&stock_tool_radius_entry);
+
+        let simulation_expander = Expander::builder()
+            .label(t!("Simulation"))
+            .expanded(false)
+            .child(&simulation_box)
+            .build();
+        sidebar.append(&simulation_expander);
+
+        // Inspector
         let bounds_label = Label::builder()
-            .label("Bounds\nX: 0.0 to 0.0\nY: 0.0 to 0.0")
+            .label(t!("Bounds\nX: 0.0 to 0.0\nY: 0.0 to 0.0"))
             .css_classes(vec!["caption"])
             .halign(gtk4::Align::Start)
-            .margin_top(24)
             .build();
-        sidebar.append(&bounds_label);
-
-        // Statistics
-        let stats_label = Label::builder()
-            .label("Statistics")
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .margin_top(12)
-            .build();
-        sidebar.append(&stats_label);
 
         let min_s_label = Label::builder()
-            .label("Min S: -")
+            .label(t!("Min S: -"))
             .halign(gtk4::Align::Start)
             .build();
         let max_s_label = Label::builder()
-            .label("Max S: -")
+            .label(t!("Max S: -"))
             .halign(gtk4::Align::Start)
             .build();
         let avg_s_label = Label::builder()
-            .label("Avg S: -")
+            .label(t!("Avg S: -"))
             .halign(gtk4::Align::Start)
             .build();
 
-        sidebar.append(&min_s_label);
-        sidebar.append(&max_s_label);
-        sidebar.append(&avg_s_label);
+        let inspector_box = Box::new(Orientation::Vertical, 6);
+        inspector_box.set_margin_start(6);
+        inspector_box.set_margin_end(6);
+        inspector_box.set_margin_top(6);
+        inspector_box.set_margin_bottom(6);
+        inspector_box.append(&bounds_label);
+        inspector_box.append(&min_s_label);
+        inspector_box.append(&max_s_label);
+        inspector_box.append(&avg_s_label);
+
+        let inspector_expander = Expander::builder()
+            .label(t!("Inspector"))
+            .expanded(true)
+            .child(&inspector_box)
+            .build();
+        sidebar.append(&inspector_expander);
 
         // Wrap sidebar in a scrolled window
         let scrolled_sidebar = gtk4::ScrolledWindow::builder()
@@ -426,7 +598,21 @@ impl GcodeVisualizer {
             .child(&sidebar)
             .build();
 
-        container.set_start_child(Some(&scrolled_sidebar));
+        let sidebar_visible_init = settings_controller
+            .persistence
+            .borrow()
+            .config()
+            .ui
+            .panel_visibility
+            .get("visualizer_sidebar")
+            .copied()
+            .unwrap_or(true);
+
+        if sidebar_visible_init {
+            container.set_start_child(Some(&scrolled_sidebar));
+        } else {
+            container.set_start_child(None::<&gtk4::Widget>);
+        }
 
         // Drawing Area
         let drawing_area = DrawingArea::builder()
@@ -434,6 +620,12 @@ impl GcodeVisualizer {
             .vexpand(true)
             .css_classes(vec!["visualizer-canvas"])
             .build();
+
+        // Queue redraw on grid spacing change
+        {
+            let drawing_area = drawing_area.clone();
+            grid_spacing_combo.connect_changed(move |_| drawing_area.queue_draw());
+        }
 
         // Scrollbars
         let hadjustment = Adjustment::new(0.0, 0.0, 100.0, 1.0, 10.0, 10.0);
@@ -449,11 +641,14 @@ impl GcodeVisualizer {
             .adjustment(&vadjustment)
             .build();
 
+        // Default hidden (toggleable) to maximize canvas space
+        hscrollbar.set_visible(false);
+        vscrollbar.set_visible(false);
+
         // Stack for 2D/3D
         let stack = Stack::new();
         stack.set_hexpand(true);
         stack.set_vexpand(true);
-        stack_switcher.set_stack(Some(&stack));
 
         // 2D Page (Grid with DrawingArea + Scrollbars)
         let grid = Grid::builder()
@@ -465,7 +660,7 @@ impl GcodeVisualizer {
         grid.attach(&vscrollbar, 1, 0, 1, 1);
         grid.attach(&hscrollbar, 0, 1, 1, 1);
         
-        stack.add_titled(&grid, Some("2d"), "2D View");
+        stack.add_titled(&grid, Some("2d"), &t!("2D View"));
 
         // 3D Page
         let gl_area = GLArea::builder()
@@ -489,6 +684,10 @@ impl GcodeVisualizer {
             .adjustment(&vadjustment_3d)
             .build();
 
+        // Default hidden (toggleable) to maximize canvas space
+        hscrollbar_3d.set_visible(false);
+        vscrollbar_3d.set_visible(false);
+
         let grid_3d = Grid::builder()
             .hexpand(true)
             .vexpand(true)
@@ -498,7 +697,7 @@ impl GcodeVisualizer {
         grid_3d.attach(&vscrollbar_3d, 1, 0, 1, 1);
         grid_3d.attach(&hscrollbar_3d, 0, 1, 1, 1);
         
-        stack.add_titled(&grid_3d, Some("3d"), "3D View");
+        stack.add_titled(&grid_3d, Some("3d"), &t!("3D View"));
 
         // Initialize Visualizer logic
         let visualizer = Rc::new(RefCell::new(Visualizer::new()));
@@ -531,6 +730,20 @@ impl GcodeVisualizer {
         let nav_cube = NavCube::new(camera.clone(), gl_area.clone());
         overlay.add_overlay(&nav_cube.widget);
 
+        // Empty state (shown when no G-code is loaded)
+        let empty_box = Box::new(Orientation::Vertical, 8);
+        empty_box.add_css_class("visualizer-osd");
+        empty_box.set_halign(gtk4::Align::Center);
+        empty_box.set_valign(gtk4::Align::Center);
+        empty_box.set_margin_start(20);
+        empty_box.set_margin_end(20);
+        empty_box.set_margin_top(20);
+        empty_box.set_margin_bottom(20);
+        empty_box.append(&Label::new(Some(&t!("No G-code loaded"))));
+        empty_box.append(&Label::new(Some(&t!("Open a file to preview toolpaths."))));
+        empty_box.set_visible(true);
+        overlay.add_overlay(&empty_box);
+
         // Floating Controls (Bottom Right)
         let floating_box = Box::new(Orientation::Horizontal, 4);
         floating_box.add_css_class("visualizer-osd");
@@ -540,20 +753,49 @@ impl GcodeVisualizer {
         floating_box.set_margin_end(20);
 
         let float_zoom_out = Button::builder()
-            .label("-")
-            .tooltip_text("Zoom Out")
+            .icon_name("zoom-out-symbolic")
+            .tooltip_text(t!("Zoom Out"))
             .build();
+        float_zoom_out.update_property(&[AccessibleProperty::Label(&t!("Zoom Out"))]);
+
         let float_fit = Button::builder()
-            .label("Fit")
-            .tooltip_text("Fit to View")
+            .icon_name("zoom-fit-best-symbolic")
+            .tooltip_text(t!("Fit to View"))
             .build();
+        float_fit.update_property(&[AccessibleProperty::Label(&t!("Fit to View"))]);
+
+        let float_reset = Button::builder()
+            .icon_name("view-restore-symbolic")
+            .tooltip_text(t!("Reset View"))
+            .build();
+        float_reset.update_property(&[AccessibleProperty::Label(&t!("Reset View"))]);
+
+        let float_fit_device = Button::builder()
+            .icon_name("preferences-desktop-display-symbolic")
+            .tooltip_text(t!("Fit to Device Working Area"))
+            .build();
+        float_fit_device
+            .update_property(&[AccessibleProperty::Label(&t!("Fit to Device Working Area"))]);
+
+        let scrollbars_btn = Button::builder()
+            .icon_name("view-list-symbolic")
+            .tooltip_text(t!("Toggle Scrollbars"))
+            .build();
+        scrollbars_btn.update_property(&[AccessibleProperty::Label(&t!("Toggle Scrollbars"))]);
+
         let float_zoom_in = Button::builder()
-            .label("+")
-            .tooltip_text("Zoom In")
+            .icon_name("zoom-in-symbolic")
+            .tooltip_text(t!("Zoom In"))
             .build();
+        float_zoom_in.update_property(&[AccessibleProperty::Label(&t!("Zoom In"))]);
 
         floating_box.append(&float_zoom_out);
         floating_box.append(&float_fit);
+        floating_box.append(&float_reset);
+        if device_manager.is_some() {
+            floating_box.append(&float_fit_device);
+        }
+        floating_box.append(&scrollbars_btn);
         floating_box.append(&float_zoom_in);
 
         // Status Panel (Bottom Left)
@@ -564,13 +806,74 @@ impl GcodeVisualizer {
         status_box.set_margin_bottom(20);
         status_box.set_margin_start(20);
 
-        let status_label = Label::builder()
-            .label("100%   X: 0.0   Y: 0.0   10.0mm")
-            .build();
+        let status_label = Label::builder().label(" ").build();
+        status_label.set_hexpand(true);
+
+        let units_badge = Label::new(Some(""));
+        units_badge.add_css_class("osd-units-badge");
+
         status_box.append(&status_label);
+        status_box.append(&units_badge);
+
+        // Sidebar show panel (floating) — matches Device Console UX
+        let sidebar_show_btn = Button::builder().tooltip_text(t!("Show Sidebar")).build();
+        sidebar_show_btn.update_property(&[AccessibleProperty::Label(&t!("Show Sidebar"))]);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&Image::from_icon_name("view-reveal-symbolic"));
+            child.append(&Label::new(Some(&t!("Show Sidebar"))));
+            sidebar_show_btn.set_child(Some(&child));
+        }
+
+        let sidebar_show_panel = Box::new(Orientation::Horizontal, 0);
+        sidebar_show_panel.add_css_class("visualizer-osd");
+        sidebar_show_panel.set_halign(gtk4::Align::Start);
+        sidebar_show_panel.set_valign(gtk4::Align::Start);
+        sidebar_show_panel.set_margin_start(12);
+        sidebar_show_panel.set_margin_top(12);
+        sidebar_show_panel.append(&sidebar_show_btn);
+        sidebar_show_panel.set_visible(!sidebar_visible_init);
+
+        // Stock removal progress (non-blocking) + cancel
+        let sim_cancel = Rc::new(std::cell::Cell::new(false));
+
+        let sim_spinner = Spinner::new();
+        sim_spinner.start();
+
+        let sim_cancel_btn = Button::builder().tooltip_text(t!("Cancel")).build();
+        sim_cancel_btn.update_property(&[AccessibleProperty::Label(&t!("Cancel"))]);
+        {
+            let child = Box::new(Orientation::Horizontal, 6);
+            child.append(&Image::from_icon_name("process-stop-symbolic"));
+            child.append(&Label::new(Some(&t!("Cancel"))));
+            sim_cancel_btn.set_child(Some(&child));
+        }
+
+        let sim_panel = Box::new(Orientation::Horizontal, 8);
+        sim_panel.add_css_class("visualizer-osd");
+        sim_panel.set_halign(gtk4::Align::Center);
+        sim_panel.set_valign(gtk4::Align::Start);
+        sim_panel.set_margin_top(12);
+        sim_panel.append(&Label::new(Some(&t!("Simulating stock removal…"))));
+        sim_panel.append(&sim_spinner);
+        sim_panel.append(&sim_cancel_btn);
+        sim_panel.set_visible(false);
+
+        {
+            let cancel_flag = sim_cancel.clone();
+            let show_stock = show_stock_removal.clone();
+            let panel = sim_panel.clone();
+            sim_cancel_btn.connect_clicked(move |_| {
+                cancel_flag.set(true);
+                panel.set_visible(false);
+                show_stock.set_active(false);
+            });
+        }
 
         overlay.add_overlay(&floating_box);
         overlay.add_overlay(&status_box);
+        overlay.add_overlay(&sidebar_show_panel);
+        overlay.add_overlay(&sim_panel);
 
         container.set_end_child(Some(&overlay));
 
@@ -608,16 +911,45 @@ impl GcodeVisualizer {
             gl_area_fit_3d.queue_render();
         });
 
+        // View mode switching
+        {
+            let stack = stack.clone();
+            let other = mode_3d_btn.clone();
+            mode_2d_btn.connect_toggled(move |btn| {
+                if btn.is_active() {
+                    stack.set_visible_child_name("2d");
+                    if other.is_active() {
+                        other.set_active(false);
+                    }
+                }
+            });
+        }
+        {
+            let stack = stack.clone();
+            let other = mode_2d_btn.clone();
+            mode_3d_btn.connect_toggled(move |btn| {
+                if btn.is_active() {
+                    stack.set_visible_child_name("3d");
+                    if other.is_active() {
+                        other.set_active(false);
+                    }
+                }
+            });
+        }
+
         // Visibility Logic
         let nav_widget = nav_cube.widget.clone();
         let float_box = floating_box.clone();
         let show_intensity_vis = show_intensity.clone();
+        let mode_2d_btn_vis = mode_2d_btn.clone();
+        let mode_3d_btn_vis = mode_3d_btn.clone();
         
         // Initial state
         nav_widget.set_visible(false); // Start in 2D mode
         
         stack.connect_visible_child_name_notify(move |stack| {
-            if stack.visible_child_name().as_deref() == Some("3d") {
+            let is_3d = stack.visible_child_name().as_deref() == Some("3d");
+            if is_3d {
                 nav_widget.set_visible(true);
                 float_box.set_visible(false);
                 show_intensity_vis.set_active(false);
@@ -627,36 +959,81 @@ impl GcodeVisualizer {
                 float_box.set_visible(true);
                 show_intensity_vis.set_sensitive(true);
             }
+
+            if mode_3d_btn_vis.is_active() != is_3d {
+                mode_3d_btn_vis.set_active(is_3d);
+            }
+            if mode_2d_btn_vis.is_active() == is_3d {
+                mode_2d_btn_vis.set_active(!is_3d);
+            }
         });
 
         // Helper to update status
+        let cursor_pos = Rc::new(RefCell::new((0.0_f32, 0.0_f32)));
         let update_status_fn = {
             let label = status_label.clone();
+            let units_badge = units_badge.clone();
+            let empty_box = empty_box.clone();
             let vis = visualizer.clone();
+            let cursor_pos = cursor_pos.clone();
             let settings = settings_controller.clone();
             move || {
                 let v = vis.borrow();
+                let (cursor_x, cursor_y) = *cursor_pos.borrow();
                 let system = settings.persistence.borrow().config().ui.measurement_system;
-                let unit_label = gcodekit5_core::units::get_unit_label(system);
-                
-                // Note: Visualizer offsets are negative of center, so we negate them to show center
+
+                // Visualizer offsets are negative of center, so we negate them to show center
                 let center_x = -v.x_offset;
                 let center_y = -v.y_offset;
-                
-                let x_str = gcodekit5_core::units::format_length(center_x, system);
-                let y_str = gcodekit5_core::units::format_length(center_y, system);
-                let grid_str = gcodekit5_core::units::format_length(10.0, system);
-                
-                label.set_text(&format!(
-                    "{:.0}%   X: {}   Y: {}   {} {}",
-                    v.zoom_scale * 100.0,
-                    x_str,
-                    y_str,
-                    grid_str,
-                    unit_label
+
+                label.set_text(&format_zoom_center_cursor(
+                    v.zoom_scale as f64,
+                    center_x,
+                    center_y,
+                    cursor_x,
+                    cursor_y,
+                    system,
                 ));
+
+                units_badge.set_text(gcodekit5_core::units::get_unit_label(system));
+                empty_box.set_visible(v.commands().is_empty());
             }
         };
+
+        // Track cursor position in world coordinates
+        let motion = EventControllerMotion::new();
+        let vis_motion = visualizer.clone();
+        let da_motion = drawing_area.clone();
+        let cursor_pos_motion = cursor_pos.clone();
+        motion.connect_motion(move |_, x, y| {
+            let v = vis_motion.borrow();
+            let width = da_motion.width() as f64;
+            let height = da_motion.height() as f64;
+            if width <= 0.0 || height <= 0.0 {
+                return;
+            }
+
+            let center_x = width / 2.0;
+            let center_y = height / 2.0;
+            let s = v.zoom_scale as f64;
+            if s == 0.0 {
+                return;
+            }
+
+            let world_x = (x - center_x) / s - v.x_offset as f64;
+            let world_y = -((y - center_y) / s) - v.y_offset as f64;
+            *cursor_pos_motion.borrow_mut() = (world_x as f32, world_y as f32);
+        });
+        drawing_area.add_controller(motion);
+
+        // Keep status text fresh while moving the mouse
+        {
+            let u = update_status_fn.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                u();
+                gtk4::glib::ControlFlow::Continue
+            });
+        }
 
         // Helper to update scrollbars
         let is_updating = Rc::new(RefCell::new(false));
@@ -784,13 +1161,227 @@ impl GcodeVisualizer {
             }
         });
 
-        container.add_tick_callback(|paned, _clock| {
-            let width = paned.width();
-            let target = (width as f64 * 0.2) as i32;
-            if (paned.position() - target).abs() > 2 {
-                paned.set_position(target);
+        let vis_float_reset = visualizer.clone();
+        let da_float_reset = drawing_area.clone();
+        let update_status = update_ui.clone();
+        float_reset.connect_clicked(move |_| {
+            let mut vis = vis_float_reset.borrow_mut();
+            vis.reset_zoom();
+            vis.reset_pan();
+            drop(vis);
+            update_status();
+            da_float_reset.queue_draw();
+        });
+
+        // Fit to device in OSD (matches Designer)
+        let vis_float_fit_dev = visualizer.clone();
+        let da_float_fit_dev = drawing_area.clone();
+        let update_status = update_ui.clone();
+        let device_manager_fit_dev = device_manager.clone();
+        float_fit_device.connect_clicked(move |_| {
+            let width = da_float_fit_dev.width() as f32;
+            let height = da_float_fit_dev.height() as f32;
+            if width > 0.0 && height > 0.0 {
+                let mut v = vis_float_fit_dev.borrow_mut();
+                Self::apply_fit_to_device(&mut v, &device_manager_fit_dev, width, height);
+                drop(v);
+                update_status();
+                da_float_fit_dev.queue_draw();
             }
-            gtk4::glib::ControlFlow::Continue
+        });
+
+        // Scrollbars toggle (2D + 3D)
+        let show_scrollbars = Rc::new(std::cell::Cell::new(false));
+        let hsb_2d = hscrollbar.clone();
+        let vsb_2d = vscrollbar.clone();
+        let hsb_3d = hscrollbar_3d.clone();
+        let vsb_3d = vscrollbar_3d.clone();
+        let show_scrollbars_btn = show_scrollbars.clone();
+        scrollbars_btn.connect_clicked(move |_| {
+            let next = !show_scrollbars_btn.get();
+            show_scrollbars_btn.set(next);
+            hsb_2d.set_visible(next);
+            vsb_2d.set_visible(next);
+            hsb_3d.set_visible(next);
+            vsb_3d.set_visible(next);
+        });
+
+        // Set initial sidebar width once (and then respect user changes)
+        let did_set_paned = Rc::new(std::cell::Cell::new(false));
+        let did_set_paned_map = did_set_paned.clone();
+        let settings_map = settings_controller.clone();
+        container.connect_map(move |paned| {
+            if did_set_paned_map.get() {
+                return;
+            }
+            did_set_paned_map.set(true);
+
+            // If the sidebar starts hidden, don't restore a position.
+            if !sidebar_visible_init {
+                return;
+            }
+
+            let paned = paned.clone();
+            let settings_map = settings_map.clone();
+            gtk4::glib::timeout_add_local(std::time::Duration::from_millis(50), move || {
+                let stored = settings_map
+                    .persistence
+                    .borrow()
+                    .config()
+                    .ui
+                    .visualizer_sidebar_position;
+
+                let width = paned.width();
+                if width <= 0 {
+                    return gtk4::glib::ControlFlow::Continue;
+                }
+
+                let min_pos = 280;
+                let max_25 = ((width as f64) * 0.25) as i32;
+                let max_canvas = (width - 420).max(min_pos);
+                let max_pos = max_25.min(max_canvas).max(min_pos);
+
+                let mut pos = stored.unwrap_or_else(|| max_25);
+                if pos < min_pos {
+                    pos = min_pos;
+                }
+                if pos > max_pos {
+                    pos = max_pos;
+                }
+
+                paned.set_position(pos);
+                gtk4::glib::ControlFlow::Break
+            });
+        });
+
+        // Sidebar hide/show (same UX as Device Console)
+        let sidebar_collapsed = Rc::new(std::cell::Cell::new(!sidebar_visible_init));
+        let sidebar_last_pos = Rc::new(std::cell::Cell::new(0));
+
+        {
+            let paned = container.clone();
+            let hide_btn = sidebar_hide_btn.clone();
+            let collapsed = sidebar_collapsed.clone();
+            let last_pos = sidebar_last_pos.clone();
+            let show_panel = sidebar_show_panel.clone();
+            let settings = settings_controller.clone();
+
+            sidebar_hide_btn.connect_clicked(move |_| {
+                if collapsed.get() {
+                    return;
+                }
+
+                last_pos.set(paned.position());
+                paned.set_start_child(None::<&gtk4::Widget>);
+                hide_btn.set_sensitive(false);
+                collapsed.set(true);
+                show_panel.set_visible(true);
+
+                // Persist collapsed state
+                {
+                    let mut p = settings.persistence.borrow_mut();
+                    p.config_mut()
+                        .ui
+                        .panel_visibility
+                        .insert("visualizer_sidebar".to_string(), false);
+                    if let Ok(path) = SettingsManager::config_file_path() {
+                        let _ = SettingsManager::ensure_config_dir();
+                        let _ = p.save_to_file(&path);
+                    }
+                }
+            });
+        }
+
+        {
+            let paned = container.clone();
+            let sidebar_scroller = scrolled_sidebar.clone();
+            let hide_btn = sidebar_hide_btn.clone();
+            let collapsed = sidebar_collapsed.clone();
+            let last_pos = sidebar_last_pos.clone();
+            let show_panel = sidebar_show_panel.clone();
+            let settings = settings_controller.clone();
+
+            sidebar_show_btn.connect_clicked(move |_| {
+                if !collapsed.get() {
+                    return;
+                }
+
+                paned.set_start_child(Some(&sidebar_scroller));
+
+                let width = paned.width();
+                if width > 0 {
+                    let min_pos = 280;
+                    let max_25 = ((width as f64) * 0.25) as i32;
+                    let max_canvas = (width - 420).max(min_pos);
+                    let max_pos = max_25.min(max_canvas).max(min_pos);
+
+                    let mut pos = last_pos.get();
+                    if pos <= 0 {
+                        pos = max_25;
+                    }
+                    if pos < min_pos {
+                        pos = min_pos;
+                    }
+                    if pos > max_pos {
+                        pos = max_pos;
+                    }
+                    paned.set_position(pos);
+
+                    // Persist position and visible state
+                    {
+                        let mut p = settings.persistence.borrow_mut();
+                        p.config_mut().ui.visualizer_sidebar_position = Some(pos);
+                        p.config_mut()
+                            .ui
+                            .panel_visibility
+                            .insert("visualizer_sidebar".to_string(), true);
+                        if let Ok(path) = SettingsManager::config_file_path() {
+                            let _ = SettingsManager::ensure_config_dir();
+                            let _ = p.save_to_file(&path);
+                        }
+                    }
+                }
+
+                hide_btn.set_sensitive(true);
+                collapsed.set(false);
+                show_panel.set_visible(false);
+            });
+        }
+
+        // Persist user choice (ignore bogus early values)
+        let settings_persist = settings_controller.clone();
+        container.connect_notify_local(Some("position"), move |paned, _| {
+            // If sidebar is hidden, ignore position changes.
+            if paned.start_child().is_none() {
+                return;
+            }
+
+            let width = paned.width();
+            if width <= 0 {
+                return;
+            }
+
+            let min_pos = 280;
+            let max_25 = ((width as f64) * 0.25) as i32;
+            let max_canvas = (width - 420).max(min_pos);
+            let max_pos = max_25.min(max_canvas).max(min_pos);
+
+            let mut pos = paned.position();
+            if pos < min_pos {
+                return;
+            }
+            if pos > max_pos {
+                pos = max_pos;
+            }
+
+            {
+                let mut p = settings_persist.persistence.borrow_mut();
+                p.config_mut().ui.visualizer_sidebar_position = Some(pos);
+                if let Ok(path) = SettingsManager::config_file_path() {
+                    let _ = SettingsManager::ensure_config_dir();
+                    let _ = p.save_to_file(&path);
+                }
+            }
         });
 
         // Connect Draw Signal
@@ -808,11 +1399,13 @@ impl GcodeVisualizer {
         let stock_material_draw = stock_material.clone();
         let device_manager_draw = device_manager.clone();
         let current_pos_draw = current_pos.clone();
+        let grid_spacing_draw = grid_spacing_mm.clone();
 
-        drawing_area.set_draw_func(move |_, cr, width, height| {
+        drawing_area.set_draw_func(move |da, cr, width, height| {
             let vis = vis_draw.borrow();
             let mut cache = render_cache_draw.borrow_mut();
             let pos = *current_pos_draw.borrow();
+            let style = da.style_context();
             Self::draw(
                 cr,
                 &vis,
@@ -831,6 +1424,8 @@ impl GcodeVisualizer {
                 &stock_material_draw.borrow(),
                 pos,
                 &device_manager_draw,
+                grid_spacing_draw.get(),
+                &style,
             );
         });
 
@@ -941,12 +1536,17 @@ impl GcodeVisualizer {
         let simulation_running_flag = simulation_running.clone();
         let stock_simulator_3d_stock = stock_simulator_3d.clone();
         let stock_simulation_3d_pending_toggle = stock_simulation_3d_pending.clone();
+        let sim_panel_toggle = sim_panel.clone();
+        let sim_cancel_flag = sim_cancel.clone();
         show_stock_removal.connect_toggled(move |checkbox| {
             if checkbox.is_active() {
                 // Check if simulation is already running
                 if *simulation_running_flag.borrow() {
                     return;
                 }
+
+                sim_cancel_flag.set(false);
+                sim_panel_toggle.set_visible(true);
                 
                 *simulation_running_flag.borrow_mut() = true;
                 
@@ -1052,22 +1652,37 @@ impl GcodeVisualizer {
                     let sim_running_poll = simulation_running_flag.clone();
                     
                     let pending_flag = stock_simulation_3d_pending_toggle.clone();
+                    let sim_cancel_flag_poll = sim_cancel_flag.clone();
+                    let sim_panel_toggle_poll = sim_panel_toggle.clone();
                     glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
                         *poll_count_clone.borrow_mut() += 1;
+
+                        if sim_cancel_flag_poll.get() {
+                            *sim_running_poll.borrow_mut() = false;
+                            sim_panel_toggle_poll.set_visible(false);
+                            return glib::ControlFlow::Break;
+                        }
                         
                         // Stop after 300 iterations (30 seconds)
                         if *poll_count_clone.borrow() > 300 {
-
                             *sim_running_poll.borrow_mut() = false;
+                            sim_panel_toggle_poll.set_visible(false);
                             return glib::ControlFlow::Break;
                         }
                         
                         if let Ok(mut guard) = result_arc_poll.try_lock() {
                             if let Some(result_simulator) = guard.take() {
+                                if sim_cancel_flag_poll.get() {
+                                    *sim_running_poll.borrow_mut() = false;
+                                    sim_panel_toggle_poll.set_visible(false);
+                                    return glib::ControlFlow::Break;
+                                }
+
                                 *result_3d_ref.borrow_mut() = Some(result_simulator);
                                 *pending_flag.borrow_mut() = true;
                                 
                                 *sim_running_poll.borrow_mut() = false;
+                                sim_panel_toggle_poll.set_visible(false);
                                 gl_ref.queue_render();
                                 
                                 return glib::ControlFlow::Break;
@@ -1076,14 +1691,15 @@ impl GcodeVisualizer {
                         glib::ControlFlow::Continue
                     });
                 } else {
-
                     *stock_simulator_3d_stock.borrow_mut() = None;
                     *simulation_running_flag.borrow_mut() = false;
+                    sim_panel_toggle.set_visible(false);
                 }
             } else {
                 // Clear simulation when disabled
                 *stock_simulator_3d_stock.borrow_mut() = None;
                 *simulation_running_flag.borrow_mut() = false;
+                sim_panel_toggle.set_visible(false);
                 gl_update.queue_render();
             }
         });
@@ -1563,24 +2179,34 @@ impl GcodeVisualizer {
     }
 
     fn setup_interaction<F: Fn() + 'static>(da: &DrawingArea, vis: &Rc<RefCell<Visualizer>>, update_ui: F) {
-        // Scroll to Zoom
-        let scroll = EventControllerScroll::new(EventControllerScrollFlags::VERTICAL);
+        // Scroll to pan (Ctrl+Scroll to zoom)
+        let scroll = EventControllerScroll::new(EventControllerScrollFlags::BOTH_AXES);
         let vis_scroll = vis.clone();
         let da_scroll = da.clone();
         let update_scroll = Rc::new(update_ui);
 
         let update_scroll_clone = update_scroll.clone();
-        scroll.connect_scroll(move |_, _, dy| {
+        scroll.connect_scroll(move |ctrl, dx, dy| {
+            let is_ctrl = ctrl
+                .current_event_state()
+                .contains(ModifierType::CONTROL_MASK);
+
             let mut vis = vis_scroll.borrow_mut();
-            if dy > 0.0 {
-                vis.zoom_out();
+            if is_ctrl {
+                if dy > 0.0 {
+                    vis.zoom_out();
+                } else if dy < 0.0 {
+                    vis.zoom_in();
+                }
             } else {
-                vis.zoom_in();
+                let pan_step = 20.0;
+                vis.x_offset += (dx as f32) * pan_step;
+                // Invert Y (canvas Y is flipped)
+                vis.y_offset -= (dy as f32) * pan_step;
             }
             drop(vis);
 
             update_scroll_clone();
-
             da_scroll.queue_draw();
             gtk4::glib::Propagation::Stop
         });
@@ -1589,6 +2215,11 @@ impl GcodeVisualizer {
         // Drag to Pan
         let drag = GestureDrag::new();
         let vis_drag = vis.clone();
+
+        // Middle mouse drag also pans (matches Designer)
+        let drag_middle = GestureDrag::new();
+        drag_middle.set_button(2);
+        let vis_drag_middle = vis.clone();
 
         let start_pan = Rc::new(RefCell::new((0.0f32, 0.0f32)));
         let _da_drag = da.clone();
@@ -1617,6 +2248,30 @@ impl GcodeVisualizer {
             da_drag_update.queue_draw();
         });
         da.add_controller(drag);
+
+        // Middle-mouse pan uses the same logic
+        let start_pan_middle = start_pan.clone();
+        let start_pan_middle_begin = start_pan_middle.clone();
+        drag_middle.connect_drag_begin(move |_, _, _| {
+            let vis = vis_drag_middle.borrow();
+            *start_pan_middle_begin.borrow_mut() = (vis.x_offset, vis.y_offset);
+        });
+
+        let vis_drag_middle_update = vis.clone();
+        let da_drag_middle_update = da.clone();
+        let start_pan_middle_update = start_pan_middle.clone();
+        let update_drag = update_scroll.clone();
+        drag_middle.connect_drag_update(move |_, dx, dy| {
+            let mut vis = vis_drag_middle_update.borrow_mut();
+            let (sx, sy) = *start_pan_middle_update.borrow();
+            vis.x_offset = sx + dx as f32;
+            vis.y_offset = sy - dy as f32;
+            drop(vis);
+
+            update_drag();
+            da_drag_middle_update.queue_draw();
+        });
+        da.add_controller(drag_middle);
     }
 
     fn update_scrollbars(&self) {
@@ -1672,8 +2327,14 @@ impl GcodeVisualizer {
         let max_y_str = gcodekit5_core::units::format_length(max_y, system);
         
         self.bounds_label.set_text(&format!(
-            "Bounds\nX: {} to {}\nY: {} to {}",
-            min_x_str, max_x_str, min_y_str, max_y_str
+            "{}\nX: {} {} {}\nY: {} {} {}",
+            t!("Bounds"),
+            min_x_str,
+            t!("to"),
+            max_x_str,
+            min_y_str,
+            t!("to"),
+            max_y_str
         ));
 
         // Calculate S statistics
@@ -1698,13 +2359,19 @@ impl GcodeVisualizer {
         }
 
         if count_s > 0 {
-            self.min_s_label.set_text(&format!("Min S: {:.1}", min_s));
-            self.max_s_label.set_text(&format!("Max S: {:.1}", max_s));
-            self.avg_s_label.set_text(&format!("Avg S: {:.1}", sum_s / count_s as f32));
+            self.min_s_label
+                .set_text(&format!("{} {:.1}", t!("Min S:"), min_s));
+            self.max_s_label
+                .set_text(&format!("{} {:.1}", t!("Max S:"), max_s));
+            self.avg_s_label
+                .set_text(&format!("{} {:.1}", t!("Avg S:"), sum_s / count_s as f32));
         } else {
-            self.min_s_label.set_text("Min S: N/A");
-            self.max_s_label.set_text("Max S: N/A");
-            self.avg_s_label.set_text("Avg S: N/A");
+            self.min_s_label
+                .set_text(&format!("{} {}", t!("Min S:"), t!("N/A")));
+            self.max_s_label
+                .set_text(&format!("{} {}", t!("Max S:"), t!("N/A")));
+            self.avg_s_label
+                .set_text(&format!("{} {}", t!("Avg S:"), t!("N/A")));
         }
 
         // Auto fit
@@ -1831,6 +2498,8 @@ impl GcodeVisualizer {
         _stock_material: &Option<StockMaterial>,
         current_pos: (f32, f32, f32),
         device_manager: &Option<Arc<DeviceManager>>,
+        grid_spacing_mm: f64,
+        style_context: &gtk4::StyleContext,
     ) {
         // Phase 4: Calculate cache hash from visualizer state
         use std::collections::hash_map::DefaultHasher;
@@ -1840,11 +2509,22 @@ impl GcodeVisualizer {
         vis.commands().len().hash(&mut hasher);
         show_intensity.hash(&mut hasher);
         let new_hash = hasher.finish();
+        let fg_color = style_context.color();
+        let accent_color = style_context
+            .lookup_color("accent_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.5, 1.0, 1.0));
+        let success_color = style_context
+            .lookup_color("success_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.8, 0.0, 1.0));
+        let warning_color = style_context
+            .lookup_color("warning_color")
+            .unwrap_or(gtk4::gdk::RGBA::new(0.0, 0.8, 1.0, 1.0));
+
         // Clear background
         if show_intensity {
-            cr.set_source_rgb(1.0, 1.0, 1.0); // White background for intensity mode
+            cr.set_source_rgb(1.0, 1.0, 1.0);
         } else {
-            cr.set_source_rgb(0.15, 0.15, 0.15); // Dark grey background
+            cr.set_source_rgb(0.15, 0.15, 0.15);
         }
         cr.paint().expect("Invalid cairo surface state");
 
@@ -1869,7 +2549,7 @@ impl GcodeVisualizer {
 
         // Draw Grid
         if show_grid {
-            Self::draw_grid(cr, vis);
+            Self::draw_grid(cr, vis, grid_spacing_mm.max(0.1), &fg_color);
         }
 
         // Draw Machine Bounds
@@ -1883,7 +2563,12 @@ impl GcodeVisualizer {
                     let width = max_x - min_x;
                     let height = max_y - min_y;
 
-                    cr.set_source_rgb(0.0, 0.5, 1.0); // Bright Blue
+                    cr.set_source_rgba(
+                        accent_color.red() as f64,
+                        accent_color.green() as f64,
+                        accent_color.blue() as f64,
+                        1.0,
+                    );
                                                       // Calc line width in user space to result in 3px on screen
                                                       // Zoom scale is user units per screen pixel? No.
                                                       // Cairo scale(s, -s) means 1 user unit = s pixels.
@@ -1966,7 +2651,12 @@ impl GcodeVisualizer {
         // OPTIMIZATION: Batch rapid moves together (single stroke) + viewport culling + LOD
         if show_rapid && lod_level < 3 {
             cr.new_path();
-            cr.set_source_rgba(0.0, 0.8, 1.0, 0.5); // Cyan for rapid
+            cr.set_source_rgba(
+                warning_color.red() as f64,
+                warning_color.green() as f64,
+                warning_color.blue() as f64,
+                0.5,
+            );
             
             let mut line_counter = 0u32;
             for cmd in vis.commands() {
@@ -2126,7 +2816,12 @@ impl GcodeVisualizer {
             } else {
                 // Non-intensity mode: Single color, single stroke! + viewport culling + LOD
                 cr.new_path();
-                cr.set_source_rgb(1.0, 1.0, 0.0); // Yellow for cut
+                cr.set_source_rgba(
+                success_color.red() as f64,
+                success_color.green() as f64,
+                success_color.blue() as f64,
+                1.0,
+            );
                 
                 let mut line_counter = 0u32;
                 for cmd in vis.commands() {
@@ -2277,15 +2972,19 @@ impl GcodeVisualizer {
         cr.restore().unwrap();
     }
 
-    fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer) {
-        let grid_size = 10.0;
-        let grid_color = (0.3, 0.3, 0.3, 0.5);
+    fn draw_grid(cr: &gtk4::cairo::Context, vis: &Visualizer, grid_size: f64, fg_color: &gtk4::gdk::RGBA) {
+        let grid_alpha = 0.25;
 
         // Calculate visible area in world coordinates
         // This is a simplification, ideally we'd project the viewport corners
         let range = core_constants::WORLD_EXTENT_MM as f64; // Draw a large enough grid to match world extent
 
-        cr.set_source_rgba(grid_color.0, grid_color.1, grid_color.2, grid_color.3);
+        cr.set_source_rgba(
+            fg_color.red() as f64,
+            fg_color.green() as f64,
+            fg_color.blue() as f64,
+            grid_alpha,
+        );
         cr.set_line_width(1.0 / vis.zoom_scale as f64);
 
         let mut x = -range;

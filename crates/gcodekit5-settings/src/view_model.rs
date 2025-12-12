@@ -313,4 +313,3 @@ impl Default for SettingsDialog {
         Self::new()
     }
 }
-

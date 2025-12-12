@@ -1,12 +1,12 @@
 //! Integration tests for Phase 3 CAM operations.
 
+use gcodekit5_designer::pocket_operations::PocketStrategy;
 use gcodekit5_designer::{
     DepthStrategy, DrillOperation, DrillingPattern, DrillingPatternGenerator, MultiPassConfig,
     MultiPassToolpathGenerator, PatternType, PocketGenerator, PocketOperation, Point, Rectangle,
-    ToolLibrary, ToolType, Toolpath, ToolpathAnalyzer, ToolpathSegment, ToolpathSegmentType,
-    ToolpathSimulator, SimulationState,
+    SimulationState, ToolLibrary, ToolType, Toolpath, ToolpathAnalyzer, ToolpathSegment,
+    ToolpathSegmentType, ToolpathSimulator,
 };
-use gcodekit5_designer::pocket_operations::PocketStrategy;
 
 #[test]
 fn test_phase3_tool_library_creation() {
@@ -161,16 +161,10 @@ fn test_phase3_toolpath_simulation_lifecycle() {
     assert_eq!(sim.get_state(), SimulationState::Idle);
 
     sim.start();
-    assert_eq!(
-        sim.get_state(),
-        SimulationState::Running
-    );
+    assert_eq!(sim.get_state(), SimulationState::Running);
 
     sim.pause();
-    assert_eq!(
-        sim.get_state(),
-        SimulationState::Paused
-    );
+    assert_eq!(sim.get_state(), SimulationState::Paused);
 
     sim.reset();
     assert_eq!(sim.get_state(), SimulationState::Idle);
@@ -310,7 +304,7 @@ fn test_phase3_combined_workflow() {
 fn test_phase3_pocket_with_duplicate_vertices() {
     let op = PocketOperation::new("pocket_dup".to_string(), -5.0, 3.175);
     let gen = PocketGenerator::new(op);
-    
+
     // Create a polygon with duplicate vertices
     let vertices = vec![
         Point::new(0.0, 0.0),
@@ -331,16 +325,16 @@ fn test_phase3_pocket_adaptive() {
     let mut op = PocketOperation::new("pocket_adaptive".to_string(), -5.0, 3.175);
     op.set_strategy(PocketStrategy::Adaptive);
     let gen = PocketGenerator::new(op);
-    
+
     let rect = Rectangle::new(0.0, 0.0, 50.0, 50.0);
     let toolpaths = gen.generate_rectangular_pocket(&rect, 5.0);
-    
+
     assert!(toolpaths.len() > 0);
     let toolpath = &toolpaths[0];
-    
+
     // Check if we have segments
     assert!(toolpath.segments.len() > 0);
-    
+
     // Check if we have a helical entry (Rapid to start, then Linear moves)
     // The current implementation just does Rapid to start.
     // But we should verify it generates paths.

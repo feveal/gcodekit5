@@ -68,7 +68,9 @@ pub mod canvas;
 pub mod commands;
 pub mod drilling_patterns;
 pub mod dxf_parser;
+pub mod font_manager;
 pub mod gcode_gen;
+pub mod helpers;
 pub mod history;
 pub mod import;
 pub mod multipass;
@@ -76,36 +78,40 @@ pub mod parametric;
 pub mod pocket_operations;
 pub mod render_optimizer;
 pub mod renderer;
-pub mod serialization;
-pub mod font_manager;
-pub mod helpers;
-pub mod shapes;
-pub mod shape_store;
 pub mod selection_manager;
-pub mod spatial_manager;
+pub mod serialization;
+pub mod shape_store;
+pub mod shapes;
 pub mod spatial_index;
+pub mod spatial_manager;
+pub mod stock_removal;
 pub mod svg_renderer;
 pub mod templates;
 pub mod tool_library;
-pub mod stock_removal;
 pub mod toolpath;
 pub mod toolpath_simulation;
 pub mod vcarve;
 pub mod viewport;
 
 // Integration modules
-pub mod designer_state;
 pub mod designer_editor_integration;
+pub mod designer_state;
 pub mod designer_visualizer_integration;
 pub mod gcode_converter;
 
 // Re-export all public types from submodules
-pub use adaptive::{AdaptiveClearing, AdaptiveAlgorithm, MaterialProperties, MaterialType, LoadMonitor, DynamicStepover};
-pub use arrays::{ArrayType, ArrayGenerator, ArrayOperation, LinearArrayParams, CircularArrayParams, GridArrayParams};
+pub use adaptive::{
+    AdaptiveAlgorithm, AdaptiveClearing, DynamicStepover, LoadMonitor, MaterialProperties,
+    MaterialType,
+};
+pub use arrays::{
+    ArrayGenerator, ArrayOperation, ArrayType, CircularArrayParams, GridArrayParams,
+    LinearArrayParams,
+};
 pub use canvas::{Canvas, CanvasPoint, DrawingMode};
 pub use commands::DesignerCommand;
 pub use drilling_patterns::*;
-pub use dxf_parser::{DxfParser, DxfFile, DxfEntity, DxfHeader};
+pub use dxf_parser::{DxfEntity, DxfFile, DxfHeader, DxfParser};
 pub use gcode_gen::ToolpathToGcode;
 pub use history::{ActionType, HistoryAction, HistoryTransaction, UndoRedoManager};
 pub use import::{DxfImporter, FileFormat, ImportedDesign, SvgImporter};
@@ -113,7 +119,7 @@ pub use multipass::{DepthStrategy, MultiPassConfig, MultiPassToolpathGenerator};
 pub use parametric::ParametricGenerator;
 pub use pocket_operations::{Island, PocketGenerator, PocketOperation};
 pub use render_optimizer::{RenderOptimizer, RenderStats};
-pub use shapes::{Point, Circle, Rectangle, Line, Ellipse, Shape, ShapeType};
+pub use shapes::{Circle, Ellipse, Line, Point, Rectangle, Shape, ShapeType};
 pub use spatial_index::{Bounds, SpatialIndex, SpatialIndexStats};
 pub use stock_removal::{HeightMap2D, SimulationResult, StockMaterial};
 pub use templates::*;
@@ -125,4 +131,4 @@ pub use viewport::Viewport;
 
 // State and integration
 pub use designer_state::DesignerState;
-pub use gcode_converter::{create_linear_segment, create_arc_segment, point_to_2d};
+pub use gcode_converter::{create_arc_segment, create_linear_segment, point_to_2d};

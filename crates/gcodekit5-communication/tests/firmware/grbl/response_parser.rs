@@ -37,8 +37,7 @@ fn test_parse_status_report() {
 #[test]
 fn test_parse_status_with_buffer() {
     let parser = GrblResponseParser::new();
-    let response =
-        parser.parse("<Run|MPos:10.000,5.000,2.500|WPos:10.000,5.000,2.500|Buf:15:128>");
+    let response = parser.parse("<Run|MPos:10.000,5.000,2.500|WPos:10.000,5.000,2.500|Buf:15:128>");
 
     if let Some(GrblResponse::Status(status)) = response {
         assert_eq!(status.state, "Run");

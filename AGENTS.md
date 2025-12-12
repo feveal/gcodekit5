@@ -43,6 +43,9 @@ All tests **MUST** be located in the `tests/` inside each crate, if the test is 
 - Dimensional units should be represented internaly in mms, and be of type f32, and mm values should be represted to 2 decimal place accuracy. 
 - All text strings where feasable should be internaly represented in UTF8 encoding, with translation to and from UI encoding in the UI layer if required. 
 
+## Esthetics ## 
+- The aversage user will be using a FHD screen set to 125% scaling. ensure that all esthetics reviews, designs and recomendations account for this. 
+
 ## GitHub Access
 - Use "gh" to access all GitHub repositories.
 - When asked to "push to remote", update the SPEC.md, README.md, STATS.md, GTK4.md and CHANGELOG.md files with all recent activity and spec changes, construct a suitable commit message based on recent activity, commit all changes and push the changes to the remote repository.

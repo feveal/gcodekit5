@@ -9,6 +9,7 @@ pub mod status_bar;
 pub mod machine_control;
 pub mod editor;
 pub mod visualizer;
+pub mod osd_format;
 pub mod nav_cube;
 pub mod designer;
 pub mod designer_toolbox;

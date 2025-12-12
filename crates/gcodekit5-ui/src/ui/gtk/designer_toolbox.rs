@@ -63,6 +63,7 @@ impl DesignerTool {
 pub struct DesignerToolbox {
     pub widget: Box,
     current_tool: Rc<RefCell<DesignerTool>>,
+    active_tool_label: Label,
     buttons: Vec<Button>,
     tools: Vec<DesignerTool>,
     generate_btn: Button,
@@ -92,6 +93,12 @@ impl DesignerToolbox {
         let content_box = Box::new(Orientation::Vertical, 2);
         
         let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
+        let active_tool_label = Label::new(Some("Active tool: Select (S)"));
+        active_tool_label.add_css_class("active-tool-chip");
+        active_tool_label.set_halign(Align::Center);
+        active_tool_label.set_margin_bottom(6);
+        content_box.append(&active_tool_label);
+
         let mut buttons: Vec<Button> = Vec::new();
         
         let tools = vec![
@@ -144,8 +151,11 @@ impl DesignerToolbox {
             let tools_clone = tools.clone();
             let tool = tools[i];
             
+            let active_tool_label = active_tool_label.clone();
             btn.connect_clicked(move |_| {
                 *current_tool_clone.borrow_mut() = tool;
+                active_tool_label.set_text(&format!("Active tool: {}", tool.tooltip()));
+
                 // Update button styles
                 for (j, b) in buttons_clone.iter().enumerate() {
                     if tools_clone[j] == tool {
@@ -520,6 +530,7 @@ impl DesignerToolbox {
         Rc::new(Self {
             widget: main_container,
             current_tool,
+            active_tool_label,
             buttons,
             tools,
             generate_btn,
@@ -539,6 +550,8 @@ impl DesignerToolbox {
     
     pub fn set_tool(&self, tool: DesignerTool) {
         *self.current_tool.borrow_mut() = tool;
+        self.active_tool_label
+            .set_text(&format!("Active tool: {}", tool.tooltip()));
         
         // Update button styles
         for (i, btn) in self.buttons.iter().enumerate() {

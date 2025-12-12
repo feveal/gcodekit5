@@ -114,18 +114,10 @@ impl SettingsController {
         let new_value_opt = if let Some(setting) = dialog.get_setting(id) {
             match &setting.value {
                 SettingValue::String(_) => Some(SettingValue::String(value.to_string())),
-                SettingValue::Integer(_) => {
-                    Some(SettingValue::Integer(value.parse().unwrap_or(0)))
-                }
-                SettingValue::Float(_) => {
-                    Some(SettingValue::Float(value.parse().unwrap_or(0.0)))
-                }
-                SettingValue::Boolean(_) => {
-                    Some(SettingValue::Boolean(value == "true"))
-                }
-                SettingValue::Path(_) => {
-                    Some(SettingValue::Path(value.to_string()))
-                }
+                SettingValue::Integer(_) => Some(SettingValue::Integer(value.parse().unwrap_or(0))),
+                SettingValue::Float(_) => Some(SettingValue::Float(value.parse().unwrap_or(0.0))),
+                SettingValue::Boolean(_) => Some(SettingValue::Boolean(value == "true")),
+                SettingValue::Path(_) => Some(SettingValue::Path(value.to_string())),
                 SettingValue::Enum(_, options) => {
                     if options.contains(&value.to_string()) {
                         Some(SettingValue::Enum(value.to_string(), options.clone()))
@@ -140,11 +132,48 @@ impl SettingsController {
 
         if let Some(val) = new_value_opt {
             dialog.update_setting(id, val);
-            
+
             // Notify listeners
             let listeners = self.listeners.borrow();
             for listener in listeners.iter() {
                 listener(id, value);
+            }
+        }
+    }
+
+    /// Discard unsaved changes and restore dialog values from the persisted config.
+    pub fn discard_changes(&self) {
+        let before: std::collections::HashMap<String, String> = {
+            let dialog = self.dialog.borrow();
+            dialog
+                .settings
+                .iter()
+                .map(|(id, s)| (id.clone(), s.value.as_str()))
+                .collect()
+        };
+
+        {
+            let persistence = self.persistence.borrow();
+            let mut dialog = self.dialog.borrow_mut();
+            persistence.populate_dialog(&mut dialog);
+            dialog.has_unsaved_changes = false;
+        }
+
+        let after: std::collections::HashMap<String, String> = {
+            let dialog = self.dialog.borrow();
+            dialog
+                .settings
+                .iter()
+                .map(|(id, s)| (id.clone(), s.value.as_str()))
+                .collect()
+        };
+
+        let listeners = self.listeners.borrow();
+        for (id, new_val) in after.iter() {
+            if before.get(id) != Some(new_val) {
+                for listener in listeners.iter() {
+                    listener(id, new_val);
+                }
             }
         }
     }
@@ -164,6 +193,8 @@ impl SettingsController {
         persistence
             .save_to_file(&config_path)
             .map_err(|e| e.to_string())?;
+
+        self.dialog.borrow_mut().has_unsaved_changes = false;
 
         Ok(())
     }

@@ -1,3 +1,14 @@
+## [0.30.0-alpha.0] - 2025-12-12
+
+### Added
+- **GRBL**: Decode `WPos` (working coordinates) in status reports and update the working DRO.
+- **Visualizer**: Sidebar hide/show UX (with floating unhide), grouped sections, legend, and empty-state messaging.
+- **Designer**: Grid spacing + snap controls, legend, empty-state messaging, and non-blocking toolpath preview generation with cancel.
+
+### Changed
+- **Visualizer/Designer**: Standardized OSD status formatting and moved key draw colors to theme palette.
+- **Version**: Bumped version to 0.30.0-alpha.0.
+
 ## [0.29.0-alpha.0] - 2025-12-11
 
 ### Changed

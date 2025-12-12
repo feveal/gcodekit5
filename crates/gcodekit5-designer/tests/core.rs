@@ -1,5 +1,3 @@
-#[path = "core/shapes.rs"]
-mod shapes;
 #[path = "core/canvas.rs"]
 mod canvas;
 #[path = "core/designer_state.rs"]
@@ -8,6 +6,8 @@ mod designer_state;
 mod history;
 #[path = "core/render_optimizer.rs"]
 mod render_optimizer;
+#[path = "core/shapes.rs"]
+mod shapes;
 #[path = "core/spatial_index.rs"]
 mod spatial_index;
 #[path = "core/toolpath.rs"]

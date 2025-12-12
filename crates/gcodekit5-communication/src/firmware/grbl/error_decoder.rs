@@ -76,8 +76,14 @@ mod tests {
 
     #[test]
     fn test_decode_error() {
-        assert_eq!(decode_error(1), "G-code words consist of a letter and a value. Letter was not found.");
-        assert_eq!(decode_error(9), "G-code locked out during alarm or jog state.");
+        assert_eq!(
+            decode_error(1),
+            "G-code words consist of a letter and a value. Letter was not found."
+        );
+        assert_eq!(
+            decode_error(9),
+            "G-code locked out during alarm or jog state."
+        );
         assert!(decode_error(255).contains("Unknown error code"));
     }
 

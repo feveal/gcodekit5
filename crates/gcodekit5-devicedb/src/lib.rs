@@ -1,9 +1,9 @@
-pub mod model;
 pub mod manager;
-pub mod ui_integration;
+pub mod model;
 pub mod traits;
+pub mod ui_integration;
 
-pub use model::{DeviceProfile, DeviceType, ControllerType, AxisLimits};
 pub use manager::DeviceManager;
-pub use ui_integration::{DeviceUiController, DeviceProfileUiModel};
+pub use model::{AxisLimits, ControllerType, DeviceProfile, DeviceType};
 pub use traits::DeviceProfileProvider;
+pub use ui_integration::{DeviceProfileUiModel, DeviceUiController};

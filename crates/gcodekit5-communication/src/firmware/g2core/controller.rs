@@ -97,7 +97,6 @@ impl G2CoreController {
 
     /// Perform initialization as task
     async fn initialize_async(&self) -> anyhow::Result<()> {
-
         // Query firmware version and capabilities
 
         Ok(())

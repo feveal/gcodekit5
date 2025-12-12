@@ -69,10 +69,10 @@ pub use gcodekit5_designer::{
 };
 
 pub use gcodekit5_camtools::{
-    BoxParameters, BoxType, FingerJointSettings, FingerStyle, JigsawPuzzleMaker, PuzzleParameters,
-    TabbedBoxMaker, KeyDividerType, SpeedsFeedsCalculator, CalculationResult,
-    SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters,
-    SpoilboardGridGenerator, SpoilboardGridParameters,
+    BoxParameters, BoxType, CalculationResult, FingerJointSettings, FingerStyle, JigsawPuzzleMaker,
+    KeyDividerType, PuzzleParameters, SpeedsFeedsCalculator, SpoilboardGridGenerator,
+    SpoilboardGridParameters, SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters,
+    TabbedBoxMaker,
 };
 
 pub use gcodekit5_communication::{
@@ -114,20 +114,16 @@ pub fn init_logging() -> anyhow::Result<()> {
     #[cfg(all(target_os = "windows", not(debug_assertions)))]
     {
         use std::fs::OpenOptions;
-        
+
         let log_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| std::path::PathBuf::from("."));
-        
+
         let log_file = log_dir.join("gcodekit5.log");
-        
+
         // Try to open log file, but if it fails, just disable logging rather than crash
-        match OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_file)
-        {
+        match OpenOptions::new().create(true).append(true).open(&log_file) {
             Ok(file) => {
                 let fmt_layer = fmt::layer()
                     .with_writer(file)
@@ -145,9 +141,7 @@ pub fn init_logging() -> anyhow::Result<()> {
             }
             Err(_) => {
                 // If file creation fails, just use a no-op subscriber
-                tracing_subscriber::registry()
-                    .with(env_filter)
-                    .init();
+                tracing_subscriber::registry().with(env_filter).init();
             }
         }
     }

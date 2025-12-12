@@ -5,8 +5,8 @@
 //! - Shape rendering with selection indicators
 //! - Viewport-based coordinate transformation
 
-use crate::{Canvas, font_manager};
-use rusttype::{Scale, point as rt_point, OutlineBuilder};
+use crate::{font_manager, Canvas};
+use rusttype::{point as rt_point, OutlineBuilder, Scale};
 
 /// Render crosshair at origin (0,0) as SVG path
 pub fn render_crosshair(canvas: &Canvas, width: u32, height: u32) -> String {
@@ -42,7 +42,8 @@ pub fn render_grid(canvas: &Canvas, width: u32, height: u32) -> (String, f64) {
     // Add extra margin to ensure full coverage
     let margin_pixels = 500.0;
     let top_left = viewport.pixel_to_world(-margin_pixels, -margin_pixels);
-    let bottom_right = viewport.pixel_to_world(width as f64 + margin_pixels, height as f64 + margin_pixels);
+    let bottom_right =
+        viewport.pixel_to_world(width as f64 + margin_pixels, height as f64 + margin_pixels);
 
     let world_left = top_left.x.min(bottom_right.x);
     let world_right = top_left.x.max(bottom_right.x);
@@ -99,16 +100,10 @@ pub fn render_origin(canvas: &Canvas, width: u32, height: u32) -> String {
     let mut path = String::new();
 
     // Vertical line (full height)
-    path.push_str(&format!(
-        "M {} 0 L {} {} ",
-        origin_x, origin_x, height
-    ));
+    path.push_str(&format!("M {} 0 L {} {} ", origin_x, origin_x, height));
 
     // Horizontal line (full width)
-    path.push_str(&format!(
-        "M 0 {} L {} {} ",
-        origin_y, width, origin_y
-    ));
+    path.push_str(&format!("M 0 {} L {} {} ", origin_y, width, origin_y));
 
     path
 }
@@ -184,7 +179,7 @@ pub fn render_selection_handles(canvas: &Canvas, _width: u32, _height: u32) -> S
             // Normalize coordinates for min/max calculation
             let (tx1, tx2) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
             let (ty1, ty2) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
-            
+
             min_x = min_x.min(tx1);
             min_y = min_y.min(ty1);
             max_x = max_x.max(tx2);
@@ -278,11 +273,11 @@ pub fn render_group_bounding_box(canvas: &Canvas, _width: u32, _height: u32) -> 
     let right = sx2;
     let top = sy1.min(sy2);
     let bottom = sy1.max(sy2);
-    
+
     // Simulate dotted line
     let dash_len = 4.0;
     let gap_len = 4.0;
-    
+
     // Top edge
     let mut x = left;
     while x < right {
@@ -290,7 +285,7 @@ pub fn render_group_bounding_box(canvas: &Canvas, _width: u32, _height: u32) -> 
         path.push_str(&format!("M {} {} L {} {} ", x, top, next_x, top));
         x += dash_len + gap_len;
     }
-    
+
     // Right edge
     let mut y = top;
     while y < bottom {
@@ -298,7 +293,7 @@ pub fn render_group_bounding_box(canvas: &Canvas, _width: u32, _height: u32) -> 
         path.push_str(&format!("M {} {} L {} {} ", right, y, right, next_y));
         y += dash_len + gap_len;
     }
-    
+
     // Bottom edge
     let mut x = right;
     while x > left {
@@ -306,7 +301,7 @@ pub fn render_group_bounding_box(canvas: &Canvas, _width: u32, _height: u32) -> 
         path.push_str(&format!("M {} {} L {} {} ", x, bottom, next_x, bottom));
         x -= dash_len + gap_len;
     }
-    
+
     // Left edge
     let mut y = bottom;
     while y > top {
@@ -327,10 +322,7 @@ fn rotate_point(x: f64, y: f64, cx: f64, cy: f64, angle_deg: f64) -> (f64, f64) 
     let sin_a = angle_rad.sin();
     let dx = x - cx;
     let dy = y - cy;
-    (
-        cx + dx * cos_a - dy * sin_a,
-        cy + dx * sin_a + dy * cos_a
-    )
+    (cx + dx * cos_a - dy * sin_a, cy + dx * sin_a + dy * cos_a)
 }
 
 /// Render a single shape as SVG path (trait object version)
@@ -357,16 +349,19 @@ fn render_shape_trait(
             let (sx2_raw, sy2_raw) = viewport.world_to_pixel(max_x, max_y);
 
             let r = rect.corner_radius * viewport.zoom();
-            
+
             // Clamp radius to half of min dimension in screen pixels to prevent artifacts
             let width = (sx2_raw - sx1_raw).abs();
             let height = (sy1_raw - sy2_raw).abs();
             let max_r = width.min(height) / 2.0;
             let r_pixel = r.min(max_r);
-            
+
             // We need to work in world coordinates for rotation, then convert to pixel
             // rect.corner_radius is in world units.
-            let r_world = rect.corner_radius.min(rect.width / 2.0).min(rect.height / 2.0);
+            let r_world = rect
+                .corner_radius
+                .min(rect.width / 2.0)
+                .min(rect.height / 2.0);
 
             if r_world < 0.001 {
                 // Sharp rectangle
@@ -374,7 +369,7 @@ fn render_shape_trait(
                 let p2 = rotate_point(max_x, min_y, center_x, center_y, rotation);
                 let p3 = rotate_point(max_x, max_y, center_x, center_y, rotation);
                 let p4 = rotate_point(min_x, max_y, center_x, center_y, rotation);
-                
+
                 let (sx1, sy1) = viewport.world_to_pixel(p1.0, p1.1);
                 let (sx2, sy2) = viewport.world_to_pixel(p2.0, p2.1);
                 let (sx3, sy3) = viewport.world_to_pixel(p3.0, p3.1);
@@ -395,7 +390,7 @@ fn render_shape_trait(
                 // P6: (min_x + r, max_y)
                 // P7: (min_x, max_y - r)
                 // P8: (min_x, min_y + r)
-                
+
                 let pts = [
                     (min_x + r_world, min_y), // Start bottom edge (if y up) or top edge
                     (max_x - r_world, min_y), // End bottom/top edge
@@ -406,16 +401,16 @@ fn render_shape_trait(
                     (min_x, max_y - r_world), // Start left edge
                     (min_x, min_y + r_world), // End left edge
                 ];
-                
+
                 let mut s_pts = Vec::new();
                 for (x, y) in pts.iter() {
                     let (rx, ry) = rotate_point(*x, *y, center_x, center_y, rotation);
                     s_pts.push(viewport.world_to_pixel(rx, ry));
                 }
-                
+
                 // Radius in pixels
                 let r = r_pixel;
-                
+
                 format!(
                     "M {} {} L {} {} A {} {} {} 0 0 {} {} L {} {} A {} {} {} 0 0 {} {} L {} {} A {} {} {} 0 0 {} {} L {} {} A {} {} {} 0 0 {} {} Z ",
                     s_pts[0].0, s_pts[0].1,
@@ -448,7 +443,7 @@ fn render_shape_trait(
         crate::shapes::Shape::Line(line) => {
             let p1 = rotate_point(line.start.x, line.start.y, center_x, center_y, rotation);
             let p2 = rotate_point(line.end.x, line.end.y, center_x, center_y, rotation);
-            
+
             let (sx1, sy1) = viewport.world_to_pixel(p1.0, p1.1);
             let (sx2, sy2) = viewport.world_to_pixel(p2.0, p2.1);
 
@@ -460,45 +455,54 @@ fn render_shape_trait(
 
             let screen_rx = rx * viewport.zoom();
             let screen_ry = ry * viewport.zoom();
-            
+
             // For rotated ellipse, we can use SVG transform or calculate points.
             // Using SVG A command with rotation is easiest.
             // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
-            
+
             // We need start point.
             // Start at (center_x + rx, center_y) rotated.
             let start = rotate_point(center_x + rx, center_y, center_x, center_y, rotation);
             let (sx, sy) = viewport.world_to_pixel(start.0, start.1);
-            
+
             // End point (same as start for full ellipse, but we need 2 arcs)
             let mid = rotate_point(center_x - rx, center_y, center_x, center_y, rotation);
             let (mx, my) = viewport.world_to_pixel(mid.0, mid.1);
 
             format!(
                 "M {} {} A {} {} {} 0 1 {} {} A {} {} {} 0 1 {} {} Z ",
-                sx, sy,
-                screen_rx, screen_ry, -rotation, mx, my,
-                screen_rx, screen_ry, -rotation, sx, sy
+                sx,
+                sy,
+                screen_rx,
+                screen_ry,
+                -rotation,
+                mx,
+                my,
+                screen_rx,
+                screen_ry,
+                -rotation,
+                sx,
+                sy
             )
         }
         crate::shapes::Shape::Text(text_shape) => {
             let font = font_manager::get_font();
             let scale = Scale::uniform(text_shape.font_size as f32);
             let v_metrics = font.v_metrics(scale);
-            
+
             let start = rt_point(text_shape.x as f32, text_shape.y as f32 + v_metrics.ascent);
-            
+
             let mut builder = SvgPathBuilder {
                 path: String::new(),
                 viewport: viewport.clone(),
                 rotation,
                 center: (center_x, center_y),
             };
-            
+
             for glyph in font.layout(&text_shape.text, scale, start) {
                 glyph.build_outline(&mut builder);
             }
-            
+
             builder.path
         }
         crate::shapes::Shape::Path(path_shape) => {
@@ -506,32 +510,64 @@ fn render_shape_trait(
             for event in path_shape.path.iter() {
                 match event {
                     lyon::path::Event::Begin { at } => {
-                        let (rx, ry) = rotate_point(at.x as f64, at.y as f64, center_x, center_y, rotation);
+                        let (rx, ry) =
+                            rotate_point(at.x as f64, at.y as f64, center_x, center_y, rotation);
                         let (sx, sy) = viewport.world_to_pixel(rx, ry);
                         path_str.push_str(&format!("M {} {} ", sx, sy));
                     }
                     lyon::path::Event::Line { from: _, to } => {
-                        let (rx, ry) = rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
+                        let (rx, ry) =
+                            rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
                         let (sx, sy) = viewport.world_to_pixel(rx, ry);
                         path_str.push_str(&format!("L {} {} ", sx, sy));
                     }
                     lyon::path::Event::Quadratic { from: _, ctrl, to } => {
-                        let (rcx, rcy) = rotate_point(ctrl.x as f64, ctrl.y as f64, center_x, center_y, rotation);
-                        let (rtx, rty) = rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
+                        let (rcx, rcy) = rotate_point(
+                            ctrl.x as f64,
+                            ctrl.y as f64,
+                            center_x,
+                            center_y,
+                            rotation,
+                        );
+                        let (rtx, rty) =
+                            rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
                         let (cx, cy) = viewport.world_to_pixel(rcx, rcy);
                         let (sx, sy) = viewport.world_to_pixel(rtx, rty);
                         path_str.push_str(&format!("Q {} {} {} {} ", cx, cy, sx, sy));
                     }
-                    lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => {
-                        let (rc1x, rc1y) = rotate_point(ctrl1.x as f64, ctrl1.y as f64, center_x, center_y, rotation);
-                        let (rc2x, rc2y) = rotate_point(ctrl2.x as f64, ctrl2.y as f64, center_x, center_y, rotation);
-                        let (rtx, rty) = rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
+                    lyon::path::Event::Cubic {
+                        from: _,
+                        ctrl1,
+                        ctrl2,
+                        to,
+                    } => {
+                        let (rc1x, rc1y) = rotate_point(
+                            ctrl1.x as f64,
+                            ctrl1.y as f64,
+                            center_x,
+                            center_y,
+                            rotation,
+                        );
+                        let (rc2x, rc2y) = rotate_point(
+                            ctrl2.x as f64,
+                            ctrl2.y as f64,
+                            center_x,
+                            center_y,
+                            rotation,
+                        );
+                        let (rtx, rty) =
+                            rotate_point(to.x as f64, to.y as f64, center_x, center_y, rotation);
                         let (c1x, c1y) = viewport.world_to_pixel(rc1x, rc1y);
                         let (c2x, c2y) = viewport.world_to_pixel(rc2x, rc2y);
                         let (sx, sy) = viewport.world_to_pixel(rtx, rty);
-                        path_str.push_str(&format!("C {} {} {} {} {} {} ", c1x, c1y, c2x, c2y, sx, sy));
+                        path_str
+                            .push_str(&format!("C {} {} {} {} {} {} ", c1x, c1y, c2x, c2y, sx, sy));
                     }
-                    lyon::path::Event::End { last: _, first: _, close } => {
+                    lyon::path::Event::End {
+                        last: _,
+                        first: _,
+                        close,
+                    } => {
                         if close {
                             path_str.push_str("Z ");
                         }
@@ -552,38 +588,80 @@ struct SvgPathBuilder {
 
 impl OutlineBuilder for SvgPathBuilder {
     fn move_to(&mut self, x: f32, y: f32) {
-        let (rx, ry) = rotate_point(x as f64, y as f64, self.center.0, self.center.1, self.rotation);
+        let (rx, ry) = rotate_point(
+            x as f64,
+            y as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
         let (sx, sy) = self.viewport.world_to_pixel(rx, ry);
         self.path.push_str(&format!("M {} {} ", sx, sy));
     }
 
     fn line_to(&mut self, x: f32, y: f32) {
-        let (rx, ry) = rotate_point(x as f64, y as f64, self.center.0, self.center.1, self.rotation);
+        let (rx, ry) = rotate_point(
+            x as f64,
+            y as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
         let (sx, sy) = self.viewport.world_to_pixel(rx, ry);
         self.path.push_str(&format!("L {} {} ", sx, sy));
     }
 
     fn quad_to(&mut self, x1: f32, y1: f32, x: f32, y: f32) {
-        let (rx1, ry1) = rotate_point(x1 as f64, y1 as f64, self.center.0, self.center.1, self.rotation);
-        let (rx, ry) = rotate_point(x as f64, y as f64, self.center.0, self.center.1, self.rotation);
+        let (rx1, ry1) = rotate_point(
+            x1 as f64,
+            y1 as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
+        let (rx, ry) = rotate_point(
+            x as f64,
+            y as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
         let (sx1, sy1) = self.viewport.world_to_pixel(rx1, ry1);
         let (sx, sy) = self.viewport.world_to_pixel(rx, ry);
-        self.path.push_str(&format!("Q {} {} {} {} ", sx1, sy1, sx, sy));
+        self.path
+            .push_str(&format!("Q {} {} {} {} ", sx1, sy1, sx, sy));
     }
 
     fn curve_to(&mut self, x1: f32, y1: f32, x2: f32, y2: f32, x: f32, y: f32) {
-        let (rx1, ry1) = rotate_point(x1 as f64, y1 as f64, self.center.0, self.center.1, self.rotation);
-        let (rx2, ry2) = rotate_point(x2 as f64, y2 as f64, self.center.0, self.center.1, self.rotation);
-        let (rx, ry) = rotate_point(x as f64, y as f64, self.center.0, self.center.1, self.rotation);
+        let (rx1, ry1) = rotate_point(
+            x1 as f64,
+            y1 as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
+        let (rx2, ry2) = rotate_point(
+            x2 as f64,
+            y2 as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
+        let (rx, ry) = rotate_point(
+            x as f64,
+            y as f64,
+            self.center.0,
+            self.center.1,
+            self.rotation,
+        );
         let (sx1, sy1) = self.viewport.world_to_pixel(rx1, ry1);
         let (sx2, sy2) = self.viewport.world_to_pixel(rx2, ry2);
         let (sx, sy) = self.viewport.world_to_pixel(rx, ry);
-        self.path.push_str(&format!("C {} {} {} {} {} {} ", sx1, sy1, sx2, sy2, sx, sy));
+        self.path
+            .push_str(&format!("C {} {} {} {} {} {} ", sx1, sy1, sx2, sy2, sx, sy));
     }
 
     fn close(&mut self) {
         self.path.push_str("Z ");
     }
 }
-
-

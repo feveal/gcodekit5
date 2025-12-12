@@ -37,6 +37,7 @@ impl StatusBar {
         // eStop Button
         let estop_btn = Button::with_label("eStop");
         estop_btn.add_css_class("estop-button");
+        estop_btn.set_sensitive(false);
         left_box.append(&estop_btn);
 
         // Separator
@@ -124,6 +125,7 @@ impl StatusBar {
     }
 
     pub fn set_connected(&self, connected: bool, port: &str) {
+        self.estop_btn.set_sensitive(connected);
         if connected {
             self.status_indicator.remove_css_class("disconnected");
             self.status_indicator.add_css_class("connected");

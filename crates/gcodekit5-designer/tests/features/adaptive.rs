@@ -1,4 +1,7 @@
-use gcodekit5_designer::adaptive::{AdaptiveAlgorithm, AdaptiveClearing, DynamicStepover, LoadMonitor, MaterialProperties, MaterialType};
+use gcodekit5_designer::adaptive::{
+    AdaptiveAlgorithm, AdaptiveClearing, DynamicStepover, LoadMonitor, MaterialProperties,
+    MaterialType,
+};
 
 #[test]
 fn test_material_aluminum() {

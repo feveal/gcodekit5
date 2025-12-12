@@ -1,7 +1,7 @@
 //! Debug test to find when tabs become larger than thickness
 
 use gcodekit5_camtools::tabbed_box::{
-    BoxParameters, BoxType, FingerJointSettings, TabbedBoxMaker, KeyDividerType,
+    BoxParameters, BoxType, FingerJointSettings, KeyDividerType, TabbedBoxMaker,
 };
 
 #[test]
@@ -16,8 +16,6 @@ fn test_various_configurations() {
     ];
 
     for (_name, thickness, burn, outside) in configs {
-
-
         let params = BoxParameters {
             x: 100.0,
             y: 100.0,
@@ -74,22 +72,16 @@ fn test_various_configurations() {
         let min_x = x_coords.iter().cloned().fold(f32::INFINITY, f32::min);
         let _max_x = x_coords.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
 
-
-
         if min_y < -0.1 {
             let tab_depth_y = min_y.abs();
 
-            if (tab_depth_y - thickness).abs() > 0.1 {
-
-            }
+            if (tab_depth_y - thickness).abs() > 0.1 {}
         }
 
         if min_x < -0.1 {
             let tab_depth_x = min_x.abs();
 
-            if (tab_depth_x - thickness).abs() > 0.1 {
-
-            }
+            if (tab_depth_x - thickness).abs() > 0.1 {}
         }
     }
 }

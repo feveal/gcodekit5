@@ -146,10 +146,7 @@ impl HeightMap2D {
 
     /// Get the minimum height in the map
     pub fn min_height(&self) -> f32 {
-        self.heights
-            .iter()
-            .copied()
-            .fold(f32::INFINITY, f32::min)
+        self.heights.iter().copied().fold(f32::INFINITY, f32::min)
     }
 
     /// Get the maximum height in the map
@@ -240,14 +237,14 @@ impl StockSimulator2D {
         let mut max_y = f32::NEG_INFINITY;
         let mut processed_count = 0;
         let mut skipped_count = 0;
-        
+
         for segment in segments {
             // Update ranges
             min_x = min_x.min(segment.start.x as f32).min(segment.end.x as f32);
             max_x = max_x.max(segment.start.x as f32).max(segment.end.x as f32);
             min_y = min_y.min(segment.start.y as f32).min(segment.end.y as f32);
             max_y = max_y.max(segment.start.y as f32).max(segment.end.y as f32);
-            
+
             match segment.segment_type {
                 crate::toolpath::ToolpathSegmentType::LinearMove => {
                     self.simulate_linear_move(segment);
@@ -264,12 +261,22 @@ impl StockSimulator2D {
                 }
             }
         }
-        
-        eprintln!("DEBUG: Toolpath coordinate range: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]", min_x, max_x, min_y, max_y);
-        eprintln!("DEBUG: Stock bounds: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]", 
-            self.stock.origin.0, self.stock.origin.0 + self.stock.width,
-            self.stock.origin.1, self.stock.origin.1 + self.stock.height);
-        eprintln!("DEBUG: Processed {} cutting moves, skipped {} rapid moves", processed_count, skipped_count);
+
+        eprintln!(
+            "DEBUG: Toolpath coordinate range: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]",
+            min_x, max_x, min_y, max_y
+        );
+        eprintln!(
+            "DEBUG: Stock bounds: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]",
+            self.stock.origin.0,
+            self.stock.origin.0 + self.stock.width,
+            self.stock.origin.1,
+            self.stock.origin.1 + self.stock.height
+        );
+        eprintln!(
+            "DEBUG: Processed {} cutting moves, skipped {} rapid moves",
+            processed_count, skipped_count
+        );
     }
 
     /// Simulate a linear cutting move
@@ -279,15 +286,17 @@ impl StockSimulator2D {
         // Convert Z depth to height in stock (stock top is at thickness, Z=0 means cutting to stock top)
         let z_depth = segment.z_depth.unwrap_or(0.0) as f32;
         let z = self.stock.thickness - z_depth.abs();
-        
+
         // Debug first few moves
         static MOVE_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let count = MOVE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if count < 5 {
-            eprintln!("DEBUG: Linear move {} - z_depth={}, calculated z={}, stock.thickness={}", 
-                count, z_depth, z, self.stock.thickness);
+            eprintln!(
+                "DEBUG: Linear move {} - z_depth={}, calculated z={}, stock.thickness={}",
+                count, z_depth, z, self.stock.thickness
+            );
         }
-        
+
         let dx = end.x - start.x;
         let dy = end.y - start.y;
         let distance = (dx * dx + dy * dy).sqrt();
@@ -361,9 +370,10 @@ impl StockSimulator2D {
     fn apply_tool_footprint(&mut self, cx: f32, cy: f32, cz: f32) {
         let radius_px = (self.tool_radius / self.height_map.resolution).ceil() as isize;
         let (center_px, center_py) = self.height_map.world_to_pixel(cx, cy);
-        
+
         // Debug first few footprint calls
-        static FOOTPRINT_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        static FOOTPRINT_COUNT: std::sync::atomic::AtomicUsize =
+            std::sync::atomic::AtomicUsize::new(0);
         let count = FOOTPRINT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if count < 5 {
             eprintln!("DEBUG: apply_tool_footprint #{} - pos:({:.2},{:.2}), z:{:.2}, tool_radius:{:.2}, radius_px:{}, center_px:({},{})", 
@@ -430,31 +440,45 @@ pub mod visualization {
     /// Returns a list of closed polygons representing the material boundary
     pub fn generate_2d_contours(height_map: &HeightMap2D, z_level: f32) -> Vec<Vec<Point2D>> {
         let mut contours = Vec::new();
-        
+
         // Marching squares lookup table
         // Each cell has 4 corners, each can be above or below threshold (16 cases)
         // We'll generate line segments based on which edges the contour crosses
-        
+
         for py in 0..(height_map.height_px - 1) {
             for px in 0..(height_map.width_px - 1) {
                 // Get the 4 corner heights
                 let h00 = height_map.get_height_at_pixel(px, py).unwrap_or(z_level);
-                let h10 = height_map.get_height_at_pixel(px + 1, py).unwrap_or(z_level);
-                let h01 = height_map.get_height_at_pixel(px, py + 1).unwrap_or(z_level);
-                let h11 = height_map.get_height_at_pixel(px + 1, py + 1).unwrap_or(z_level);
-                
+                let h10 = height_map
+                    .get_height_at_pixel(px + 1, py)
+                    .unwrap_or(z_level);
+                let h01 = height_map
+                    .get_height_at_pixel(px, py + 1)
+                    .unwrap_or(z_level);
+                let h11 = height_map
+                    .get_height_at_pixel(px + 1, py + 1)
+                    .unwrap_or(z_level);
+
                 // Create a case index (4-bit number representing which corners are below z_level)
                 let mut case = 0;
-                if h00 <= z_level { case |= 1; }
-                if h10 <= z_level { case |= 2; }
-                if h01 <= z_level { case |= 4; }
-                if h11 <= z_level { case |= 8; }
-                
+                if h00 <= z_level {
+                    case |= 1;
+                }
+                if h10 <= z_level {
+                    case |= 2;
+                }
+                if h01 <= z_level {
+                    case |= 4;
+                }
+                if h11 <= z_level {
+                    case |= 8;
+                }
+
                 // Generate segments based on case
                 // For simplicity, we're generating individual segments
                 // A full implementation would trace complete contours
                 let segments = get_marching_squares_segments(case, px, py, height_map, z_level);
-                
+
                 if !segments.is_empty() {
                     // Convert segments to a polygon (simplified - just add all points)
                     let mut polygon = Vec::new();
@@ -468,7 +492,7 @@ pub mod visualization {
                 }
             }
         }
-        
+
         contours
     }
 
@@ -481,17 +505,17 @@ pub mod visualization {
         _z_level: f32,
     ) -> Vec<(Point2D, Point2D)> {
         let mut segments = Vec::new();
-        
+
         // Get world coordinates of cell corners
         let (x0, y0) = height_map.pixel_to_world(px, py);
         let (x1, y1) = height_map.pixel_to_world(px + 1, py + 1);
-        
+
         // Midpoint of edges
         let left = Point2D::new(x0, (y0 + y1) / 2.0);
         let right = Point2D::new(x1, (y0 + y1) / 2.0);
         let top = Point2D::new((x0 + x1) / 2.0, y1);
         let bottom = Point2D::new((x0 + x1) / 2.0, y0);
-        
+
         // Marching squares cases (simplified - connects edge midpoints)
         match case {
             1 | 14 => segments.push((left, bottom)),
@@ -510,7 +534,7 @@ pub mod visualization {
             }
             _ => {} // Case 0 and 15 have no intersections
         }
-        
+
         segments
     }
 
@@ -521,13 +545,13 @@ pub mod visualization {
         original_height: f32,
     ) -> Vec<(Point2D, f32)> {
         let mut vertices = Vec::new();
-        
+
         // Generate a vertex for each pixel that has material removed
         for py in 0..height_map.height_px {
             for px in 0..height_map.width_px {
                 if let Some(height) = height_map.get_height_at_pixel(px, py) {
                     let depth = original_height - height;
-                    
+
                     // Only include pixels where material was removed
                     if depth > 0.001 {
                         let (x, y) = height_map.pixel_to_world(px, py);
@@ -536,7 +560,7 @@ pub mod visualization {
                 }
             }
         }
-        
+
         vertices
     }
 
@@ -548,15 +572,15 @@ pub mod visualization {
         } else {
             0.0
         };
-        
+
         // Light blue (#ADD8E6) base color
         let base_r = 0.678;
         let base_g = 0.847;
         let base_b = 0.902;
-        
+
         // Darken based on depth
         let factor = 1.0 - (normalized * 0.5); // Darker for deeper cuts
-        
+
         (
             base_r * factor,
             base_g * factor,
@@ -593,12 +617,12 @@ mod tests {
     fn test_height_map_creation() {
         let stock = StockMaterial::new(100.0, 100.0, 10.0, (0.0, 0.0, 0.0));
         let height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         assert_eq!(height_map.resolution, 1.0);
         assert_eq!(height_map.width_px, 100);
         assert_eq!(height_map.height_px, 100);
         assert_eq!(height_map.heights.len(), 10000);
-        
+
         // All heights should be initialized to top of stock
         assert_eq!(height_map.get_height(50.0, 50.0), Some(10.0));
     }
@@ -607,10 +631,10 @@ mod tests {
     fn test_height_map_set_get() {
         let stock = StockMaterial::new(100.0, 100.0, 10.0, (0.0, 0.0, 0.0));
         let mut height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         height_map.set_height(50.0, 50.0, 5.0);
         assert_eq!(height_map.get_height(50.0, 50.0), Some(5.0));
-        
+
         // Out of bounds should return None
         assert_eq!(height_map.get_height(101.0, 50.0), None);
     }
@@ -619,10 +643,10 @@ mod tests {
     fn test_world_to_pixel_conversion() {
         let stock = StockMaterial::new(100.0, 100.0, 10.0, (0.0, 0.0, 0.0));
         let height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         let (px, py) = height_map.world_to_pixel(50.5, 75.3);
         assert_eq!((px, py), (50, 75));
-        
+
         let (x, y) = height_map.pixel_to_world(50, 75);
         assert!((x - 50.5).abs() < 0.1);
         assert!((y - 75.5).abs() < 0.1);
@@ -632,10 +656,10 @@ mod tests {
     fn test_min_max_height() {
         let stock = StockMaterial::new(10.0, 10.0, 10.0, (0.0, 0.0, 0.0));
         let mut height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         height_map.set_height(5.0, 5.0, 3.0);
         height_map.set_height(7.0, 7.0, 12.0);
-        
+
         assert_eq!(height_map.min_height(), 3.0);
         assert_eq!(height_map.max_height(), 12.0);
     }
@@ -644,7 +668,7 @@ mod tests {
     fn test_stock_simulator_creation() {
         let stock = StockMaterial::new(100.0, 100.0, 10.0, (0.0, 0.0, 0.0));
         let simulator = StockSimulator2D::new(stock, 1.0, 3.0);
-        
+
         assert_eq!(simulator.tool_radius, 3.0);
         assert_eq!(simulator.height_map.width_px, 100);
     }
@@ -653,10 +677,10 @@ mod tests {
     fn test_linear_move_simulation() {
         use crate::shapes::Point;
         use crate::toolpath::{ToolpathSegment, ToolpathSegmentType};
-        
+
         let stock = StockMaterial::new(100.0, 100.0, 10.0, (0.0, 0.0, 0.0));
         let mut simulator = StockSimulator2D::new(stock, 1.0, 3.0);
-        
+
         // Create a linear move from (20, 20) to (80, 80) at Z=5
         let segment = ToolpathSegment::new(
             ToolpathSegmentType::LinearMove,
@@ -664,15 +688,16 @@ mod tests {
             Point { x: 80.0, y: 80.0 },
             100.0,
             10000,
-        ).with_z_depth(5.0);
-        
+        )
+        .with_z_depth(5.0);
+
         simulator.simulate_toolpath(&[segment]);
-        
+
         // Check that material was removed along the path
         let height_at_start = simulator.height_map.get_height(20.0, 20.0);
         assert!(height_at_start.is_some());
         assert!(height_at_start.unwrap() <= 5.0);
-        
+
         let height_at_end = simulator.height_map.get_height(80.0, 80.0);
         assert!(height_at_end.is_some());
         assert!(height_at_end.unwrap() <= 5.0);
@@ -681,34 +706,40 @@ mod tests {
     #[test]
     fn test_visualization_contours() {
         use visualization::generate_2d_contours;
-        
+
         let stock = StockMaterial::new(10.0, 10.0, 10.0, (0.0, 0.0, 0.0));
         let mut height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         // Cut a simple valley in the middle
         for px in 3..7 {
             for py in 3..7 {
                 height_map.set_height_at_pixel(px, py, 5.0);
             }
         }
-        
+
         let contours = generate_2d_contours(&height_map, 7.5);
-        assert!(!contours.is_empty(), "Should generate contours at intermediate level");
+        assert!(
+            !contours.is_empty(),
+            "Should generate contours at intermediate level"
+        );
     }
 
     #[test]
     fn test_visualization_overlay() {
         use visualization::generate_removal_overlay;
-        
+
         let stock = StockMaterial::new(10.0, 10.0, 10.0, (0.0, 0.0, 0.0));
         let mut height_map = HeightMap2D::new(&stock, 1.0);
-        
+
         // Remove some material
         height_map.set_height(5.0, 5.0, 5.0);
-        
+
         let overlay = generate_removal_overlay(&height_map, 10.0);
-        assert!(!overlay.is_empty(), "Should generate overlay vertices for removed material");
-        
+        assert!(
+            !overlay.is_empty(),
+            "Should generate overlay vertices for removed material"
+        );
+
         // Check that depth is calculated correctly
         let has_correct_depth = overlay.iter().any(|(_, depth)| (*depth - 5.0).abs() < 0.1);
         assert!(has_correct_depth, "Should have vertices with correct depth");
@@ -717,12 +748,12 @@ mod tests {
     #[test]
     fn test_depth_to_color() {
         use visualization::depth_to_color;
-        
+
         // Shallow cut should be lighter
         let (r1, g1, b1, a1) = depth_to_color(1.0, 10.0);
         // Deep cut should be darker
         let (r2, g2, b2, a2) = depth_to_color(10.0, 10.0);
-        
+
         assert!(r1 > r2, "Shallow cuts should be lighter");
         assert!(g1 > g2, "Shallow cuts should be lighter");
         assert!(b1 > b2, "Shallow cuts should be lighter");

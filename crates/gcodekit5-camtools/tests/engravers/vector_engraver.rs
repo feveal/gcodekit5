@@ -1,6 +1,6 @@
 use gcodekit5_camtools::vector_engraver::{VectorEngraver, VectorEngravingParameters};
-use lyon::path::Path;
 use lyon::math::point;
+use lyon::path::Path;
 
 #[test]
 fn test_default_parameters() {
@@ -17,9 +17,7 @@ fn test_svg_file_validation() {
     assert!(result.is_err());
     let error_msg = result.unwrap_err().to_string();
     // Either unsupported format or file not found is acceptable
-    assert!(
-        error_msg.contains("Unsupported file format") || error_msg.contains("File not found")
-    );
+    assert!(error_msg.contains("Unsupported file format") || error_msg.contains("File not found"));
 }
 
 #[test]
@@ -56,15 +54,15 @@ fn test_estimate_time() {
 fn test_svg_with_dtd_parsing() {
     // Test with actual SVG that may have DTD
     let tiger_path = "assets/svg/tiger_head_zhThh.svg";
-    
+
     // Skip test if file doesn't exist
     if !std::path::Path::new(tiger_path).exists() {
         return;
     }
-    
+
     let params = VectorEngravingParameters::default();
     let result = VectorEngraver::from_file(tiger_path, params);
-    
+
     // Should successfully parse DTD SVG
     assert!(result.is_ok(), "Failed to parse SVG with DTD: {:?}", result);
 }

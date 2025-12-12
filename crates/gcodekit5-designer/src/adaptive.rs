@@ -404,5 +404,3 @@ impl AdaptiveAlgorithm {
         Ok(optimized_feed.min(material.max_feed_rate))
     }
 }
-
-

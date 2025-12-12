@@ -11,10 +11,10 @@ pub mod firmware;
 pub use communication::{
     serial::{list_ports, SerialPortInfo},
     tcp::TcpConnectionInfo,
+    BufferedCommand, BufferedCommunicatorConfig, BufferedCommunicatorWrapper, CommandStatus,
     Communicator, CommunicatorEvent, CommunicatorListener, CommunicatorListenerHandle,
     ConnectionDriver, ConnectionParams, NoOpCommunicator, SerialCommunicator, SerialParity,
     TcpCommunicator,
-    BufferedCommunicatorWrapper, BufferedCommunicatorConfig, BufferedCommand, CommandStatus,
 };
 
 pub use firmware::{CapabilityManager, CapabilityState, ControllerType, FirmwareDetector};

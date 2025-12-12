@@ -188,4 +188,3 @@ pub struct IntegrationStats {
     pub recent_exports: usize,
     pub total_gcode_lines: usize,
 }
-

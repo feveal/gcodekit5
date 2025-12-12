@@ -52,7 +52,7 @@ impl SpeedsFeedsCalculator {
         // 1. Material property (surface_speed_m_min)
         // 2. Material cutting params for this tool type (implied from RPM range?)
         // 3. Tool default params
-        
+
         let tool_type_key = match tool.tool_type {
             gcodekit5_core::data::tools::ToolType::EndMillFlat => "endmill_flat",
             gcodekit5_core::data::tools::ToolType::EndMillBall => "endmill_ball",
@@ -92,7 +92,7 @@ impl SpeedsFeedsCalculator {
         // 1. Material property (chip_load_mm)
         // 2. Derived from Material Feed Rate range
         // 3. Derived from Tool default Feed Rate
-        
+
         let chip_load = if let Some(params) = material_params {
             if let Some(load) = params.chip_load_mm {
                 if !source.contains("Material") {
@@ -122,21 +122,27 @@ impl SpeedsFeedsCalculator {
         let mut feed_rate = rpm * chip_load * tool.flutes as f32;
 
         // 5. Apply Device Limits
-        
+
         // Check Max RPM
         let max_rpm = 24000.0; // Common default
         if rpm > max_rpm {
-            warnings.push(format!("Calculated RPM ({:.0}) exceeds standard max ({:.0}). Clamped.", rpm, max_rpm));
+            warnings.push(format!(
+                "Calculated RPM ({:.0}) exceeds standard max ({:.0}). Clamped.",
+                rpm, max_rpm
+            ));
             unclamped_rpm = Some(rpm as u32);
             rpm = max_rpm;
-            // Recalculate feed rate to maintain chip load? 
+            // Recalculate feed rate to maintain chip load?
             // Usually yes, to protect tool.
             feed_rate = rpm * chip_load * tool.flutes as f32;
         }
 
         // Check Max Feed Rate
         if feed_rate > device.max_feed_rate as f32 {
-            warnings.push(format!("Calculated Feed ({:.0}) exceeds device max ({:.0}). Clamped.", feed_rate, device.max_feed_rate));
+            warnings.push(format!(
+                "Calculated Feed ({:.0}) exceeds device max ({:.0}). Clamped.",
+                feed_rate, device.max_feed_rate
+            ));
             unclamped_feed_rate = Some(feed_rate);
             feed_rate = device.max_feed_rate as f32;
             // If we clamp feed, chip load decreases.
@@ -145,10 +151,13 @@ impl SpeedsFeedsCalculator {
         // Check Min RPM (Spindle usually has a min speed)
         let min_rpm = 1000.0;
         if rpm < min_rpm {
-             warnings.push(format!("Calculated RPM ({:.0}) is below standard min ({:.0}). Clamped.", rpm, min_rpm));
-             unclamped_rpm = Some(rpm as u32);
-             rpm = min_rpm;
-             feed_rate = rpm * chip_load * tool.flutes as f32;
+            warnings.push(format!(
+                "Calculated RPM ({:.0}) is below standard min ({:.0}). Clamped.",
+                rpm, min_rpm
+            ));
+            unclamped_rpm = Some(rpm as u32);
+            rpm = min_rpm;
+            feed_rate = rpm * chip_load * tool.flutes as f32;
         }
 
         CalculationResult {
@@ -163,5 +172,3 @@ impl SpeedsFeedsCalculator {
         }
     }
 }
-
-

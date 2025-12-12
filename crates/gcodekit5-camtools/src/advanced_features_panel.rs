@@ -380,5 +380,3 @@ impl Default for AdvancedFeaturesPanel {
         Self::new()
     }
 }
-
-

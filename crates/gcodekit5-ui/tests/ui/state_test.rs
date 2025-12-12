@@ -1,5 +1,5 @@
 #![cfg(feature = "slint_legacy_tests")]
-use gcodekit5_ui::ui::state::{UiState, ConnectionState};
+use gcodekit5_ui::ui::state::{ConnectionState, UiState};
 
 #[test]
 fn test_ui_state_creation() {

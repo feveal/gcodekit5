@@ -157,4 +157,3 @@ impl Default for TextBuffer {
         Self::new()
     }
 }
-

@@ -6,10 +6,9 @@ use super::shapes::{
 };
 use super::spatial_index::Bounds;
 use super::viewport::Viewport;
-use crate::shape_store::ShapeStore;
 use crate::selection_manager::SelectionManager;
+use crate::shape_store::ShapeStore;
 use crate::spatial_manager::SpatialManager;
-
 
 /// Snapshot of canvas state for undo/redo
 #[derive(Clone)]
@@ -84,7 +83,8 @@ impl DrawingObject {
             ShapeType::Ellipse => "Ellipse",
             ShapeType::Path => "Path",
             ShapeType::Text => "Text",
-        }.to_string();
+        }
+        .to_string();
 
         Self {
             id,
@@ -206,8 +206,10 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let rect = Rectangle::new(x, y, width, height);
         let (min_x, min_y, max_x, max_y) = rect.bounding_box();
-        self.shape_store.insert(id, DrawingObject::new(id, Shape::Rectangle(rect)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.shape_store
+            .insert(id, DrawingObject::new(id, Shape::Rectangle(rect)));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -216,8 +218,10 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let circle = Circle::new(center, radius);
         let (min_x, min_y, max_x, max_y) = circle.bounding_box();
-        self.shape_store.insert(id, DrawingObject::new(id, Shape::Circle(circle)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.shape_store
+            .insert(id, DrawingObject::new(id, Shape::Circle(circle)));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -226,7 +230,8 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let (min_x, min_y, max_x, max_y) = shape.bounding_box();
         self.shape_store.insert(id, DrawingObject::new(id, shape));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -235,8 +240,10 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let line = Line::new(start, end);
         let (min_x, min_y, max_x, max_y) = line.bounding_box();
-        self.shape_store.insert(id, DrawingObject::new(id, Shape::Line(line)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.shape_store
+            .insert(id, DrawingObject::new(id, Shape::Line(line)));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -245,8 +252,10 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let ellipse = Ellipse::new(center, rx, ry);
         let (min_x, min_y, max_x, max_y) = ellipse.bounding_box();
-        self.shape_store.insert(id, DrawingObject::new(id, Shape::Ellipse(ellipse)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.shape_store
+            .insert(id, DrawingObject::new(id, Shape::Ellipse(ellipse)));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -258,7 +267,8 @@ impl Canvas {
         let (min_x, min_y, max_x, max_y) = path_shape.bounding_box();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Path(path_shape)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -267,8 +277,10 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         let shape = TextShape::new(text, x, y, font_size);
         let (min_x, min_y, max_x, max_y) = shape.bounding_box();
-        self.shape_store.insert(id, DrawingObject::new(id, Shape::Text(shape)));
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.shape_store
+            .insert(id, DrawingObject::new(id, Shape::Text(shape)));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         id
     }
 
@@ -301,19 +313,34 @@ impl Canvas {
     /// If multi is true, toggles selection of the shape at point while keeping others.
     /// If multi is false, clears other selections and selects the shape at point.
     pub fn select_at(&mut self, point: &Point, tolerance: f64, multi: bool) -> Option<u64> {
-        self.selection_manager.select_at(&mut self.shape_store, self.spatial_manager.inner(), point, tolerance, multi)
+        self.selection_manager.select_at(
+            &mut self.shape_store,
+            self.spatial_manager.inner(),
+            point,
+            tolerance,
+            multi,
+        )
     }
 
     /// Selects shapes within or intersecting the given rectangle.
     /// If multi is true, adds to current selection.
     /// If multi is false, clears other selections first.
     pub fn select_in_rect(&mut self, x: f64, y: f64, width: f64, height: f64, multi: bool) {
-        self.selection_manager.select_in_rect(&mut self.shape_store, self.spatial_manager.inner(), x, y, width, height, multi);
+        self.selection_manager.select_in_rect(
+            &mut self.shape_store,
+            self.spatial_manager.inner(),
+            x,
+            y,
+            width,
+            height,
+            multi,
+        );
     }
 
     /// Selects a shape by ID.
     pub fn select_shape(&mut self, id: u64, multi: bool) {
-        self.selection_manager.select_id(&mut self.shape_store, id, multi);
+        self.selection_manager
+            .select_id(&mut self.shape_store, id, multi);
     }
 
     /// Gets the number of selected shapes.
@@ -323,7 +350,8 @@ impl Canvas {
 
     /// Removes all selected shapes.
     pub fn remove_selected(&mut self) {
-        self.selection_manager.remove_selected(&mut self.shape_store, self.spatial_manager.inner_mut());
+        self.selection_manager
+            .remove_selected(&mut self.shape_store, self.spatial_manager.inner_mut());
     }
 
     /// Gets all shapes on the canvas.
@@ -350,8 +378,9 @@ impl Canvas {
     pub fn remove_shape_return(&mut self, id: u64) -> Option<DrawingObject> {
         if let Some(obj) = self.shape_store.remove(id) {
             let (min_x, min_y, max_x, max_y) = obj.shape.bounding_box();
-            self.spatial_manager.remove_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
-            
+            self.spatial_manager
+                .remove_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+
             if self.selection_manager.selected_id() == Some(id) {
                 self.selection_manager.set_selected_id(None);
             }
@@ -365,7 +394,8 @@ impl Canvas {
     pub fn restore_shape(&mut self, obj: DrawingObject) {
         let id = obj.id;
         let (min_x, min_y, max_x, max_y) = obj.shape.bounding_box();
-        self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+        self.spatial_manager
+            .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         self.shape_store.insert(id, obj);
     }
 
@@ -421,7 +451,8 @@ impl Canvas {
 
     /// Fit the viewport to the given world bounds using specified padding.
     pub fn fit_to_bounds(&mut self, min_x: f64, min_y: f64, max_x: f64, max_y: f64, padding: f64) {
-        self.viewport.fit_to_bounds(min_x, min_y, max_x, max_y, padding);
+        self.viewport
+            .fit_to_bounds(min_x, min_y, max_x, max_y, padding);
     }
 
     /// Zooms in.
@@ -507,7 +538,13 @@ impl Canvas {
         }
 
         // Fit content to view with a VIEW_PADDING per-edge padding so that content has small margins
-        self.viewport.fit_to_bounds(min_x, min_y, max_x, max_y, gcodekit5_core::constants::VIEW_PADDING);
+        self.viewport.fit_to_bounds(
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+            gcodekit5_core::constants::VIEW_PADDING,
+        );
     }
 
     /// Zooms to a point with optional zoom level.
@@ -545,18 +582,22 @@ impl Canvas {
     /// Moves the selected shape by (dx, dy).
     pub fn move_selected(&mut self, dx: f64, dy: f64) {
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
                 let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
-                
+
                 obj.shape.translate(dx, dy);
-                
+
                 let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-                updates.push((obj.id, Bounds::new(old_x1, old_y1, old_x2, old_y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+                updates.push((
+                    obj.id,
+                    Bounds::new(old_x1, old_y1, old_x2, old_y2),
+                    Bounds::new(new_x1, new_y1, new_x2, new_y2),
+                ));
             }
         }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
@@ -567,49 +608,61 @@ impl Canvas {
     /// Returns a vector of (shape_id, dx, dy) for each selected shape that needs to move.
     pub fn calculate_alignment_deltas(&self, alignment: Alignment) -> Vec<(u64, f64, f64)> {
         let selected: Vec<_> = self.shape_store.iter().filter(|o| o.selected).collect();
-        if selected.is_empty() { return Vec::new(); }
+        if selected.is_empty() {
+            return Vec::new();
+        }
 
         // 1. Calculate target value
         let target = match alignment {
-            Alignment::Left => {
-                selected.iter()
-                    .map(|o| o.shape.bounding_box().0)
-                    .fold(f64::INFINITY, f64::min)
-            },
-            Alignment::Right => {
-                selected.iter()
-                    .map(|o| o.shape.bounding_box().2)
-                    .fold(f64::NEG_INFINITY, f64::max)
-            },
+            Alignment::Left => selected
+                .iter()
+                .map(|o| o.shape.bounding_box().0)
+                .fold(f64::INFINITY, f64::min),
+            Alignment::Right => selected
+                .iter()
+                .map(|o| o.shape.bounding_box().2)
+                .fold(f64::NEG_INFINITY, f64::max),
             Alignment::CenterHorizontal => {
-                let (min_x, max_x) = selected.iter()
-                    .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
-                        let (x1, _, x2, _) = o.shape.bounding_box();
-                        (min.min(x1), max.max(x2))
-                    });
-                if min_x.is_infinite() { f64::INFINITY } else { (min_x + max_x) / 2.0 }
-            },
-            Alignment::Top => {
-                selected.iter()
-                    .map(|o| o.shape.bounding_box().3)
-                    .fold(f64::NEG_INFINITY, f64::max)
-            },
-            Alignment::Bottom => {
-                selected.iter()
-                    .map(|o| o.shape.bounding_box().1)
-                    .fold(f64::INFINITY, f64::min)
-            },
+                let (min_x, max_x) =
+                    selected
+                        .iter()
+                        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
+                            let (x1, _, x2, _) = o.shape.bounding_box();
+                            (min.min(x1), max.max(x2))
+                        });
+                if min_x.is_infinite() {
+                    f64::INFINITY
+                } else {
+                    (min_x + max_x) / 2.0
+                }
+            }
+            Alignment::Top => selected
+                .iter()
+                .map(|o| o.shape.bounding_box().3)
+                .fold(f64::NEG_INFINITY, f64::max),
+            Alignment::Bottom => selected
+                .iter()
+                .map(|o| o.shape.bounding_box().1)
+                .fold(f64::INFINITY, f64::min),
             Alignment::CenterVertical => {
-                let (min_y, max_y) = selected.iter()
-                    .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
-                        let (_, y1, _, y2) = o.shape.bounding_box();
-                        (min.min(y1), max.max(y2))
-                    });
-                if min_y.is_infinite() { f64::INFINITY } else { (min_y + max_y) / 2.0 }
-            },
+                let (min_y, max_y) =
+                    selected
+                        .iter()
+                        .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
+                            let (_, y1, _, y2) = o.shape.bounding_box();
+                            (min.min(y1), max.max(y2))
+                        });
+                if min_y.is_infinite() {
+                    f64::INFINITY
+                } else {
+                    (min_y + max_y) / 2.0
+                }
+            }
         };
 
-        if target.is_infinite() { return Vec::new(); }
+        if target.is_infinite() {
+            return Vec::new();
+        }
 
         let mut deltas = Vec::new();
 
@@ -634,7 +687,12 @@ impl Canvas {
 
     /// Pastes objects onto the canvas with an offset.
     /// Returns the IDs of the new objects.
-    pub fn paste_objects(&mut self, objects: &[DrawingObject], offset_x: f64, offset_y: f64) -> Vec<u64> {
+    pub fn paste_objects(
+        &mut self,
+        objects: &[DrawingObject],
+        offset_x: f64,
+        offset_y: f64,
+    ) -> Vec<u64> {
         let mut new_ids = Vec::new();
         let mut group_map = std::collections::HashMap::new();
 
@@ -676,19 +734,18 @@ impl Canvas {
             };
 
             self.shape_store.insert(id, new_obj);
-            self.spatial_manager.insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
+            self.spatial_manager
+                .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
             new_ids.push(id);
         }
-        
+
         // Update selected_id to the last pasted object if any
         if let Some(last_id) = new_ids.last() {
             self.selection_manager.set_selected_id(Some(*last_id));
         }
-        
+
         new_ids
     }
-
-
 
     /// Resizes the selected shape. Handles: 0=TL, 1=TR, 2=BL, 3=BR, 4=Center (moves)
     pub fn resize_selected(&mut self, handle: usize, dx: f64, dy: f64) {
@@ -733,35 +790,47 @@ impl Canvas {
         let new_height = (new_max_y - new_min_y).abs();
 
         // Calculate scale factors
-        let sx = if old_width.abs() > 1e-6 { new_width / old_width } else { 1.0 };
-        let sy = if old_height.abs() > 1e-6 { new_height / old_height } else { 1.0 };
+        let sx = if old_width.abs() > 1e-6 {
+            new_width / old_width
+        } else {
+            1.0
+        };
+        let sy = if old_height.abs() > 1e-6 {
+            new_height / old_height
+        } else {
+            1.0
+        };
 
         // Center of scaling
         let center_x = (min_x + max_x) / 2.0;
         let center_y = (min_y + max_y) / 2.0;
-        
+
         let new_center_x = (new_min_x + new_max_x) / 2.0;
         let new_center_y = (new_min_y + new_max_y) / 2.0;
-        
+
         let mut updates = Vec::new();
 
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
                 let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
-                
+
                 // Scale relative to the center of the SELECTION bounding box
                 obj.shape.scale(sx, sy, Point::new(center_x, center_y));
-                
+
                 // Translate to new center
                 let t_dx = new_center_x - center_x;
                 let t_dy = new_center_y - center_y;
                 obj.shape.translate(t_dx, t_dy);
-                
+
                 let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-                updates.push((obj.id, Bounds::new(old_x1, old_y1, old_x2, old_y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+                updates.push((
+                    obj.id,
+                    Bounds::new(old_x1, old_y1, old_x2, old_y2),
+                    Bounds::new(new_x1, new_y1, new_x2, new_y2),
+                ));
             }
         }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
@@ -771,7 +840,7 @@ impl Canvas {
     /// Calculates the snapped shapes without modifying the canvas.
     pub fn calculate_snapped_shapes(&self) -> Vec<(u64, DrawingObject)> {
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter().filter(|o| o.selected) {
             let (x1, y1, x2, y2) = obj.shape.bounding_box();
             let width = x2 - x1;
@@ -804,8 +873,15 @@ impl Canvas {
                     Point::new(snapped_x1 + snapped_width, snapped_y1 + snapped_height),
                 )),
                 Shape::Ellipse(_) => {
-                    let center = Point::new(snapped_x1 + snapped_width / 2.0, snapped_y1 + snapped_height / 2.0);
-                    Shape::Ellipse(Ellipse::new(center, snapped_width / 2.0, snapped_height / 2.0))
+                    let center = Point::new(
+                        snapped_x1 + snapped_width / 2.0,
+                        snapped_y1 + snapped_height / 2.0,
+                    );
+                    Shape::Ellipse(Ellipse::new(
+                        center,
+                        snapped_width / 2.0,
+                        snapped_height / 2.0,
+                    ))
                 }
                 Shape::Path(path_shape) => {
                     let (path_x1, path_y1, path_x2, path_y2) = path_shape.bounding_box();
@@ -843,116 +919,120 @@ impl Canvas {
                     snapped_x1,
                     snapped_y1,
                     text.font_size, // Keep font size? Or scale it?
-                    // Original code kept font size but moved position?
-                    // Original code used `ShapeType::Text` match arm which was missing in `snap_selected_to_mm`?
-                    // Wait, `snap_selected_to_mm` in `canvas.rs` had `ShapeType::Text`?
-                    // Let's check.
+                                    // Original code kept font size but moved position?
+                                    // Original code used `ShapeType::Text` match arm which was missing in `snap_selected_to_mm`?
+                                    // Wait, `snap_selected_to_mm` in `canvas.rs` had `ShapeType::Text`?
+                                    // Let's check.
                 )),
             };
-            
+
             let mut new_obj = obj.clone();
             new_obj.shape = new_shape;
             updates.push((obj.id, new_obj));
         }
-        
+
         updates
     }
 
     /// Snaps the selected shape's position to whole millimeters
     pub fn snap_selected_to_mm(&mut self) {
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
                 let (x1, y1, x2, y2) = obj.shape.bounding_box();
                 let width = x2 - x1;
                 let height = y2 - y1;
 
-            // Snap the top-left corner and dimensions to whole mm
-            let snapped_x1 = (x1 + 0.5).floor();
-            let snapped_y1 = (y1 + 0.5).floor();
-            let snapped_width = (width + 0.5).floor();
-            let snapped_height = (height + 0.5).floor();
+                // Snap the top-left corner and dimensions to whole mm
+                let snapped_x1 = (x1 + 0.5).floor();
+                let snapped_y1 = (y1 + 0.5).floor();
+                let snapped_width = (width + 0.5).floor();
+                let snapped_height = (height + 0.5).floor();
 
-            // Replace the shape with snapped position and dimensions
-            let shape = &obj.shape;
-            let new_shape: Shape = match shape.shape_type() {
-                ShapeType::Rectangle => Shape::Rectangle(Rectangle::new(
-                    snapped_x1,
-                    snapped_y1,
-                    snapped_width,
-                    snapped_height,
-                )),
-                ShapeType::Circle => {
-                    let radius = snapped_width / 2.0;
-                    Shape::Circle(Circle::new(
-                        Point::new(snapped_x1 + radius, snapped_y1 + radius),
-                        radius,
-                    ))
-                }
-                ShapeType::Line => Shape::Line(Line::new(
-                    Point::new(snapped_x1, snapped_y1),
-                    Point::new(snapped_x1 + snapped_width, snapped_y1 + snapped_height),
-                )),
-                ShapeType::Ellipse => {
-                    let rx = snapped_width / 2.0;
-                    let ry = snapped_height / 2.0;
-                    Shape::Ellipse(Ellipse::new(
-                        Point::new(snapped_x1 + rx, snapped_y1 + ry),
-                        rx,
-                        ry,
-                    ))
-                }
-                ShapeType::Path => {
-                    if let Some(path_shape) = shape.as_any().downcast_ref::<PathShape>() {
-                        let sx = if width.abs() > 1e-6 {
-                            snapped_width / width
-                        } else {
-                            1.0
-                        };
-                        let sy = if height.abs() > 1e-6 {
-                            snapped_height / height
-                        } else {
-                            1.0
-                        };
-
-                        let center_x = (x1 + x2) / 2.0;
-                        let center_y = (y1 + y2) / 2.0;
-
-                        let mut new_path_shape = path_shape.clone();
-                        new_path_shape.scale(sx, sy, Point::new(center_x, center_y));
-
-                        let new_center_x = snapped_x1 + snapped_width / 2.0;
-                        let new_center_y = snapped_y1 + snapped_height / 2.0;
-                        let t_dx = new_center_x - center_x;
-                        let t_dy = new_center_y - center_y;
-
-                        new_path_shape.translate(t_dx, t_dy);
-                        Shape::Path(new_path_shape)
-                    } else {
-                        shape.clone()
-                    }
-                }
-                ShapeType::Text => {
-                    if let Some(text) = shape.as_any().downcast_ref::<TextShape>() {
-                        Shape::Text(TextShape::new(
-                            text.text.clone(),
-                            snapped_x1,
-                            snapped_y1,
-                            text.font_size,
+                // Replace the shape with snapped position and dimensions
+                let shape = &obj.shape;
+                let new_shape: Shape = match shape.shape_type() {
+                    ShapeType::Rectangle => Shape::Rectangle(Rectangle::new(
+                        snapped_x1,
+                        snapped_y1,
+                        snapped_width,
+                        snapped_height,
+                    )),
+                    ShapeType::Circle => {
+                        let radius = snapped_width / 2.0;
+                        Shape::Circle(Circle::new(
+                            Point::new(snapped_x1 + radius, snapped_y1 + radius),
+                            radius,
                         ))
-                    } else {
-                        shape.clone()
                     }
-                }
-            };
-            obj.shape = new_shape;
-            
-            let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-            updates.push((obj.id, Bounds::new(x1, y1, x2, y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+                    ShapeType::Line => Shape::Line(Line::new(
+                        Point::new(snapped_x1, snapped_y1),
+                        Point::new(snapped_x1 + snapped_width, snapped_y1 + snapped_height),
+                    )),
+                    ShapeType::Ellipse => {
+                        let rx = snapped_width / 2.0;
+                        let ry = snapped_height / 2.0;
+                        Shape::Ellipse(Ellipse::new(
+                            Point::new(snapped_x1 + rx, snapped_y1 + ry),
+                            rx,
+                            ry,
+                        ))
+                    }
+                    ShapeType::Path => {
+                        if let Some(path_shape) = shape.as_any().downcast_ref::<PathShape>() {
+                            let sx = if width.abs() > 1e-6 {
+                                snapped_width / width
+                            } else {
+                                1.0
+                            };
+                            let sy = if height.abs() > 1e-6 {
+                                snapped_height / height
+                            } else {
+                                1.0
+                            };
+
+                            let center_x = (x1 + x2) / 2.0;
+                            let center_y = (y1 + y2) / 2.0;
+
+                            let mut new_path_shape = path_shape.clone();
+                            new_path_shape.scale(sx, sy, Point::new(center_x, center_y));
+
+                            let new_center_x = snapped_x1 + snapped_width / 2.0;
+                            let new_center_y = snapped_y1 + snapped_height / 2.0;
+                            let t_dx = new_center_x - center_x;
+                            let t_dy = new_center_y - center_y;
+
+                            new_path_shape.translate(t_dx, t_dy);
+                            Shape::Path(new_path_shape)
+                        } else {
+                            shape.clone()
+                        }
+                    }
+                    ShapeType::Text => {
+                        if let Some(text) = shape.as_any().downcast_ref::<TextShape>() {
+                            Shape::Text(TextShape::new(
+                                text.text.clone(),
+                                snapped_x1,
+                                snapped_y1,
+                                text.font_size,
+                            ))
+                        } else {
+                            shape.clone()
+                        }
+                    }
+                };
+                obj.shape = new_shape;
+
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                updates.push((
+                    obj.id,
+                    Bounds::new(x1, y1, x2, y2),
+                    Bounds::new(new_x1, new_y1, new_x2, new_y2),
+                ));
+            }
         }
-    }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
@@ -971,7 +1051,7 @@ impl Canvas {
         use crate::shapes::*;
 
         let mut updates = Vec::new();
-        
+
         // 1. Calculate union bounding box of all selected items
         let mut min_x = f64::INFINITY;
         let mut min_y = f64::INFINITY;
@@ -1004,8 +1084,16 @@ impl Canvas {
         let target_h = if update_size { h } else { old_h };
 
         // 3. Calculate scale factors
-        let sx = if update_size && old_w.abs() > 1e-6 { target_w / old_w } else { 1.0 };
-        let sy = if update_size && old_h.abs() > 1e-6 { target_h / old_h } else { 1.0 };
+        let sx = if update_size && old_w.abs() > 1e-6 {
+            target_w / old_w
+        } else {
+            1.0
+        };
+        let sy = if update_size && old_h.abs() > 1e-6 {
+            target_h / old_h
+        } else {
+            1.0
+        };
 
         // Center of the original group
         let group_center_x = min_x + old_w / 2.0;
@@ -1013,9 +1101,11 @@ impl Canvas {
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
             let mut new_obj = obj.clone();
-            
+
             // Apply scaling relative to group center
-            new_obj.shape.scale(sx, sy, Point::new(group_center_x, group_center_y));
+            new_obj
+                .shape
+                .scale(sx, sy, Point::new(group_center_x, group_center_y));
 
             // Calculate translation to move to target position
             // The group's new center after scaling is still (group_center_x, group_center_y)
@@ -1027,10 +1117,10 @@ impl Canvas {
             let dy = target_y - current_new_y;
 
             new_obj.shape.translate(dx, dy);
-            
+
             updates.push((obj.id, new_obj));
         }
-        
+
         updates
     }
 
@@ -1077,8 +1167,16 @@ impl Canvas {
         let target_h = if update_size { h } else { old_h };
 
         // 3. Calculate scale factors
-        let sx = if update_size && old_w.abs() > 1e-6 { target_w / old_w } else { 1.0 };
-        let sy = if update_size && old_h.abs() > 1e-6 { target_h / old_h } else { 1.0 };
+        let sx = if update_size && old_w.abs() > 1e-6 {
+            target_w / old_w
+        } else {
+            1.0
+        };
+        let sy = if update_size && old_h.abs() > 1e-6 {
+            target_h / old_h
+        } else {
+            1.0
+        };
 
         // Center of the original group
         let group_center_x = min_x + old_w / 2.0;
@@ -1086,7 +1184,7 @@ impl Canvas {
 
         let mut changed_any = false;
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter_mut() {
             if !obj.selected {
                 continue;
@@ -1095,7 +1193,8 @@ impl Canvas {
             let (old_x, old_y, old_x2, old_y2) = obj.shape.bounding_box();
 
             // Apply scaling relative to group center
-            obj.shape.scale(sx, sy, Point::new(group_center_x, group_center_y));
+            obj.shape
+                .scale(sx, sy, Point::new(group_center_x, group_center_y));
 
             // Calculate translation to move to target position
             let current_new_x = group_center_x - target_w / 2.0;
@@ -1105,41 +1204,49 @@ impl Canvas {
             let dy = target_y - current_new_y;
 
             obj.shape.translate(dx, dy);
-            
+
             changed_any = true;
-            
+
             let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-            updates.push((obj.id, Bounds::new(old_x, old_y, old_x2, old_y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+            updates.push((
+                obj.id,
+                Bounds::new(old_x, old_y, old_x2, old_y2),
+                Bounds::new(new_x1, new_y1, new_x2, new_y2),
+            ));
         }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
         }
-        
+
         changed_any
     }
     /// Calculates text property updates without modifying the canvas.
-    pub fn calculate_text_property_updates(&self, content: &str, font_size: f64) -> Vec<(u64, DrawingObject)> {
+    pub fn calculate_text_property_updates(
+        &self,
+        content: &str,
+        font_size: f64,
+    ) -> Vec<(u64, DrawingObject)> {
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter().filter(|o| o.selected) {
             if let Some(text) = obj.shape.as_any().downcast_ref::<TextShape>() {
                 let (x, y) = (text.x, text.y);
-                
+
                 let mut new_obj = obj.clone();
                 new_obj.shape = Shape::Text(TextShape::new(content.to_string(), x, y, font_size));
                 updates.push((obj.id, new_obj));
             }
         }
-        
+
         updates
     }
 
     pub fn set_selected_text_properties(&mut self, content: &str, font_size: f64) -> bool {
         let mut changed = false;
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter_mut() {
             if !obj.selected {
                 continue;
@@ -1147,33 +1254,41 @@ impl Canvas {
             if let Some(text) = obj.shape.as_any().downcast_ref::<TextShape>() {
                 let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
                 let (x, y) = (text.x, text.y);
-                
+
                 obj.shape = Shape::Text(TextShape::new(content.to_string(), x, y, font_size));
                 changed = true;
-                
+
                 let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-                updates.push((obj.id, Bounds::new(old_x1, old_y1, old_x2, old_y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+                updates.push((
+                    obj.id,
+                    Bounds::new(old_x1, old_y1, old_x2, old_y2),
+                    Bounds::new(new_x1, new_y1, new_x2, new_y2),
+                ));
             }
         }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
         }
-        
+
         changed
     }
 
     /// Calculates rectangle property updates without modifying the canvas.
-    pub fn calculate_rectangle_property_updates(&self, corner_radius: f64, is_slot: bool) -> Vec<(u64, DrawingObject)> {
+    pub fn calculate_rectangle_property_updates(
+        &self,
+        corner_radius: f64,
+        is_slot: bool,
+    ) -> Vec<(u64, DrawingObject)> {
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter().filter(|o| o.selected) {
             if let Some(rect) = obj.shape.as_any().downcast_ref::<Rectangle>() {
                 let mut new_rect = *rect;
                 new_rect.corner_radius = corner_radius;
                 new_rect.is_slot = is_slot;
-                
+
                 // Re-constrain radius
                 let max_radius = new_rect.width.min(new_rect.height).abs() / 2.0;
                 if new_rect.is_slot {
@@ -1181,31 +1296,31 @@ impl Canvas {
                 } else {
                     new_rect.corner_radius = new_rect.corner_radius.min(max_radius);
                 }
-                
+
                 let mut new_obj = obj.clone();
                 new_obj.shape = Shape::Rectangle(new_rect);
                 updates.push((obj.id, new_obj));
             }
         }
-        
+
         updates
     }
 
     pub fn set_selected_rectangle_properties(&mut self, corner_radius: f64, is_slot: bool) -> bool {
         let mut changed = false;
         let mut updates = Vec::new();
-        
+
         for obj in self.shape_store.iter_mut() {
             if !obj.selected {
                 continue;
             }
             if let Some(rect) = obj.shape.as_any().downcast_ref::<Rectangle>() {
                 let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
-                
+
                 let mut new_rect = *rect;
                 new_rect.corner_radius = corner_radius;
                 new_rect.is_slot = is_slot;
-                
+
                 // Re-constrain radius
                 let max_radius = new_rect.width.min(new_rect.height).abs() / 2.0;
                 if new_rect.is_slot {
@@ -1213,20 +1328,24 @@ impl Canvas {
                 } else {
                     new_rect.corner_radius = new_rect.corner_radius.min(max_radius);
                 }
-                
+
                 obj.shape = Shape::Rectangle(new_rect);
                 changed = true;
-                
+
                 let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
-                updates.push((obj.id, Bounds::new(old_x1, old_y1, old_x2, old_y2), Bounds::new(new_x1, new_y1, new_x2, new_y2)));
+                updates.push((
+                    obj.id,
+                    Bounds::new(old_x1, old_y1, old_x2, old_y2),
+                    Bounds::new(new_x1, new_y1, new_x2, new_y2),
+                ));
             }
         }
-        
+
         for (id, old_bounds, new_bounds) in updates {
             self.spatial_manager.remove_bounds(id, &old_bounds);
             self.spatial_manager.insert_bounds(id, &new_bounds);
         }
-        
+
         changed
     }
 

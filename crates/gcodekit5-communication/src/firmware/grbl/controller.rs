@@ -4,8 +4,8 @@
 //! including connection management, command execution, and status polling.
 
 use crate::communication::{ConnectionParams, NoOpCommunicator};
-use crate::firmware::grbl::{GrblCommunicator, GrblCommunicatorConfig};
 use crate::firmware::grbl::status_parser::StatusParser;
+use crate::firmware::grbl::{GrblCommunicator, GrblCommunicatorConfig};
 use async_trait::async_trait;
 use gcodekit5_core::{ControllerState, ControllerStatus, PartialPosition};
 use gcodekit5_core::{ControllerTrait, OverrideState};
@@ -93,7 +93,6 @@ impl GrblController {
     /// Initialize the controller and query its capabilities
     // fn initialize(&self) -> anyhow::Result<()> { ... } - Removed as we use async send_command in connect
 
-
     /// Start the IO loop task
     fn start_io_loop(&mut self) -> anyhow::Result<()> {
         let (cmd_tx, mut cmd_rx) = mpsc::channel::<String>(100);
@@ -110,7 +109,7 @@ impl GrblController {
             let mut sent_queue: VecDeque<usize> = VecDeque::new();
             let mut local_cmd_queue: VecDeque<String> = VecDeque::new();
             let mut last_poll = Instant::now();
-            
+
             // We use a short sleep to prevent busy looping when no data
             let loop_delay = Duration::from_millis(10);
 
@@ -140,23 +139,23 @@ impl GrblController {
                                     // Update full status
                                     let full_status = StatusParser::parse_full(&line);
                                     let mut state_guard = state.write();
-                                    
+
                                     if let Some(mpos) = full_status.mpos {
                                         state_guard.machine_position.x = mpos.x as f32;
                                         state_guard.machine_position.y = mpos.y as f32;
                                         state_guard.machine_position.z = mpos.z as f32;
                                         // Update other axes...
                                     }
-                                    
+
                                     if let Some(wpos) = full_status.wpos {
                                         state_guard.work_position.x = wpos.x as f32;
                                         state_guard.work_position.y = wpos.y as f32;
                                         state_guard.work_position.z = wpos.z as f32;
                                     }
-                                    
+
                                     if let Some(machine_state) = full_status.machine_state {
                                         let s = machine_state.as_str();
-                                        
+
                                         // Update ControllerState (detailed)
                                         state_guard.state = match s {
                                             s if s.starts_with("Idle") => ControllerState::Idle,
@@ -274,7 +273,7 @@ impl ControllerTrait for GrblController {
         // Set a short timeout for the serial port to allow the IO loop to spin
         let mut params = self.connection_params.clone();
         params.timeout_ms = 50; // 50ms read timeout
-        
+
         self.communicator.connect(&params)?;
         *self.state.write() = GrblControllerState::default();
 
@@ -317,7 +316,8 @@ impl ControllerTrait for GrblController {
         };
 
         if let Some(tx) = tx {
-            tx.send(command.to_string()).await
+            tx.send(command.to_string())
+                .await
                 .map_err(|_| anyhow::anyhow!("Failed to send command to IO loop"))?;
             Ok(())
         } else {
@@ -333,14 +333,14 @@ impl ControllerTrait for GrblController {
     async fn reset(&mut self) -> anyhow::Result<()> {
         self.communicator.send_realtime_byte(0x18)?;
         tokio::time::sleep(Duration::from_millis(100)).await;
-        
+
         // Reset communicator state
         self.communicator.clear()?;
-        
+
         // Restart IO loop to clear queues
         self.stop_io_loop()?;
         self.start_io_loop()?;
-        
+
         Ok(())
     }
 
@@ -557,5 +557,3 @@ impl ControllerTrait for GrblController {
         0
     }
 }
-
-

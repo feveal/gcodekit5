@@ -1,7 +1,7 @@
 #![cfg(feature = "slint_legacy_tests")]
+use gcodekit5_communication::CommunicatorListener;
 /// Tests for ConsoleListener integration with DeviceConsoleManager
 use gcodekit5_ui::{ConsoleListener, DeviceConsoleManager};
-use gcodekit5_communication::CommunicatorListener;
 use std::sync::Arc;
 
 #[test]

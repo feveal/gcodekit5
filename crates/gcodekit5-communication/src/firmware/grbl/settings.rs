@@ -220,4 +220,3 @@ impl Default for SettingsManager {
         Self::new()
     }
 }
-

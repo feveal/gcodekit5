@@ -88,7 +88,6 @@ impl TinyGController {
 
     /// Perform initialization as task
     async fn initialize_async(&self) -> anyhow::Result<()> {
-
         // Query firmware version
 
         Ok(())

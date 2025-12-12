@@ -22,3 +22,12 @@
     - `buffer.get_selection_bound()` in C is `buffer.selection_bound()` in the Rust bindings.
     - `buffer.get_insert()` in C is `buffer.insert()` in the Rust bindings.
     - `search_settings.set_search_text(Some("text"))` is required; passing `None` clears it.
+
+## Useful GTK4 UI Patterns
+- **Theme palette colors in Cairo**: prefer `widget.style_context().lookup_color("accent_color"|"success_color"|"warning_color")` over hard-coded RGB.
+- **OSD overlays**: `Overlay` + `Box` with a shared CSS class works well for floating controls, status, and small progress panels.
+- **Non-blocking background work**:
+  - Put heavy work on `std::thread::spawn`.
+  - Communicate completion via `Arc<Mutex<Option<T>>>` polled with `glib::timeout_add_local`.
+  - For closures connected to GTK signals (`connect_*`), clone captured values before moving into nested closures (to satisfy `Fn` requirements).
+- **Hide/show panel UX**: use a normal “Hide” button inside the panel and a floating “Show …” button in an overlay; persist visibility in settings.

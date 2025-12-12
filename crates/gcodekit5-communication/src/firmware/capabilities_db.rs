@@ -515,4 +515,3 @@ impl Default for CapabilitiesDatabase {
         Self::new()
     }
 }
-

@@ -1,7 +1,7 @@
+use gcodekit5_core::Units;
 use gcodekit5_designer::gcode_gen::ToolpathToGcode;
 use gcodekit5_designer::shapes::Rectangle;
 use gcodekit5_designer::toolpath::{Toolpath, ToolpathGenerator};
-use gcodekit5_core::Units;
 
 #[test]
 fn test_gcode_generation() {

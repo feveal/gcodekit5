@@ -1,5 +1,5 @@
-use gcodekit5_designer::vcarve::{VBitTool, VCarveGenerator, VCarveParams, VCarveSegment};
 use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::vcarve::{VBitTool, VCarveGenerator, VCarveParams, VCarveSegment};
 
 #[test]
 fn test_vbit_creation() {

@@ -287,4 +287,3 @@ pub struct IntegrationStats {
     pub is_simulating: bool,
     pub real_time_enabled: bool,
 }
-

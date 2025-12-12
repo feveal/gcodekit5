@@ -8,13 +8,10 @@ fn test_designer_state_complete_workflow() {
 
     // Add some shapes
     state.canvas.add_rectangle(0.0, 0.0, 50.0, 30.0);
+    state.canvas.add_circle(Point::new(100.0, 100.0), 20.0);
     state
         .canvas
-        .add_circle(Point::new(100.0, 100.0), 20.0);
-    state.canvas.add_line(
-        Point::new(0.0, 0.0),
-        Point::new(100.0, 100.0),
-    );
+        .add_line(Point::new(0.0, 0.0), Point::new(100.0, 100.0));
 
     assert_eq!(state.canvas.shape_count(), 3);
 
@@ -117,11 +114,11 @@ fn test_designer_state_polyline_update() {
         Point::new(50.0, 86.6),
     ];
     state.canvas.add_polyline(vertices.clone());
-    
+
     // Select it
     state.canvas.select_at(&Point::new(0.0, 0.0), 0.0, false);
     assert!(state.canvas.selected_id().is_some());
-    
+
     // Verify it's a PathShape
     if let Some(id) = state.canvas.selected_id() {
         if let Some(obj) = state.canvas.shapes().find(|o| o.id == id) {
@@ -137,7 +134,7 @@ fn test_designer_state_polyline_update() {
 
     // Update properties (move it)
     state.set_selected_position_and_size(10.0, 10.0, 100.0, 86.6);
-    
+
     // Verify it moved
     if let Some(id) = state.canvas.selected_id() {
         if let Some(obj) = state.canvas.shapes().find(|o| o.id == id) {

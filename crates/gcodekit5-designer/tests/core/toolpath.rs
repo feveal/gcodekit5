@@ -1,5 +1,5 @@
-use gcodekit5_designer::toolpath::ToolpathGenerator;
 use gcodekit5_designer::shapes::Rectangle;
+use gcodekit5_designer::toolpath::ToolpathGenerator;
 
 #[test]
 fn test_toolpath_generator_rectangle() {

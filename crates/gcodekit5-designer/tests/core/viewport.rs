@@ -1,5 +1,5 @@
-use gcodekit5_designer::viewport::Viewport;
 use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::viewport::Viewport;
 
 #[test]
 fn test_viewport_creation() {
