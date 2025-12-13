@@ -4,6 +4,7 @@
 //! handling command input, and maintaining console state. Inspired by UGS
 //! ConsolePanel and CommandPanel architecture.
 
+use crate::device_status;
 use crate::ui::console_panel::{ConsolePanel, MessageLevel};
 use gcodekit5_communication::CommunicatorListener;
 use std::sync::{Arc, Mutex};
@@ -314,6 +315,13 @@ impl CommunicatorListener for ConsoleListener {
                             *fw_state.lock().unwrap() = Some(detection.clone());
                         }
 
+                        // Update global device status (so UI doesn't stay "Unknown")
+                        device_status::update_firmware_info(
+                            format!("{:?}", detection.firmware_type),
+                            detection.version_string.clone(),
+                            None,
+                        );
+
                         self.console_manager.add_message(
                             DeviceMessageType::Success,
                             format!(
@@ -321,7 +329,10 @@ impl CommunicatorListener for ConsoleListener {
                                 detection.firmware_type, detection.version_string
                             ),
                         );
-                        // Don't show the raw startup message - we already showed the detection
+
+                        // Keep the raw startup banner visible in the console.
+                        self.console_manager
+                            .add_message(DeviceMessageType::Output, trimmed);
                         return;
                     }
                     Err(_) => {
@@ -344,6 +355,13 @@ impl CommunicatorListener for ConsoleListener {
                         if let Some(ref fw_state) = self.detected_firmware {
                             *fw_state.lock().unwrap() = Some(detection.clone());
                         }
+
+                        // Update global device status (so UI doesn't stay "Unknown")
+                        device_status::update_firmware_info(
+                            format!("{:?}", detection.firmware_type),
+                            detection.version_string.clone(),
+                            None,
+                        );
 
                         self.console_manager.add_message(
                             DeviceMessageType::Success,

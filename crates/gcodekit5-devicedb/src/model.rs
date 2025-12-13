@@ -107,6 +107,10 @@ pub struct DeviceProfile {
     pub tcp_port: u16,
     pub timeout_ms: u64,
     pub auto_reconnect: bool,
+
+    /// Last known GRBL settings (from `$$`) for this profile.
+    #[serde(default)]
+    pub grbl_settings: std::collections::HashMap<u8, String>,
 }
 
 impl Default for DeviceProfile {
@@ -142,6 +146,7 @@ impl Default for DeviceProfile {
             tcp_port: 23,
             timeout_ms: 5000,
             auto_reconnect: false,
+            grbl_settings: std::collections::HashMap::new(),
         }
     }
 }

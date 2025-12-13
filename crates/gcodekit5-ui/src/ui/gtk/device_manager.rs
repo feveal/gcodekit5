@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::error;
 
+use crate::device_status;
 use gcodekit5_devicedb::ui_integration::{DeviceProfileUiModel, DeviceUiController};
 
 #[derive(Clone)]
@@ -654,6 +655,9 @@ impl DeviceManagerWindow {
         }
 
         let profiles = self.controller.get_ui_profiles();
+        let status = device_status::get_status();
+        let connected_port = status.port_name.clone().unwrap_or_default();
+        let is_connected = status.is_connected;
 
         for profile in profiles {
             let row_box = Box::new(Orientation::Vertical, 5);
@@ -681,6 +685,15 @@ impl DeviceManagerWindow {
             info_label.set_halign(Align::Start);
             info_label.set_hexpand(true); // Pushes badge to the right
             details_box.append(&info_label);
+
+            // Connected badge (match on port)
+            if is_connected && !connected_port.is_empty() && profile.port == connected_port {
+                let badge = Label::new(Some("Connected"));
+                badge.add_css_class("active-badge");
+                badge.set_halign(Align::End);
+                badge.set_valign(Align::Center);
+                details_box.append(&badge);
+            }
 
             // Active Badge
             if profile.is_active {

@@ -92,10 +92,15 @@ impl SettingsManager {
         let line = &line[1..];
         if let Some(eq_pos) = line.find('=') {
             let num_str = &line[..eq_pos];
-            let value_str = &line[eq_pos + 1..];
+            let value_str = line[eq_pos + 1..].trim();
 
             if let Ok(number) = num_str.parse::<u8>() {
-                return Some((number, value_str.to_string()));
+                // GRBL often returns: "$0=10 (step pulse, usec)".
+                // We only want the raw value so downstream numeric parsing works.
+                let end = value_str
+                    .find(|c: char| c.is_whitespace() || c == '(')
+                    .unwrap_or(value_str.len());
+                return Some((number, value_str[..end].to_string()));
             }
         }
 

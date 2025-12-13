@@ -1,12 +1,13 @@
 use gcodekit5_communication::firmware::grbl::settings::{Setting, SettingsManager};
 use gcodekit5_communication::{Communicator, SerialCommunicator};
+use gcodekit5_settings::controller::SettingsController;
 use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::{
     Align, Box, Button, ComboBoxText, Dialog, DialogFlags, Entry, Grid, Label, ListBox, ListBoxRow,
     Orientation, PolicyType, ResponseType, ScrolledWindow, SearchEntry, Separator,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
@@ -46,13 +47,19 @@ impl From<&Setting> for ConfigSettingRow {
     }
 }
 
+use crate::device_status;
 use crate::ui::gtk::device_console::DeviceConsoleView;
 use crate::ui::gtk::device_info::DeviceInfoView;
 
 pub struct ConfigSettingsView {
     pub container: Box,
     pub device_info_view: Rc<DeviceInfoView>,
+    settings_controller: Rc<SettingsController>,
     settings_manager: Rc<RefCell<SettingsManager>>,
+    last_synced_settings_count: Cell<usize>,
+    last_persisted_settings_count: Cell<usize>,
+    device_manager: RefCell<Option<std::sync::Arc<gcodekit5_devicedb::DeviceManager>>>,
+
     settings_list: ListBox,
     search_entry: SearchEntry,
     category_filter: ComboBoxText,
@@ -65,7 +72,7 @@ pub struct ConfigSettingsView {
 }
 
 impl ConfigSettingsView {
-    pub fn new() -> Rc<Self> {
+    pub fn new(settings_controller: Rc<SettingsController>) -> Rc<Self> {
         // Outer container splits into left (Device Info) and right (Config Settings)
         let outer = Box::new(Orientation::Horizontal, 10);
         outer.set_hexpand(true);
@@ -236,7 +243,11 @@ impl ConfigSettingsView {
         let view = Rc::new(Self {
             container: outer,
             device_info_view: device_info_view.clone(),
+            settings_controller,
             settings_manager: settings_manager.clone(),
+            last_synced_settings_count: Cell::new(0),
+            last_persisted_settings_count: Cell::new(0),
+            device_manager: RefCell::new(None),
             settings_list: settings_list.clone(),
             search_entry: search_entry.clone(),
             category_filter: category_filter.clone(),
@@ -352,15 +363,33 @@ impl ConfigSettingsView {
         *self.device_console.borrow_mut() = Some(console);
     }
 
+    pub fn set_device_manager(&self, manager: std::sync::Arc<gcodekit5_devicedb::DeviceManager>) {
+        *self.device_manager.borrow_mut() = Some(manager);
+    }
+
     pub fn set_connected(&self, connected: bool) {
         self.reload_btn.set_sensitive(connected);
         self.restore_btn
             .set_sensitive(connected && self.has_settings());
         if connected {
-            self.status_label
-                .set_text("Connected - Ready to retrieve settings");
+            // Prime defaults once, then overlay connected-device settings as they arrive.
+            if self.last_synced_settings_count.get() == 0
+                && self.settings_manager.borrow().get_all_settings().is_empty()
+            {
+                self.load_default_grbl_settings();
+            }
+
+            self.sync_settings_from_connected_device();
+
+            if self.last_synced_settings_count.get() > 0 {
+                self.status_label.set_text("Connected - settings loaded");
+            } else {
+                self.status_label.set_text("Connected - loading settings...");
+            }
         } else {
             self.status_label.set_text("Not connected");
+            self.last_synced_settings_count.set(0);
+            self.last_persisted_settings_count.set(0);
         }
     }
 
@@ -375,12 +404,68 @@ impl ConfigSettingsView {
         self.device_info_view
             .set_connected(connected, device_name, firmware, version);
         if connected {
-            self.device_info_view.load_sample_capabilities();
+            self.device_info_view.load_grbl_capabilities_from_status();
         }
     }
 
     fn has_settings(&self) -> bool {
         !self.settings_manager.borrow().get_all_settings().is_empty()
+    }
+
+    fn sync_settings_from_connected_device(&self) {
+        let status = device_status::get_status();
+        let count = status.grbl_settings.len();
+        if count == 0 || count == self.last_synced_settings_count.get() {
+            return;
+        }
+
+        {
+            let mut manager = self.settings_manager.borrow_mut();
+            for (n, v) in status.grbl_settings.iter() {
+                if let Some(setting) = manager.get_setting(*n) {
+                    let mut updated = setting.clone();
+                    updated.value = v.clone();
+                    updated.numeric_value = v.parse::<f64>().ok();
+                    manager.set_setting(updated);
+                }
+            }
+        }
+
+        self.last_synced_settings_count.set(count);
+        self.refresh_display();
+        self.save_btn.set_sensitive(true);
+        self.restore_btn.set_sensitive(true);
+        self.device_info_view.load_grbl_capabilities_from_status();
+
+        // Persist to matching device profile (best-effort) so other tooling can use settings.
+        // Avoid rewriting the profiles file for every single settings line: persist once when we
+        // have a reasonable number of settings loaded.
+        if self.last_persisted_settings_count.get() == 0 && count >= 10 {
+            if let Some(dm) = self.device_manager.borrow().as_ref() {
+                if let Some(port) = status.port_name.as_deref() {
+                    let mut candidate = dm
+                        .get_active_profile()
+                        .filter(|p| p.port == port || p.port == "Auto")
+                        .or_else(|| dm.get_all_profiles().into_iter().find(|p| p.port == port));
+
+                    if let Some(mut profile) = candidate.take() {
+                        profile.grbl_settings = status.grbl_settings.clone();
+
+                        if let Some(max_s) = device_status::get_grbl_setting_numeric(30) {
+                            profile.max_s_value = max_s;
+                        }
+
+                        if let Some(laser) = device_status::get_grbl_setting_numeric(32) {
+                            profile.has_laser = laser >= 1.0;
+                        }
+
+                        if dm.save_profile(profile).is_ok() {
+                            self.last_persisted_settings_count.set(count);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     fn retrieve_settings(&self) {
@@ -451,7 +536,7 @@ impl ConfigSettingsView {
                                         if let Some(setting) = manager.get_setting(number) {
                                             let mut updated = setting.clone();
                                             updated.value = value.clone();
-                                            updated.numeric_value = value.parse::<f64>().ok();
+                                            updated.numeric_value = crate::device_status::get_grbl_setting_numeric(number).or_else(|| value.parse::<f64>().ok());
                                             manager.set_setting(updated);
                                             count += 1;
                                         }
@@ -888,23 +973,23 @@ impl ConfigSettingsView {
             .unwrap();
 
         let dialog = gtk4::FileChooserDialog::new(
-            Some("Save Settings"),
+            Some("Export Settings"),
             Some(&window),
             gtk4::FileChooserAction::Save,
-            &[
-                ("Cancel", ResponseType::Cancel),
-                ("Save", ResponseType::Accept),
-            ],
+            &[("Cancel", ResponseType::Cancel), ("Save", ResponseType::Accept)],
         );
 
         dialog.set_current_name("grbl_settings.json");
 
         let status_label = self.status_label.clone();
+        let manager = self.settings_manager.clone();
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
-                if let Some(file) = dialog.file() {
-                    if let Some(path) = file.path() {
-                        status_label.set_text(&format!("Settings saved to {:?}", path));
+                if let Some(path) = dialog.file().and_then(|f| f.path()) {
+                    let res = manager.borrow().export_to_file(&path);
+                    match res {
+                        Ok(_) => status_label.set_text(&format!("Exported settings to {:?}", path)),
+                        Err(e) => status_label.set_text(&format!("Export failed: {}", e)),
                     }
                 }
             }
@@ -922,21 +1007,24 @@ impl ConfigSettingsView {
             .unwrap();
 
         let dialog = gtk4::FileChooserDialog::new(
-            Some("Load Settings"),
+            Some("Import Settings"),
             Some(&window),
             gtk4::FileChooserAction::Open,
-            &[
-                ("Cancel", ResponseType::Cancel),
-                ("Open", ResponseType::Accept),
-            ],
+            &[("Cancel", ResponseType::Cancel), ("Open", ResponseType::Accept)],
         );
 
         let status_label = self.status_label.clone();
+        let manager = self.settings_manager.clone();
+
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
-                if let Some(file) = dialog.file() {
-                    if let Some(path) = file.path() {
-                        status_label.set_text(&format!("Settings loaded from {:?}", path));
+                if let Some(path) = dialog.file().and_then(|f| f.path()) {
+                    let res = manager.borrow_mut().import_from_file(&path);
+                    match res {
+                        Ok(_) => {
+                            status_label.set_text(&format!("Imported settings from {:?}", path));
+                        }
+                        Err(e) => status_label.set_text(&format!("Import failed: {}", e)),
                     }
                 }
             }

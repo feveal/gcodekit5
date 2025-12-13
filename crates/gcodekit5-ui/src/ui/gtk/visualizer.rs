@@ -437,10 +437,19 @@ impl GcodeVisualizer {
             .label(t!("Show Laser/Spindle"))
             .active(true)
             .build();
+
+        let show_experimental = settings_controller
+            .persistence
+            .borrow()
+            .config()
+            .ui
+            .show_experimental;
+
         let show_stock_removal = CheckButton::builder()
             .label(t!("Show Stock Removal"))
             .active(false)
             .build();
+        show_stock_removal.set_visible(show_experimental);
 
         // Stock configuration
 
@@ -518,11 +527,35 @@ impl GcodeVisualizer {
         stock_revealer.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
         stock_revealer.set_child(Some(&stock_box));
         stock_revealer.set_reveal_child(show_stock_removal.is_active());
+        stock_revealer.set_visible(show_experimental);
 
         {
             let stock_revealer = stock_revealer.clone();
             show_stock_removal.connect_toggled(move |b| {
                 stock_revealer.set_reveal_child(b.is_active());
+            });
+        }
+
+        // Gate stock removal to experimental-only.
+        if !show_experimental {
+            show_stock_removal.set_active(false);
+            stock_revealer.set_reveal_child(false);
+        }
+
+        {
+            let show_stock_removal = show_stock_removal.clone();
+            let stock_revealer = stock_revealer.clone();
+            settings_controller.on_setting_changed(move |key, value| {
+                if key != "show_experimental" {
+                    return;
+                }
+                let enabled = value == "true";
+                show_stock_removal.set_visible(enabled);
+                stock_revealer.set_visible(enabled);
+                if !enabled {
+                    show_stock_removal.set_active(false);
+                    stock_revealer.set_reveal_child(false);
+                }
             });
         }
 

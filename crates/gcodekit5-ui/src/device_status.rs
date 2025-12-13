@@ -4,6 +4,7 @@ use gcodekit5_communication::firmware::grbl::status_parser::{
     BufferRxState, FeedSpindleState, MachinePosition, WorkCoordinateOffset, WorkPosition,
 };
 use once_cell::sync::Lazy;
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 /// Global GRBL device status
@@ -31,6 +32,9 @@ pub struct GrblDeviceStatus {
     pub firmware_version: Option<String>,
     /// Device name (e.g., "CNC 3018 Pro")
     pub device_name: Option<String>,
+
+    /// Last known GRBL settings (from `$$`), keyed by `$n`
+    pub grbl_settings: HashMap<u8, String>,
 }
 
 impl Default for GrblDeviceStatus {
@@ -47,6 +51,7 @@ impl Default for GrblDeviceStatus {
             firmware_type: None,
             firmware_version: None,
             device_name: None,
+            grbl_settings: HashMap::new(),
         }
     }
 }
@@ -119,6 +124,48 @@ pub fn update_firmware_info(firmware_type: String, version: String, device_name:
         status.firmware_version = Some(version);
         status.device_name = device_name;
     }
+}
+
+pub fn update_grbl_setting(number: u8, value: String) {
+    if let Ok(mut status) = DEVICE_STATUS.write() {
+        status.grbl_settings.insert(number, value);
+    }
+}
+
+pub fn update_grbl_settings_bulk(settings: &[(u8, String)]) {
+    if let Ok(mut status) = DEVICE_STATUS.write() {
+        for (n, v) in settings {
+            status.grbl_settings.insert(*n, v.clone());
+        }
+    }
+}
+
+pub fn get_grbl_setting(number: u8) -> Option<String> {
+    DEVICE_STATUS
+        .read()
+        .ok()
+        .and_then(|s| s.grbl_settings.get(&number).cloned())
+}
+
+fn parse_numeric_prefix(s: &str) -> Option<f64> {
+    let s = s.trim();
+    let mut end = 0usize;
+    for (i, ch) in s.char_indices() {
+        if ch.is_ascii_digit() || ch == '.' || ch == '-' || ch == '+' {
+            end = i + ch.len_utf8();
+        } else {
+            break;
+        }
+    }
+    if end == 0 {
+        None
+    } else {
+        s[..end].parse::<f64>().ok()
+    }
+}
+
+pub fn get_grbl_setting_numeric(number: u8) -> Option<f64> {
+    get_grbl_setting(number).and_then(|v| parse_numeric_prefix(&v))
 }
 
 /// Get a snapshot of the current device status

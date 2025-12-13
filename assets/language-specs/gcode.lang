@@ -10,7 +10,7 @@
     <style id="gcode" _name="G-Code" map-to="def:keyword"/>
     <style id="mcode" _name="M-Code" map-to="def:builtin"/>
     <style id="coordinate" _name="Coordinate" map-to="def:type"/>
-    <style id="parameter" _name="Parameter" map-to="def:variable"/>
+    <style id="parameter" _name="Parameter" map-to="def:constant"/>
     <style id="line-number" _name="Line Number" map-to="def:identifier"/>
   </styles>
 

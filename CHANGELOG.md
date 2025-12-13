@@ -1,5 +1,18 @@
 ## [0.35.0-alpha.0] - 2025-12-12
 
+### Added
+- **Settings**: “Show experimental” toggle (Advanced tab) to gate experimental UI/features.
+
+### Changed
+- **UI**: Start main window maximized.
+- **About**: Larger dialog sized to match background aspect ratio; title styling adjusted.
+
+### Fixed
+- **GRBL**: Firmware detection for `Grbl 1.2h ['$' for help]` startup strings.
+- **Device Config**: Capabilities now reflect live GRBL settings (e.g. Homing via `$22`, Laser mode via `$32`) once settings are loaded.
+- **Console**: GRBL `error:N` messages are decoded and appended in the device console.
+- **GTK**: Resolved `gtk_box_append` parenting criticals; normalized file chooser dialog sizing.
+
 ### Changed
 - **Version**: Bumped version to 0.35.0-alpha.0.
 

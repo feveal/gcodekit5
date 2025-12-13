@@ -69,7 +69,7 @@ msgid "GCode Toolkit for CNC/Laser Machines"
 msgstr "Kit de Ferramentas GCode para Máquinas CNC/Laser"
 
 msgid "GCodeKit Contributors"
-msgstr "Contribuidores do GCodeKit"
+msgstr "Tim Hawkins e contribuidores do GCodeKit"
 
 msgid "GCodeKit5"
 msgstr "GCodeKit5"

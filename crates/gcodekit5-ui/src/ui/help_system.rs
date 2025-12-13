@@ -297,7 +297,7 @@ impl AppInfo {
             documentation: "https://github.com/thawkins/gcodekit5/wiki".to_string(),
             repository: "https://github.com/thawkins/gcodekit5".to_string(),
             bug_report: "https://github.com/thawkins/gcodekit5/issues".to_string(),
-            authors: vec!["GCodeKit Contributors".to_string()],
+            authors: vec!["Tim Hawkins and GCodeKit Contributors".to_string()],
         }
     }
 

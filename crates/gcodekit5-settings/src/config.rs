@@ -175,9 +175,17 @@ pub struct UiSettings {
     #[serde(default)]
     pub show_about_on_startup: bool,
 
+    /// Show experimental features (may be unstable)
+    #[serde(default)]
+    pub show_experimental: bool,
+
     /// Visualizer sidebar splitter position (Paned position in pixels)
     #[serde(default)]
     pub visualizer_sidebar_position: Option<i32>,
+
+    /// Device Config info sidebar splitter position (Paned position in pixels)
+    #[serde(default)]
+    pub device_config_sidebar_position: Option<i32>,
 }
 
 impl Default for UiSettings {
@@ -188,6 +196,7 @@ impl Default for UiSettings {
         visibility.insert("jog".to_string(), true);
         visibility.insert("console".to_string(), true);
         visibility.insert("visualizer_sidebar".to_string(), true);
+        visibility.insert("device_config_sidebar".to_string(), true);
 
         Self {
             window_width: 1400,
@@ -201,7 +210,9 @@ impl Default for UiSettings {
             feed_rate_units: FeedRateUnits::default(),
             startup_tab: StartupTab::default(),
             show_about_on_startup: false,
+            show_experimental: false,
             visualizer_sidebar_position: None,
+            device_config_sidebar_position: None,
         }
     }
 }

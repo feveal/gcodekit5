@@ -51,6 +51,9 @@ impl SettingsPersistence {
         // File Processing Settings
         self.add_file_processing_settings(dialog);
 
+        // Advanced Settings
+        self.add_advanced_settings(dialog);
+
         // Keyboard Shortcuts (from config if available)
         self.add_keyboard_shortcuts(dialog);
     }
@@ -68,6 +71,9 @@ impl SettingsPersistence {
 
         // Update file processing settings
         self.update_file_processing_settings(dialog)?;
+
+        // Update advanced settings
+        self.update_advanced_settings(dialog)?;
 
         // Validate updated config
         self.config.validate()?;
@@ -330,6 +336,21 @@ impl SettingsPersistence {
         );
     }
 
+    /// Add advanced settings to dialog
+    fn add_advanced_settings(&self, dialog: &mut SettingsDialog) {
+        let ui = &self.config.ui;
+
+        dialog.add_setting(
+            Setting::new(
+                "show_experimental",
+                "Show Experimental",
+                SettingValue::Boolean(ui.show_experimental),
+            )
+            .with_description("Enable experimental features (e.g. 3D stock removal)")
+            .with_category(SettingsCategory::Advanced),
+        );
+    }
+
     /// Add keyboard shortcuts to dialog
     fn add_keyboard_shortcuts(&self, dialog: &mut SettingsDialog) {
         // Define default keyboard shortcuts
@@ -487,6 +508,17 @@ impl SettingsPersistence {
         if let Some(setting) = dialog.get_setting("max_line_length") {
             if let Ok(value) = setting.value.as_str().parse::<u32>() {
                 self.config.file_processing.max_line_length = value;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Update advanced settings in config from dialog
+    fn update_advanced_settings(&mut self, dialog: &SettingsDialog) -> Result<()> {
+        if let Some(setting) = dialog.get_setting("show_experimental") {
+            if let Ok(value) = setting.value.as_str().parse::<bool>() {
+                self.config.ui.show_experimental = value;
             }
         }
 

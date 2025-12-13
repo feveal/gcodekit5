@@ -624,8 +624,6 @@ impl JigsawTool {
             stack_clone_cancel.set_visible_child_name("dashboard");
         });
 
-        content_box.append(&paned);
-
         Self {
             content: content_box,
         }
@@ -670,6 +668,7 @@ impl JigsawTool {
                 ("Save", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         dialog.set_current_name("puzzle_params.json");
 
@@ -700,6 +699,7 @@ impl JigsawTool {
                 ("Open", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         let w_clone = w.clone();
         dialog.connect_response(move |d, response| {
@@ -1017,8 +1017,6 @@ impl BitmapEngravingTool {
             glib::ControlFlow::Continue
         });
 
-        content_box.append(&paned);
-
         let widgets = Rc::new(BitmapEngravingWidgets {
             width_mm,
             feed_rate,
@@ -1057,6 +1055,7 @@ impl BitmapEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
 
             let filter = gtk4::FileFilter::new();
             filter.set_name(Some("Image Files"));
@@ -1257,6 +1256,7 @@ impl BitmapEngravingTool {
                     ("Save", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
             dialog.set_current_name("bitmap_params.json");
 
             let w_clone = w_save.clone();
@@ -1289,6 +1289,7 @@ impl BitmapEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
 
             let w_clone = w_load.clone();
             dialog.connect_response(move |d, response| {
@@ -1824,6 +1825,7 @@ impl VectorEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
 
             let filter = gtk4::FileFilter::new();
             filter.set_name(Some("Vector Files"));
@@ -1981,6 +1983,7 @@ impl VectorEngravingTool {
                     ("Save", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
             dialog.set_current_name("vector_params.json");
 
             let w_clone = w_save.clone();
@@ -2013,6 +2016,7 @@ impl VectorEngravingTool {
                     ("Open", ResponseType::Accept),
                 ],
             );
+            dialog.set_default_size(900, 700);
 
             let w_clone = w_load.clone();
             dialog.connect_response(move |d, response| {
@@ -2829,6 +2833,7 @@ impl TabbedBoxMaker {
                 ("Save", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         dialog.set_current_name("box_params.json");
 
@@ -2859,6 +2864,7 @@ impl TabbedBoxMaker {
                 ("Open", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         let w_clone = w.clone();
         dialog.connect_response(move |d, response| {
@@ -3343,6 +3349,7 @@ impl SpoilboardSurfacingTool {
                 ("Save", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
         dialog.set_current_name("surfacing_params.json");
 
         let w_clone = Rc::new((
@@ -3390,6 +3397,7 @@ impl SpoilboardSurfacingTool {
                 ("Open", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         let w_clone = Rc::new((
             w.width.clone(),
@@ -3691,6 +3699,7 @@ impl SpoilboardGridTool {
                 ("Save", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
         dialog.set_current_name("grid_params.json");
 
         let w_clone = Rc::new((
@@ -3737,6 +3746,7 @@ impl SpoilboardGridTool {
                 ("Open", ResponseType::Accept),
             ],
         );
+        dialog.set_default_size(900, 700);
 
         let w_clone = Rc::new((
             w.width.clone(),

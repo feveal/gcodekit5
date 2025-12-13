@@ -285,9 +285,10 @@ pub fn main() {
         });
 
         // 7. Device Config (single panel now includes device info on the left)
-        let config_settings = ConfigSettingsView::new();
+        let config_settings = ConfigSettingsView::new(settings_controller.clone());
         config_settings.set_communicator(machine_control.communicator.clone());
         config_settings.set_device_console(device_console.clone());
+        config_settings.set_device_manager(device_manager.clone());
         stack.add_titled(
             &config_settings.container,
             Some("config"),
@@ -540,10 +541,14 @@ pub fn main() {
                 .comments(t!("GCode Toolkit for CNC/Laser Machines"))
                 .website("https://github.com/thawkins/gcodekit5")
                 .license_type(gtk4::License::MitX11)
-                .authors(vec![t!("GCodeKit Contributors")])
+                .authors(vec![t!("Tim Hawkins and GCodeKit Contributors")])
                 .build();
 
             about_dialog.set_logo_icon_name(None);
+
+            // Size: +30% and match background image aspect ratio (gcodekit5.png: 550x362).
+            about_dialog.set_default_size(780, 514);
+            about_dialog.set_resizable(false);
 
             fn right_align_labels(root: &gtk4::Widget) {
                 if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
@@ -559,6 +564,22 @@ pub fn main() {
             }
 
             right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
+
+            fn mark_about_title(root: &gtk4::Widget) {
+                if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                    if label.text() == "GCodeKit5" {
+                        label.add_css_class("gk-about-title");
+                    }
+                }
+
+                let mut child = root.first_child();
+                while let Some(w) = child {
+                    mark_about_title(&w);
+                    child = w.next_sibling();
+                }
+            }
+
+            mark_about_title(about_dialog.upcast_ref::<gtk4::Widget>());
 
             about_dialog.add_css_class("gk-about-dialog");
             about_dialog.set_transient_for(app_clone.active_window().as_ref());
@@ -754,6 +775,7 @@ pub fn main() {
         };
         stack.set_visible_child_name(tab_name);
 
+        window.maximize();
         window.present();
 
         if settings_persistence
@@ -774,10 +796,14 @@ pub fn main() {
                     .comments(t!("GCode Toolkit for CNC/Laser Machines"))
                     .website("https://github.com/thawkins/gcodekit5")
                     .license_type(gtk4::License::MitX11)
-                    .authors(vec![t!("GCodeKit Contributors")])
+                    .authors(vec![t!("Tim Hawkins and GCodeKit Contributors")])
                     .build();
 
                 about_dialog.set_logo_icon_name(None);
+
+                // Size: +30% and match background image aspect ratio (gcodekit5.png: 550x362).
+                about_dialog.set_default_size(780, 514);
+                about_dialog.set_resizable(false);
 
                 fn right_align_labels(root: &gtk4::Widget) {
                     if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
@@ -793,6 +819,22 @@ pub fn main() {
                 }
 
                 right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
+
+                fn mark_about_title(root: &gtk4::Widget) {
+                    if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                        if label.text() == "GCodeKit5" {
+                            label.add_css_class("gk-about-title");
+                        }
+                    }
+
+                    let mut child = root.first_child();
+                    while let Some(w) = child {
+                        mark_about_title(&w);
+                        child = w.next_sibling();
+                    }
+                }
+
+                mark_about_title(about_dialog.upcast_ref::<gtk4::Widget>());
 
                 about_dialog.add_css_class("gk-about-dialog");
                 about_dialog.set_transient_for(Some(&window));

@@ -1,8 +1,11 @@
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, Label, ListBox, ListBoxRow, Orientation, PolicyType, ScrolledWindow,
-    Separator,
+    accessible::Property as AccessibleProperty,
+    Align, Box, Button, Expander, Image, Label, ListBox, ListBoxRow, Orientation, PolicyType,
+    ScrolledWindow,
 };
+
+use crate::device_status;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -15,102 +18,76 @@ pub struct CapabilityItem {
 
 pub struct DeviceInfoView {
     pub container: Box,
-    status_icon: Label,
+    status_icon: Image,
     device_name_label: Label,
     firmware_label: Label,
     version_label: Label,
     refresh_btn: Button,
     copy_btn: Button,
     capabilities_list: ListBox,
-    placeholder: Box,
-    capabilities_container: ScrolledWindow,
+    capabilities_expander: Expander,
     connected: Rc<RefCell<bool>>,
 }
 
 impl DeviceInfoView {
     pub fn new() -> Rc<Self> {
-        let container = Box::new(Orientation::Horizontal, 0);
+        let container = Box::new(Orientation::Vertical, 8);
         container.set_hexpand(true);
         container.set_vexpand(true);
+        container.set_margin_top(10);
+        container.set_margin_bottom(10);
+        container.set_margin_start(10);
+        container.set_margin_end(10);
+        container.add_css_class("sidebar");
 
-        // Sidebar
-        let sidebar = Box::new(Orientation::Vertical, 10);
-        sidebar.set_width_request(250);
-        sidebar.set_margin_top(15);
-        sidebar.set_margin_bottom(15);
-        sidebar.set_margin_start(15);
-        sidebar.set_margin_end(15);
-        sidebar.add_css_class("sidebar");
+        // Header: status icon + compact action buttons
+        let header = Box::new(Orientation::Horizontal, 6);
+        header.set_hexpand(true);
 
-        // Status Icon
-        let status_icon = Label::new(Some("🔌"));
-        status_icon.set_css_classes(&["status-icon-large"]);
-        status_icon.set_height_request(100);
-        sidebar.append(&status_icon);
+        let status_icon = Image::from_icon_name("network-offline-symbolic");
+        status_icon.set_pixel_size(18);
+        header.append(&status_icon);
 
-        // Device Info
-        let device_name_label = Self::add_info_row(&sidebar, "DEVICE NAME", "No Device");
-        let firmware_label = Self::add_info_row(&sidebar, "FIRMWARE", "-");
-        let version_label = Self::add_info_row(&sidebar, "VERSION", "-");
-
-        sidebar.append(&Separator::new(Orientation::Horizontal));
-
-        // Actions
-        let refresh_btn = Button::with_label("🔄 Refresh Info");
-        refresh_btn.set_tooltip_text(Some("Refresh Device Information"));
-        refresh_btn.set_sensitive(false);
-        sidebar.append(&refresh_btn);
-
-        let copy_btn = Button::with_label("📋 Copy Config");
-        copy_btn.set_tooltip_text(Some("Copy Configuration to Clipboard"));
-        copy_btn.set_sensitive(false);
-        sidebar.append(&copy_btn);
-
-        // Spacer
-        let spacer = Box::new(Orientation::Vertical, 0);
-        spacer.set_vexpand(true);
-        sidebar.append(&spacer);
-
-        container.append(&sidebar);
-        container.append(&Separator::new(Orientation::Vertical));
-
-        // Main Content
-        let main_content = Box::new(Orientation::Vertical, 15);
-        main_content.set_hexpand(true);
-        main_content.set_vexpand(true);
-        main_content.set_margin_top(20);
-        main_content.set_margin_bottom(20);
-        main_content.set_margin_start(20);
-        main_content.set_margin_end(20);
-
-        let title = Label::new(Some("Firmware Capabilities"));
-        title.set_css_classes(&["title-2"]);
+        let title = Label::new(Some("Device"));
+        title.add_css_class("mc-group-title");
         title.set_halign(Align::Start);
-        main_content.append(&title);
+        title.set_hexpand(true);
+        header.append(&title);
 
-        // Placeholder for not connected
-        let placeholder = Box::new(Orientation::Vertical, 0);
-        placeholder.set_vexpand(true);
-        placeholder.set_valign(Align::Center);
-        let placeholder_label = Label::new(Some("Connect a device to view capabilities"));
-        placeholder_label.add_css_class("dim-label");
-        placeholder_label.set_css_classes(&["title-3", "dim-label"]);
-        placeholder.append(&placeholder_label);
+        let refresh_btn = Button::from_icon_name("view-refresh-symbolic");
+        refresh_btn.set_tooltip_text(Some("Refresh device info"));
+        refresh_btn.update_property(&[AccessibleProperty::Label("Refresh device info")]);
+        refresh_btn.set_sensitive(false);
 
-        // Capabilities list
+        let copy_btn = Button::from_icon_name("edit-copy-symbolic");
+        copy_btn.set_tooltip_text(Some("Copy device info"));
+        copy_btn.update_property(&[AccessibleProperty::Label("Copy device info")]);
+        copy_btn.set_sensitive(false);
+
+        header.append(&refresh_btn);
+        header.append(&copy_btn);
+
+        container.append(&header);
+
+        // Compact info rows
+        let device_name_label = Self::add_compact_row(&container, "Name", "No device");
+        let firmware_label = Self::add_compact_row(&container, "Firmware", "-");
+        let version_label = Self::add_compact_row(&container, "Version", "-");
+
+        // Capabilities (collapsed by default to keep the sidebar dense)
+        let capabilities_list = ListBox::new();
+        capabilities_list.add_css_class("boxed-list");
+
         let scroll = ScrolledWindow::new();
         scroll.set_policy(PolicyType::Never, PolicyType::Automatic);
         scroll.set_vexpand(true);
-        scroll.set_visible(false);
-
-        let capabilities_list = ListBox::new();
-        capabilities_list.add_css_class("boxed-list");
         scroll.set_child(Some(&capabilities_list));
 
-        main_content.append(&placeholder);
-        main_content.append(&scroll);
-
-        container.append(&main_content);
+        let capabilities_expander = Expander::new(Some("Capabilities"));
+        capabilities_expander.set_expanded(false);
+        capabilities_expander.set_child(Some(&scroll));
+        capabilities_expander.set_sensitive(false);
+        container.append(&capabilities_expander);
 
         let view = Rc::new(Self {
             container,
@@ -121,40 +98,46 @@ impl DeviceInfoView {
             refresh_btn: refresh_btn.clone(),
             copy_btn: copy_btn.clone(),
             capabilities_list,
-            placeholder,
-            capabilities_container: scroll,
+            capabilities_expander,
             connected: Rc::new(RefCell::new(false)),
         });
 
         // Connect signals
-        let view_clone = view.clone();
-        refresh_btn.connect_clicked(move |_| {
-            view_clone.refresh_info();
-        });
+        {
+            let view_clone = view.clone();
+            refresh_btn.connect_clicked(move |_| {
+                view_clone.refresh_info();
+            });
+        }
 
-        let view_clone = view.clone();
-        copy_btn.connect_clicked(move |_| {
-            view_clone.copy_config();
-        });
+        {
+            let view_clone = view.clone();
+            copy_btn.connect_clicked(move |_| {
+                view_clone.copy_config();
+            });
+        }
 
         view
     }
 
-    fn add_info_row(container: &Box, label: &str, value: &str) -> Label {
-        let vbox = Box::new(Orientation::Vertical, 5);
+    fn add_compact_row(container: &Box, label: &str, value: &str) -> Label {
+        let row = Box::new(Orientation::Horizontal, 6);
+        row.set_hexpand(true);
+
         let lbl = Label::new(Some(label));
         lbl.add_css_class("caption");
         lbl.add_css_class("dim-label");
         lbl.set_xalign(0.0);
-        vbox.append(&lbl);
+        lbl.set_width_chars(10);
+        row.append(&lbl);
 
         let val = Label::new(Some(value));
-        val.add_css_class("heading");
+        val.set_hexpand(true);
         val.set_xalign(0.0);
         val.set_ellipsize(gtk4::pango::EllipsizeMode::End);
-        vbox.append(&val);
+        row.append(&val);
 
-        container.append(&vbox);
+        container.append(&row);
         val
     }
 
@@ -162,7 +145,8 @@ impl DeviceInfoView {
         *self.connected.borrow_mut() = connected;
 
         if connected {
-            self.status_icon.set_text("📠");
+            self.status_icon
+                .set_icon_name(Some("network-transmit-receive-symbolic"));
             self.device_name_label.set_text(device_name);
             self.firmware_label.set_text(firmware);
             self.firmware_label.add_css_class("success");
@@ -170,82 +154,58 @@ impl DeviceInfoView {
             self.version_label.add_css_class("accent");
             self.refresh_btn.set_sensitive(true);
             self.copy_btn.set_sensitive(true);
-            self.placeholder.set_visible(false);
-            self.capabilities_container.set_visible(true);
+            self.capabilities_expander.set_sensitive(true);
         } else {
-            self.status_icon.set_text("🔌");
-            self.device_name_label.set_text("No Device");
+            self.status_icon.set_icon_name(Some("network-offline-symbolic"));
+            self.device_name_label.set_text("No device");
             self.firmware_label.set_text("-");
             self.firmware_label.remove_css_class("success");
             self.version_label.set_text("-");
             self.version_label.remove_css_class("accent");
             self.refresh_btn.set_sensitive(false);
             self.copy_btn.set_sensitive(false);
-            self.placeholder.set_visible(true);
-            self.capabilities_container.set_visible(false);
+            self.capabilities_expander.set_sensitive(false);
         }
     }
 
     pub fn set_capabilities(&self, capabilities: Vec<CapabilityItem>) {
-        // Clear existing
         while let Some(child) = self.capabilities_list.first_child() {
             self.capabilities_list.remove(&child);
         }
 
-        for (index, cap) in capabilities.iter().enumerate() {
-            let row = self.create_capability_row(cap, index);
-            self.capabilities_list.append(&row);
+        for cap in capabilities {
+            self.capabilities_list.append(&Self::create_capability_row(&cap));
         }
     }
 
-    fn create_capability_row(&self, cap: &CapabilityItem, index: usize) -> ListBoxRow {
+    fn create_capability_row(cap: &CapabilityItem) -> ListBoxRow {
         let row = ListBoxRow::new();
         row.set_activatable(false);
-        if index % 2 == 0 {
-            row.add_css_class("alternating-row");
-        }
 
-        let hbox = Box::new(Orientation::Horizontal, 20);
-        hbox.set_margin_start(20);
+        let hbox = Box::new(Orientation::Horizontal, 8);
+        hbox.set_margin_start(10);
         hbox.set_margin_end(10);
-        hbox.set_margin_top(10);
-        hbox.set_margin_bottom(10);
+        hbox.set_margin_top(6);
+        hbox.set_margin_bottom(6);
 
-        // Status pill
-        let status_box = Box::new(Orientation::Horizontal, 0);
-        status_box.set_width_request(80);
-        status_box.set_halign(Align::Start);
-
-        let status_label = Label::new(Some(if cap.enabled { "ENABLED" } else { "DISABLED" }));
-        status_label.add_css_class("caption");
-        status_label.add_css_class(if cap.enabled { "success" } else { "error" });
-        status_label.set_width_chars(8);
-        status_label.set_xalign(0.5);
-
-        let status_frame = Box::new(Orientation::Horizontal, 0);
-        status_frame.append(&status_label);
-        status_frame.add_css_class("pill");
-        if cap.enabled {
-            status_frame.add_css_class("success-bg");
+        let icon = Image::from_icon_name(if cap.enabled {
+            "emblem-ok-symbolic"
         } else {
-            status_frame.add_css_class("error-bg");
-        }
-        status_box.append(&status_frame);
-        hbox.append(&status_box);
+            "dialog-error-symbolic"
+        });
+        icon.set_pixel_size(14);
+        hbox.append(&icon);
 
-        // Capability name
         let name_label = Label::new(Some(&cap.name));
-        name_label.set_width_request(250);
         name_label.set_xalign(0.0);
-        name_label.add_css_class("heading");
+        name_label.set_hexpand(true);
         hbox.append(&name_label);
 
-        // Notes
         let notes_label = Label::new(Some(&cap.notes));
-        notes_label.set_hexpand(true);
         notes_label.set_xalign(0.0);
         notes_label.set_ellipsize(gtk4::pango::EllipsizeMode::End);
         notes_label.add_css_class("dim-label");
+        notes_label.set_hexpand(true);
         hbox.append(&notes_label);
 
         row.set_child(Some(&hbox));
@@ -253,13 +213,10 @@ impl DeviceInfoView {
     }
 
     fn refresh_info(&self) {
-        // This would query device for updated info
-        // For now, reload sample capabilities
-        self.load_sample_capabilities();
+        self.load_grbl_capabilities_from_status();
     }
 
     fn copy_config(&self) {
-        // Copy firmware configuration to clipboard
         let config = format!(
             "Device: {}\nFirmware: {}\nVersion: {}",
             self.device_name_label.text(),
@@ -272,47 +229,37 @@ impl DeviceInfoView {
         }
     }
 
-    pub fn load_sample_capabilities(&self) {
+    pub fn load_grbl_capabilities_from_status(&self) {
+        let homing = device_status::get_grbl_setting_numeric(22).map(|v| v >= 1.0);
+        let laser = device_status::get_grbl_setting_numeric(32).map(|v| v >= 1.0);
+
+        let (homing_enabled, homing_notes) = match homing {
+            Some(true) => (true, "Enabled ($22=1)".to_string()),
+            Some(false) => (false, "Disabled ($22=0)".to_string()),
+            None => (false, "Unknown (settings not loaded)".to_string()),
+        };
+
+        let (laser_enabled, laser_notes) = match laser {
+            Some(true) => (true, "Enabled ($32=1)".to_string()),
+            Some(false) => (false, "Disabled ($32=0)".to_string()),
+            None => (false, "Unknown (settings not loaded)".to_string()),
+        };
+
         let capabilities = vec![
             CapabilityItem {
                 name: "Variable Spindle".to_string(),
                 enabled: true,
-                notes: "PWM spindle control supported".to_string(),
+                notes: "PWM spindle control".to_string(),
             },
             CapabilityItem {
                 name: "Homing Cycle".to_string(),
-                enabled: true,
-                notes: "Automatic homing enabled".to_string(),
-            },
-            CapabilityItem {
-                name: "Limit Switches".to_string(),
-                enabled: true,
-                notes: "Hard limits configured".to_string(),
-            },
-            CapabilityItem {
-                name: "Probe Support".to_string(),
-                enabled: true,
-                notes: "Tool length probe available".to_string(),
+                enabled: homing_enabled,
+                notes: homing_notes,
             },
             CapabilityItem {
                 name: "Laser Mode".to_string(),
-                enabled: false,
-                notes: "Not configured".to_string(),
-            },
-            CapabilityItem {
-                name: "Parking".to_string(),
-                enabled: false,
-                notes: "Not enabled".to_string(),
-            },
-            CapabilityItem {
-                name: "Sleep Mode".to_string(),
-                enabled: true,
-                notes: "Idle power saving enabled".to_string(),
-            },
-            CapabilityItem {
-                name: "Soft Limits".to_string(),
-                enabled: true,
-                notes: "Software travel limits active".to_string(),
+                enabled: laser_enabled,
+                notes: laser_notes,
             },
         ];
 

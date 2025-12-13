@@ -28,10 +28,26 @@
 
 /* About dialog background */
 window.gk-about-dialog {
+    /* Keep About styling consistent across Light/Dark/System themes */
+    background-color: #000;
+    color: #fff;
+
     background-image: url("resource:///com/gcodekit5/images/gcodekit5.png");
     background-position: center;
     background-repeat: no-repeat;
     background-size: cover;
+}
+
+window.gk-about-dialog * {
+    /* Ensure theme doesn't recolor the dialog contents */
+    color: #fff;
+}
+
+window.gk-about-dialog label.gk-about-title {
+    /* +50% font size, yellow title */
+    font-size: 150%;
+    font-weight: 700;
+    color: #ffeb3b;
 }
 
 /* Visualizer Container */

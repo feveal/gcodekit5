@@ -30,6 +30,11 @@
   <style name="def:type" foreground="coordinate" bold="true"/>
   <style name="def:decimal" foreground="value"/>
   <style name="def:identifier" foreground="line-numbers"/>
+  <style name="def:constant" foreground="parameter"/>
   <style name="def:variable" foreground="parameter"/>
+
+  <!-- Search highlighting -->
+  <style name="search-match" background="#264f78" foreground="#ffffff"/>
+  <style name="current-search-match" background="#ffcc00" foreground="#000000"/>
 
 </style-scheme>

@@ -703,7 +703,10 @@ impl MachineControlView {
 
         // Embed Device Console if present
         if let Some(ref console_view) = device_console {
-            console_container.append(&console_view.widget);
+            // Guard against accidentally parenting the same widget twice.
+            if console_view.widget.parent().is_none() {
+                console_container.append(&console_view.widget);
+            }
         } else {
             let placeholder = Label::new(Some(&t!("Device Console not available")));
             placeholder.set_halign(Align::Center);
@@ -1638,9 +1641,35 @@ impl MachineControlView {
                             // Unlock button should initially be disabled until ALARM state is detected
                             view_clone.unlock_btn.set_sensitive(false);
 
-                            // Query firmware version on connect
+                            // Trigger startup banner (some firmwares only emit it after reset) and then query firmware + settings.
+                            // Important: some controllers ignore commands sent immediately after Ctrl-X.
                             if let Ok(mut comm) = view_clone.communicator.lock() {
-                                let _ = comm.send_command("$I");
+                                let _ = comm.send(&[0x18]); // Ctrl-X (soft reset)
+                            }
+
+                            // Delay info/settings queries a bit to let the controller reboot.
+                            {
+                                let communicator_init = view_clone.communicator.clone();
+                                glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
+                                    if let Ok(mut comm) = communicator_init.try_lock() {
+                                        if comm.is_connected() {
+                                            let _ = comm.send_command("$I");
+                                        }
+                                    }
+                                    glib::ControlFlow::Break
+                                });
+                            }
+
+                            {
+                                let communicator_init = view_clone.communicator.clone();
+                                glib::timeout_add_local(std::time::Duration::from_millis(800), move || {
+                                    if let Ok(mut comm) = communicator_init.try_lock() {
+                                        if comm.is_connected() {
+                                            let _ = comm.send_command("$$");
+                                        }
+                                    }
+                                    glib::ControlFlow::Break
+                                });
                             }
 
                             // Simple polling using glib::timeout_add_local - runs on main thread, no blocking
@@ -1699,8 +1728,17 @@ impl MachineControlView {
 
                                             response_buffer.push_str(&s);
 
-                                            // Process complete lines
-                                            while let Some(idx) = response_buffer.find('\n') {
+                                            // Process complete lines (support both \n and \r line endings)
+                                            while let Some(idx) = {
+                                                let idx_n = response_buffer.find('\n');
+                                                let idx_r = response_buffer.find('\r');
+                                                match (idx_n, idx_r) {
+                                                    (Some(n), Some(r)) => Some(n.min(r)),
+                                                    (Some(n), None) => Some(n),
+                                                    (None, Some(r)) => Some(r),
+                                                    (None, None) => None,
+                                                }
+                                            } {
                                                 let line = response_buffer[..idx].trim().to_string();
                                                 response_buffer.drain(..idx + 1);
 
@@ -1717,10 +1755,10 @@ impl MachineControlView {
                                                     }
                                                 }
 
-                                                // Log to console, filtering out status reports and 'ok' acks to avoid spam
-                                                if !line.starts_with('<') && line != "ok" {
-                                                    if let Some(c) = device_console_poll.as_ref() {
-                                                        c.append_log(&format!("{}\n", line));
+                                                // Capture GRBL $$ settings lines into global state (for Device Config / CAM).
+                                                if line.starts_with('$') && line.contains('=') {
+                                                    if let Some((n, v)) = gcodekit5_communication::firmware::grbl::settings::SettingsManager::parse_setting_line(&line) {
+                                                        device_status::update_grbl_setting(n, v);
                                                     }
                                                 }
 
@@ -1730,14 +1768,16 @@ impl MachineControlView {
                                                 let lower_trim = lower.trim_start();
                                                 let is_error = lower_trim.starts_with("error:");
 
+                                                // If this is an `error:n`, decode it and append the decoded text to the console log line.
+                                                let mut line_for_log = line.clone();
                                                 if is_error {
-                                                    // Decode GRBL error codes: `error:n` or `Error: n`
                                                     let rest = lower_trim.trim_start_matches("error:").trim();
                                                     let digits: String = rest.chars().take_while(|c| c.is_ascii_digit()).collect();
-
                                                     if let Ok(code_u16) = digits.parse::<u16>() {
                                                         if let Ok(code) = u8::try_from(code_u16) {
                                                             let decoded = gcodekit5_communication::firmware::grbl::decode_error(code);
+                                                            line_for_log = format!("{} - {}", line, decoded);
+
                                                             let secondary = format!("error:{} - {}", code, decoded);
 
                                                             let dialog = gtk4::MessageDialog::builder()
@@ -1758,6 +1798,13 @@ impl MachineControlView {
                                                             }
                                                             dialog.show();
                                                         }
+                                                    }
+                                                }
+
+                                                // Log to console, filtering out status reports and 'ok' acks to avoid spam
+                                                if !line.starts_with('<') && line != "ok" {
+                                                    if let Some(c) = device_console_poll.as_ref() {
+                                                        c.append_log(&format!("{}\n", line_for_log));
                                                     }
                                                 }
 

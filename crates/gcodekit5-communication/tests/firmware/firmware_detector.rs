@@ -26,6 +26,28 @@ fn test_parse_grbl_startup() {
 }
 
 #[test]
+fn test_parse_grbl_startup_1_2h() {
+    let message = "Grbl 1.2h ['$' for help]";
+    let result = FirmwareDetector::parse_grbl_startup(message).unwrap();
+
+    assert_eq!(result.firmware_type, FirmwareType::Grbl);
+    assert_eq!(result.version.major, 1);
+    assert_eq!(result.version.minor, 2);
+    assert_eq!(result.version_string, "1.2h");
+}
+
+#[test]
+fn test_parse_grbl_startup_with_prefix_banner() {
+    let message = "QC V2.2.\nGrbl 1.2h ['$' for help]";
+    let result = FirmwareDetector::parse_grbl_startup(message).unwrap();
+
+    assert_eq!(result.firmware_type, FirmwareType::Grbl);
+    assert_eq!(result.version.major, 1);
+    assert_eq!(result.version.minor, 2);
+    assert_eq!(result.version_string, "1.2h");
+}
+
+#[test]
 fn test_parse_marlin_version_info() {
     let response = "FIRMWARE_NAME:Marlin 2.0.9.3\nPROTOCOL_VERSION:1.0";
     let result = FirmwareDetector::parse_marlin_version_info(response).unwrap();

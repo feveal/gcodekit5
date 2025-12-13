@@ -134,7 +134,15 @@ impl FirmwareDetector {
             anyhow::bail!("Not a GRBL startup message");
         }
 
-        let parts: Vec<&str> = message.split_whitespace().collect();
+        // Some firmwares prepend extra banner lines (e.g. "QC V2.2.") before the GRBL line.
+        // Extract the first line that actually contains "Grbl".
+        let grbl_line = message
+            .lines()
+            .map(str::trim)
+            .find(|l| l.contains("Grbl") || l.contains("grbl"))
+            .ok_or_else(|| anyhow::anyhow!("Invalid GRBL startup message format"))?;
+
+        let parts: Vec<&str> = grbl_line.split_whitespace().collect();
         if parts.len() < 2 {
             anyhow::bail!("Invalid GRBL startup message format");
         }
