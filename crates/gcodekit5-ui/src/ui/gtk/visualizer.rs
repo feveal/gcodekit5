@@ -465,9 +465,9 @@ impl GcodeVisualizer {
             .placeholder_text(t!("Thickness"))
             .text("10.0")
             .build();
-        let stock_tool_radius_entry = gtk4::Entry::builder()
-            .placeholder_text(t!("Tool Radius"))
-            .text("1.5875")
+        let stock_tool_diameter_entry = gtk4::Entry::builder()
+            .placeholder_text(t!("Tool Diameter"))
+            .text("3.175")
             .build();
 
         // Group toggles into sections
@@ -521,7 +521,7 @@ impl GcodeVisualizer {
         stock_box.append(&stock_width_entry);
         stock_box.append(&stock_height_entry);
         stock_box.append(&stock_thickness_entry);
-        stock_box.append(&stock_tool_radius_entry);
+        stock_box.append(&stock_tool_diameter_entry);
 
         let stock_revealer = Revealer::new();
         stock_revealer.set_transition_type(gtk4::RevealerTransitionType::SlideDown);
@@ -778,7 +778,7 @@ impl GcodeVisualizer {
             origin: (0.0, 0.0, 0.0),
         });
         let stock_material = Rc::new(RefCell::new(initial_stock));
-        let tool_radius = Rc::new(RefCell::new(1.5875f32)); // Default 1/16" end mill
+        let tool_diameter = Rc::new(RefCell::new(3.175f32)); // Default 1/8" end mill
         let simulation_result = Rc::new(RefCell::new(None));
         let simulation_visualization = Rc::new(RefCell::new(None));
         let simulation_resolution = Rc::new(RefCell::new(0.1));
@@ -1941,7 +1941,7 @@ impl GcodeVisualizer {
         let _simulation_result_stock = simulation_result.clone();
         let _simulation_visualization_stock = simulation_visualization.clone();
         let stock_material_stock = stock_material.clone();
-        let tool_radius_stock = tool_radius.clone();
+        let tool_diameter_stock = tool_diameter.clone();
         let simulation_running_flag = simulation_running.clone();
         let stock_simulator_3d_stock = stock_simulator_3d.clone();
         let stock_simulation_3d_pending_toggle = stock_simulation_3d_pending.clone();
@@ -1986,7 +1986,7 @@ impl GcodeVisualizer {
 
                     // Run simulation in background thread
                     let stock_clone = stock.clone();
-                    let tool_radius_value = *tool_radius_stock.borrow();
+                    let tool_radius_value = *tool_diameter_stock.borrow() / 2.0;
                     let result_3d_ref = stock_simulator_3d_stock.clone();
                     let gl_ref = gl_update.clone();
 
@@ -2225,10 +2225,10 @@ impl GcodeVisualizer {
             }
         });
 
-        let tool_radius = tool_radius.clone();
-        stock_tool_radius_entry.connect_changed(move |entry| {
-            if let Ok(radius) = entry.text().parse::<f32>() {
-                *tool_radius.borrow_mut() = radius;
+        let tool_diameter = tool_diameter.clone();
+        stock_tool_diameter_entry.connect_changed(move |entry| {
+            if let Ok(diameter) = entry.text().parse::<f32>() {
+                *tool_diameter.borrow_mut() = diameter;
             }
         });
 
