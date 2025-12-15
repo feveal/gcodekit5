@@ -3136,7 +3136,7 @@ impl DesignerCanvas {
     fn apply_resize(
         &self,
         handle: ResizeHandle,
-        shape_id: u64,
+        _shape_id: u64,
         current_x: f64,
         current_y: f64,
         shift_pressed: bool,
@@ -3210,7 +3210,7 @@ impl DesignerCanvas {
         }
 
         // Calculate new bounds based on which handle is being dragged
-        let (new_x, new_y, new_width, new_height) = match handle {
+        let (_new_x, _new_y, new_width, new_height) = match handle {
             ResizeHandle::TopLeft => {
                 // Moving top-left corner (min_x, max_y in Y-up)
                 let new_min_x = orig_x + dx;
@@ -3289,109 +3289,49 @@ impl DesignerCanvas {
             }
         }
 
-        let selected_count = state.canvas.shapes().filter(|s| s.selected).count();
-        if selected_count > 1 {
-            let anchor = Point::new(anchor_x, anchor_y);
-            for obj in state.canvas.shape_store.iter_mut() {
-                if !obj.selected {
-                    continue;
-                }
-                match &mut obj.shape {
-                    Shape::Rectangle(rect) => {
-                        rect.center.x = anchor.x + (rect.center.x - anchor.x) * sx;
-                        rect.center.y = anchor.y + (rect.center.y - anchor.y) * sy;
-                        rect.width *= sx.abs();
-                        rect.height *= sy.abs();
-
-                        if rect.is_slot {
-                            rect.corner_radius = rect.width.min(rect.height) / 2.0;
-                        } else {
-                            rect.corner_radius *= sx.abs().min(sy.abs());
-                        }
-                    }
-                    Shape::Circle(circle) => {
-                        circle.center.x = anchor.x + (circle.center.x - anchor.x) * sx;
-                        circle.center.y = anchor.y + (circle.center.y - anchor.y) * sy;
-                        let s = sx.abs().min(sy.abs());
-                        circle.radius *= s;
-                    }
-                    Shape::Ellipse(ellipse) => {
-                        ellipse.center.x = anchor.x + (ellipse.center.x - anchor.x) * sx;
-                        ellipse.center.y = anchor.y + (ellipse.center.y - anchor.y) * sy;
-                        ellipse.rx *= sx.abs();
-                        ellipse.ry *= sy.abs();
-                    }
-                    Shape::Line(line) => {
-                        line.start.x = anchor.x + (line.start.x - anchor.x) * sx;
-                        line.start.y = anchor.y + (line.start.y - anchor.y) * sy;
-                        line.end.x = anchor.x + (line.end.x - anchor.x) * sx;
-                        line.end.y = anchor.y + (line.end.y - anchor.y) * sy;
-                    }
-                    Shape::Path(path_shape) => {
-                        path_shape.scale(sx, sy, anchor);
-                    }
-                    Shape::Text(text) => {
-                        text.scale(sx, sy, anchor);
-                    }
-                }
+        // Apply scaling to all selected shapes (single or multiple)
+        // This ensures consistent behavior for rotated shapes where AABB resizing
+        // should be treated as a scaling operation relative to the anchor point.
+        let anchor = Point::new(anchor_x, anchor_y);
+        for obj in state.canvas.shape_store.iter_mut() {
+            if !obj.selected {
+                continue;
             }
-            return;
-        }
-
-        if let Some(obj) = state.canvas.shape_store.get_mut(shape_id) {
             match &mut obj.shape {
                 Shape::Rectangle(rect) => {
-                    rect.center.x = new_x + new_width / 2.0;
-                    rect.center.y = new_y + new_height / 2.0;
-                    rect.width = new_width;
-                    rect.height = new_height;
+                    rect.center.x = anchor.x + (rect.center.x - anchor.x) * sx;
+                    rect.center.y = anchor.y + (rect.center.y - anchor.y) * sy;
+                    rect.width *= sx.abs();
+                    rect.height *= sy.abs();
 
                     if rect.is_slot {
                         rect.corner_radius = rect.width.min(rect.height) / 2.0;
+                    } else {
+                        rect.corner_radius *= sx.abs().min(sy.abs());
                     }
                 }
                 Shape::Circle(circle) => {
-                    // For circles, resize by adjusting radius
-                    let center_x = new_x + new_width / 2.0;
-                    let center_y = new_y + new_height / 2.0;
-                    let radius = (new_width.min(new_height) / 2.0).abs();
-                    circle.center = Point::new(center_x, center_y);
-                    circle.radius = radius;
+                    circle.center.x = anchor.x + (circle.center.x - anchor.x) * sx;
+                    circle.center.y = anchor.y + (circle.center.y - anchor.y) * sy;
+                    let s = sx.abs().min(sy.abs());
+                    circle.radius *= s;
                 }
                 Shape::Ellipse(ellipse) => {
-                    let center_x = new_x + new_width / 2.0;
-                    let center_y = new_y + new_height / 2.0;
-                    ellipse.center = Point::new(center_x, center_y);
-                    ellipse.rx = (new_width / 2.0).abs();
-                    ellipse.ry = (new_height / 2.0).abs();
+                    ellipse.center.x = anchor.x + (ellipse.center.x - anchor.x) * sx;
+                    ellipse.center.y = anchor.y + (ellipse.center.y - anchor.y) * sy;
+                    ellipse.rx *= sx.abs();
+                    ellipse.ry *= sy.abs();
                 }
                 Shape::Line(line) => {
-                    // Resize line by moving end points
-                    match handle {
-                        ResizeHandle::TopLeft | ResizeHandle::BottomLeft => {
-                            line.start.x = new_x;
-                            line.start.y = if handle == ResizeHandle::TopLeft {
-                                new_y + new_height
-                            } else {
-                                new_y
-                            };
-                        }
-                        ResizeHandle::TopRight | ResizeHandle::BottomRight => {
-                            line.end.x = new_x + new_width;
-                            line.end.y = if handle == ResizeHandle::TopRight {
-                                new_y + new_height
-                            } else {
-                                new_y
-                            };
-                        }
-                    }
+                    line.start.x = anchor.x + (line.start.x - anchor.x) * sx;
+                    line.start.y = anchor.y + (line.start.y - anchor.y) * sy;
+                    line.end.x = anchor.x + (line.end.x - anchor.x) * sx;
+                    line.end.y = anchor.y + (line.end.y - anchor.y) * sy;
                 }
                 Shape::Path(path_shape) => {
-                    let anchor = Point::new(anchor_x, anchor_y);
                     path_shape.scale(sx, sy, anchor);
                 }
                 Shape::Text(text) => {
-                    let anchor = Point::new(anchor_x, anchor_y);
                     text.scale(sx, sy, anchor);
                 }
             }

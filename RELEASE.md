@@ -7,6 +7,7 @@ Version: 0.36.1-alpha.0
 - **CAM Tools**: Added `create_dimension_row` helper and unit update listeners.
 
 ### Fixed
+- **Designer**: Fixed issue where resizing a rotated shape would cause it to jump and increase in size.
 - **Designer**: Fixed issue where resizing shapes using Top-Left or Bottom-Right handles would deselect the shape on release if the handle was off-grid.
 - **Designer**: Removed redundant context menu items to declutter the interface.
 - **CAM Tools**: Fixed type mismatch errors in `VectorEngravingTool` and `TabbedBoxMaker`.

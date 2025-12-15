@@ -7,6 +7,9 @@
 - **Documentation**: Updated `AGENTS.md` with guidelines for handling dimension and feed values.
 
 ### Fixed
+- **Designer**: Fixed issue where resizing a rotated shape would cause it to jump and increase in size.
+  - Unified resize logic for single and multiple selections to use scaling relative to an anchor point.
+  - Ensures consistent behavior for rotated shapes where AABB resizing is not appropriate.
 - **Designer**: Fixed issue where resizing shapes using Top-Left or Bottom-Right handles would deselect the shape on release if the handle was off-grid.
   - Updated handle detection and selection logic to use raw (unsnapped) coordinates for hit-testing.
   - Ensures reliable interaction with handles regardless of grid settings or shape position.
