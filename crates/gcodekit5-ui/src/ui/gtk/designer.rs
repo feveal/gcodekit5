@@ -807,27 +807,6 @@ impl DesignerCanvas {
             btn
         };
 
-        // View (matches Visualiser)
-        vbox.append(&create_item("Fit to Content", "fit_content", true));
-        vbox.append(&create_item("Fit to Viewport", "fit_viewport", true));
-        vbox.append(&create_item(
-            "Fit to Device Working Area",
-            "fit_device",
-            self.device_manager.is_some(),
-        ));
-
-        vbox.append(&Separator::new(Orientation::Horizontal));
-
-        vbox.append(&create_item("Copy cursor coordinates", "copy_cursor", true));
-
-        vbox.append(&Separator::new(Orientation::Horizontal));
-
-        vbox.append(&create_item("Toggle Grid", "toggle_grid", true));
-        vbox.append(&create_item("Toggle Snap", "toggle_snap", true));
-        vbox.append(&create_item("Toggle Toolpaths", "toggle_toolpaths", true));
-
-        vbox.append(&Separator::new(Orientation::Horizontal));
-
         // Edit
         vbox.append(&create_item("Cut", "cut", has_selection));
         vbox.append(&create_item("Copy", "copy", has_selection));

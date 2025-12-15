@@ -8,6 +8,7 @@ Version: 0.36.1-alpha.0
 
 ### Fixed
 - **Designer**: Fixed issue where resizing shapes using Top-Left or Bottom-Right handles would deselect the shape on release if the handle was off-grid.
+- **Designer**: Removed redundant context menu items to declutter the interface.
 - **CAM Tools**: Fixed type mismatch errors in `VectorEngravingTool` and `TabbedBoxMaker`.
 - **CAM Tools**: Fixed duplicate method definitions in `VectorEngravingTool`.
 
