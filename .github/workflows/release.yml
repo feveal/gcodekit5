@@ -99,7 +99,7 @@ jobs:
           --appdir AppDir \
           --plugin gtk \
           --output appimage \
-          --icon-file assets/Pictures/gcodekit5.png \
+          --icon-file assets/Pictures/gcodekit5_128.png \
           --desktop-file flatpak/com.github.thawkins.gcodekit5.desktop \
           --executable AppDir/usr/bin/${{ matrix.platform.bin }}
 
