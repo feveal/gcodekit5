@@ -28,7 +28,9 @@ pub mod advanced_features;
 pub mod arc_expander;
 pub mod comment_processor;
 pub mod core_infrastructure;
+pub mod gerber;
 pub mod hatch_generator;
+mod hatch_test;
 pub mod jigsaw_puzzle;
 pub mod laser_engraver;
 pub mod optimizer;
@@ -50,6 +52,7 @@ pub use advanced_features::{
 pub use arc_expander::ArcExpander;
 pub use comment_processor::CommentProcessor;
 pub use core_infrastructure::{AppConfig, ApplicationState, Logger, TelemetryData};
+pub use gerber::{GerberConverter, GerberLayerType, GerberParameters};
 pub use jigsaw_puzzle::{JigsawPuzzleMaker, PuzzleParameters};
 pub use laser_engraver::{
     BitmapImageEngraver, EngravingParameters, HalftoneMethod, ImageTransformations, RotationAngle,

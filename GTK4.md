@@ -64,3 +64,92 @@
 ### Inspector Properties
 - **Extensibility**: When adding new shape types (e.g., `Shape::Path`), ensure they are handled in `PropertiesPanel::update_from_selection` (to display values) and `PropertiesPanel::update_shape_position_and_size` (to apply changes).
 - **Path Handling**: For complex shapes like paths, use bounding box center for position (X/Y) and bounding box dimensions for size (Width/Height). Implement scaling and translation relative to the bounding box center to support parametric-like editing.
+
+## FFI and Unsafe Code
+- **Panic in Callbacks**: Panics inside GTK callbacks (FFI boundaries) often result in "panic in a function that cannot unwind" and abort the process.
+- **Avoid Unsafe**: Avoid `unsafe { std::mem::transmute_copy }` when dealing with opaque types from external crates (like `gerber-types`). Use safe alternatives like `Debug` formatting or `serde` serialization if available, even if less efficient, to prevent undefined behavior and hard-to-debug crashes.
+- **Gerber Types**: `gerber-types` `CoordinateNumber` is opaque. Use `format!("{:?}", c)` to extract values if other traits are missing.
+
+### Parsing Opaque Types via Debug Trait
+When working with external crates that expose opaque types (private fields) but implement `Debug`, you can sometimes parse the `Debug` output as a workaround. However, be aware that the `Debug` format can vary (e.g., `Struct { field: value }` vs `Struct(value)`). Always handle multiple formats or inspect the actual output carefully.
+- Example: `gerber_types::CoordinateNumber` outputs `CoordinateNumber { nano: 123456 }` but we were expecting `CoordinateNumber(123456)`.
+- Solution: Use regex or robust string parsing to extract values from the `Debug` string.
+
+## Cavalier Contours
+- `cavalier_contours` operations (like `boolean` and `parallel_offset`) can panic on invalid or degenerate geometry.
+- Always wrap these operations in `std::panic::catch_unwind` to prevent application crashes.
+- Use `std::panic::AssertUnwindSafe` if necessary.
+- Sanitize input geometry (remove duplicates, check orientation) before passing to `cavalier_contours`.
+- **Prefer Arcs over Segments**: When creating shapes with rounded parts (like circles or stadiums) for boolean operations, use `PlineVertex` with `bulge` (arcs) instead of linearizing them into many small segments. This significantly reduces vertex count (e.g., 4 vertices vs 36+ for a stadium) and improves stability, preventing panics like `EndPointOnFinalOffsetVertex` during boolean or offset operations.
+
+
+## Gerber Processing
+- **Trace Generation**: Generating individual shapes (rectangles/stadiums) for each Gerber segment (`D01`) leads to disjoint geometry that fails to merge correctly, especially at sharp corners.
+- **Solution**: Buffer consecutive `D01` commands into a single continuous `Polyline` (center line). When the path ends (e.g., `D02`, `D03`, aperture change), generate the "stroke" by offsetting the polyline by `aperture_radius` on both sides (`parallel_offset(r)` and `parallel_offset(-r)`), then joining the ends with arcs to form a closed loop. This ensures correct corner handling and continuous geometry.
+- **Cavalier Contours**:
+    - `parallel_offset(offset)` returns `Vec<Polyline>`. For simple traces, it returns one polyline per side.
+    - To form a closed loop from offsets: take right offset, take left offset, invert left offset (`invert_direction_mut`), and connect them with semi-circle caps (bulge = 1.0).
+    - `Polyline::set(index, x, y, bulge)` is used to update vertices/bulges.
+    - `Polyline::invert()` creates a new inverted polyline. `invert_direction_mut()` inverts in place.
+- **Duplicate Vertices**: `cavalier_contours` functions like `parallel_offset` and boolean operations can panic if the input polyline contains duplicate vertices (vertices with the same position). Always call `remove_repeat_pos(epsilon)` (e.g., `1e-4`) on polylines before processing them, especially after boolean operations or when constructing paths from external data.
+- **Boolean Operations**: When merging polylines, the result might contain artifacts or duplicate vertices. Clean the result before further processing.
+- **Panic Handling**: Wrap `cavalier_contours` operations in `panic::catch_unwind` to prevent the entire application from crashing due to geometry errors. Log the error and skip the problematic polygon if possible.
+
+## Cavalier Contours Insights
+- **Duplicate Vertices Panic**: `cavalier_contours` can panic with `bug: input assumed to not have repeat position vertexes` if a polyline has consecutive duplicate vertices or if a closed polyline has the last vertex equal to the first vertex.
+- **Fix**: Always clean polylines before performing operations like `parallel_offset` or boolean operations.
+  - Use `remove_repeat_pos(epsilon)` to remove consecutive duplicates.
+  - For closed polylines, explicitly check if the last vertex equals the first vertex and remove it if so.
+  - A helper function `clean_polyline` is recommended to encapsulate this logic.
+- **Epsilon**: Use a small epsilon (e.g., `1e-5`) for vertex comparison to handle floating point inaccuracies.
+- **Boolean Operations**: Boolean operations can also produce polylines that need cleaning before further processing.
+- **FFI Boundaries**: Panics inside GTK callbacks (FFI) cause immediate aborts. It is critical to wrap *all* fallible geometry operations (like `parallel_offset` inside helper closures) in `panic::catch_unwind` to ensure the application survives geometry bugs.
+
+## CSGRS vs Cavalier Contours
+- **Stability**: `cavalier_contours` is excellent for offsetting but can be fragile (panics) with degenerate inputs (zero-length segments, duplicate vertices) during boolean operations.
+- **Alternative**: `csgrs` (Constructive Solid Geometry for Rust) provides robust boolean operations (Union, Difference, Intersection) that are less prone to panics on complex or degenerate 2D geometry.
+- **Strategy**:
+    - Use `csgrs` for boolean operations (merging shapes).
+    - Use `cavalier_contours` for offsetting (buffering/isolation) on the *clean* result of boolean operations.
+    - For "thickening" lines/arcs (Gerber traces), manually construct polygons (rectangles + circles) and Union them with `csgrs` instead of relying on `cavalier_contours` offset of raw centerlines, which is more error-prone.
+- **Integration**: `csgrs` uses `nalgebra` for transformations. Ensure version compatibility between `csgrs` and `nalgebra` in your project.
+
+## Gerber Tool Improvements
+- Implemented "Remove Excess Copper" (Rubout) feature.
+- Uses `csgrs` for boolean difference (Board - Traces).
+- Uses `hatch_generator` (scanline fill) to clear the excess area.
+- Converts between `cavalier_contours` (Polyline), `csgrs` (Sketch/Geo), and `lyon` (Path) types.
+- **Insight**: `cavalier_contours` is great for offsetting, `csgrs` for boolean ops, and `lyon` for path manipulation/hatching. Combining them requires careful type conversion.
+
+## CSG and Polylines
+- `csgrs` (and underlying `cavalier_contours`) can be sensitive to duplicate vertices (start == end) in polygons.
+- When converting between `Polyline` and `Sketch`, ensure vertices are not duplicated if the library expects implicit closure.
+- `Sketch::polygon` likely expects implicit closure (no duplicate start/end point).
+- **Sketch::rectangle**: `Sketch::rectangle(w, h, None)` creates a rectangle from `(0, 0)` to `(w, h)`, NOT centered at `(0, 0)`. If you need a centered rectangle, you must translate it by `(-w/2, -h/2)`. If you assume it's centered and translate by `(w/2, h/2)`, you will end up with a rectangle at `(w/2, h/2)` to `(3w/2, 3h/2)`.
+
+## Recent Features
+- **Gerber Rubout with Board Outline**: Added an option to use the board outline file (e.g., `*.gko`, `*Edge_Cuts*`) as the boundary for the rubout operation, instead of a simple bounding box. This allows for non-rectangular boards.
+
+## Serde Deserialization
+- When adding new fields to a struct that is deserialized from JSON (e.g., configuration files), always consider backward compatibility.
+- Use `#[serde(default)]` on the struct or specific fields to allow deserialization to succeed even if the fields are missing in the JSON file. This uses the `Default` implementation for the struct or type.
+- Always handle deserialization errors gracefully and log them to help with debugging. Silent failures can be very confusing for users.
+
+### Cavalier Contours Offset Orientation
+- `parallel_offset` with a positive value "inflates" the polygon.
+- For CCW polygons (standard exterior), this means offsetting outwards (away from center).
+- For CW polygons (standard holes), this means offsetting outwards (away from center), which makes the hole *larger*.
+- To "shrink" a hole (offset into the void, preserving the solid material around it), you must use a **negative** offset.
+- When processing polygons from `csgrs` or `geo`, ensure you distinguish between Exterior (CCW) and Interior (CW) loops and apply the appropriate offset sign.
+
+### Lyon Path Construction for Hatching with Holes
+- **CORRECTION**: Do NOT use `.with_svg()` - it returns `WithSvg<Builder>` which has different methods.
+- Use regular `Path::builder()` which provides `begin()`, `line_to()`, `close()`, and `build()`.
+- **Each polygon (with holes) should become a SEPARATE lyon Path**:
+  - Create a new builder for each polygon
+  - Build exterior ring: `begin(first_point)`, `line_to()` for rest, `close()`
+  - Build interior rings (holes): repeat `begin()`, `line_to()`, `close()` for each hole
+  - Call `build()` to finish the path
+  - Pass all paths as a Vec to `generate_hatch`
+- This ensures the hatch generator properly respects holes - if you put multiple polygons in one Vec with shared builders, the holes won't be recognized.
+- Lyon's even-odd fill rule requires each polygon to be its own path for proper hole handling.

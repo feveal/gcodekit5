@@ -18,9 +18,8 @@ GCodeKit5 is organized as a Cargo workspace with 7 crates for modular compilatio
 - **gcodekit5-camtools** - CAM tools and special G-code processing operations
 - **gcodekit5-designer** - Visual design tools and toolpath generation
 - **gcodekit5-gcodeeditor** - ✨ NEW - G-Code text editor and buffer management
-  - **Note**: The editor bridge has been decoupled from Slint UI as `EditorBridgeBackend`; Slint bridge remains available for legacy UI functionality and is gated under `slint_legacy_tests`.
 - **gcodekit5-communication** - Serial, TCP, WebSocket protocols and firmware implementations (5 firmware types)
-- **gcodekit5-ui** - Slint-based UI components, visualizer, settings, and editor integration
+- **gcodekit5-ui** - GTK4-based UI components, visualizer, settings, and editor integration
 - **gcodekit5-devicedb** - Device profile management
 - **gcodekit5-settings** - Application settings management
 - **gcodekit5-visualizer** - 2D/3D visualization engine
@@ -329,61 +328,9 @@ RUST_LOG=debug cargo run
 
 ## Architecture
 
-### Module Structure
-```
-src/
-├── main.rs                    # Application entry point, event handlers
-├── UI (GTK4/gtk-rs)          # Main window layout and structure
-│
-├── communication/             # Device communication layer
-│   ├── mod.rs                # Serial, TCP, WebSocket traits
-│   ├── serial.rs             # Serial port implementation
-│   ├── tcp.rs                # TCP/IP networking
-│   └── buffered.rs           # Command buffering and flow control
-│
-├── firmware/                  # Controller-specific implementations
-│   ├── grbl/                 # GRBL protocol support
-│   │   ├── communicator.rs   # GRBL command sender
-│   │   ├── status_parser.rs  # Real-time status parsing
-│   │   └── settings.rs       # Settings management
-│   ├── tinyg/                # TinyG JSON protocol
-│   ├── g2core/               # g2core advanced features
-│   └── smoothieware/         # Smoothieware support
-│
-├── gcode/                     # G-code parsing and generation
-│   ├── parser.rs             # G-code tokenizer and parser
-│   ├── generator.rs          # G-code generation from toolpaths
-│   └── validator.rs          # Syntax validation
-│
-├── processing/                # Toolpath processing
-│   ├── arc_expansion.rs      # Convert arcs to line segments
-│   ├── transforms.rs         # Coordinate transformations
-│   └── mesh_leveling.rs      # Auto-leveling compensation
-│
-├── ui/                        # UI state and logic
-│   ├── console_panel.rs      # Console data structures
-│   ├── device_console_manager.rs  # Console event handling
-│   └── gcode_editor.rs       # Editor state management
-│
-├── ui_panels/                 # Tab panel components
-│   ├── machine_control       # Machine control interface (GTK4)
-│   ├── gcode_editor          # G-code editor UI (GTK4)
-│   ├── designer              # CAD/CAM designer (GTK4)
-│   ├── config_settings       # Settings editor (GTK4)
-│   └── device_info           # Device information display (GTK4)
-│
-├── utils/                     # Utilities and helpers
-│   ├── config.rs             # Configuration file management
-│   └── logger.rs             # Logging setup
-│
-└── visualizer/                # 2D/3D rendering
-    ├── renderer.rs           # Graphics pipeline
-    └── toolpath.rs           # Toolpath visualization
-```
-
 ### Technology Stack
 - **Rust**: System programming language for memory safety and performance
-- **Slint**: Modern declarative UI framework (native cross-platform)
+- **GTK4**: Modern declarative UI framework
 - **Tokio**: Async runtime for non-blocking I/O
 - **Serialport-rs**: Cross-platform serial communication
 - **Tracing**: Structured logging and diagnostics
@@ -488,27 +435,6 @@ Contributions are welcome! Please follow these guidelines:
 - 🌐 **Translations**: Add multi-language support
 - 📦 **Packaging**: Create installers for platforms
 
-## Roadmap
-
-### v0.26 (Next Release)
-- [ ] TCP/IP and WebSocket communication support
-- [ ] Work coordinate system (WCS) management (G54-G59)
-- [ ] Tool length offset (TLO) support
-- [ ] User-definable macro system
-- [ ] Enhanced 3D visualization with toolpath preview
-
-### v0.27
-- [ ] Multi-language support (i18n)
-- [ ] Custom keyboard shortcuts configuration
-- [ ] Theme system (light/dark modes, custom colors)
-- [ ] Plugin architecture for extensibility
-
-### v1.0 (Stable Release)
-- [ ] 100% test coverage for core modules
-- [ ] Complete user documentation
-- [ ] Performance optimization and profiling
-- [ ] Native installers for Windows, macOS, Linux
-- [ ] Production-ready stability
 
 ## Known Issues
 
@@ -536,7 +462,7 @@ You may choose either license for your use of this software.
 ## Acknowledgments
 
 - **Inspiration**: Universal G-Code Sender (UGS) project
-- **Frameworks**: Slint UI team for excellent cross-platform toolkit
+- **Frameworks**: GTK4 and GTK4-rs UI teams for excellent cross-platform toolkit
 - **Firmware**: GRBL, TinyG, g2core, and other open-source CNC firmware projects
 - **Community**: Rust community for excellent tooling and support
 
@@ -709,4 +635,4 @@ This project is in active development. New features are being added regularly, a
 
 ---
 
-**Built with ❤️ using Rust and Slint**
+**Built with ❤️ using Rust and GTK4**

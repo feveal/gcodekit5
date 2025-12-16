@@ -34,5 +34,6 @@
     <file compressed="true" alias="speeds_feeds_calculator.md">markdown/speeds_feeds_calculator.md</file>
     <file compressed="true" alias="spoilboard_surfacing.md">markdown/spoilboard_surfacing.md</file>
     <file compressed="true" alias="spoilboard_grid.md">markdown/spoilboard_grid.md</file>
+    <file compressed="true" alias="gerber.md">markdown/gerber.md</file>
   </gresource>
 </gresources>

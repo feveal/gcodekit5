@@ -90,6 +90,11 @@ pub fn generate_hatch(path: &Path, angle_degrees: f32, spacing: f32, tolerance: 
                 let x1 = chunk[0];
                 let x2 = chunk[1];
 
+                // Skip short segments
+                if (x2 - x1).abs() < 0.001 {
+                    continue;
+                }
+
                 // Create horizontal line segment
                 let start = point(x1, y);
                 let end = point(x2, y);
