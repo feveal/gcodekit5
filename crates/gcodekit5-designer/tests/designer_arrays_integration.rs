@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Integration tests for Designer array operations (Phase 4.2)
 
 use gcodekit5_designer::{

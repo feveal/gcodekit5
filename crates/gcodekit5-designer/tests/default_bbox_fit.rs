@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_core::constants as core_constants;
 use gcodekit5_designer::viewport::Viewport;
 

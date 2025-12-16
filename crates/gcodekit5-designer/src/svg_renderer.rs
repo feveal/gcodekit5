@@ -6,6 +6,7 @@
 //! - Viewport-based coordinate transformation
 
 use crate::{font_manager, Canvas};
+use crate::model::DesignerShape;
 use rusttype::{point as rt_point, OutlineBuilder, Scale};
 
 /// Render crosshair at origin (0,0) as SVG path
@@ -175,7 +176,7 @@ pub fn render_selection_handles(canvas: &Canvas, _width: u32, _height: u32) -> S
 
     for shape_obj in canvas.shapes() {
         if shape_obj.selected {
-            let (x1, y1, x2, y2) = shape_obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = shape_obj.shape.bounds();
             // Normalize coordinates for min/max calculation
             let (tx1, tx2) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
             let (ty1, ty2) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
@@ -249,7 +250,7 @@ pub fn render_group_bounding_box(canvas: &Canvas, _width: u32, _height: u32) -> 
 
     for shape_obj in canvas.shapes() {
         if shape_obj.selected {
-            let (x1, y1, x2, y2) = shape_obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = shape_obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -327,23 +328,23 @@ fn rotate_point(x: f64, y: f64, cx: f64, cy: f64, angle_deg: f64) -> (f64, f64) 
 
 /// Render a single shape as SVG path (trait object version)
 fn render_shape_trait(
-    shape: &crate::shapes::Shape,
+    shape: &crate::model::Shape,
     viewport: &crate::viewport::Viewport,
 ) -> String {
     // Get shape type and bounding box
     // Use local_bounding_box to find the pivot point (center of unrotated shape)
-    let (x1, y1, x2, y2) = shape.local_bounding_box();
+    let (x1, y1, x2, y2) = shape.bounds();
     let center_x = (x1 + x2) / 2.0;
     let center_y = (y1 + y2) / 2.0;
     let rotation = shape.rotation();
 
     match shape {
-        crate::shapes::Shape::Rectangle(rect) => {
-            // Use unrotated dimensions directly from the rect struct
-            let min_x = rect.x;
-            let min_y = rect.y;
-            let max_x = rect.x + rect.width;
-            let max_y = rect.y + rect.height;
+        crate::model::Shape::Rectangle(rect) => {
+            // Use unrotated dimensions di(rect.center.y - rect.height/2.0) from the rect struct
+            let min_x = (rect.center.x - rect.width/2.0);
+            let min_y = (rect.center.y - rect.height/2.0);
+            let max_x = (rect.center.x - rect.width/2.0) + rect.width;
+            let max_y = (rect.center.y - rect.height/2.0) + rect.height;
 
             let (sx1_raw, sy1_raw) = viewport.world_to_pixel(min_x, min_y);
             let (sx2_raw, sy2_raw) = viewport.world_to_pixel(max_x, max_y);
@@ -425,7 +426,7 @@ fn render_shape_trait(
                 )
             }
         }
-        crate::shapes::Shape::Circle(_) => {
+        crate::model::Shape::Circle(_) => {
             let radius = ((x2 - x1) / 2.0).abs();
             let (cx, cy) = viewport.world_to_pixel(center_x, center_y);
             let screen_radius = radius * viewport.zoom();
@@ -440,7 +441,7 @@ fn render_shape_trait(
                 screen_radius, screen_radius, cx + screen_radius, cy
             )
         }
-        crate::shapes::Shape::Line(line) => {
+        crate::model::Shape::Line(line) => {
             let p1 = rotate_point(line.start.x, line.start.y, center_x, center_y, rotation);
             let p2 = rotate_point(line.end.x, line.end.y, center_x, center_y, rotation);
 
@@ -449,7 +450,7 @@ fn render_shape_trait(
 
             format!("M {} {} L {} {} ", sx1, sy1, sx2, sy2)
         }
-        crate::shapes::Shape::Ellipse(_) => {
+        crate::model::Shape::Ellipse(_) => {
             let rx = ((x2 - x1) / 2.0).abs();
             let ry = ((y2 - y1) / 2.0).abs();
 
@@ -485,7 +486,7 @@ fn render_shape_trait(
                 sy
             )
         }
-        crate::shapes::Shape::Text(text_shape) => {
+        crate::model::Shape::Text(text_shape) => {
             let font = font_manager::get_font_for(
                 &text_shape.font_family,
                 text_shape.bold,
@@ -509,9 +510,9 @@ fn render_shape_trait(
 
             builder.path
         }
-        crate::shapes::Shape::Path(path_shape) => {
+        crate::model::Shape::Path(path_shape) => {
             let mut path_str = String::new();
-            for event in path_shape.path.iter() {
+            for event in path_shape.render().iter() {
                 match event {
                     lyon::path::Event::Begin { at } => {
                         let (rx, ry) =

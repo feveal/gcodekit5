@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::pocket_operations::PocketStrategy;
 use gcodekit5_designer::serialization::{DesignFile, ShapeData};
 

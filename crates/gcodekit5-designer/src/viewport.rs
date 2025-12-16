@@ -3,7 +3,7 @@
 //! Handles conversion between pixel coordinates (screen space) and world coordinates
 //! (design space). Manages zoom and pan operations with proper coordinate mapping.
 
-use super::shapes::Point;
+use crate::model::Point;
 
 /// Represents the viewport transformation state (zoom and pan).
 #[derive(Debug, Clone)]

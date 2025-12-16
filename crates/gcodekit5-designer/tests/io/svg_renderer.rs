@@ -1,5 +1,6 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::canvas::Canvas;
-use gcodekit5_designer::shapes::{Circle, Point, Rectangle, Shape};
+use gcodekit5_designer::model::{Circle, Point, Rectangle, Shape};
 use gcodekit5_designer::svg_renderer::{render_crosshair, render_shapes};
 
 #[test]

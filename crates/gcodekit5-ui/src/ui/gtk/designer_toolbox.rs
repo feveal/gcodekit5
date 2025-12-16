@@ -73,6 +73,9 @@ pub struct DesignerToolbox {
     buttons: Vec<Button>,
     tools: Vec<DesignerTool>,
     generate_btn: Button,
+    union_btn: Button,
+    difference_btn: Button,
+    intersection_btn: Button,
     _state: Rc<RefCell<DesignerState>>,
     _settings_controller: Rc<SettingsController>,
     _current_units: Arc<Mutex<MeasurementSystem>>,
@@ -193,6 +196,31 @@ impl DesignerToolbox {
         separator.set_margin_top(10);
         separator.set_margin_bottom(10);
         content_box.append(&separator);
+
+        // Boolean Operations
+        let boolean_label = Label::new(Some(&t!("Boolean Ops")));
+        boolean_label.add_css_class("title-4");
+        boolean_label.set_halign(Align::Start);
+        boolean_label.set_margin_start(5);
+        content_box.append(&boolean_label);
+
+        let boolean_box = Box::new(Orientation::Horizontal, 4);
+        boolean_box.set_halign(Align::Center);
+        boolean_box.set_margin_top(5);
+        boolean_box.set_margin_bottom(5);
+
+        let union_btn = Button::builder().label(t!("Union")).tooltip_text(t!("Union selected shapes")).build();
+        let difference_btn = Button::builder().label(t!("Diff")).tooltip_text(t!("Difference (First - Others)")).build();
+        let intersection_btn = Button::builder().label(t!("Inter")).tooltip_text(t!("Intersection of selected shapes")).build();
+
+        union_btn.set_hexpand(true);
+        difference_btn.set_hexpand(true);
+        intersection_btn.set_hexpand(true);
+
+        boolean_box.append(&union_btn);
+        boolean_box.append(&difference_btn);
+        boolean_box.append(&intersection_btn);
+        content_box.append(&boolean_box);
 
         // Tool Settings
         let settings_box = Box::new(Orientation::Vertical, 8);
@@ -736,6 +764,9 @@ impl DesignerToolbox {
             buttons,
             tools,
             generate_btn,
+            union_btn,
+            difference_btn,
+            intersection_btn,
             _state: state,
             _settings_controller: settings_controller,
             _current_units: current_units,
@@ -744,6 +775,18 @@ impl DesignerToolbox {
 
     pub fn connect_generate_clicked<F: Fn() + 'static>(&self, f: F) {
         self.generate_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_union_clicked<F: Fn() + 'static>(&self, f: F) {
+        self.union_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_difference_clicked<F: Fn() + 'static>(&self, f: F) {
+        self.difference_btn.connect_clicked(move |_| f());
+    }
+
+    pub fn connect_intersection_clicked<F: Fn() + 'static>(&self, f: F) {
+        self.intersection_btn.connect_clicked(move |_| f());
     }
 
     pub fn current_tool(&self) -> DesignerTool {
@@ -767,5 +810,11 @@ impl DesignerToolbox {
                 btn.remove_css_class("selected-tool");
             }
         }
+    }
+
+    pub fn update_boolean_ops_sensitivity(&self, enabled: bool) {
+        self.union_btn.set_sensitive(enabled);
+        self.difference_btn.set_sensitive(enabled);
+        self.intersection_btn.set_sensitive(enabled);
     }
 }

@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Integration tests for Designer file import functionality (Phase 4.1)
 
 use gcodekit5_designer::{DxfImporter, FileFormat, SvgImporter};

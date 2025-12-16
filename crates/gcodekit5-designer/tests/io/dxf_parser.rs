@@ -1,8 +1,9 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::dxf_parser::{
     DxfArc, DxfCircle, DxfEntity, DxfEntityType, DxfFile, DxfHeader, DxfLine, DxfParser,
     DxfPolyline, DxfText, DxfUnit,
 };
-use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::model::Point;
 
 #[test]
 fn test_dxf_unit_conversion_inches_to_mm() {

@@ -1,9 +1,11 @@
 //! Canvas for drawing and manipulating shapes.
 
 use super::pocket_operations::PocketStrategy;
-use super::shapes::{
-    Circle, Ellipse, Line, OperationType, PathShape, Point, Rectangle, Shape, ShapeType, TextShape,
+use crate::model::{
+    DesignCircle as Circle, DesignEllipse as Ellipse, DesignLine as Line, DesignPath as PathShape,
+    DesignRectangle as Rectangle, DesignText as TextShape, DesignerShape, Point, Shape, ShapeType,
 };
+use super::shapes::OperationType;
 use super::spatial_index::Bounds;
 use super::viewport::Viewport;
 use crate::selection_manager::SelectionManager;
@@ -205,7 +207,7 @@ impl Canvas {
     pub fn add_rectangle(&mut self, x: f64, y: f64, width: f64, height: f64) -> u64 {
         let id = self.shape_store.generate_id();
         let rect = Rectangle::new(x, y, width, height);
-        let (min_x, min_y, max_x, max_y) = rect.bounding_box();
+        let (min_x, min_y, max_x, max_y) = rect.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Rectangle(rect)));
         self.spatial_manager
@@ -217,7 +219,7 @@ impl Canvas {
     pub fn add_circle(&mut self, center: Point, radius: f64) -> u64 {
         let id = self.shape_store.generate_id();
         let circle = Circle::new(center, radius);
-        let (min_x, min_y, max_x, max_y) = circle.bounding_box();
+        let (min_x, min_y, max_x, max_y) = circle.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Circle(circle)));
         self.spatial_manager
@@ -228,7 +230,7 @@ impl Canvas {
     /// Adds a generic shape to the canvas.
     pub fn add_shape(&mut self, shape: Shape) -> u64 {
         let id = self.shape_store.generate_id();
-        let (min_x, min_y, max_x, max_y) = shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = shape.bounds();
         self.shape_store.insert(id, DrawingObject::new(id, shape));
         self.spatial_manager
             .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
@@ -239,7 +241,7 @@ impl Canvas {
     pub fn add_line(&mut self, start: Point, end: Point) -> u64 {
         let id = self.shape_store.generate_id();
         let line = Line::new(start, end);
-        let (min_x, min_y, max_x, max_y) = line.bounding_box();
+        let (min_x, min_y, max_x, max_y) = line.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Line(line)));
         self.spatial_manager
@@ -251,7 +253,7 @@ impl Canvas {
     pub fn add_ellipse(&mut self, center: Point, rx: f64, ry: f64) -> u64 {
         let id = self.shape_store.generate_id();
         let ellipse = Ellipse::new(center, rx, ry);
-        let (min_x, min_y, max_x, max_y) = ellipse.bounding_box();
+        let (min_x, min_y, max_x, max_y) = ellipse.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Ellipse(ellipse)));
         self.spatial_manager
@@ -264,7 +266,7 @@ impl Canvas {
         let id = self.shape_store.generate_id();
         // Create a closed PathShape from vertices
         let path_shape = PathShape::from_points(&vertices, true);
-        let (min_x, min_y, max_x, max_y) = path_shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = path_shape.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Path(path_shape)));
         self.spatial_manager
@@ -276,7 +278,7 @@ impl Canvas {
     pub fn add_text(&mut self, text: String, x: f64, y: f64, font_size: f64) -> u64 {
         let id = self.shape_store.generate_id();
         let shape = TextShape::new(text, x, y, font_size);
-        let (min_x, min_y, max_x, max_y) = shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = shape.bounds();
         self.shape_store
             .insert(id, DrawingObject::new(id, Shape::Text(shape)));
         self.spatial_manager
@@ -377,7 +379,7 @@ impl Canvas {
     /// Removes a shape and returns it (used for undo/redo).
     pub fn remove_shape_return(&mut self, id: u64) -> Option<DrawingObject> {
         if let Some(obj) = self.shape_store.remove(id) {
-            let (min_x, min_y, max_x, max_y) = obj.shape.bounding_box();
+            let (min_x, min_y, max_x, max_y) = obj.shape.bounds();
             self.spatial_manager
                 .remove_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
 
@@ -393,7 +395,7 @@ impl Canvas {
     /// Restores a shape (used for undo/redo).
     pub fn restore_shape(&mut self, obj: DrawingObject) {
         let id = obj.id;
-        let (min_x, min_y, max_x, max_y) = obj.shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = obj.shape.bounds();
         self.spatial_manager
             .insert_bounds(id, &Bounds::new(min_x, min_y, max_x, max_y));
         self.shape_store.insert(id, obj);
@@ -428,7 +430,7 @@ impl Canvas {
     pub fn is_point_in_selected(&self, point: &Point) -> bool {
         if let Some(id) = self.selection_manager.selected_id() {
             if let Some(obj) = self.shape_store.get(id) {
-                return obj.shape.contains_point(point, 3.0);
+                return obj.shape.contains_point(*point, 3.0);
             }
         }
         false
@@ -530,7 +532,7 @@ impl Canvas {
         let mut max_y = f64::NEG_INFINITY;
 
         for obj in self.shape_store.iter() {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -585,11 +587,11 @@ impl Canvas {
 
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
-                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
+                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounds();
 
                 obj.shape.translate(dx, dy);
 
-                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
                 updates.push((
                     obj.id,
                     Bounds::new(old_x1, old_y1, old_x2, old_y2),
@@ -616,18 +618,18 @@ impl Canvas {
         let target = match alignment {
             Alignment::Left => selected
                 .iter()
-                .map(|o| o.shape.bounding_box().0)
+                .map(|o| o.shape.bounds().0)
                 .fold(f64::INFINITY, f64::min),
             Alignment::Right => selected
                 .iter()
-                .map(|o| o.shape.bounding_box().2)
+                .map(|o| o.shape.bounds().2)
                 .fold(f64::NEG_INFINITY, f64::max),
             Alignment::CenterHorizontal => {
                 let (min_x, max_x) =
                     selected
                         .iter()
                         .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
-                            let (x1, _, x2, _) = o.shape.bounding_box();
+                            let (x1, _, x2, _) = o.shape.bounds();
                             (min.min(x1), max.max(x2))
                         });
                 if min_x.is_infinite() {
@@ -638,18 +640,18 @@ impl Canvas {
             }
             Alignment::Top => selected
                 .iter()
-                .map(|o| o.shape.bounding_box().3)
+                .map(|o| o.shape.bounds().3)
                 .fold(f64::NEG_INFINITY, f64::max),
             Alignment::Bottom => selected
                 .iter()
-                .map(|o| o.shape.bounding_box().1)
+                .map(|o| o.shape.bounds().1)
                 .fold(f64::INFINITY, f64::min),
             Alignment::CenterVertical => {
                 let (min_y, max_y) =
                     selected
                         .iter()
                         .fold((f64::INFINITY, f64::NEG_INFINITY), |(min, max), o| {
-                            let (_, y1, _, y2) = o.shape.bounding_box();
+                            let (_, y1, _, y2) = o.shape.bounds();
                             (min.min(y1), max.max(y2))
                         });
                 if min_y.is_infinite() {
@@ -667,7 +669,7 @@ impl Canvas {
         let mut deltas = Vec::new();
 
         for obj in selected {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             let (dx, dy) = match alignment {
                 Alignment::Left => (target - x1, 0.0),
                 Alignment::Right => (target - x2, 0.0),
@@ -703,7 +705,7 @@ impl Canvas {
 
             let mut new_shape = obj.shape.clone();
             new_shape.translate(offset_x, offset_y);
-            let (min_x, min_y, max_x, max_y) = new_shape.bounding_box();
+            let (min_x, min_y, max_x, max_y) = new_shape.bounds();
 
             // Handle group ID mapping
             let new_group_id = if let Some(old_gid) = obj.group_id {
@@ -757,7 +759,7 @@ impl Canvas {
         let mut has_selected = false;
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -812,7 +814,7 @@ impl Canvas {
 
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
-                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
+                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounds();
 
                 // Scale relative to the center of the SELECTION bounding box
                 obj.shape.scale(sx, sy, Point::new(center_x, center_y));
@@ -822,7 +824,7 @@ impl Canvas {
                 let t_dy = new_center_y - center_y;
                 obj.shape.translate(t_dx, t_dy);
 
-                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
                 updates.push((
                     obj.id,
                     Bounds::new(old_x1, old_y1, old_x2, old_y2),
@@ -842,7 +844,7 @@ impl Canvas {
         let mut updates = Vec::new();
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             let width = x2 - x1;
             let height = y2 - y1;
 
@@ -884,7 +886,7 @@ impl Canvas {
                     ))
                 }
                 Shape::Path(path_shape) => {
-                    let (path_x1, path_y1, path_x2, path_y2) = path_shape.bounding_box();
+                    let (path_x1, path_y1, path_x2, path_y2) = path_shape.bounds();
                     let path_w = path_x2 - path_x1;
                     let path_h = path_y2 - path_y1;
 
@@ -940,7 +942,7 @@ impl Canvas {
 
         for obj in self.shape_store.iter_mut() {
             if obj.selected {
-                let (x1, y1, x2, y2) = obj.shape.bounding_box();
+                let (x1, y1, x2, y2) = obj.shape.bounds();
                 let width = x2 - x1;
                 let height = y2 - y1;
 
@@ -1024,7 +1026,7 @@ impl Canvas {
                 };
                 obj.shape = new_shape;
 
-                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
                 updates.push((
                     obj.id,
                     Bounds::new(x1, y1, x2, y2),
@@ -1060,7 +1062,7 @@ impl Canvas {
         let mut has_selected = false;
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -1143,7 +1145,7 @@ impl Canvas {
         let mut has_selected = false;
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -1190,7 +1192,7 @@ impl Canvas {
                 continue;
             }
 
-            let (old_x, old_y, old_x2, old_y2) = obj.shape.bounding_box();
+            let (old_x, old_y, old_x2, old_y2) = obj.shape.bounds();
 
             // Apply scaling relative to group center
             obj.shape
@@ -1207,7 +1209,7 @@ impl Canvas {
 
             changed_any = true;
 
-            let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+            let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
             updates.push((
                 obj.id,
                 Bounds::new(old_x, old_y, old_x2, old_y2),
@@ -1252,13 +1254,13 @@ impl Canvas {
                 continue;
             }
             if let Some(text) = obj.shape.as_any().downcast_ref::<TextShape>() {
-                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
+                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounds();
                 let (x, y) = (text.x, text.y);
 
                 obj.shape = Shape::Text(TextShape::new(content.to_string(), x, y, font_size));
                 changed = true;
 
-                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
                 updates.push((
                     obj.id,
                     Bounds::new(old_x1, old_y1, old_x2, old_y2),
@@ -1285,7 +1287,7 @@ impl Canvas {
 
         for obj in self.shape_store.iter().filter(|o| o.selected) {
             if let Some(rect) = obj.shape.as_any().downcast_ref::<Rectangle>() {
-                let mut new_rect = *rect;
+                let mut new_rect = rect.clone();
                 new_rect.corner_radius = corner_radius;
                 new_rect.is_slot = is_slot;
 
@@ -1315,9 +1317,9 @@ impl Canvas {
                 continue;
             }
             if let Some(rect) = obj.shape.as_any().downcast_ref::<Rectangle>() {
-                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounding_box();
+                let (old_x1, old_y1, old_x2, old_y2) = obj.shape.bounds();
 
-                let mut new_rect = *rect;
+                let mut new_rect = rect.clone();
                 new_rect.corner_radius = corner_radius;
                 new_rect.is_slot = is_slot;
 
@@ -1332,7 +1334,7 @@ impl Canvas {
                 obj.shape = Shape::Rectangle(new_rect);
                 changed = true;
 
-                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounding_box();
+                let (new_x1, new_y1, new_x2, new_y2) = obj.shape.bounds();
                 updates.push((
                     obj.id,
                     Bounds::new(old_x1, old_y1, old_x2, old_y2),

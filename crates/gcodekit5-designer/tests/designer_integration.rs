@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Integration tests for the Designer tool
 
 use gcodekit5_core::Units;

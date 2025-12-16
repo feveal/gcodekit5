@@ -1,4 +1,5 @@
-use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::model::DesignerShape;
+use gcodekit5_designer::model::Point;
 use gcodekit5_designer::toolpath::{Toolpath, ToolpathSegment, ToolpathSegmentType};
 use gcodekit5_designer::toolpath_simulation::{
     MaterialRemovalInfo, SimulationState, ToolpathAnalyzer, ToolpathSimulator,

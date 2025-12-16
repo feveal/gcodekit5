@@ -1,5 +1,6 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::pocket_operations::{Island, PocketGenerator, PocketOperation};
-use gcodekit5_designer::shapes::{Circle, Point, Rectangle};
+use gcodekit5_designer::model::{Circle, Point, Rectangle};
 
 #[test]
 fn test_pocket_operation_creation() {

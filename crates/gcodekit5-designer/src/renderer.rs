@@ -8,6 +8,7 @@
 //! - Shape rendering with selection indicators
 
 use crate::{font_manager, Canvas};
+use crate::model::DesignerShape;
 use image::{Rgb, RgbImage};
 use rusttype::{point as rt_point, Scale};
 use tiny_skia::{Color, FillRule, Paint, PathBuilder, Pixmap, Rect, Stroke, Transform};
@@ -95,10 +96,10 @@ pub fn render_canvas(
         // The original renderer drew filled rectangles/circles/ellipses and stroked lines/paths.
 
         match &shape_obj.shape {
-            crate::shapes::Shape::Rectangle(rect) => {
+            crate::model::Shape::Rectangle(rect) => {
                 let rect_path = Rect::from_xywh(
-                    rect.x as f32,
-                    rect.y as f32,
+                    (rect.center.x - rect.width/2.0) as f32,
+                    (rect.center.y - rect.height/2.0) as f32,
                     rect.width as f32,
                     rect.height as f32,
                 );
@@ -107,7 +108,7 @@ pub fn render_canvas(
                     pixmap.fill_path(&path, &paint, FillRule::Winding, transform, None);
                 }
             }
-            crate::shapes::Shape::Circle(circle) => {
+            crate::model::Shape::Circle(circle) => {
                 let path = PathBuilder::from_circle(
                     circle.center.x as f32,
                     circle.center.y as f32,
@@ -117,7 +118,7 @@ pub fn render_canvas(
                     pixmap.fill_path(&p, &paint, FillRule::Winding, transform, None);
                 }
             }
-            crate::shapes::Shape::Line(line) => {
+            crate::model::Shape::Line(line) => {
                 let mut pb = PathBuilder::new();
                 pb.move_to(line.start.x as f32, line.start.y as f32);
                 pb.line_to(line.end.x as f32, line.end.y as f32);
@@ -130,7 +131,7 @@ pub fn render_canvas(
                     pixmap.stroke_path(&path, &paint, &stroke, transform, None);
                 }
             }
-            crate::shapes::Shape::Ellipse(ellipse) => {
+            crate::model::Shape::Ellipse(ellipse) => {
                 // tiny-skia doesn't have direct ellipse primitive, use scale on circle
                 let path = PathBuilder::from_circle(0.0, 0.0, 1.0); // Unit circle
                 if let Some(p) = path {
@@ -142,10 +143,10 @@ pub fn render_canvas(
                     pixmap.fill_path(&p, &paint, FillRule::Winding, ellipse_transform, None);
                 }
             }
-            crate::shapes::Shape::Path(path_shape) => {
+            crate::model::Shape::Path(path_shape) => {
                 // Convert lyon path to tiny-skia path
                 let mut pb = PathBuilder::new();
-                for event in path_shape.path.iter() {
+                for event in path_shape.render().iter() {
                     match event {
                         lyon::path::Event::Begin { at } => {
                             pb.move_to(at.x as f32, at.y as f32);
@@ -188,10 +189,10 @@ pub fn render_canvas(
                     pixmap.stroke_path(&path, &paint, &stroke, transform, None);
                 }
             }
-            crate::shapes::Shape::Text(text_shape) => {
-                // Text rendering using rusttype, drawing directly to pixmap pixels or using paths
+            crate::model::Shape::Text(text_shape) => {
+                // Text rendering using rusttype, drawing di(rect.center.y - rect.height/2.0) to pixmap pixels or using paths
                 // For simplicity and quality, let's convert glyphs to paths if possible, or just draw pixels.
-                // tiny-skia doesn't support text directly.
+                // tiny-skia doesn't support text di(rect.center.y - rect.height/2.0).
                 // We'll use the existing pixel-based approach but adapted for tiny-skia's buffer.
 
                 let font = font_manager::get_font_for(
@@ -257,7 +258,7 @@ pub fn render_canvas(
 
         // Draw Selection Indicators
         if shape_obj.selected {
-            let (x1, y1, x2, y2) = shape_obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = shape_obj.shape.bounds();
 
             // Draw bounding box
             let rect = Rect::from_ltrb(

@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::designer_visualizer_integration::{
     DesignVisualization, DesignerVisualizerIntegration, MaterialSettings, SimulationState,
     ToolpathViewSettings, VisualizationBounds,

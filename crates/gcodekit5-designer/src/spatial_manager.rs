@@ -1,4 +1,5 @@
-use crate::shapes::Shape;
+use crate::model::DesignerShape;
+use crate::model::Shape;
 use crate::spatial_index::{Bounds, SpatialIndex};
 
 /// Manages the spatial index for efficient shape queries.
@@ -58,7 +59,7 @@ impl SpatialManager {
     /// when you already have the bounds calculated.
     #[allow(dead_code)]
     pub fn insert(&mut self, id: u64, shape: &Shape) {
-        let (min_x, min_y, max_x, max_y) = shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = shape.bounds();
         self.index
             .insert(id, &Bounds::new(min_x, min_y, max_x, max_y));
     }
@@ -90,7 +91,7 @@ impl SpatialManager {
     /// when you already have the bounds calculated.
     #[allow(dead_code)]
     pub fn remove(&mut self, id: u64, shape: &Shape) {
-        let (min_x, min_y, max_x, max_y) = shape.bounding_box();
+        let (min_x, min_y, max_x, max_y) = shape.bounds();
         self.index
             .remove(id, &Bounds::new(min_x, min_y, max_x, max_y));
     }

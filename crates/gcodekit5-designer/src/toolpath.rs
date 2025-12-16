@@ -1,7 +1,7 @@
 //! Toolpath generation from design shapes.
 
 use super::pocket_operations::{PocketGenerator, PocketOperation, PocketStrategy};
-use super::shapes::{rotate_point, Circle, Line, PathShape, Point, Rectangle};
+use crate::model::{DesignCircle as Circle, DesignLine as Line, DesignPath as PathShape, Point, DesignRectangle as Rectangle, DesignerShape, rotate_point, DesignText as TextShape};
 use crate::font_manager;
 use lyon::path::iterator::PathIterator;
 use rusttype::{GlyphId, OutlineBuilder, Scale};
@@ -178,7 +178,7 @@ impl ToolpathGenerator {
         let mut segments = Vec::new();
 
         // Normalize coordinates
-        let (x1, y1, x2, y2) = rect.bounding_box();
+        let (x1, y1, x2, y2) = rect.bounds();
         let min_x = x1.min(x2);
         let max_x = x1.max(x2);
         let min_y = y1.min(y2);
@@ -545,8 +545,8 @@ impl ToolpathGenerator {
         if r > 0.001 || rect.rotation.abs() > 1e-6 {
             // Convert rounded or rotated rectangle to polygon for pocketing
             let mut vertices = Vec::new();
-            let x = rect.x;
-            let y = rect.y;
+            let x = (rect.center.x - rect.width/2.0);
+            let y = (rect.center.y - rect.height/2.0);
             let w = rect.width;
             let h = rect.height;
 
@@ -594,7 +594,7 @@ impl ToolpathGenerator {
             if rect.rotation.abs() > 1e-6 {
                 let center = Point::new(x + w / 2.0, y + h / 2.0);
                 for p in &mut vertices {
-                    *p = crate::shapes::rotate_point(*p, center, rect.rotation);
+                    *p = crate::model::rotate_point(*p, center, rect.rotation);
                 }
             }
 
@@ -662,19 +662,19 @@ impl ToolpathGenerator {
         let mut start_point = Point::new(0.0, 0.0);
 
         // Calculate center for rotation (unrotated bounding box)
-        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.path);
+        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
         let center = Point::new(
             (rect.min.x + rect.max.x) as f64 / 2.0,
             (rect.min.y + rect.max.y) as f64 / 2.0,
         );
         let rotation = path_shape.rotation;
 
-        for event in path_shape.path.iter().flattened(tolerance) {
+        for event in path_shape.render().iter().flattened(tolerance) {
             match event {
                 lyon::path::Event::Begin { at } => {
                     let mut p = Point::new(at.x as f64, at.y as f64);
                     if rotation.abs() > 1e-6 {
-                        p = crate::shapes::rotate_point(p, center, rotation);
+                        p = crate::model::rotate_point(p, center, rotation);
                     }
                     segments.push(ToolpathSegment::new(
                         ToolpathSegmentType::RapidMove,
@@ -689,7 +689,7 @@ impl ToolpathGenerator {
                 lyon::path::Event::Line { from: _, to } => {
                     let mut p = Point::new(to.x as f64, to.y as f64);
                     if rotation.abs() > 1e-6 {
-                        p = crate::shapes::rotate_point(p, center, rotation);
+                        p = crate::model::rotate_point(p, center, rotation);
                     }
                     segments.push(ToolpathSegment::new(
                         ToolpathSegmentType::LinearMove,
@@ -745,26 +745,26 @@ impl ToolpathGenerator {
         let mut vertices = Vec::new();
 
         // Calculate center for rotation
-        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.path);
+        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
         let center = Point::new(
             (rect.min.x + rect.max.x) as f64 / 2.0,
             (rect.min.y + rect.max.y) as f64 / 2.0,
         );
         let rotation = path_shape.rotation;
 
-        for event in path_shape.path.iter().flattened(tolerance) {
+        for event in path_shape.render().iter().flattened(tolerance) {
             match event {
                 lyon::path::Event::Begin { at } => {
                     let mut p = Point::new(at.x as f64, at.y as f64);
                     if rotation.abs() > 1e-6 {
-                        p = crate::shapes::rotate_point(p, center, rotation);
+                        p = crate::model::rotate_point(p, center, rotation);
                     }
                     vertices.push(p);
                 }
                 lyon::path::Event::Line { from: _, to } => {
                     let mut p = Point::new(to.x as f64, to.y as f64);
                     if rotation.abs() > 1e-6 {
-                        p = crate::shapes::rotate_point(p, center, rotation);
+                        p = crate::model::rotate_point(p, center, rotation);
                     }
                     vertices.push(p);
                 }
@@ -778,7 +778,7 @@ impl ToolpathGenerator {
 
     fn build_text_outline_segments(
         &self,
-        text_shape: &crate::shapes::TextShape,
+        text_shape: &TextShape,
     ) -> Vec<ToolpathSegment> {
         let mut segments = Vec::new();
 
@@ -789,7 +789,7 @@ impl ToolpathGenerator {
         let line_height = v_metrics.ascent - v_metrics.descent + v_metrics.line_gap;
 
         // Match the designer's text rotation behaviour: rotate around the *unrotated* text bounds center.
-        let (min_x, min_y, max_x, max_y) = text_shape.local_bounding_box();
+        let (min_x, min_y, max_x, max_y) = text_shape.bounds();
         let baseline_y0 = (text_shape.y as f32) + v_metrics.ascent;
         let rotation_center_raw = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
         let rotation_center = Point::new(
@@ -844,7 +844,7 @@ impl ToolpathGenerator {
     /// Generates a pocket (area clearing) toolpath for text.
     pub fn generate_text_pocket_toolpath(
         &self,
-        text_shape: &crate::shapes::TextShape,
+        text_shape: &TextShape,
         step_down: f64,
     ) -> Vec<Toolpath> {
         let outline_segments = self.build_text_outline_segments(text_shape);
@@ -1122,7 +1122,7 @@ impl ToolpathGenerator {
     /// Generates a contour (profile) toolpath for text.
     pub fn generate_text_toolpath(
         &self,
-        text_shape: &crate::shapes::TextShape,
+        text_shape: &TextShape,
         step_down: f64,
     ) -> Vec<Toolpath> {
         let segments = self.build_text_outline_segments(text_shape);

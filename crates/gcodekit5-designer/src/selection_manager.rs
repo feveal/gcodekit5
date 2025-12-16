@@ -1,5 +1,6 @@
+use crate::model::DesignerShape;
 use crate::shape_store::ShapeStore;
-use crate::shapes::Point;
+use crate::Point;
 use crate::spatial_index::{Bounds, SpatialIndex};
 use std::collections::{HashMap, HashSet};
 
@@ -146,7 +147,7 @@ impl SelectionManager {
         let mut group_bounds: HashMap<u64, (f64, f64, f64, f64)> = HashMap::new();
         for obj in store.iter() {
             if let Some(gid) = obj.group_id {
-                let (sx1, sy1, sx2, sy2) = obj.shape.bounding_box();
+                let (sx1, sy1, sx2, sy2) = obj.shape.bounds();
                 group_bounds
                     .entry(gid)
                     .and_modify(|(min_x, min_y, max_x, max_y)| {
@@ -187,7 +188,7 @@ impl SelectionManager {
                 } else {
                     // Handle single shape selection: use precise hit test
                     if candidates.contains(&obj.id) {
-                        if obj.shape.contains_point(point, tolerance) {
+                        if obj.shape.contains_point(*point, tolerance) {
                             found_id = Some(obj.id);
                             found_group_id = None;
                             break;
@@ -296,7 +297,7 @@ impl SelectionManager {
 
         for obj in store.iter_mut() {
             if candidates.contains(&obj.id) {
-                let (sx1, sy1, sx2, sy2) = obj.shape.bounding_box();
+                let (sx1, sy1, sx2, sy2) = obj.shape.bounds();
                 // Check for intersection
                 if sx1 < rx + rw && sx2 > rx && sy1 < ry + rh && sy2 > ry {
                     obj.selected = true;
@@ -385,7 +386,7 @@ impl SelectionManager {
 
         for id in selected_ids {
             if let Some(obj) = store.remove(id) {
-                let (min_x, min_y, max_x, max_y) = obj.shape.bounding_box();
+                let (min_x, min_y, max_x, max_y) = obj.shape.bounds();
                 spatial_index.remove(id, &Bounds::new(min_x, min_y, max_x, max_y));
             }
         }

@@ -13,7 +13,7 @@
 //! - Multi-pass cutting for deeper designs
 //! - Toolpath generation and optimization
 
-use crate::shapes::Point;
+use crate::Point;
 use anyhow::Result;
 
 /// Represents a V-bit tool with specific geometry

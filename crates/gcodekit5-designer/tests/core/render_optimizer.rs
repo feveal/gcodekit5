@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::render_optimizer::RenderOptimizer;
 use gcodekit5_designer::spatial_index::Bounds;
 

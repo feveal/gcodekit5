@@ -3,7 +3,7 @@
 //! Implements pocket milling operations with island detection and offset path generation.
 //! Supports outline pocket and island preservation.
 
-use super::shapes::{Circle, Point, Rectangle};
+use crate::model::{DesignCircle as Circle, Point, DesignRectangle as Rectangle};
 use super::toolpath::{Toolpath, ToolpathSegment, ToolpathSegmentType};
 use cavalier_contours::polyline::{PlineSource, PlineSourceMut, PlineVertex, Polyline};
 use std::f64::consts::PI;
@@ -165,8 +165,8 @@ impl PocketGenerator {
                 let mut current_offset = half_tool;
 
                 while current_offset < max_offset {
-                    let inset_x = rect.x + current_offset;
-                    let inset_y = rect.y + current_offset;
+                    let inset_x = (rect.center.x - rect.width/2.0) + current_offset;
+                    let inset_y = (rect.center.y - rect.height/2.0) + current_offset;
                     let inset_width = (rect.width - 2.0 * current_offset).max(0.0);
                     let inset_height = (rect.height - 2.0 * current_offset).max(0.0);
 
@@ -218,10 +218,10 @@ impl PocketGenerator {
         } else {
             // Convert to polygon and use generic generator
             let vertices = vec![
-                Point::new(rect.x, rect.y),
-                Point::new(rect.x + rect.width, rect.y),
-                Point::new(rect.x + rect.width, rect.y + rect.height),
-                Point::new(rect.x, rect.y + rect.height),
+                Point::new((rect.center.x - rect.width/2.0), (rect.center.y - rect.height/2.0)),
+                Point::new((rect.center.x - rect.width/2.0) + rect.width, (rect.center.y - rect.height/2.0)),
+                Point::new((rect.center.x - rect.width/2.0) + rect.width, (rect.center.y - rect.height/2.0) + rect.height),
+                Point::new((rect.center.x - rect.width/2.0), (rect.center.y - rect.height/2.0) + rect.height),
             ];
             self.generate_polygon_pocket(&vertices, step_down)
         }
@@ -747,8 +747,8 @@ impl PocketGenerator {
                 break;
             }
 
-            let inset_x = rect.x + offset;
-            let inset_y = rect.y + offset;
+            let inset_x = (rect.center.x - rect.width/2.0) + offset;
+            let inset_y = (rect.center.y - rect.height/2.0) + offset;
             let inset_width = (rect.width - 2.0 * offset).max(0.0);
             let inset_height = (rect.height - 2.0 * offset).max(0.0);
 

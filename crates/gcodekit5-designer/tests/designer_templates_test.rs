@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! # Designer Template Management Tests
 //!
 //! Tests for the design template system including persistence,

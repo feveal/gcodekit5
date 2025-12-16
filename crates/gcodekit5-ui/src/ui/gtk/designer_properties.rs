@@ -3,7 +3,8 @@ use gcodekit5_core::units;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::font_manager;
 use gcodekit5_designer::pocket_operations::PocketStrategy;
-use gcodekit5_designer::shapes::{OperationType, Point, Shape};
+use gcodekit5_designer::model::{DesignerShape, Point, Shape};
+use gcodekit5_designer::shapes::OperationType;
 use gcodekit5_settings::SettingsPersistence;
 use gtk4::prelude::*;
 use gtk4::{
@@ -634,6 +635,7 @@ impl PropertiesPanel {
                             Shape::Rectangle(rect) => rect.rotation = angle.to_radians(),
                             Shape::Circle(circle) => circle.rotation = angle.to_radians(),
                             Shape::Ellipse(ellipse) => ellipse.rotation = angle.to_radians(),
+                            Shape::Path(path) => path.rotation = angle.to_radians(),
                             _ => {}
                         }
                     }
@@ -954,10 +956,14 @@ impl PropertiesPanel {
     fn update_shape_position_and_size(shape: &mut Shape, x: f64, y: f64, width: f64, height: f64) {
         match shape {
             Shape::Rectangle(rect) => {
-                rect.x = x;
-                rect.y = y;
+                rect.center.x = x;
+                rect.center.y = y;
                 rect.width = width;
                 rect.height = height;
+
+                if rect.is_slot {
+                    rect.corner_radius = rect.width.min(rect.height) / 2.0;
+                }
             }
             Shape::Circle(circle) => {
                 circle.center = Point::new(x, y);
@@ -973,14 +979,29 @@ impl PropertiesPanel {
                 line.start = Point::new(x, y);
                 line.end = Point::new(x + width, y + height);
             }
+            Shape::Path(path) => {
+                // Calculate current center and size
+                let (x1, y1, x2, y2) = path.bounds();
+                let current_w = x2 - x1;
+                let current_h = y2 - y1;
+                let current_cx = (x1 + x2) / 2.0;
+                let current_cy = (y1 + y2) / 2.0;
+
+                // Calculate scale factors
+                let sx = if current_w.abs() > 1e-6 { width / current_w } else { 1.0 };
+                let sy = if current_h.abs() > 1e-6 { height / current_h } else { 1.0 };
+
+                // Scale around current center
+                path.scale(sx, sy, Point::new(current_cx, current_cy));
+
+                // Translate to new center
+                path.translate(x - current_cx, y - current_cy);
+            }
             Shape::Text(text) => {
                 text.x = x;
                 text.y = y;
                 // Width/Height are derived from font size and content, so we don't update them here
                 // unless we want to implement scaling via width/height
-            }
-            _ => {
-                // Other shapes not yet implemented
             }
         }
     }
@@ -1111,9 +1132,9 @@ impl PropertiesPanel {
                         self.text_frame.set_visible(false);
 
                         self.pos_x_entry
-                            .set_text(&units::format_length(rect.x as f32, system));
+                            .set_text(&units::format_length(rect.center.x as f32, system));
                         self.pos_y_entry
-                            .set_text(&units::format_length(rect.y as f32, system));
+                            .set_text(&units::format_length(rect.center.y as f32, system));
                         self.width_entry
                             .set_text(&units::format_length(rect.width as f32, system));
                         self.height_entry
@@ -1206,6 +1227,35 @@ impl PropertiesPanel {
                         self.font_size_entry.set_text(&format_font_points(0.0));
                         self.font_size_entry.set_sensitive(false);
                     }
+                    Shape::Path(path) => {
+                        self.corner_frame.set_visible(false);
+                        self.text_frame.set_visible(false);
+
+                        let (x1, y1, x2, y2) = path.bounds();
+                        let w = x2 - x1;
+                        let h = y2 - y1;
+                        let cx = (x1 + x2) / 2.0;
+                        let cy = (y1 + y2) / 2.0;
+
+                        self.pos_x_entry
+                            .set_text(&units::format_length(cx as f32, system));
+                        self.pos_y_entry
+                            .set_text(&units::format_length(cy as f32, system));
+                        self.width_entry
+                            .set_text(&units::format_length(w as f32, system));
+                        self.height_entry
+                            .set_text(&units::format_length(h as f32, system));
+                        self.rotation_entry
+                            .set_text(&format!("{:.1}", path.rotation.to_degrees()));
+
+                        self.corner_radius_entry.set_sensitive(false);
+                        self.is_slot_check.set_sensitive(false);
+
+                        self.text_entry.set_text("");
+                        self.text_entry.set_sensitive(false);
+                        self.font_size_entry.set_text(&format_font_points(0.0));
+                        self.font_size_entry.set_sensitive(false);
+                    }
                     Shape::Text(text) => {
                         self.corner_frame.set_visible(false);
                         self.text_frame.set_visible(true);
@@ -1215,7 +1265,7 @@ impl PropertiesPanel {
                         self.pos_y_entry
                             .set_text(&units::format_length(text.y as f32, system));
                         // Width/Height are derived, maybe show bounding box size?
-                        let (x1, y1, x2, y2) = text.bounding_box();
+                        let (x1, y1, x2, y2) = text.bounds();
                         self.width_entry
                             .set_text(&units::format_length((x2 - x1) as f32, system));
                         self.height_entry
@@ -1262,20 +1312,6 @@ impl PropertiesPanel {
                         self.font_family_combo.set_selected(family_idx);
                         self.font_bold_check.set_active(text.bold);
                         self.font_italic_check.set_active(text.italic);
-                    }
-                    _ => {
-                        self.corner_frame.set_visible(false);
-                        self.text_frame.set_visible(false);
-
-                        // Other shapes
-                        self.corner_radius_entry.set_sensitive(false);
-                        self.is_slot_check.set_sensitive(false);
-
-                        self.text_entry.set_text("");
-                        self.text_entry.set_sensitive(false);
-                        self.font_size_entry
-                            .set_text(&units::format_length(0.0, system));
-                        self.font_size_entry.set_sensitive(false);
                     }
                 }
             } else {

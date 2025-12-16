@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Integration tests for DXF import and parsing (Phase 4.5)
 
 use gcodekit5_designer::dxf_parser::{
@@ -300,9 +301,9 @@ fn test_dxf_file_unit_conversion_inches_to_mm() {
 }
 
 #[test]
-fn test_dxf_file_bounding_box() {
+fn test_dxf_file_bounds() {
     let file = DxfFile::new();
-    let (min, max) = file.bounding_box();
+    let (min, max) = file.bounds();
 
     assert_eq!(min, file.header.extents_min);
     assert_eq!(max, file.header.extents_max);

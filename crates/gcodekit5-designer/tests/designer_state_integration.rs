@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Designer state manager integration tests
 
 use gcodekit5_designer::{DesignerState, DrawingMode, Point};
@@ -123,7 +124,7 @@ fn test_designer_state_polyline_update() {
     if let Some(id) = state.canvas.selected_id() {
         if let Some(obj) = state.canvas.shapes().find(|o| o.id == id) {
             if let Some(path) = obj.shape.as_any().downcast_ref::<PathShape>() {
-                let (x1, _y1, x2, _y2) = path.bounding_box();
+                let (x1, _y1, x2, _y2) = path.bounds();
                 assert!((x1 - 0.0).abs() < 0.1);
                 assert!((x2 - 100.0).abs() < 0.1);
             } else {
@@ -139,7 +140,7 @@ fn test_designer_state_polyline_update() {
     if let Some(id) = state.canvas.selected_id() {
         if let Some(obj) = state.canvas.shapes().find(|o| o.id == id) {
             if let Some(path) = obj.shape.as_any().downcast_ref::<PathShape>() {
-                let (x1, y1, _x2, _y2) = path.bounding_box();
+                let (x1, y1, _x2, _y2) = path.bounds();
                 assert!((x1 - 10.0).abs() < 0.1);
                 assert!((y1 - 10.0).abs() < 0.1);
             } else {

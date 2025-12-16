@@ -3,7 +3,7 @@
 //! Provides simulation capabilities for previewing toolpath execution,
 //! estimating machining time, and detecting potential collisions.
 
-use super::shapes::Point;
+use crate::model::Point;
 use super::toolpath::{Toolpath, ToolpathSegmentType};
 
 /// Simulation state of a toolpath.

@@ -4,8 +4,10 @@
 use crate::commands::*;
 use crate::{
     canvas::DrawingObject,
-    shapes::{OperationType, PathShape, Shape, TextShape},
+    model::{DesignPath as PathShape, Shape, DesignText as TextShape, DesignerShape},
+    shapes::OperationType,
     stock_removal::{SimulationResult, StockMaterial},
+    ops::{perform_boolean, BooleanOp},
     Canvas, Circle, DrawingMode, Ellipse, Line, Point, Rectangle, ToolpathGenerator,
     ToolpathToGcode,
 };
@@ -83,7 +85,7 @@ impl DesignerState {
             clipboard: Vec::new(),
             default_properties_shape: crate::canvas::DrawingObject::new(
                 0,
-                crate::shapes::Shape::Rectangle(crate::shapes::Rectangle::new(0.0, 0.0, 0.0, 0.0)),
+                crate::model::Shape::Rectangle(crate::model::DesignRectangle::new(0.0, 0.0, 0.0, 0.0)),
             ),
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
@@ -170,6 +172,12 @@ impl DesignerState {
         // Or maybe we can merge groups?
         // For now, let's follow the prompt's implication:
         selected.iter().any(|s| s.group_id.is_none())
+    }
+
+    /// Check if boolean operations are possible (at least 2 items selected)
+    pub fn can_perform_boolean_op(&self) -> bool {
+        let selected_count = self.canvas.shapes().filter(|s| s.selected).count();
+        selected_count >= 2
     }
 
     /// Check if ungrouping is possible (any selected item is in a group)
@@ -310,7 +318,7 @@ impl DesignerState {
         let mut max_y = f64::NEG_INFINITY;
 
         for obj in &self.clipboard {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -532,6 +540,66 @@ impl DesignerState {
         }
     }
 
+    /// Performs a boolean union on selected shapes.
+    pub fn perform_boolean_union(&mut self) {
+        self.perform_boolean_op(BooleanOp::Union, "Union");
+    }
+
+    /// Performs a boolean difference on selected shapes.
+    pub fn perform_boolean_difference(&mut self) {
+        self.perform_boolean_op(BooleanOp::Difference, "Difference");
+    }
+
+    /// Performs a boolean intersection on selected shapes.
+    pub fn perform_boolean_intersection(&mut self) {
+        self.perform_boolean_op(BooleanOp::Intersection, "Intersection");
+    }
+
+    fn perform_boolean_op(&mut self, op: BooleanOp, name: &str) {
+        let selected: Vec<_> = self
+            .canvas
+            .shapes()
+            .filter(|s| s.selected)
+            .cloned()
+            .collect();
+
+        if selected.len() < 2 {
+            return;
+        }
+
+        let mut result_shape = selected[0].shape.clone();
+        
+        for i in 1..selected.len() {
+            result_shape = perform_boolean(&result_shape, &selected[i].shape, match op {
+                BooleanOp::Union => BooleanOp::Union,
+                BooleanOp::Difference => BooleanOp::Difference,
+                BooleanOp::Intersection => BooleanOp::Intersection,
+            });
+        }
+
+        let new_id = self.canvas.generate_id();
+        let mut new_obj = DrawingObject::new(new_id, result_shape);
+        new_obj.selected = true;
+
+        let mut commands = Vec::new();
+        for obj in selected {
+            commands.push(DesignerCommand::RemoveShape(RemoveShape {
+                id: obj.id,
+                object: Some(obj),
+            }));
+        }
+        commands.push(DesignerCommand::AddShape(AddShape {
+            id: new_id,
+            object: Some(new_obj),
+        }));
+
+        let cmd = DesignerCommand::CompositeCommand(CompositeCommand {
+            commands,
+            name: name.to_string(),
+        });
+        self.push_command(cmd);
+    }
+
     /// Generates G-code from the current design.
     pub fn generate_gcode(&mut self) -> String {
         let mut gcode = String::new();
@@ -561,7 +629,7 @@ impl DesignerState {
             self.toolpath_generator.set_step_in(shape.step_in as f64);
 
             let (toolpaths, pocket_fallback_to_profile) = match &shape.shape {
-                crate::shapes::Shape::Rectangle(rect) => {
+                crate::model::Shape::Rectangle(rect) => {
                     if shape.operation_type == OperationType::Pocket {
                         (
                             self.toolpath_generator.generate_rectangle_pocket(
@@ -580,7 +648,7 @@ impl DesignerState {
                         )
                     }
                 }
-                crate::shapes::Shape::Circle(circle) => {
+                crate::model::Shape::Circle(circle) => {
                     if shape.operation_type == OperationType::Pocket {
                         (
                             self.toolpath_generator.generate_circle_pocket(
@@ -599,13 +667,13 @@ impl DesignerState {
                         )
                     }
                 }
-                crate::shapes::Shape::Line(line) => (
+                crate::model::Shape::Line(line) => (
                     self.toolpath_generator
                         .generate_line_contour(line, shape.step_down as f64),
                     false,
                 ),
-                crate::shapes::Shape::Ellipse(ellipse) => {
-                    let (x1, y1, x2, y2) = ellipse.bounding_box();
+                crate::model::Shape::Ellipse(ellipse) => {
+                    let (x1, y1, x2, y2) = ellipse.bounds();
                     let cx = (x1 + x2) / 2.0;
                     let cy = (y1 + y2) / 2.0;
                     let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
@@ -616,7 +684,7 @@ impl DesignerState {
                         false,
                     )
                 }
-                crate::shapes::Shape::Path(path_shape) => {
+                crate::model::Shape::Path(path_shape) => {
                     if shape.operation_type == OperationType::Pocket {
                         (
                             self.toolpath_generator.generate_path_pocket(
@@ -635,7 +703,7 @@ impl DesignerState {
                         )
                     }
                 }
-                crate::shapes::Shape::Text(text) => {
+                crate::model::Shape::Text(text) => {
                     if shape.operation_type == OperationType::Pocket {
                         let pocket = self
                             .toolpath_generator
@@ -717,41 +785,41 @@ impl DesignerState {
 
             // Add shape-specific data
             match &shape.shape {
-                crate::shapes::Shape::Rectangle(rect) => {
-                    let (x1, y1, x2, y2) = rect.bounding_box();
+                crate::model::Shape::Rectangle(rect) => {
+                    let (x1, y1, x2, y2) = rect.bounds();
                     gcode.push_str(&format!(
                         "; Position: ({:.3}, {:.3}) to ({:.3}, {:.3})\n",
                         x1, y1, x2, y2
                     ));
                     gcode.push_str(&format!("; Corner radius: {:.3}mm\n", rect.corner_radius));
                 }
-                crate::shapes::Shape::Circle(circle) => {
+                crate::model::Shape::Circle(circle) => {
                     gcode.push_str(&format!(
                         "; Center: ({:.3}, {:.3}), Radius: {:.3}mm\n",
                         circle.center.x, circle.center.y, circle.radius
                     ));
                 }
-                crate::shapes::Shape::Line(line) => {
+                crate::model::Shape::Line(line) => {
                     gcode.push_str(&format!(
                         "; Start: ({:.3}, {:.3}), End: ({:.3}, {:.3})\n",
                         line.start.x, line.start.y, line.end.x, line.end.y
                     ));
                 }
-                crate::shapes::Shape::Ellipse(ellipse) => {
-                    let (x1, y1, x2, y2) = ellipse.bounding_box();
+                crate::model::Shape::Ellipse(ellipse) => {
+                    let (x1, y1, x2, y2) = ellipse.bounds();
                     gcode.push_str(&format!(
                         "; Position: ({:.3}, {:.3}) to ({:.3}, {:.3})\n",
                         x1, y1, x2, y2
                     ));
                 }
-                crate::shapes::Shape::Path(path) => {
-                    let (x1, y1, x2, y2) = path.bounding_box();
+                crate::model::Shape::Path(path) => {
+                    let (x1, y1, x2, y2) = path.bounds();
                     gcode.push_str(&format!(
                         "; Path bounds: ({:.3}, {:.3}) to ({:.3}, {:.3})\n",
                         x1, y1, x2, y2
                     ));
                 }
-                crate::shapes::Shape::Text(text) => {
+                crate::model::Shape::Text(text) => {
                     gcode.push_str(&format!(
                         "; Text: \"{}\", Font size: {:.3}mm\n",
                         text.text, text.font_size
@@ -1041,7 +1109,7 @@ impl DesignerState {
 
         for id in &ids {
             if let Some(obj) = self.canvas.get_shape(*id) {
-                let (x1, y1, x2, y2) = obj.shape.bounding_box();
+                let (x1, y1, x2, y2) = obj.shape.bounds();
                 min_x = min_x.min(x1);
                 min_y = min_y.min(y1);
                 max_x = max_x.max(x2);
@@ -1457,14 +1525,15 @@ impl DesignerState {
         let mut commands = Vec::new();
         for obj in self.canvas.shapes_mut() {
             if obj.selected {
-                if let crate::shapes::Shape::Rectangle(mut rect) = obj.shape {
+                if let crate::model::Shape::Rectangle(rect) = &obj.shape {
                     let max_radius = rect.width.min(rect.height) / 2.0;
                     let new_radius = radius.min(max_radius).max(0.0);
 
                     if (rect.corner_radius - new_radius).abs() > f64::EPSILON {
-                        rect.corner_radius = new_radius;
                         let mut new_obj = obj.clone();
-                        new_obj.shape = crate::shapes::Shape::Rectangle(rect);
+                        if let crate::model::Shape::Rectangle(new_rect) = &mut new_obj.shape {
+                            new_rect.corner_radius = new_radius;
+                        }
 
                         commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
                             id: obj.id,
@@ -1500,7 +1569,7 @@ impl DesignerState {
             let mut has_selection = false;
 
             for obj in self.canvas.shapes().filter(|s| s.selected) {
-                let (x1, y1, x2, y2) = obj.shape.local_bounding_box();
+                let (x1, y1, x2, y2) = obj.shape.bounds();
                 min_x = min_x.min(x1);
                 min_y = min_y.min(y1);
                 max_x = max_x.max(x2);
@@ -1524,7 +1593,7 @@ impl DesignerState {
                     let mut new_obj = obj.clone();
 
                     // Calculate shape center using local bounding box (pivot point)
-                    let (sx1, sy1, sx2, sy2) = obj.shape.local_bounding_box();
+                    let (sx1, sy1, sx2, sy2) = obj.shape.bounds();
                     let shape_center_x = (sx1 + sx2) / 2.0;
                     let shape_center_y = (sy1 + sy2) / 2.0;
 
@@ -1549,12 +1618,12 @@ impl DesignerState {
 
                     // Update shape rotation
                     match &mut new_obj.shape {
-                        crate::shapes::Shape::Rectangle(s) => s.rotation += angle_delta,
-                        crate::shapes::Shape::Circle(s) => s.rotation += angle_delta,
-                        crate::shapes::Shape::Line(s) => s.rotation += angle_delta,
-                        crate::shapes::Shape::Ellipse(s) => s.rotation += angle_delta,
-                        crate::shapes::Shape::Path(s) => s.rotation += angle_delta,
-                        crate::shapes::Shape::Text(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Rectangle(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Circle(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Line(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Ellipse(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Path(s) => s.rotation += angle_delta,
+                        crate::model::Shape::Text(s) => s.rotation += angle_delta,
                     }
 
                     commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
@@ -1578,12 +1647,12 @@ impl DesignerState {
                 if obj.selected {
                     let mut new_obj = obj.clone();
                     match &mut new_obj.shape {
-                        crate::shapes::Shape::Rectangle(s) => s.rotation = rotation,
-                        crate::shapes::Shape::Circle(s) => s.rotation = rotation,
-                        crate::shapes::Shape::Line(s) => s.rotation = rotation,
-                        crate::shapes::Shape::Ellipse(s) => s.rotation = rotation,
-                        crate::shapes::Shape::Path(s) => s.rotation = rotation,
-                        crate::shapes::Shape::Text(s) => s.rotation = rotation,
+                        crate::model::Shape::Rectangle(s) => s.rotation = rotation,
+                        crate::model::Shape::Circle(s) => s.rotation = rotation,
+                        crate::model::Shape::Line(s) => s.rotation = rotation,
+                        crate::model::Shape::Ellipse(s) => s.rotation = rotation,
+                        crate::model::Shape::Path(s) => s.rotation = rotation,
+                        crate::model::Shape::Text(s) => s.rotation = rotation,
                     }
 
                     if (obj.shape.rotation() - rotation).abs() > f64::EPSILON {
@@ -1611,15 +1680,15 @@ impl DesignerState {
         let mut commands = Vec::new();
         for obj in self.canvas.shapes_mut() {
             if obj.selected {
-                if let crate::shapes::Shape::Rectangle(mut rect) = obj.shape {
+                if let crate::model::Shape::Rectangle(rect) = &obj.shape {
                     if rect.is_slot != is_slot {
-                        rect.is_slot = is_slot;
-                        if is_slot {
-                            rect.corner_radius = rect.width.min(rect.height) / 2.0;
-                        }
-
                         let mut new_obj = obj.clone();
-                        new_obj.shape = crate::shapes::Shape::Rectangle(rect);
+                        if let crate::model::Shape::Rectangle(new_rect) = &mut new_obj.shape {
+                            new_rect.is_slot = is_slot;
+                            if is_slot {
+                                new_rect.corner_radius = new_rect.width.min(new_rect.height) / 2.0;
+                            }
+                        }
 
                         commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
                             id: obj.id,
@@ -1759,7 +1828,7 @@ impl DesignerState {
         let mut max_y = f64::NEG_INFINITY;
 
         for obj in &selected {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             min_x = min_x.min(x1);
             min_y = min_y.min(y1);
             max_x = max_x.max(x2);
@@ -1806,7 +1875,7 @@ impl DesignerState {
 
         for obj in &selected {
             let path_shape = obj.shape.to_path_shape();
-            for event in path_shape.path.iter() {
+            for event in path_shape.render().iter() {
                 match event {
                     lyon::path::Event::Begin { at } => {
                         builder.begin(at);
@@ -1840,10 +1909,7 @@ impl DesignerState {
             }
         }
 
-        let new_path = PathShape {
-            path: builder.build(),
-            rotation: 0.0,
-        };
+        let new_path = PathShape::from_lyon_path(&builder.build());
         let new_id = self.canvas.generate_id();
         let mut new_obj = DrawingObject::new(new_id, Shape::Path(new_path));
         new_obj.selected = true;
@@ -1901,7 +1967,7 @@ impl DesignerState {
         self.canvas.deselect_all();
 
         for obj in &selected {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
+            let (x1, y1, x2, y2) = obj.shape.bounds();
             let orig_x = (x1 + x2) / 2.0;
             let orig_y = (y1 + y2) / 2.0;
 
@@ -1935,12 +2001,12 @@ impl DesignerState {
                             };
 
                             match &mut new_original.shape {
-                                crate::shapes::Shape::Rectangle(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Circle(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Line(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Ellipse(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Path(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Text(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Rectangle(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Circle(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Line(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Ellipse(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Path(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Text(s) => s.rotation += angle_delta,
                             }
                         }
                     }
@@ -1972,12 +2038,12 @@ impl DesignerState {
                             };
 
                             match &mut new_obj.shape {
-                                crate::shapes::Shape::Rectangle(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Circle(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Line(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Ellipse(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Path(s) => s.rotation += angle_delta,
-                                crate::shapes::Shape::Text(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Rectangle(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Circle(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Line(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Ellipse(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Path(s) => s.rotation += angle_delta,
+                                crate::model::Shape::Text(s) => s.rotation += angle_delta,
                             }
                         }
                     }

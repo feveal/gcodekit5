@@ -281,12 +281,12 @@ impl LayersPanel {
                 .iter()
                 .map(|shape_obj| {
                     let shape_type = match &shape_obj.shape {
-                        gcodekit5_designer::shapes::Shape::Rectangle(_) => t!("Rect"),
-                        gcodekit5_designer::shapes::Shape::Circle(_) => t!("Circ"),
-                        gcodekit5_designer::shapes::Shape::Line(_) => t!("Line"),
-                        gcodekit5_designer::shapes::Shape::Ellipse(_) => t!("Ellip"),
-                        gcodekit5_designer::shapes::Shape::Path(_) => t!("Path"),
-                        gcodekit5_designer::shapes::Shape::Text(_) => t!("Text"),
+                        gcodekit5_designer::model::Shape::Rectangle(_) => t!("Rect"),
+                        gcodekit5_designer::model::Shape::Circle(_) => t!("Circ"),
+                        gcodekit5_designer::model::Shape::Line(_) => t!("Line"),
+                        gcodekit5_designer::model::Shape::Ellipse(_) => t!("Ellip"),
+                        gcodekit5_designer::model::Shape::Path(_) => t!("Path"),
+                        gcodekit5_designer::model::Shape::Text(_) => t!("Text"),
                     };
                     (
                         shape_obj.id,

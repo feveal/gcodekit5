@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::import::SvgImporter;
 use gcodekit5_designer::shapes::Rectangle;
 

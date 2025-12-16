@@ -1,4 +1,5 @@
-use gcodekit5_designer::shapes::Rectangle;
+use gcodekit5_designer::model::DesignerShape;
+use gcodekit5_designer::model::Rectangle;
 use gcodekit5_designer::toolpath::ToolpathGenerator;
 
 #[test]

@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 //! Integration tests for Phase 3 CAM operations.
 
 use gcodekit5_designer::pocket_operations::PocketStrategy;

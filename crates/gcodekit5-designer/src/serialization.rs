@@ -5,12 +5,14 @@
 
 use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
+use crate::shapes::OperationType;
+use crate::model::{DesignCircle as Circle, DesignLine as Line, DesignEllipse as Ellipse, DesignPath as PathShape, DesignText as TextShape, DesignRectangle as Rectangle};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::canvas::DrawingObject;
 use super::pocket_operations::PocketStrategy;
-use super::shapes::*;
+use crate::model::*;
 
 /// Design file format version
 const FILE_FORMAT_VERSION: &str = "1.0";
@@ -202,7 +204,7 @@ impl DesignFile {
 
     /// Convert DrawingObject to ShapeData
     pub fn from_drawing_object(obj: &DrawingObject) -> ShapeData {
-        let (x, y, x2, y2) = obj.shape.bounding_box();
+        let (x, y, x2, y2) = obj.shape.bounds();
         let width = x2 - x;
         let height = y2 - y;
 
@@ -350,12 +352,12 @@ impl DesignFile {
         };
 
         let default_name = match shape.shape_type() {
-            crate::shapes::ShapeType::Rectangle => "Rectangle",
-            crate::shapes::ShapeType::Circle => "Circle",
-            crate::shapes::ShapeType::Line => "Line",
-            crate::shapes::ShapeType::Ellipse => "Ellipse",
-            crate::shapes::ShapeType::Path => "Path",
-            crate::shapes::ShapeType::Text => "Text",
+            crate::model::ShapeType::Rectangle => "Rectangle",
+            crate::model::ShapeType::Circle => "Circle",
+            crate::model::ShapeType::Line => "Line",
+            crate::model::ShapeType::Ellipse => "Ellipse",
+            crate::model::ShapeType::Path => "Path",
+            crate::model::ShapeType::Text => "Text",
         };
 
         Ok(DrawingObject {

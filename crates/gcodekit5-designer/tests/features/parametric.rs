@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::parametric::{
     Parameter, ParameterConstraint, ParameterSet, ParameterType, ParametricGenerator,
     ParametricTemplate, TemplateLibrary,

@@ -1,8 +1,9 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::arrays::{
     ArrayGenerator, ArrayOperation, ArrayType, CircularArrayParams, GridArrayParams,
     LinearArrayParams,
 };
-use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::model::Point;
 
 #[test]
 fn test_linear_array_params_creation() {

@@ -3,7 +3,7 @@
 //! This module provides utilities to convert coordinates and create toolpath segments
 //! for stock removal simulation.
 
-use crate::shapes::Point;
+use crate::model::Point;
 use crate::toolpath::{ToolpathSegment, ToolpathSegmentType};
 
 /// Convert 3D point to 2D designer Point

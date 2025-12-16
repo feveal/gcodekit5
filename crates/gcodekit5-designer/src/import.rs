@@ -13,7 +13,7 @@
 //! - Scale and offset adjustment
 
 use crate::dxf_parser::{DxfEntity, DxfFile, DxfParser};
-use crate::shapes::{Circle, Ellipse, Line, PathShape, Point, Rectangle, Shape};
+use crate::model::{DesignCircle as Circle, DesignEllipse as Ellipse, DesignLine as Line, DesignPath as PathShape, Point, DesignRectangle as Rectangle, Shape, DesignerShape};
 use anyhow::{anyhow, Result};
 use lyon::geom::Arc;
 use lyon::math::point;
@@ -60,13 +60,13 @@ enum ImportedShape {
 }
 
 impl ImportedShape {
-    fn bounding_box(&self) -> (f64, f64, f64, f64) {
+    fn bounds(&self) -> (f64, f64, f64, f64) {
         match self {
-            Self::Rect(s) => s.bounding_box(),
-            Self::Circle(s) => s.bounding_box(),
-            Self::Line(s) => s.bounding_box(),
-            Self::Ellipse(s) => s.bounding_box(),
-            Self::Path(s) => s.bounding_box(),
+            Self::Rect(s) => s.bounds(),
+            Self::Circle(s) => s.bounds(),
+            Self::Line(s) => s.bounds(),
+            Self::Ellipse(s) => s.bounds(),
+            Self::Path(s) => s.bounds(),
         }
     }
 
@@ -75,8 +75,8 @@ impl ImportedShape {
             Self::Rect(r) => {
                 // y' = -y + 2c
                 // New min_y is -(old_max_y) + 2c = -(r.y + r.height) + 2c
-                let new_y = -(r.y + r.height) + 2.0 * center_y + offset_y;
-                let new_x = r.x + offset_x;
+                let new_y = -(r.center.y + r.height/2.0) + 2.0 * center_y + offset_y;
+                let new_x = r.center.x - r.width/2.0 + offset_x;
                 Shape::Rectangle(Rectangle::new(new_x, new_y, r.width, r.height))
             }
             Self::Circle(c) => {
@@ -112,7 +112,7 @@ impl ImportedShape {
                     offset_x as f32,
                     (2.0 * center_y + offset_y) as f32,
                 );
-                Shape::Path(PathShape::new(p.path.transformed(&transform)))
+                let mut new_p = p.clone(); new_p.transform(&transform); Shape::Path(new_p)
             }
         }
     }
@@ -364,21 +364,16 @@ impl SvgImporter {
 
                         // Parse SVG path data
                         if let Some(path) = PathShape::from_svg_path(d_value) {
-                            // Apply group transform if present
-                            let final_path = if let Some((a, b, c, d_coeff, e, f)) = group_transform
-                            {
+                            let mut new_path = path.clone();
+                            if let Some((a, b, c, d_coeff, e, f)) = group_transform {
                                 let transform = lyon::math::Transform::new(a, b, c, d_coeff, e, f);
-                                path.path.clone().transformed(&transform)
-                            } else {
-                                path.path
-                            };
-
-                            // Apply importer scale only
-                            let scale_transform =
-                                lyon::math::Transform::scale(self.scale as f32, self.scale as f32);
-                            let scaled_path = final_path.clone().transformed(&scale_transform);
-
-                            imported_shapes.push(ImportedShape::Path(PathShape::new(scaled_path)));
+                                new_path.transform(&transform);
+                            }
+                            
+                            let scale_transform = lyon::math::Transform::scale(self.scale as f32, self.scale as f32);
+                            new_path.transform(&scale_transform);
+                            
+                            imported_shapes.push(ImportedShape::Path(new_path));
                         }
                     }
                 }
@@ -394,7 +389,7 @@ impl SvgImporter {
         let mut max_y = f64::MIN;
 
         for shape in &imported_shapes {
-            let (_, s_min_y, _, s_max_y) = shape.bounding_box();
+            let (_, s_min_y, _, s_max_y) = shape.bounds();
             if s_min_y < min_y {
                 min_y = s_min_y;
             }
@@ -508,7 +503,7 @@ impl DxfImporter {
         let shapes = self.convert_entities_to_shapes(&dxf_file)?;
 
         // Calculate dimensions from bounding box
-        let (min, max) = dxf_file.bounding_box();
+        let (min, max) = dxf_file.bounds();
         let dimensions = ((max.x - min.x).abs(), (max.y - min.y).abs());
 
         Ok(ImportedDesign {
@@ -618,8 +613,7 @@ impl DxfImporter {
             };
 
             if let Some(path) = path_opt {
-                let transformed_path = path.clone().transformed(&transform);
-                shapes.push(Shape::Path(PathShape::new(transformed_path)));
+                let mut shape = PathShape::from_lyon_path(&path); shape.transform(&transform); shapes.push(Shape::Path(shape));
             }
         }
 

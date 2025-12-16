@@ -10,7 +10,7 @@
 //! - Unit conversion
 //! - Color and linetype mapping
 
-use crate::shapes::Point;
+use crate::Point;
 use anyhow::Result;
 use std::collections::HashMap;
 
@@ -265,7 +265,7 @@ impl DxfFile {
     }
 
     /// Get bounding box of all entities
-    pub fn bounding_box(&self) -> (Point, Point) {
+    pub fn bounds(&self) -> (Point, Point) {
         (self.header.extents_min, self.header.extents_max)
     }
 

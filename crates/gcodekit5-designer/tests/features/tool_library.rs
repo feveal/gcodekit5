@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::tool_library::{Tool, ToolLibrary, ToolType};
 
 #[test]

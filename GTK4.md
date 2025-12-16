@@ -57,9 +57,10 @@
 - **Workspace**: Bump `[workspace.package].version` in root `Cargo.toml`.
 - **Lockfile**: Run `cargo check` to update `Cargo.lock`.
 
-### Unit Handling in CAM Tools
-- **Dimension Inputs**: Use `create_dimension_row` helper to create input rows with dynamic unit labels.
-- **Parsing**: Use `units::parse_length(text, system)` to parse user input into standard units (mm).
-- **Formatting**: Use `units::format_length(value, system)` to display values in the user's preferred unit.
-- **Updates**: Register a listener on `settings.persistence` to update UI labels and values when the measurement system changes.
-- **Storage**: Store parameters in standard units (mm) or raw values if appropriate, but ensure consistent interpretation.
+### Event Handling
+- **Right-Click Selection**: `GestureClick` for right-click (button 3) does NOT automatically select the item under the cursor. You must manually perform hit testing and update the selection in the handler if you want right-click to select the item before showing a context menu.
+- **Hit Testing**: Ensure `contains_point` logic for shapes checks the *interior* of closed shapes (like rectangles and circles), not just the boundary, if you want users to be able to select them by clicking inside. This is critical for intuitive interaction.
+
+### Inspector Properties
+- **Extensibility**: When adding new shape types (e.g., `Shape::Path`), ensure they are handled in `PropertiesPanel::update_from_selection` (to display values) and `PropertiesPanel::update_shape_position_and_size` (to apply changes).
+- **Path Handling**: For complex shapes like paths, use bounding box center for position (X/Y) and bounding box dimensions for size (Width/Height). Implement scaling and translation relative to the bounding box center to support parametric-like editing.

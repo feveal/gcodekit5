@@ -1,5 +1,6 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_designer::canvas::Canvas;
-use gcodekit5_designer::shapes::Point;
+use gcodekit5_designer::model::Point;
 
 #[test]
 fn test_canvas_add_shapes() {
@@ -57,21 +58,21 @@ fn test_resize_handle_sequence() {
     // Verify initial state
     let shapes: Vec<_> = canvas.shapes().collect();
     let shape = &shapes[0];
-    let (x1, y1, x2, y2) = shape.shape.bounding_box();
+    let (x1, y1, x2, y2) = shape.shape.bounds();
     assert_eq!((x1, y1, x2, y2), (0.0, 0.0, 100.0, 100.0));
 
     // Drag bottom-left handle down by 20
     canvas.resize_selected(2, 0.0, 20.0);
     let shapes: Vec<_> = canvas.shapes().collect();
     let shape = &shapes[0];
-    let (x1, y1, x2, y2) = shape.shape.bounding_box();
+    let (x1, y1, x2, y2) = shape.shape.bounds();
     assert_eq!((x1, y1, x2, y2), (0.0, 0.0, 100.0, 120.0));
 
     // Drag center handle by (10, 10)
     canvas.resize_selected(4, 10.0, 10.0);
     let shapes: Vec<_> = canvas.shapes().collect();
     let shape = &shapes[0];
-    let (x1, y1, x2, y2) = shape.shape.bounding_box();
+    let (x1, y1, x2, y2) = shape.shape.bounds();
     // Expected: center was at (50, 60), moving by (10, 10) should give (60, 70)
     // Which means rect should be at (10, 10, 110, 130)
     assert_eq!((x1, y1, x2, y2), (10.0, 10.0, 110.0, 130.0));

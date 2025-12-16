@@ -9,7 +9,7 @@
 //! - Configurable spacing, count, and orientation
 //! - Integration with existing shapes and toolpath generation
 
-use crate::shapes::Point;
+use crate::model::Point;
 use anyhow::Result;
 
 /// Represents different types of array operations

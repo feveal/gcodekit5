@@ -1,3 +1,4 @@
+use gcodekit5_designer::model::DesignerShape;
 #[path = "io/dxf_parser.rs"]
 mod dxf_parser;
 #[path = "io/gcode_gen.rs"]

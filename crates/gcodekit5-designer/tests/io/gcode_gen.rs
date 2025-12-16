@@ -1,6 +1,7 @@
+use gcodekit5_designer::model::DesignerShape;
 use gcodekit5_core::Units;
 use gcodekit5_designer::gcode_gen::ToolpathToGcode;
-use gcodekit5_designer::shapes::Rectangle;
+use gcodekit5_designer::model::Rectangle;
 use gcodekit5_designer::toolpath::{Toolpath, ToolpathGenerator};
 
 #[test]

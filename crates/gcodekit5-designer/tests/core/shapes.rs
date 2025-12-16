@@ -1,4 +1,5 @@
-use gcodekit5_designer::shapes::{Circle, Ellipse, Line, Point, Rectangle};
+use gcodekit5_designer::model::DesignerShape;
+use gcodekit5_designer::model::{Circle, Ellipse, Line, Point, Rectangle};
 
 #[test]
 fn test_point_distance() {
@@ -39,9 +40,9 @@ fn test_ellipse_contains_point() {
 }
 
 #[test]
-fn test_ellipse_bounding_box() {
+fn test_ellipse_bounds() {
     let ellipse = Ellipse::new(Point::new(10.0, 10.0), 5.0, 3.0);
-    let (min_x, min_y, max_x, max_y) = ellipse.bounding_box();
+    let (min_x, min_y, max_x, max_y) = ellipse.bounds();
     assert_eq!(min_x, 5.0);
     assert_eq!(min_y, 7.0);
     assert_eq!(max_x, 15.0);
@@ -56,14 +57,14 @@ fn test_polyline_regular() {
 }
 
 #[test]
-fn test_polyline_bounding_box() {
+fn test_polyline_bounds() {
     let polyline = Polyline::new(vec![
         Point::new(0.0, 0.0),
         Point::new(10.0, 0.0),
         Point::new(10.0, 10.0),
         Point::new(0.0, 10.0),
     ]);
-    let (min_x, min_y, max_x, max_y) = polyline.bounding_box();
+    let (min_x, min_y, max_x, max_y) = polyline.bounds();
     assert_eq!(min_x, 0.0);
     assert_eq!(min_y, 0.0);
     assert_eq!(max_x, 10.0);
