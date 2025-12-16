@@ -52,7 +52,6 @@ jobs:
           liblzma-dev \
           libbz2-dev \
           libfuse2 \
-          fuse \
           gettext \
           flatpak \
           flatpak-builder
