@@ -1,4 +1,7 @@
-## [0.36.1-alpha.0] - 2025-12-14
+## [0.40.0-alpha.0] - 2025-12-16
+
+### Changed
+- **Version**: Bumped version to 0.40.0-alpha.0.
 
 ### Added
 - **CI/CD**: Added GitHub Actions stages to build `.deb` and `.rpm` packages for Linux releases.
