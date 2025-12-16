@@ -14,7 +14,7 @@ modules:
     buildsystem: simple
     build-commands:
       - install -D -m 755 gcodekit5 /app/bin/gcodekit5
-      - install -D gcodekit5_128.png /app/share/icons/hicolor/128x128/apps/com.github.thawkins.gcodekit5.png
+      - install -D com.github.thawkins.gcodekit5.png /app/share/icons/hicolor/128x128/apps/com.github.thawkins.gcodekit5.png
       - install -D com.github.thawkins.gcodekit5.desktop /app/share/applications/com.github.thawkins.gcodekit5.desktop
       - install -D com.github.thawkins.gcodekit5.metainfo.xml /app/share/metainfo/com.github.thawkins.gcodekit5.metainfo.xml
     sources:
@@ -22,8 +22,8 @@ modules:
         path: ../gcodekit5-linux-x86_64
         dest-filename: gcodekit5
       - type: file
-        path: ../assets/Pictures/gcodekit5_128.png
-        dest-filename: gcodekit5_128.png
+        path: ../assets/Pictures/com.github.thawkins.gcodekit5.png
+        dest-filename: com.github.thawkins.gcodekit5.png
       - type: file
         path: com.github.thawkins.gcodekit5.desktop
       - type: file
