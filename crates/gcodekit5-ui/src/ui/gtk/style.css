@@ -405,7 +405,7 @@ label.help-content {
 
 /* Vector Preview Frame */
 frame.vector-preview {
-    background-color: var(--view-bg-color);
+    background-color: #808080;
     border: 1px solid var(--border-color);
     border-radius: 4px;
 }

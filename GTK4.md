@@ -157,3 +157,15 @@ When working with external crates that expose opaque types (private fields) but 
   - Pass all paths as a Vec to `generate_hatch`
 - This ensures the hatch generator properly respects holes - if you put multiple polygons in one Vec with shared builders, the holes won't be recognized.
 - Lyon's even-odd fill rule requires each polygon to be its own path for proper hole handling.
+
+## Machine Control UI
+- **G53 Button Removal**: The "Use G53 (Machine Coords)" button was removed from the UI as it was deemed redundant or confusing. G53 commands can still be sent via the console if needed.
+
+- **Device Console Logging**:
+  - All manual commands (jog, WCS, zeroing, home, unlock, overrides) are now logged to the device console.
+  - Streaming G-code commands are logged if they are sent via the kickstart or polling loop.
+  - Initialization commands ($I, $$, $10=47) are logged on connection.
+  - Soft reset (Ctrl-X) is logged.
+  - Pause (!) and Resume (~) are logged.
+
+## Best Practices

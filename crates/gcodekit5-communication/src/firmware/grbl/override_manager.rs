@@ -27,16 +27,18 @@ pub enum RealTimeOverrideCommand {
     RapidOv50 = 0x96,
     /// Rapid: 100% (0x97)
     RapidOv100 = 0x97,
-    /// Spindle: 10% decrease (0x99)
-    SpindleDecrease10 = 0x99,
-    /// Spindle: 1% decrease (0x9A)
-    SpindleDecrease1 = 0x9A,
-    /// Spindle: 1% increase (0x9B)
-    SpindleIncrease1 = 0x9B,
-    /// Spindle: 10% increase (0x9C)
-    SpindleIncrease10 = 0x9C,
-    /// Spindle: Stop (0x9D)
-    SpindleStop = 0x9D,
+    /// Spindle: 100% (0x99)
+    SpindleReset = 0x99,
+    /// Spindle: 10% increase (0x9A)
+    SpindleIncrease10 = 0x9A,
+    /// Spindle: 10% decrease (0x9B)
+    SpindleDecrease10 = 0x9B,
+    /// Spindle: 1% increase (0x9C)
+    SpindleIncrease1 = 0x9C,
+    /// Spindle: 1% decrease (0x9D)
+    SpindleDecrease1 = 0x9D,
+    /// Spindle: Stop (0x9E)
+    SpindleStop = 0x9E,
 }
 
 impl RealTimeOverrideCommand {

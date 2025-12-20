@@ -1,4 +1,18 @@
-Version: 0.40.0-alpha.5
+Version: 0.40.0-alpha.6
+
+## [0.40.0-alpha.6] - 2025-12-20
+
+### Changed
+- **Version**: Bumped version to 0.40.0-alpha.6.
+- **CAM Tools**: Changed Vector Image CAMTool preview background to 50% grey.
+
+### Fixed
+- **Machine Control**: Fixed feedrate display jumping and spindle speed showing zero.
+- **Machine Control**: Fixed override controls (Feed/Spindle) not working correctly.
+- **Machine Control**: Added commanded vs actual feedrate/spindle speed tracking.
+- **Machine Control**: Fixed elapsed time display to reset correctly on stop/estop.
+- **Machine Control**: Removed "Use G53" button.
+- **Machine Control**: Added logging of all sent commands to device console.
 
 ## [0.40.0-alpha.5] - 2025-12-19
 

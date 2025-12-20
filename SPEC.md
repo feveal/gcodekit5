@@ -1,10 +1,23 @@
 # GCodeKit5 - Specification Document
 
-**Version**: 0.40.0-alpha.2
+**Version**: 0.40.0-alpha.6
 **Last Updated**: 2025-12-16
 **Status**: Alpha Release
 
-### Latest Release (v0.40.0-alpha.5) - Device Manager & Machine Control
+### Latest Release (v0.40.0-alpha.6) - UI Polish & Fixes
+- ✅ **Machine Control**
+  - Fixed feedrate display jumping and spindle speed showing zero.
+  - Fixed override controls (Feed/Spindle) not working correctly.
+  - Added commanded vs actual feedrate/spindle speed tracking.
+  - Fixed elapsed time display to reset correctly on stop/estop.
+  - Removed "Use G53" button.
+  - Added logging of all sent commands to device console.
+- ✅ **CAM Tools**
+  - Changed Vector Image CAMTool preview background to 50% grey.
+- ✅ **Version**
+  - Bumped version to 0.40.0-alpha.6.
+
+### Previous Release (v0.40.0-alpha.5) - Device Manager & Machine Control
 - ✅ **Device Manager**
   - Added device type selection (CNC, Laser, Other) to Device Config tab.
   - Automatically configures `$32` (Laser Mode) and device capabilities based on type.

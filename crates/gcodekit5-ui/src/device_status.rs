@@ -35,6 +35,11 @@ pub struct GrblDeviceStatus {
 
     /// Last known GRBL settings (from `$$`), keyed by `$n`
     pub grbl_settings: HashMap<u8, String>,
+
+    /// Last commanded feed rate (F value)
+    pub commanded_feed_rate: Option<f32>,
+    /// Last commanded spindle speed (S value)
+    pub commanded_spindle_speed: Option<f32>,
 }
 
 impl Default for GrblDeviceStatus {
@@ -52,6 +57,8 @@ impl Default for GrblDeviceStatus {
             firmware_version: None,
             device_name: None,
             grbl_settings: HashMap::new(),
+            commanded_feed_rate: None,
+            commanded_spindle_speed: None,
         }
     }
 }
@@ -129,6 +136,18 @@ pub fn update_firmware_info(firmware_type: String, version: String, device_name:
 pub fn update_grbl_setting(number: u8, value: String) {
     if let Ok(mut status) = DEVICE_STATUS.write() {
         status.grbl_settings.insert(number, value);
+    }
+}
+
+pub fn update_commanded_feed_rate(feed_rate: f32) {
+    if let Ok(mut status) = DEVICE_STATUS.write() {
+        status.commanded_feed_rate = Some(feed_rate);
+    }
+}
+
+pub fn update_commanded_spindle_speed(spindle_speed: f32) {
+    if let Ok(mut status) = DEVICE_STATUS.write() {
+        status.commanded_spindle_speed = Some(spindle_speed);
     }
 }
 

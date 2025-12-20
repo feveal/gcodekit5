@@ -4,7 +4,7 @@ A modern, cross-platform G-Code sender and CNC machine controller written in Rus
 
 [![Build Status](https://github.com/thawkins/gcodekit5/workflows/Build%20and%20Release/badge.svg)](https://github.com/thawkins/gcodekit5/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.40.0--alpha.5-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.40.0--alpha.6-brightgreen.svg)](CHANGELOG.md)
 
 ## Overview
 
@@ -475,9 +475,18 @@ You may choose either license for your use of this software.
 
 ## Project Status
 
-**Current Version**: 0.40.0-alpha.5
+**Current Version**: 0.40.0-alpha.6
 **Status**: Active Development
 **Stability**: Alpha (breaking changes may occur)
+
+### Recent Updates (v0.40.0-alpha.6)
+- **Machine Control**: Fixed feedrate display jumping and spindle speed showing zero.
+- **Machine Control**: Fixed override controls (Feed/Spindle) not working correctly.
+- **Machine Control**: Added commanded vs actual feedrate/spindle speed tracking.
+- **Machine Control**: Fixed elapsed time display to reset correctly on stop/estop.
+- **Machine Control**: Removed "Use G53" button.
+- **Machine Control**: Added logging of all sent commands to device console.
+- **CAM Tools**: Changed Vector Image CAMTool preview background to 50% grey.
 
 ### Recent Updates (v0.40.0-alpha.5)
 - **Device Manager**: Added device type selection (CNC, Laser, Other) with auto-configuration.

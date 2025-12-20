@@ -199,6 +199,14 @@ pub fn main() {
             Some(visualizer.clone()),
             Some(settings_controller.clone()),
         );
+
+        // Wire up ConsoleListener for command parsing and logging
+        let console_manager = crate::ui::device_console_manager::get_console_manager();
+        let console_listener = crate::ui::device_console_manager::ConsoleListener::new(console_manager);
+        
+        if let Ok(mut comm) = machine_control.communicator.lock() {
+            comm.add_listener(console_listener);
+        }
         stack.add_titled(
             &machine_control.widget,
             Some("machine"),
@@ -363,6 +371,7 @@ pub fn main() {
             let is_paused = machine_control.is_paused.clone();
             let waiting_for_ack = machine_control.waiting_for_ack.clone();
             let send_queue = machine_control.send_queue.clone();
+            let job_start_time = machine_control.job_start_time.clone();
             let sb = status_bar.clone();
             let estop_btn = status_bar.estop_btn.clone();
             let device_console = device_console.clone();
@@ -375,6 +384,7 @@ pub fn main() {
                 *is_streaming.lock().unwrap() = false;
                 *is_paused.lock().unwrap() = false;
                 *waiting_for_ack.lock().unwrap() = false;
+                *job_start_time.lock().unwrap() = None;
                 send_queue.lock().unwrap().clear();
 
                 sb.set_progress(0.0, "", "");

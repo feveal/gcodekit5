@@ -474,7 +474,10 @@ impl Communicator for SerialCommunicator {
         if let Some(port) = &mut self.port {
             match port.write(data) {
                 Ok(n) => {
-                    // Don't log byte counts - too noisy
+                    // Notify listeners of sent data
+                    let sent_data = &data[..n];
+                    let data_str = String::from_utf8_lossy(sent_data);
+                    self.notify_listeners(CommunicatorEvent::DataSent, &data_str);
                     Ok(n)
                 }
                 Err(e) => {
@@ -643,7 +646,9 @@ impl Communicator for TcpCommunicator {
         if let Some(port) = &mut self.port {
             match port.write(data) {
                 Ok(n) => {
-                    self.notify_listeners(CommunicatorEvent::DataSent, &format!("{} bytes", n));
+                    let sent_data = &data[..n];
+                    let data_str = String::from_utf8_lossy(sent_data);
+                    self.notify_listeners(CommunicatorEvent::DataSent, &data_str);
                     Ok(n)
                 }
                 Err(e) => {
