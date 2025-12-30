@@ -14,6 +14,7 @@
   - `gcodekit5_designer::slice_toolpath`: 2.5D machining workflow conversion
   - `gcodekit5_visualizer::mesh_rendering`: OpenGL mesh rendering pipeline
 - **Testing**: Comprehensive 3D integration test suite with generated STL test files
+- **Testing**: Added comprehensive test suite for shape insets with rotation (`shape_inset_rotation_tests.rs`)
 
 ### Changed  
 - **Designer**: Right-click context menu now appears whenever there are selected shapes, regardless of click location.
@@ -29,8 +30,19 @@
 
 ### Fixed
 - **Designer**: Fixed right-click context menu reliability issues with multi-selections and groups.
+- **Designer**: Fixed rectangle width/height editing in inspector causing shape to move and have wrong size
+  - When editing width or height in the Properties Panel, shapes' centers are now preserved correctly
+  - Fixed `calculate_position_and_size_updates` method to preserve center position when `update_position=false`
+  - Fixed `DesignRectangle::transform()` to support non-uniform scaling (independent width/height changes)
+  - Shapes now resize to the exact dimensions specified, rather than applying uniform scaling
+  - This was a regression where the bug had been fixed in one method but existed in a helper method used for undo-aware updates
 - **Designer**: Fixed height/width property editing incorrectly changing x/y position during typing.
 - **Designer**: Entry widgets now use `connect_activate` and focus-out handlers to prevent intermediate keystroke updates.
+- **Designer**: Fixed insets (offsets) not rotating with shapes when rotation angle is applied
+  - Fixed `DesignCircle::as_csg()` to use `.to_radians()` when creating rotation matrix
+  - Fixed `DesignEllipse::as_csg()` to apply rotation transformation (was only translating)
+  - Fixed `DesignPolygon::transform()` to convert angle from radians to degrees when updating rotation
+  - All shape insets now correctly follow the shape's rotation angle
 
 ### Documentation
 - Complete 3D integration documentation in `docs/implementation/`

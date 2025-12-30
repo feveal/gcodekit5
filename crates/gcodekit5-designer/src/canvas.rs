@@ -1260,12 +1260,22 @@ impl Canvas {
 
         let old_w = max_x - min_x;
         let old_h = max_y - min_y;
+        
+        // Calculate the current center
+        let old_center_x = min_x + old_w / 2.0;
+        let old_center_y = min_y + old_h / 2.0;
 
         // 2. Determine target values
-        let target_x = if update_position { x } else { x };
-        let target_y = if update_position { y } else { y };
+        // When update_position is false, preserve the current center (x,y from UI are center coords)
+        // When update_position is true, use the new center from x,y
+        let target_center_x = if update_position { x } else { old_center_x };
+        let target_center_y = if update_position { y } else { old_center_y };
         let target_w = if update_size { w } else { old_w };
         let target_h = if update_size { h } else { old_h };
+        
+        // Calculate target top-left from center
+        let target_x = target_center_x - target_w / 2.0;
+        let target_y = target_center_y - target_h / 2.0;
 
         // 3. Calculate scale factors
         let sx = if update_size && old_w.abs() > 1e-6 {
@@ -1339,12 +1349,22 @@ impl Canvas {
 
         let old_w = max_x - min_x;
         let old_h = max_y - min_y;
+        
+        // Calculate the current center
+        let old_center_x = min_x + old_w / 2.0;
+        let old_center_y = min_y + old_h / 2.0;
 
         // 2. Determine target values
-        let target_x = if update_position { x } else { x };
-        let target_y = if update_position { y } else { y };
+        // When update_position is false, preserve the current center (x,y from UI are center coords)
+        // When update_position is true, use the new center from x,y
+        let target_center_x = if update_position { x } else { old_center_x };
+        let target_center_y = if update_position { y } else { old_center_y };
         let target_w = if update_size { w } else { old_w };
         let target_h = if update_size { h } else { old_h };
+        
+        // Calculate target top-left from center
+        let target_x = target_center_x - target_w / 2.0;
+        let target_y = target_center_y - target_h / 2.0;
 
         // 3. Calculate scale factors
         let sx = if update_size && old_w.abs() > 1e-6 {

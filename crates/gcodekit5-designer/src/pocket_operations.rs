@@ -332,6 +332,10 @@ impl PocketGenerator {
                     let x_end = intersections[i + 1] - tool_radius;
                     if x_start < x_end {
                         let span = x_end - x_start;
+                        // Skip raster fill entirely if ratio is 0
+                        if self.operation.raster_fill_ratio <= 0.0 {
+                            continue;
+                        }
                         let trim = span * (1.0 - self.operation.raster_fill_ratio) / 2.0;
                         let adj_start = x_start + trim;
                         let adj_end = x_end - trim;
@@ -703,15 +707,17 @@ impl PocketGenerator {
 
                     current_offset += self.operation.stepover;
                 }
-                // Final center cleanup to eliminate residual core
-                add_center_cleanup(
-                    &mut toolpath,
-                    circle.center,
-                    self.operation.tool_diameter,
-                    current_z,
-                    self.operation.feed_rate,
-                    self.operation.spindle_speed,
-                );
+                // Final center cleanup to eliminate residual core (only if raster fill enabled)
+                if self.operation.raster_fill_ratio > 0.0 {
+                    add_center_cleanup(
+                        &mut toolpath,
+                        circle.center,
+                        self.operation.tool_diameter,
+                        current_z,
+                        self.operation.feed_rate,
+                        self.operation.spindle_speed,
+                    );
+                }
                 toolpaths.push(toolpath);
                 prev_z = current_z;
             }
@@ -878,16 +884,18 @@ impl PocketGenerator {
                 current_offset += self.operation.stepover;
             }
 
-            // Final cleanup to remove residual core at the center
+            // Final cleanup to remove residual core at the center (only if raster fill enabled)
             if let Some(center_pt) = last_loop_centroid {
-                add_center_cleanup(
-                    &mut toolpath,
-                    center_pt,
-                    self.operation.tool_diameter,
-                    current_z,
-                    self.operation.feed_rate,
-                    self.operation.spindle_speed,
-                );
+                if self.operation.raster_fill_ratio > 0.0 {
+                    add_center_cleanup(
+                        &mut toolpath,
+                        center_pt,
+                        self.operation.tool_diameter,
+                        current_z,
+                        self.operation.feed_rate,
+                        self.operation.spindle_speed,
+                    );
+                }
             }
 
             // Sweep a raster cleanup over the whole polygon to catch any voids
@@ -1031,25 +1039,29 @@ impl PocketGenerator {
                 }
             }
             if let Some(center_pt) = innermost_centroid {
-                add_center_cleanup(
-                    &mut toolpath,
-                    center_pt,
-                    self.operation.tool_diameter,
-                    current_z,
-                    self.operation.feed_rate,
-                    self.operation.spindle_speed,
-                );
+                if self.operation.raster_fill_ratio > 0.0 {
+                    add_center_cleanup(
+                        &mut toolpath,
+                        center_pt,
+                        self.operation.tool_diameter,
+                        current_z,
+                        self.operation.feed_rate,
+                        self.operation.spindle_speed,
+                    );
+                }
             }
 
             if let Some(center_pt) = innermost_centroid {
-                add_center_cleanup(
-                    &mut toolpath,
-                    center_pt,
-                    self.operation.tool_diameter,
-                    current_z,
-                    self.operation.feed_rate,
-                    self.operation.spindle_speed,
-                );
+                if self.operation.raster_fill_ratio > 0.0 {
+                    add_center_cleanup(
+                        &mut toolpath,
+                        center_pt,
+                        self.operation.tool_diameter,
+                        current_z,
+                        self.operation.feed_rate,
+                        self.operation.spindle_speed,
+                    );
+                }
             }
 
             if let Some(raster) = self.generate_raster_cleanup(vertices, current_z, 0.0) {

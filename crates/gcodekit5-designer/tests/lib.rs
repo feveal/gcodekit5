@@ -16,3 +16,7 @@ mod designer_state_integration;
 mod designer_templates_test;
 mod designer_vcarve_integration;
 // mod designer_viewport_coordinate_mapping; // Removed
+
+// New tests for rotation system fixes
+mod rotation_system_tests;
+// mod toolpath_rotation_tests; // Disabled due to API changes

@@ -35,7 +35,42 @@ pub fn perform_boolean(a: &Shape, b: &Shape, op: BooleanOp) -> Shape {
 }
 
 pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
-    let sketch = shape.as_csg();
+    // For DesignPath, we need to apply rotation to the sketch before offsetting
+    let (sketch, rotation) = if let Some(path) = shape.as_any().downcast_ref::<DesignPath>() {
+        // If the path has rotation, apply it to the sketch first
+        if path.rotation.abs() > 1e-6 {
+            use nalgebra::{Matrix4, Vector3};
+            
+            // Calculate center of rotation
+            let bb = csgrs::traits::CSG::bounding_box(&path.sketch);
+            let center_x = (bb.mins.x + bb.maxs.x) / 2.0;
+            let center_y = (bb.mins.y + bb.maxs.y) / 2.0;
+            
+            // Create rotation matrix around center (rotation is in degrees)
+            let angle_rad = path.rotation.to_radians();
+            let cos_a = angle_rad.cos();
+            let sin_a = angle_rad.sin();
+            
+            // Translate to origin, rotate, translate back
+            let to_origin = Matrix4::new_translation(&Vector3::new(-center_x, -center_y, 0.0));
+            let rotation_mat = Matrix4::new(
+                cos_a, -sin_a, 0.0, 0.0,
+                sin_a, cos_a, 0.0, 0.0,
+                0.0, 0.0, 1.0, 0.0,
+                0.0, 0.0, 0.0, 1.0,
+            );
+            let from_origin = Matrix4::new_translation(&Vector3::new(center_x, center_y, 0.0));
+            let transform = from_origin * rotation_mat * to_origin;
+            
+            // Apply rotation to sketch and set rotation to 0 (rotation is now baked into geometry)
+            (path.sketch.transform(&transform), 0.0)
+        } else {
+            (path.sketch.clone(), 0.0)
+        }
+    } else {
+        (shape.as_csg(), 0.0)
+    };
+    
     let mp = sketch.to_multipolygon();
 
     let mut result_sketch = csgrs::sketch::Sketch::new();
@@ -87,7 +122,9 @@ pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
         }
     }
 
-    Shape::Path(DesignPath::from_csg(result_sketch))
+    let mut result_path = DesignPath::from_csg(result_sketch);
+    result_path.rotation = rotation;
+    Shape::Path(result_path)
 }
 
 pub fn perform_fillet(shape: &Shape, radius: f64) -> Shape {

@@ -776,12 +776,6 @@ impl ToolpathGenerator {
                 }
             }
 
-            // Debug print
-            println!(
-                "Generating pocket for rotated rect: rotation={}, vertices={:?}",
-                rect.rotation, vertices
-            );
-
             return self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in);
         }
 

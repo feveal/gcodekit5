@@ -272,7 +272,7 @@ impl DesignerShape for DesignRectangle {
     fn transform(&mut self, t: &Transform) {
         // This is tricky. If t contains rotation, we update self.rotation.
         // If t contains shear, we can't represent it.
-        // For now, assume t is translation/rotation/uniform scale.
+        // For now, assume t is translation/rotation/scale (possibly non-uniform).
 
         // Transform center
         let p = t.transform_point(point(self.center.x as f32, self.center.y as f32));
@@ -287,10 +287,13 @@ impl DesignerShape for DesignRectangle {
         }
         self.rotation = new_rotation;
 
-        // Extract uniform scale magnitude from the X basis vector.
+        // Extract scale factors from basis vectors (supports non-uniform scaling)
+        // X basis vector: (m11, m12) - determines width scale
+        // Y basis vector: (m21, m22) - determines height scale
         let sx = (t.m11 * t.m11 + t.m12 * t.m12).sqrt() as f64;
+        let sy = (t.m21 * t.m21 + t.m22 * t.m22).sqrt() as f64;
         self.width *= sx;
-        self.height *= sx; // Assume uniform scale
+        self.height *= sy;
     }
 
     fn properties(&self) -> Vec<Property> {
@@ -410,7 +413,7 @@ impl DesignerShape for DesignCircle {
 
     fn as_csg(&self) -> Sketch<()> {
         let sketch = Sketch::circle(self.radius, 32, None);
-        let rotation = Matrix4::new_rotation(Vector3::new(0.0, 0.0, self.rotation));
+        let rotation = Matrix4::new_rotation(Vector3::new(0.0, 0.0, self.rotation.to_radians()));
         let translation =
             Matrix4::new_translation(&Vector3::new(self.center.x, self.center.y, 0.0));
         sketch.transform(&(translation * rotation))
@@ -834,12 +837,13 @@ impl DesignerShape for DesignEllipse {
         }
 
         let sketch = Sketch::polygon(&points, None);
+        let rotation = Matrix4::new_rotation(Vector3::new(0.0, 0.0, self.rotation.to_radians()));
         let translation = Matrix4::new_translation(&Vector3::new(
             self.center.x as f64,
             self.center.y as f64,
             0.0,
         ));
-        sketch.transform(&translation)
+        sketch.transform(&(translation * rotation))
     }
 
     fn bounds(&self) -> (f64, f64, f64, f64) {
@@ -2402,8 +2406,8 @@ impl DesignerShape for DesignPolygon {
         let p = t.transform_point(point(self.center.x as f32, self.center.y as f32));
         self.center = Point::new(p.x as f64, p.y as f64);
 
-        let angle = t.m12.atan2(t.m11) as f64;
-        self.rotation += angle;
+        let angle_deg = t.m12.atan2(t.m11).to_degrees() as f64;
+        self.rotation += angle_deg;
 
         let sx = (t.m11 * t.m11 + t.m12 * t.m12).sqrt() as f64;
         self.radius *= sx;
