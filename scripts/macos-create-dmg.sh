@@ -10,10 +10,26 @@ ARCH="${2:-macos-arm64}"
 APP_BUNDLE="GCodeKit.app"
 DMG_NAME="gcodekit5-${VERSION}-${ARCH}.dmg"
 TEMP_DMG="gcodekit5-temp-${ARCH}.dmg"
-VOLUME_NAME="GCodeKit-${ARCH}"
+VOLUME_NAME="GCodeKit"
 MOUNT_POINT="/Volumes/${VOLUME_NAME}"
 
 echo "Creating DMG installer: $DMG_NAME"
+
+# Detach any existing mounts with this volume name
+if [ -d "$MOUNT_POINT" ]; then
+    echo "Detaching existing volume at $MOUNT_POINT..."
+    hdiutil detach "$MOUNT_POINT" -force 2>/dev/null || true
+    sleep 1
+fi
+
+# Also try to detach any volumes matching the pattern
+for vol in /Volumes/GCodeKit*; do
+    if [ -d "$vol" ]; then
+        echo "Detaching volume: $vol"
+        hdiutil detach "$vol" -force 2>/dev/null || true
+    fi
+done
+sleep 1
 
 # Remove any existing DMG files
 rm -f "$DMG_NAME" "$TEMP_DMG"

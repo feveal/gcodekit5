@@ -1,3 +1,11 @@
+## [0.45.0-alpha.13] - 2026-01-01
+
+### Fixed
+- **CI/CD**: Fixed macOS DMG creation "Resource busy" error
+  - Added cleanup of any existing mounted volumes before DMG creation
+  - Simplified volume name to avoid conflicts
+  - Added forced detach of stale mounts
+
 ## [0.45.0-alpha.12] - 2026-01-01
 
 ### Fixed
