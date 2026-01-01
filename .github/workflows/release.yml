@@ -86,7 +86,7 @@ jobs:
     - name: Build (macOS)
       if: startsWith(matrix.platform.os_name, 'macOS')
       run: |
-        timeout 600 cargo build --release --target ${{ matrix.platform.target }}
+        cargo build --release --target ${{ matrix.platform.target }}
         
         # Create app bundle
         mkdir -p "GCodeKit.app/Contents/MacOS"
