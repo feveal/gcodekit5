@@ -1,9 +1,11 @@
-Version: 0.45.0-alpha.9
+Version: 0.45.0-alpha.10
 
-## [0.45.0-alpha.9] - 2026-01-01
+## [0.45.0-alpha.10] - 2026-01-01
 
-### Removed
-- **CI/CD**: Removed legacy macOS x86_64 (Intel) build target - only ARM64 (Apple Silicon) is now supported
+### Fixed
+- **CI/CD**: Fixed macOS DMG creation script failing in headless CI environment
+  - Removed AppleScript Finder interactions that don't work without a GUI
+  - Simplified DMG creation using staging directory approach
 
 ## [0.42.0-alpha.1] - TBD
 
