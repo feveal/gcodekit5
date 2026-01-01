@@ -31,6 +31,11 @@
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 
+    <!-- Include generated GTK component groups -->
+    <?include gtk-runtime.wxs ?>
+    <?include gtk-share.wxs ?>
+    <?include gtk-lib.wxs ?>
+
     <Product Id='*' Name='GCodeKit5' UpgradeCode='8C2504E5-4839-4F2B-8B8C-9E6D0C18C5C9' Manufacturer='GCodeKit Contributors' Language='1033' Codepage='1252' Version='$(var.Version)'>
 
         <Package Id='*' Keywords='Installer' Description='GCodeKit5 - Universal G-Code Sender' Manufacturer='GCodeKit Contributors' InstallerVersion='450' Languages='1033' Compressed='yes' InstallScope='perUser' SummaryCodepage='1252' />

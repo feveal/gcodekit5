@@ -1,3 +1,13 @@
+## [0.45.0-alpha.16] - 2026-01-02
+
+### Fixed
+- **CI/CD**: Fixed Windows MSI installer build error "Unresolved reference to WixComponentGroup"
+  - Added WiX component group generation step using heat.exe to harvest GTK runtime files
+  - Generated gtk-runtime.wxs, gtk-share.wxs, and gtk-lib.wxs fragment files
+  - Updated main.wxs to include generated fragment files with proper references
+  - Fixed "LGHT0094: Unresolved reference" errors for GtkRuntimeFiles, GtkShareFiles, and GtkLibFiles
+  - Windows installer now properly packages all GTK4 dependencies
+
 ## [0.45.0-alpha.15] - 2026-01-02
 
 ### Fixed

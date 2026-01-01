@@ -263,6 +263,66 @@ jobs:
         echo "Distribution prepared in dist/gcodekit5"
         ls -la dist/gcodekit5/bin/
 
+    - name: Generate WiX Component Groups
+      if: matrix.platform.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        # Download WiX toolset
+        $wixVersion = "3.14.1.8722"
+        $wixUrl = "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip"
+        Invoke-WebRequest -Uri $wixUrl -OutFile wix-binaries.zip
+        Expand-Archive -Path wix-binaries.zip -DestinationPath wix-tools
+        
+        # Ensure the distribution directory exists and has content
+        if (!(Test-Path "dist\gcodekit5\bin\gcodekit5.exe")) {
+          Write-Error "Distribution not found! Expected dist\gcodekit5\bin\gcodekit5.exe"
+          exit 1
+        }
+        
+        # Create target\release structure for cargo-wix compatibility
+        New-Item -ItemType Directory -Force -Path "target\release" | Out-Null
+        Copy-Item -Path "dist\gcodekit5\*" -Destination "target\release\" -Recurse -Force
+        
+        # Generate component groups using heat.exe
+        # Note: Using relative paths from target\release as per WiX convention
+        
+        # Generate GTK Runtime Files (bin/*.dll)
+        .\wix-tools\heat.exe dir "target\release\bin" `
+          -cg GtkRuntimeFiles `
+          -gg `
+          -sfrag `
+          -srd `
+          -dr Bin `
+          -var var.TargetDir `
+          -out "wix\gtk-runtime.wxs"
+        
+        # Generate GTK Share Files
+        if (Test-Path "target\release\share") {
+          .\wix-tools\heat.exe dir "target\release\share" `
+            -cg GtkShareFiles `
+            -gg `
+            -sfrag `
+            -srd `
+            -dr Share `
+            -var var.TargetDir `
+            -out "wix\gtk-share.wxs"
+        }
+        
+        # Generate GTK Lib Files
+        if (Test-Path "target\release\lib") {
+          .\wix-tools\heat.exe dir "target\release\lib" `
+            -cg GtkLibFiles `
+            -gg `
+            -sfrag `
+            -srd `
+            -dr Lib `
+            -var var.TargetDir `
+            -out "wix\gtk-lib.wxs"
+        }
+        
+        Write-Host "Generated WiX component groups successfully"
+        Get-ChildItem wix\*.wxs
+
     - name: Create Windows MSI Installer
       if: matrix.platform.os == 'windows-latest'
       shell: pwsh
@@ -271,7 +331,7 @@ jobs:
         $env:PATH = "C:\Users\runneradmin\.cargo\bin;$env:PATH"
         cargo install cargo-wix
         
-        # The executable is already in target\release from MSYS2 build
+        # The executable is already in target\release from previous step
         
         # Build the MSI - specify package name since this is a workspace
         cargo wix --package gcodekit5 --no-build --nocapture -o gcodekit5-${{ github.ref_name }}-windows-x86_64.msi
