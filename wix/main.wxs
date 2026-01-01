@@ -31,10 +31,8 @@
 
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 
-    <!-- Include generated GTK component groups -->
-    <?include gtk-runtime.wxs ?>
-    <?include gtk-share.wxs ?>
-    <?include gtk-lib.wxs ?>
+    <!-- GTK component groups are generated in separate .wxs files (gtk-runtime.wxs, gtk-share.wxs, gtk-lib.wxs) -->
+    <!-- WiX compiler will automatically compile and link all .wxs files in the wix directory -->
 
     <Product Id='*' Name='GCodeKit5' UpgradeCode='8C2504E5-4839-4F2B-8B8C-9E6D0C18C5C9' Manufacturer='GCodeKit Contributors' Language='1033' Codepage='1252' Version='$(var.Version)'>
 
