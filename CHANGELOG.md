@@ -1,3 +1,14 @@
+## [0.45.0-alpha.11] - 2026-01-01
+
+### Added
+- **CI/CD**: Added Windows x86_64 build target with MSI installer
+  - Installs GTK4, GtkSourceView5, and Libadwaita runtime via MSYS2
+  - Bundles all required DLLs, schemas, icons, and GtkSourceView data
+  - Creates MSI installer using WiX toolset
+  - Creates portable ZIP distribution with bundled GTK4 runtime
+- **Windows**: Added PowerShell script for bundling GTK4 runtime
+- **WiX**: Updated installer configuration to use GCodeKit5 naming
+
 ## [0.45.0-alpha.10] - 2026-01-01
 
 ### Fixed

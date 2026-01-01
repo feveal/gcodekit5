@@ -25,6 +25,11 @@ jobs:
             target: aarch64-apple-darwin
             bin: gcodekit5
             name_suffix: macos-arm64
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: gcodekit5.exe
+            name_suffix: windows-x86_64
         
     steps:
     - uses: actions/checkout@v4
@@ -72,6 +77,29 @@ jobs:
         # Get the formula path for proper linking
         export PKG_CONFIG_PATH="$(brew --prefix gtk4)/lib/pkgconfig:$(brew --prefix gtksourceview5)/lib/pkgconfig:$(brew --prefix libadwaita)/lib/pkgconfig:$PKG_CONFIG_PATH"
         echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH" >> $GITHUB_ENV
+
+    - name: Install Windows Dependencies (MSYS2)
+      if: matrix.platform.os == 'windows-latest'
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: UCRT64
+        update: true
+        install: >-
+          mingw-w64-ucrt-x86_64-gtk4
+          mingw-w64-ucrt-x86_64-gtksourceview5
+          mingw-w64-ucrt-x86_64-libadwaita
+          mingw-w64-ucrt-x86_64-librsvg
+          mingw-w64-ucrt-x86_64-pkg-config
+          mingw-w64-ucrt-x86_64-gcc
+          mingw-w64-ucrt-x86_64-adwaita-icon-theme
+
+    - name: Set Windows Environment
+      if: matrix.platform.os == 'windows-latest'
+      shell: bash
+      run: |
+        echo "C:/msys64/ucrt64/bin" >> $GITHUB_PATH
+        echo "PKG_CONFIG_PATH=C:/msys64/ucrt64/lib/pkgconfig" >> $GITHUB_ENV
+        echo "GTK_INSTALL_PATH=C:/msys64/ucrt64" >> $GITHUB_ENV
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -175,6 +203,81 @@ jobs:
 
         find . -maxdepth 1 -name "gcodekit5-*.AppImage" -exec mv {} gcodekit5-${{ github.ref_name }}-linux-x86_64.AppImage \;
 
+    - name: Build (Windows)
+      if: matrix.platform.os == 'windows-latest'
+      shell: bash
+      run: |
+        # Build the application
+        cargo build --release --target ${{ matrix.platform.target }}
+        
+        # Create distribution directory
+        mkdir -p dist/gcodekit5/bin
+        mkdir -p dist/gcodekit5/share/glib-2.0/schemas
+        mkdir -p dist/gcodekit5/share/icons
+        mkdir -p dist/gcodekit5/share/gtksourceview-5
+        mkdir -p dist/gcodekit5/lib/gdk-pixbuf-2.0/2.10.0/loaders
+        
+        # Copy executable
+        cp target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin }} dist/gcodekit5/bin/
+        
+        # Copy GTK4 and related DLLs
+        MSYS_PATH="/c/msys64/ucrt64"
+        
+        # Copy required DLLs
+        for dll in libgtk-4-1.dll libgdk_pixbuf-2.0-0.dll libgio-2.0-0.dll libglib-2.0-0.dll \
+                   libgobject-2.0-0.dll libgmodule-2.0-0.dll libpango-1.0-0.dll libpangocairo-1.0-0.dll \
+                   libpangowin32-1.0-0.dll libcairo-2.dll libcairo-gobject-2.dll libgraphene-1.0-0.dll \
+                   libharfbuzz-0.dll libfribidi-0.dll libfontconfig-1.dll libfreetype-6.dll \
+                   libpixman-1-0.dll libpng16-16.dll libjpeg-8.dll libtiff-6.dll libwebp-7.dll \
+                   libepoxy-0.dll libintl-8.dll libiconv-2.dll libpcre2-8-0.dll libffi-8.dll \
+                   zlib1.dll libbz2-1.dll libbrotlidec.dll libbrotlicommon.dll libexpat-1.dll \
+                   liblzma-5.dll libzstd.dll libdeflate.dll libgtksourceview-5-0.dll \
+                   libadwaita-1-0.dll librsvg-2-2.dll libxml2-2.dll libwinpthread-1.dll \
+                   libgcc_s_seh-1.dll libstdc++-6.dll libLerc.dll libjbig-0.dll \
+                   libsharpyuv-0.dll libwebpdemux-2.dll libwebpmux-3.dll libpangoft2-1.0-0.dll \
+                   libcairo-script-interpreter-2.dll; do
+          if [ -f "$MSYS_PATH/bin/$dll" ]; then
+            cp "$MSYS_PATH/bin/$dll" dist/gcodekit5/bin/
+          fi
+        done
+        
+        # Copy GLib schemas
+        cp -r $MSYS_PATH/share/glib-2.0/schemas/* dist/gcodekit5/share/glib-2.0/schemas/ || true
+        
+        # Copy icons
+        cp -r $MSYS_PATH/share/icons/Adwaita dist/gcodekit5/share/icons/ || true
+        cp -r $MSYS_PATH/share/icons/hicolor dist/gcodekit5/share/icons/ || true
+        
+        # Copy GtkSourceView data
+        cp -r $MSYS_PATH/share/gtksourceview-5/* dist/gcodekit5/share/gtksourceview-5/ || true
+        
+        # Copy GDK-Pixbuf loaders
+        cp $MSYS_PATH/lib/gdk-pixbuf-2.0/2.10.0/loaders/*.dll dist/gcodekit5/lib/gdk-pixbuf-2.0/2.10.0/loaders/ || true
+        cp $MSYS_PATH/lib/gdk-pixbuf-2.0/2.10.0/loaders.cache dist/gcodekit5/lib/gdk-pixbuf-2.0/2.10.0/ || true
+        
+        # Copy license
+        cp wix/License.rtf dist/gcodekit5/
+        
+        echo "Distribution prepared in dist/gcodekit5"
+        ls -la dist/gcodekit5/bin/
+
+    - name: Create Windows MSI Installer
+      if: matrix.platform.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        # Install cargo-wix
+        cargo install cargo-wix
+        
+        # Copy the built executable to where WiX expects it
+        New-Item -ItemType Directory -Force -Path "target\release" | Out-Null
+        Copy-Item "target\${{ matrix.platform.target }}\release\${{ matrix.platform.bin }}" -Destination "target\release\" -Force
+        
+        # Build the MSI
+        cargo wix --no-build --nocapture -o gcodekit5-${{ github.ref_name }}-windows-x86_64.msi
+        
+        # Also create a ZIP of the portable distribution
+        Compress-Archive -Path "dist\gcodekit5\*" -DestinationPath "gcodekit5-${{ github.ref_name }}-windows-x86_64-portable.zip"
+
    
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
@@ -188,6 +291,8 @@ jobs:
           *.deb
           *.rpm
           *.AppImage
+          *.msi
+          *-portable.zip
         if-no-files-found: warn
 
     - name: Build Changelog
@@ -217,6 +322,15 @@ jobs:
         token: ${{ secrets.RELEASE }}
         files: |
           *.dmg
+
+    - name: Release (Windows)
+      if: matrix.platform.os_name == 'Windows-x86_64' && startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ secrets.RELEASE }}
+        files: |
+          *.msi
+          *-portable.zip
 
     - name: Release (Other)
       if: matrix.platform.os_name != 'Linux-x86_64' && startsWith(github.ref, 'refs/tags/')

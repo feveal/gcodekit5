@@ -1,11 +1,13 @@
-Version: 0.45.0-alpha.10
+Version: 0.45.0-alpha.11
 
-## [0.45.0-alpha.10] - 2026-01-01
+## [0.45.0-alpha.11] - 2026-01-01
 
-### Fixed
-- **CI/CD**: Fixed macOS DMG creation script failing in headless CI environment
-  - Removed AppleScript Finder interactions that don't work without a GUI
-  - Simplified DMG creation using staging directory approach
+### Added
+- **CI/CD**: Added Windows x86_64 build target with MSI installer
+  - Installs GTK4, GtkSourceView5, and Libadwaita runtime via MSYS2
+  - Bundles all required DLLs, schemas, icons, and GtkSourceView data
+  - Creates MSI installer using WiX toolset
+  - Creates portable ZIP distribution with bundled GTK4 runtime
 
 ## [0.42.0-alpha.1] - TBD
 
