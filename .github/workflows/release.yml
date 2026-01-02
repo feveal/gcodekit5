@@ -304,15 +304,15 @@ jobs:
             -out "wix\gtk-share.wxs"
         }
         
-        # Generate GTK Lib Files
-        if (Test-Path "target\release\lib") {
-          .\wix-tools\heat.exe dir "target\release\lib" `
-            -cg GtkLibFiles `
-            -gg `
-            -sfrag `
-            -dr Lib `
-            -out "wix\gtk-lib.wxs"
-        }
+        # Skip GTK Lib Files - optional pixbuf loaders have missing dependencies
+        # if (Test-Path "target\release\lib") {
+        #   .\wix-tools\heat.exe dir "target\release\lib" `
+        #     -cg GtkLibFiles `
+        #     -gg `
+        #     -sfrag `
+        #     -dr Lib `
+        #     -out "wix\gtk-lib.wxs"
+        # }
         
         Write-Host "Generated WiX component groups successfully"
         Get-ChildItem wix\*.wxs
