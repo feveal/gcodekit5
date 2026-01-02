@@ -273,51 +273,41 @@ jobs:
           exit 1
         }
         
-        # Copy GTK DLLs to target\release for cargo-wix/WiX to find them
+        # Copy GTK DLLs to target/release for cargo-wix/WiX to find them
         Copy-Item -Path "dist\gcodekit5\bin\*.dll" -Destination "target\release\" -Force
         
-        Write-Host "DLLs copied to target\release:"
+        Write-Host "DLLs copied to target/release:"
         $dllFiles = Get-ChildItem "target\release\*.dll"
         Write-Host "Found $($dllFiles.Count) DLL files"
         
         # Generate gtk-runtime.wxs manually with PowerShell instead of heat.exe
         # This avoids the SourceDir placeholder issue
-        $wxsContent = @"
-<?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Fragment>
-    <ComponentGroup Id="GtkRuntimeFiles">
-"@
+        $nl = [Environment]::NewLine
+        $wxsLines = New-Object System.Collections.ArrayList
+        [void]$wxsLines.Add('<?xml version="1.0" encoding="utf-8"?>')
+        [void]$wxsLines.Add('<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">')
+        [void]$wxsLines.Add('  <Fragment>')
+        [void]$wxsLines.Add('    <ComponentGroup Id="GtkRuntimeFiles">')
         
-        $counter = 1
         foreach ($dll in $dllFiles) {
           $fileName = $dll.Name
-          # Create a safe ID by replacing special characters
           $safeId = $fileName -replace '[^a-zA-Z0-9]', '_'
           $guid = [guid]::NewGuid().ToString().ToUpper()
-          
-          $wxsContent += @"
-
-      <Component Id="cmp_$safeId" Directory="Bin" Guid="$guid">
-        <File Id="fil_$safeId" Name="$fileName" Source="target\release\$fileName" />
-      </Component>
-"@
-          $counter++
+          [void]$wxsLines.Add("      <Component Id=`"cmp_$safeId`" Directory=`"Bin`" Guid=`"$guid`">")
+          [void]$wxsLines.Add("        <File Id=`"fil_$safeId`" Name=`"$fileName`" Source=`"target\release\$fileName`" />")
+          [void]$wxsLines.Add('      </Component>')
         }
         
-        $wxsContent += @"
-
-    </ComponentGroup>
-  </Fragment>
-</Wix>
-"@
+        [void]$wxsLines.Add('    </ComponentGroup>')
+        [void]$wxsLines.Add('  </Fragment>')
+        [void]$wxsLines.Add('</Wix>')
         
         # Write the generated WiX file
-        $wxsContent | Out-File -FilePath "wix\gtk-runtime.wxs" -Encoding UTF8
+        $wxsLines -join $nl | Out-File -FilePath "wix\gtk-runtime.wxs" -Encoding UTF8
         
         Write-Host "Generated gtk-runtime.wxs with $($dllFiles.Count) DLL components"
-        Write-Host "First 50 lines of gtk-runtime.wxs:"
-        Get-Content "wix\gtk-runtime.wxs" | Select-Object -First 50
+        Write-Host "First 30 lines of gtk-runtime.wxs:"
+        Get-Content "wix\gtk-runtime.wxs" | Select-Object -First 30
         
         Get-ChildItem wix\*.wxs
 
