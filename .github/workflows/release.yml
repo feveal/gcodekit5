@@ -294,15 +294,26 @@ jobs:
           -dr Bin `
           -out "wix\gtk-runtime.wxs"
         
-        # Generate GTK Share Files
-        if (Test-Path "target\release\share") {
-          .\wix-tools\heat.exe dir "target\release\share" `
-            -cg GtkShareFiles `
+        # Generate only glib-2.0\schemas directory (essential for GTK)
+        if (Test-Path "target\release\share\glib-2.0\schemas") {
+          .\wix-tools\heat.exe dir "target\release\share\glib-2.0\schemas" `
+            -cg GtkSchemaFiles `
             -gg `
             -sfrag `
-            -dr Share `
-            -out "wix\gtk-share.wxs"
+            -dr SchemasDir `
+            -out "wix\gtk-schemas.wxs"
         }
+        
+        # Skip GTK Share Files - many optional icons/files are missing
+        # Only essential glib schemas are included manually in main.wxs
+        # if (Test-Path "target\release\share") {
+        #   .\wix-tools\heat.exe dir "target\release\share" `
+        #     -cg GtkShareFiles `
+        #     -gg `
+        #     -sfrag `
+        #     -dr Share `
+        #     -out "wix\gtk-share.wxs"
+        # }
         
         # Skip GTK Lib Files - optional pixbuf loaders have missing dependencies
         # if (Test-Path "target\release\lib") {
