@@ -55,7 +55,7 @@
                     
                     <Directory Id='Bin' Name='bin'>
                         <Component Id='Path' Guid='9D8E7F6A-5B4C-3D2E-1F0A-9B8C7D6E5F4A' Win64='$(var.Win64)'>
-                            <File Id='ExecutableFile' Name='gcodekit5.exe' DiskId='1' Source='target\$(var.Profile)\bin\gcodekit5.exe' />
+                            <File Id='ExecutableFile' Name='gcodekit5.exe' DiskId='1' Source='target\$(var.Profile)\gcodekit5.exe' />
                             <RegistryValue Root='HKCU' Key='Software\GCodeKit Contributors\GCodeKit5' Name='Executable' Type='integer' Value='1' KeyPath='yes' />
                         </Component>
                         
