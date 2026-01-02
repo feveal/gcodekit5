@@ -289,11 +289,9 @@ jobs:
           Copy-Item -Path "dist\gcodekit5\share\glib-2.0\schemas\*" -Destination "wix-staging\share\glib-2.0\schemas\" -Recurse -Force
         }
         
-        # Also copy to target\release for cargo-wix compatibility
-        New-Item -ItemType Directory -Force -Path "target\release" | Out-Null
-        Copy-Item -Path "dist\gcodekit5\*" -Destination "target\release\" -Recurse -Force
-        
-        # Generate component groups using heat.exe from staging directory
+        # Also copy GTK DLLs to target\release for cargo-wix/WiX to find them
+        # This makes SourceDir references work correctly
+        Copy-Item -Path "dist\gcodekit5\bin\*.dll" -Destination "target\release\" -Force
         
         Write-Host "Files in wix-staging/bin:"
         Get-ChildItem "wix-staging\bin" | Select-Object -First 10 | ForEach-Object { Write-Host "  $_" }
@@ -349,8 +347,8 @@ jobs:
         # The executable is already in target\release from previous step
         
         # Build the MSI - specify package name since this is a workspace
-        # Use -b bindpath to tell light.exe where to find files from heat-generated wxs
-        cargo wix --package gcodekit5 --no-build --nocapture -o gcodekit5-${{ github.ref_name }}-windows-x86_64.msi -- -ext WixUIExtension -b wix-staging\bin
+        # The GTK DLLs are now in target\release so SourceDir will resolve correctly
+        cargo wix --package gcodekit5 --no-build --nocapture -o gcodekit5-${{ github.ref_name }}-windows-x86_64.msi
         
         # Also create a ZIP of the portable distribution
         Compress-Archive -Path "dist\gcodekit5\*" -DestinationPath "gcodekit5-${{ github.ref_name }}-windows-x86_64-portable.zip"
