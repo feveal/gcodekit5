@@ -296,11 +296,11 @@ jobs:
         # Generate component groups using heat.exe from staging directory
         
         # Generate GTK Runtime Files (bin/*.dll)
+        # Note: NOT using -srd so full path is preserved in Source attributes
         .\wix-tools\heat.exe dir "wix-staging\bin" `
           -cg GtkRuntimeFiles `
           -gg `
           -sfrag `
-          -srd `
           -dr Bin `
           -out "wix\gtk-runtime.wxs"
         
