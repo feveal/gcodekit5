@@ -295,12 +295,17 @@ jobs:
         
         # Generate component groups using heat.exe from staging directory
         
+        # Get absolute path to staging directory
+        $stagingPath = Resolve-Path "wix-staging\bin" | Select-Object -ExpandProperty Path
+        Write-Host "Staging path: $stagingPath"
+        
         # Generate GTK Runtime Files (bin/*.dll)
-        # Note: NOT using -srd so full path is preserved in Source attributes
-        .\wix-tools\heat.exe dir "wix-staging\bin" `
+        # Use absolute path so Source attributes contain full disk paths
+        .\wix-tools\heat.exe dir "$stagingPath" `
           -cg GtkRuntimeFiles `
           -gg `
           -sfrag `
+          -srd `
           -dr Bin `
           -out "wix\gtk-runtime.wxs"
         
