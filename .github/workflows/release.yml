@@ -279,27 +279,38 @@ jobs:
           exit 1
         }
         
-        # Create target\release structure for cargo-wix compatibility
+        # Create staging directory for WiX that matches installer structure
+        New-Item -ItemType Directory -Force -Path "wix-staging\bin" | Out-Null
+        New-Item -ItemType Directory -Force -Path "wix-staging\share\glib-2.0\schemas" | Out-Null
+        
+        # Copy files to staging directory
+        Copy-Item -Path "dist\gcodekit5\bin\*" -Destination "wix-staging\bin\" -Recurse -Force
+        if (Test-Path "dist\gcodekit5\share\glib-2.0\schemas") {
+          Copy-Item -Path "dist\gcodekit5\share\glib-2.0\schemas\*" -Destination "wix-staging\share\glib-2.0\schemas\" -Recurse -Force
+        }
+        
+        # Also copy to target\release for cargo-wix compatibility
         New-Item -ItemType Directory -Force -Path "target\release" | Out-Null
         Copy-Item -Path "dist\gcodekit5\*" -Destination "target\release\" -Recurse -Force
         
-        # Generate component groups using heat.exe
-        # Note: Not using -srd to preserve directory paths in Source attributes
+        # Generate component groups using heat.exe from staging directory
         
         # Generate GTK Runtime Files (bin/*.dll)
-        .\wix-tools\heat.exe dir "target\release\bin" `
+        .\wix-tools\heat.exe dir "wix-staging\bin" `
           -cg GtkRuntimeFiles `
           -gg `
           -sfrag `
+          -srd `
           -dr Bin `
           -out "wix\gtk-runtime.wxs"
         
         # Generate only glib-2.0\schemas directory (essential for GTK)
-        if (Test-Path "target\release\share\glib-2.0\schemas") {
-          .\wix-tools\heat.exe dir "target\release\share\glib-2.0\schemas" `
+        if (Test-Path "wix-staging\share\glib-2.0\schemas") {
+          .\wix-tools\heat.exe dir "wix-staging\share\glib-2.0\schemas" `
             -cg GtkSchemaFiles `
             -gg `
             -sfrag `
+            -srd `
             -dr SchemasDir `
             -out "wix\gtk-schemas.wxs"
         }
