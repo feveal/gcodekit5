@@ -7,6 +7,7 @@ use gcodekit5_core::constants as core_constants;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
+use tracing::{debug, trace};
 
 const CANVAS_PADDING: f32 = core_constants::CANVAS_PADDING_PX as f32;
 const _CANVAS_PADDING_2X: f32 = 40.0;
@@ -219,14 +220,19 @@ impl Visualizer {
 
     /// Parse G-Code and extract movement commands
     pub fn parse_gcode(&mut self, gcode: &str) {
+        debug!("Starting G-code parse, input size: {} bytes", gcode.len());
+        
         let mut hasher = DefaultHasher::new();
         gcode.hash(&mut hasher);
         let new_hash = hasher.finish();
 
         if !self.toolpath_cache.needs_update(new_hash) {
+            debug!("G-code hash unchanged, skipping parse");
             return; // Already parsed this content
         }
 
+        debug!("Parsing new G-code (hash: {})", new_hash);
+        
         let mut commands = Vec::new();
         let mut current_pos = Point3D::new(0.0, 0.0, 0.0);
         self.current_intensity = 0.0;
@@ -236,7 +242,7 @@ impl Visualizer {
         let mut _g2_count = 0;
         let mut _g3_count = 0;
 
-        for line in gcode.lines() {
+        for (line_num, line) in gcode.lines().enumerate() {
             let line = line.trim();
 
             if line.is_empty() || line.starts_with(';') || line.starts_with('(') {
@@ -244,6 +250,7 @@ impl Visualizer {
             }
 
             if let Some(gcode_num) = Self::extract_gcode_num(line) {
+                trace!("Line {}: G{} command", line_num, gcode_num);
                 match gcode_num {
                     0 => {
                         _g0_count += 1;
@@ -297,12 +304,17 @@ impl Visualizer {
             }
         }
 
+        debug!("Parse complete: G0={}, G1={}, G2={}, G3={}, total commands={}", 
+               _g0_count, _g1_count, _g2_count, _g3_count, commands.len());
+
         (
             self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z,
         ) = bounds.finalize_with_padding(BOUNDS_PADDING_FACTOR);
         self.current_pos = current_pos;
 
         self.toolpath_cache.update(new_hash, commands);
+        debug!("Bounds: x=[{:.2}, {:.2}], y=[{:.2}, {:.2}], z=[{:.2}, {:.2}]",
+               self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z);
     }
 
     /// Calculate viewbox for the current view state
@@ -464,6 +476,10 @@ impl Visualizer {
             let z = new_z.unwrap_or(current_pos.z);
             let to = Point3D::new(x, y, z);
             let center = Point3D::new(current_pos.x + i, current_pos.y + j, current_pos.z);
+            
+            let radius = ((current_pos.x - center.x).powi(2) + (current_pos.y - center.y).powi(2)).sqrt();
+            trace!("Arc: from=({:.2},{:.2}), to=({:.2},{:.2}), center=({:.2},{:.2}), radius={:.4}, cw={}", 
+                   current_pos.x, current_pos.y, x, y, center.x, center.y, radius, clockwise);
 
             commands.push(GCodeCommand::Arc {
                 from: *current_pos,

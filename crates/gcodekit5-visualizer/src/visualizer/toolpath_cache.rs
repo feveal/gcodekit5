@@ -1,5 +1,6 @@
 use super::visualizer::{GCodeCommand, Point3D};
 use std::fmt::Write;
+use tracing::{debug, trace};
 
 #[derive(Debug, Default, Clone)]
 pub struct ToolpathCache {
@@ -61,6 +62,8 @@ impl ToolpathCache {
     }
 
     fn rebuild_paths(&mut self) {
+        debug!("Rebuilding SVG paths from {} commands", self.commands.len());
+        
         self.cached_path.clear();
         self.cached_rapid_path.clear();
         self.cached_g1_path.clear();
@@ -69,6 +72,7 @@ impl ToolpathCache {
         self.cached_g4_path.clear();
 
         if self.commands.is_empty() {
+            debug!("No commands to render");
             return;
         }
 
@@ -83,8 +87,10 @@ impl ToolpathCache {
         let mut last_g1_pos: Option<Point3D> = None;
         let mut last_g2_pos: Option<Point3D> = None;
         let mut last_g3_pos: Option<Point3D> = None;
+        let mut arc_count = 0;
+        let mut invalid_arc_count = 0;
 
-        for cmd in &self.commands {
+        for (cmd_idx, cmd) in self.commands.iter().enumerate() {
             match cmd {
                 GCodeCommand::Move {
                     from,
@@ -123,6 +129,7 @@ impl ToolpathCache {
                     clockwise,
                     intensity: _,
                 } => {
+                    arc_count += 1;
                     let radius = ((from.x - center.x).powi(2) + (from.y - center.y).powi(2)).sqrt();
 
                     // Update combined path
@@ -133,6 +140,8 @@ impl ToolpathCache {
                     // Skip invalid arcs (radius is zero, NaN, or Infinity)
                     // Treat them as line segments instead
                     if radius.is_finite() && radius > 0.001 {
+                        trace!("Arc[{}]: valid radius={:.4}", cmd_idx, radius);
+                        
                         let sweep = if *clockwise { 0 } else { 1 };
 
                         use std::f32::consts::PI;
@@ -178,6 +187,10 @@ impl ToolpathCache {
                         );
                         *last_target_pos = Some(*to);
                     } else {
+                        invalid_arc_count += 1;
+                        trace!("Arc[{}]: invalid radius={:.4} (finite={}), treating as line segment", 
+                               cmd_idx, radius, radius.is_finite());
+                        
                         // Invalid arc - treat as a line segment
                         let _ = write!(self.cached_path, "L {:.2} {:.2} ", to.x, -to.y);
                         last_pos = Some(*to);
@@ -207,5 +220,11 @@ impl ToolpathCache {
                 }
             }
         }
+        
+        debug!("Paths rebuilt: {} arcs, {} invalid arcs - total path sizes: toolpath={}, rapid={}, g1={}, g2={}, g3={}, g4={}",
+               arc_count, invalid_arc_count, 
+               self.cached_path.len(), self.cached_rapid_path.len(), 
+               self.cached_g1_path.len(), self.cached_g2_path.len(), 
+               self.cached_g3_path.len(), self.cached_g4_path.len());
     }
 }
