@@ -461,7 +461,7 @@ pub fn generate_timing_pulley(
     center: Point,
     pitch: f64,
     teeth: usize,
-    belt_width: f64,
+    _belt_width: f64,
     hole_radius: f64,
 ) -> Path {
     let mut builder = Path::builder();

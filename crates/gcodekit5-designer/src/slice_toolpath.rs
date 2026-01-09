@@ -251,7 +251,7 @@ impl SliceToToolpath {
         debug!("Generating contour toolpath for {} shapes", slice.shapes.len());
         
         let mut toolpath = Toolpath::new(self.params.tool.diameter, self.params.layer_depth as f64);
-        let target_depth = slice.z_height - self.params.layer_depth;
+        let _target_depth = slice.z_height - self.params.layer_depth;
         
         // For now, create basic placeholder toolpath segments
         // TODO: Integrate with proper ToolpathGenerator when methods are available
@@ -322,7 +322,7 @@ impl SliceToToolpath {
         debug!("Generating pocket toolpath for {} shapes", slice.shapes.len());
         
         let mut toolpath = Toolpath::new(self.params.tool.diameter, self.params.layer_depth as f64);
-        let target_depth = slice.z_height - self.params.layer_depth;
+        let _target_depth = slice.z_height - self.params.layer_depth;
         
         // For now, create basic pocket toolpath segments
         // TODO: Integrate with proper ToolpathGenerator when methods are available
@@ -370,7 +370,7 @@ impl SliceToToolpath {
         
         // Engraving is similar to contouring but with shallow depth
         let mut toolpath = Toolpath::new(self.params.tool.diameter, self.params.layer_depth as f64 * 0.1);
-        let engrave_depth = slice.z_height - (self.params.layer_depth * 0.1); // Shallow cut
+        let _engrave_depth = slice.z_height - (self.params.layer_depth * 0.1); // Shallow cut
         
         // For now, create basic engrave toolpath (centerline)
         // TODO: Integrate with proper ToolpathGenerator when methods are available
@@ -593,7 +593,7 @@ impl SlicedJob {
     
     /// Export to G-code
     pub fn to_gcode(&self) -> Result<String> {
-        let combined_toolpath = self.combine_toolpaths();
+        let _combined_toolpath = self.combine_toolpaths();
         
         // Generate basic G-code header for this job
         Ok(format!(

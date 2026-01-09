@@ -371,7 +371,7 @@ pub mod stl_integration {
     pub fn generate_shadow_toolpaths(
         renderer: &Renderer3D,
         mesh_name: &str,
-        cutting_params: &gcodekit5_designer::slice_toolpath::SliceToolpathParams,
+        _cutting_params: &gcodekit5_designer::slice_toolpath::SliceToolpathParams,
     ) -> Result<Vec<lyon::path::Path>, Box<dyn std::error::Error>> {
         if let Some(projections) = renderer.scene().get_shadow_projection(mesh_name) {
             // TODO: Convert lyon paths to actual toolpaths using slice_toolpath module

@@ -29,6 +29,7 @@ struct MeshGLResources {
     vbo: glow::Buffer,
     ebo: glow::Buffer,
     index_count: i32,
+    #[allow(dead_code)]
     is_wireframe: bool,
 }
 

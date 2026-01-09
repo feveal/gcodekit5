@@ -17,6 +17,7 @@ pub struct SettingsWindow {
     dialog: Dialog,
     notebook: Notebook,
     controller: Rc<SettingsController>,
+    #[allow(dead_code)]
     on_save: Rc<RefCell<Option<Box<dyn Fn()>>>>,
 }
 

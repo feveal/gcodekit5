@@ -1,3 +1,12 @@
+## [0.45.0-alpha.17] - 2026-01-09
+
+### Fixed
+- **Compilation**: Removed all unused variable and field warnings
+  - Fixed 5 unused variable warnings in designer crate (slice_toolpath.rs, parametric_shapes.rs)
+  - Fixed 1 unused field warning in visualizer crate (mesh_renderer.rs)
+  - Fixed 1 unused field warning in UI crate (settings.rs)
+  - Added `#[allow(dead_code)]` attributes where fields are intentionally unused for future expansion
+
 ## [0.45.0-alpha.16] - 2026-01-02
 
 ### Fixed
