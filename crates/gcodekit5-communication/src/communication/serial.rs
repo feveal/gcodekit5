@@ -102,12 +102,12 @@ impl SerialPortInfo {
 /// Returns a list of available COM ports with information about each port.
 /// Filters ports to include only CNC controller patterns:
 /// - Windows: COM* (e.g., COM1, COM3)
-/// - Linux: /dev/ttyUSB*, /dev/ttyACM*
+/// - Linux: /dev/ttyUSB*, /dev/ttyACM*, /dev/ttyGRBL
 /// - macOS: /dev/cu.usbserial-*, /dev/cu.usbmodem*
 pub fn list_ports() -> Result<Vec<SerialPortInfo>> {
     match serialport::available_ports() {
         Ok(ports) => {
-            let port_infos: Vec<SerialPortInfo> = ports
+            let mut port_infos: Vec<SerialPortInfo> = ports
                 .iter()
                 .filter(|port| is_valid_cnc_port(&port.port_name))
                 .map(|port| {
@@ -129,6 +129,10 @@ pub fn list_ports() -> Result<Vec<SerialPortInfo>> {
                 })
                 .collect();
 
+            // Check for virtual/simulator serial ports (PTY devices)
+            // These are not detected by serialport::available_ports() since they're not hardware
+            check_virtual_ports(&mut port_infos);
+
             Ok(port_infos)
         }
         Err(e) => {
@@ -142,7 +146,7 @@ pub fn list_ports() -> Result<Vec<SerialPortInfo>> {
 ///
 /// Valid patterns:
 /// - Windows: COM* (COM1, COM2, etc.)
-/// - Linux: /dev/ttyUSB*, /dev/ttyACM*
+/// - Linux: /dev/ttyUSB*, /dev/ttyACM*, /dev/ttyGRBL
 /// - macOS: /dev/cu.usbserial-*, /dev/cu.usbmodem*
 fn is_valid_cnc_port(port_name: &str) -> bool {
     // Windows COM ports
@@ -151,7 +155,7 @@ fn is_valid_cnc_port(port_name: &str) -> bool {
     }
 
     // Linux USB and ACM devices
-    if port_name.starts_with("/dev/ttyUSB") || port_name.starts_with("/dev/ttyACM") {
+    if port_name.starts_with("/dev/ttyUSB") || port_name.starts_with("/dev/ttyACM") || port_name.starts_with("/dev/ttyGRBL") {
         return true;
     }
 
@@ -176,6 +180,34 @@ fn get_port_description(port: &serialport::SerialPortInfo) -> String {
         serialport::SerialPortType::BluetoothPort => "Bluetooth Serial".to_string(),
         serialport::SerialPortType::PciPort => "PCI Serial".to_string(),
         _ => "Serial Port".to_string(),
+    }
+}
+
+/// Check for virtual/simulator serial ports and add them to the list if they exist
+///
+/// Virtual ports (PTY devices) are not detected by serialport::available_ports()
+/// because they're not hardware devices. This function manually checks for known
+/// simulator ports:
+/// - Linux: /dev/ttyGRBL (grblHAL simulator)
+fn check_virtual_ports(port_infos: &mut Vec<SerialPortInfo>) {
+    #[cfg(target_os = "linux")]
+    {
+        let virtual_ports = [
+            ("/dev/ttyGRBL", "grblHAL Simulator (Virtual Port)"),
+        ];
+
+        for (port_name, description) in &virtual_ports {
+            // Check if this port already exists in the list
+            if port_infos.iter().any(|p| p.port_name == *port_name) {
+                continue;
+            }
+
+            // Check if the port exists and is accessible
+            if std::path::Path::new(port_name).exists() {
+                tracing::info!("Found virtual serial port: {}", port_name);
+                port_infos.push(SerialPortInfo::new(*port_name, *description));
+            }
+        }
     }
 }
 

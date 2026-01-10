@@ -1,3 +1,23 @@
+## [0.50.0-alpha.0] - 2026-01-10
+
+### Added
+- **Device Config**: Added unit field to firmware settings to display measurement units (mm/min, RPM, usec, etc.)
+  - Updated Setting struct with optional unit field
+  - Added comprehensive unit labels for all 130+ GRBL and grblHAL settings
+  - Settings list now displays units in dedicated column
+  - Non-numeric parameters (hostname, WiFi SSID, etc.) now properly editable
+
+- **Error Decoder**: Extended error and alarm code support for grblHAL
+  - Added error codes 39-75 for grblHAL extended features
+  - Added alarm codes 10-20 for grblHAL extended alarms
+  - Error code 53 now properly decoded: "Invalid file number"
+  - Includes file system, spindle, homing, and configuration error descriptions
+
+### Fixed
+- **Device Config**: Fixed settings parameter list not showing units
+- **Device Config**: Fixed non-numeric parameters (strings) unable to be edited
+- **Error Decoder**: Fixed grblHAL error codes showing as "Unknown"
+
 ## [0.47.0-alpha.0] - 2026-01-10
 
 ### Added

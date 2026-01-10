@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/bash -x
 # Start grblHAL simulator with virtual TTY device
 # This creates a virtual serial port at /dev/ttyGRBL
 
 WORK_DIR="${HOME}/Projects/gcodekit5/target/temp"
 STEP_FILE="${WORK_DIR}/grblhal-step.out"
 BLOCK_FILE="${WORK_DIR}/grblhal-block.out"
-TTY_DEVICE="${WORK_DIR}/ttyGRBL"
+TTY_DEVICE="/dev/ttyGRBL"
 
 # Ensure temp directory exists
 mkdir -p "${WORK_DIR}"
@@ -35,4 +35,4 @@ echo ""
 # Start socat to create virtual serial port connected to grblHAL simulator
 # The simulator will run with no comment prefixes (-n), and output steps/blocks to files
 socat PTY,raw,link=${TTY_DEVICE},echo=0,group-late=dialout,mode=660 \
-    "EXEC:'grblHAL_sim -n -s ${STEP_FILE} -b ${BLOCK_FILE}',pty,raw,echo=0"
+    "EXEC:'/home/thawkins/.local/bin/grblHAL_sim -n -s ${STEP_FILE} -b ${BLOCK_FILE}',pty,raw,echo=0"

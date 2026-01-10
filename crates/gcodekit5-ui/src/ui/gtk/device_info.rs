@@ -397,6 +397,7 @@ impl DeviceInfoView {
                             numeric_value: Some(laser_mode_value.parse::<f64>().unwrap_or(0.0)),
                             range: Some((0.0, 1.0)),
                             read_only: false,
+                            unit: Some("bool".to_string()),
                         };
                         manager.set_setting(setting);
                     }

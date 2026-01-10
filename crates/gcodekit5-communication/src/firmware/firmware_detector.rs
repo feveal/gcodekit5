@@ -61,6 +61,7 @@ impl FirmwareDetector {
     /// Expected formats:
     /// - `[VER:1.1h.20190825:]` - GRBL 1.1h built on 2019-08-25
     /// - `[OPT:V,15,128]` - Options: Variable spindle, axes mask 15, buffer size 128
+    /// - `[FIRMWARE:grblHAL]` - grblHAL firmware identifier
     ///
     /// # Arguments
     /// * `response` - Full response from $I command
@@ -71,12 +72,24 @@ impl FirmwareDetector {
         let mut version_string = String::new();
         let mut build_date = None;
         let mut build_info = None;
+        let mut is_grblhal = false;
 
-        // Parse [VER:1.1h.20190825:] line
+        // Parse [VER:1.1h.20190825:] line and [FIRMWARE:grblHAL] tag
         for line in response.lines() {
             let line = line.trim();
 
-            if line.starts_with("[VER:") && line.ends_with(']') {
+            // Check for grblHAL firmware identifier
+            if line.starts_with("[FIRMWARE:") && line.ends_with(']') {
+                let firmware_name = line
+                    .trim_start_matches("[FIRMWARE:")
+                    .trim_end_matches(']')
+                    .to_lowercase();
+                
+                if firmware_name.contains("grblhal") {
+                    is_grblhal = true;
+                    tracing::info!("Detected grblHAL firmware from [FIRMWARE:grblHAL] tag");
+                }
+            } else if line.starts_with("[VER:") && line.ends_with(']') {
                 // Extract version: [VER:1.1h.20190825:]
                 let ver_part = line
                     .trim_start_matches("[VER:")
@@ -112,7 +125,14 @@ impl FirmwareDetector {
         let version = SemanticVersion::parse(&version_string)
             .context("Failed to parse GRBL version number")?;
 
-        let mut result = FirmwareDetectionResult::new(FirmwareType::Grbl, version, version_string);
+        // Set firmware type based on detection
+        let firmware_type = if is_grblhal {
+            FirmwareType::GrblHal
+        } else {
+            FirmwareType::Grbl
+        };
+
+        let mut result = FirmwareDetectionResult::new(firmware_type, version, version_string);
         result.build_date = build_date;
         result.build_info = build_info;
         result.protocol_version = Some("1.1".to_string());

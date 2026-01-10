@@ -112,9 +112,9 @@ pub struct DeviceProfile {
     pub timeout_ms: u64,
     pub auto_reconnect: bool,
 
-    /// Last known GRBL settings (from `$$`) for this profile.
+    /// Last known GRBL settings (from `$$`) for this profile (u16 to support grblHAL extended settings up to $680).
     #[serde(default)]
-    pub grbl_settings: std::collections::HashMap<u8, String>,
+    pub grbl_settings: std::collections::HashMap<u16, String>,
 }
 
 impl Default for DeviceProfile {

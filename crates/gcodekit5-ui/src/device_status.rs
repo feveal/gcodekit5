@@ -33,8 +33,8 @@ pub struct GrblDeviceStatus {
     /// Device name (e.g., "CNC 3018 Pro")
     pub device_name: Option<String>,
 
-    /// Last known GRBL settings (from `$$`), keyed by `$n`
-    pub grbl_settings: HashMap<u8, String>,
+    /// Last known GRBL settings (from `$$`), keyed by `$n` (u16 to support grblHAL extended settings up to $680)
+    pub grbl_settings: HashMap<u16, String>,
 
     /// Last commanded feed rate (F value)
     pub commanded_feed_rate: Option<f32>,
@@ -133,7 +133,7 @@ pub fn update_firmware_info(firmware_type: String, version: String, device_name:
     }
 }
 
-pub fn update_grbl_setting(number: u8, value: String) {
+pub fn update_grbl_setting(number: u16, value: String) {
     if let Ok(mut status) = DEVICE_STATUS.write() {
         status.grbl_settings.insert(number, value);
     }
@@ -151,7 +151,7 @@ pub fn update_commanded_spindle_speed(spindle_speed: f32) {
     }
 }
 
-pub fn update_grbl_settings_bulk(settings: &[(u8, String)]) {
+pub fn update_grbl_settings_bulk(settings: &[(u16, String)]) {
     if let Ok(mut status) = DEVICE_STATUS.write() {
         for (n, v) in settings {
             status.grbl_settings.insert(*n, v.clone());
@@ -159,7 +159,7 @@ pub fn update_grbl_settings_bulk(settings: &[(u8, String)]) {
     }
 }
 
-pub fn get_grbl_setting(number: u8) -> Option<String> {
+pub fn get_grbl_setting(number: u16) -> Option<String> {
     DEVICE_STATUS
         .read()
         .ok()
@@ -183,7 +183,7 @@ fn parse_numeric_prefix(s: &str) -> Option<f64> {
     }
 }
 
-pub fn get_grbl_setting_numeric(number: u8) -> Option<f64> {
+pub fn get_grbl_setting_numeric(number: u16) -> Option<f64> {
     get_grbl_setting(number).and_then(|v| parse_numeric_prefix(&v))
 }
 

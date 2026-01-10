@@ -15,6 +15,19 @@ fn test_parse_grbl_version_info() {
 }
 
 #[test]
+fn test_parse_grblhal_version_info() {
+    let response = "[VER:1.1h.20190825:]\n[OPT:VPNM,128,128]\n[FIRMWARE:grblHAL]\nok";
+    let result = FirmwareDetector::parse_grbl_version_info(response).unwrap();
+
+    assert_eq!(result.firmware_type, FirmwareType::GrblHal);
+    assert_eq!(result.version.major, 1);
+    assert_eq!(result.version.minor, 1);
+    assert_eq!(result.version_string, "1.1h");
+    assert_eq!(result.build_date, Some("20190825".to_string()));
+    assert_eq!(result.build_info, Some("VPNM,128,128".to_string()));
+}
+
+#[test]
 fn test_parse_grbl_startup() {
     let message = "Grbl 1.1f ['$' for help]";
     let result = FirmwareDetector::parse_grbl_startup(message).unwrap();

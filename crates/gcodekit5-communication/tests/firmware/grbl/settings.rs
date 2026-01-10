@@ -17,6 +17,7 @@ fn test_add_setting() {
         description: "Serial communication speed".to_string(),
         range: Some((9600.0, 115200.0)),
         read_only: false,
+        unit: Some("baud".to_string()),
     };
 
     manager.set_setting(setting);
@@ -60,6 +61,7 @@ fn test_backup_and_restore() {
         description: "Serial communication speed".to_string(),
         range: Some((9600.0, 115200.0)),
         read_only: false,
+        unit: Some("baud".to_string()),
     };
 
     manager.set_setting(setting);
@@ -87,6 +89,7 @@ fn test_validate_setting_read_only() {
         description: "Serial communication speed".to_string(),
         range: Some((9600.0, 115200.0)),
         read_only: true,
+        unit: Some("baud".to_string()),
     };
 
     manager.set_setting(setting);
@@ -105,6 +108,7 @@ fn test_validate_setting_range() {
         description: "Serial communication speed".to_string(),
         range: Some((9600.0, 115200.0)),
         read_only: false,
+        unit: Some("baud".to_string()),
     };
 
     manager.set_setting(setting);
@@ -128,6 +132,7 @@ fn test_get_sorted_settings() {
             description: "Test setting".to_string(),
             range: None,
             read_only: false,
+            unit: None,
         };
         manager.set_setting(setting);
     }
@@ -150,6 +155,7 @@ fn test_find_by_name() {
         description: "Pulse duration".to_string(),
         range: None,
         read_only: false,
+        unit: Some("usec".to_string()),
     };
 
     let setting2 = Setting {
@@ -160,6 +166,7 @@ fn test_find_by_name() {
         description: "Idle delay".to_string(),
         range: None,
         read_only: false,
+        unit: Some("ms".to_string()),
     };
 
     manager.set_setting(setting1);

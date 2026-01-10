@@ -11,6 +11,8 @@ use std::cmp::Ordering;
 pub enum FirmwareType {
     /// GRBL - Open source CNC control software
     Grbl,
+    /// grblHAL - Enhanced GRBL with additional features
+    GrblHal,
     /// TinyG - CNC controller for 3D printers
     TinyG,
     /// g2core - Next generation of TinyG
@@ -27,7 +29,9 @@ impl FirmwareType {
     /// Parse firmware type from string
     pub fn from_string(s: &str) -> Self {
         let lower = s.to_lowercase();
-        if lower.contains("grbl") {
+        if lower.contains("grblhal") {
+            Self::GrblHal
+        } else if lower.contains("grbl") {
             Self::Grbl
         } else if lower.contains("tinyg") {
             Self::TinyG
@@ -47,6 +51,7 @@ impl std::fmt::Display for FirmwareType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Grbl => write!(f, "GRBL"),
+            Self::GrblHal => write!(f, "grblHAL"),
             Self::TinyG => write!(f, "TinyG"),
             Self::G2Core => write!(f, "g2core"),
             Self::Smoothieware => write!(f, "Smoothieware"),

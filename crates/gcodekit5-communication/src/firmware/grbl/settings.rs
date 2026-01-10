@@ -12,8 +12,8 @@ use tracing::warn;
 /// GRBL firmware setting
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Setting {
-    /// Setting number/ID
-    pub number: u8,
+    /// Setting number/ID (u16 to support grblHAL extended settings up to $680)
+    pub number: u16,
     /// Setting name
     pub name: String,
     /// Current value as string
@@ -26,17 +26,20 @@ pub struct Setting {
     pub range: Option<(f64, f64)>,
     /// Is this setting read-only
     pub read_only: bool,
+    /// Unit of measure (e.g., "mm/min", "usec", "RPM")
+    pub unit: Option<String>,
 }
 
 /// GRBL Settings Manager
 ///
 /// Handles querying, parsing, updating, and managing GRBL firmware settings.
+/// Supports standard GRBL settings (0-132) and grblHAL extended settings (up to 680).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SettingsManager {
     /// All loaded settings
-    settings: HashMap<u8, Setting>,
+    settings: HashMap<u16, Setting>,
     /// Backup settings
-    backup: Option<HashMap<u8, Setting>>,
+    backup: Option<HashMap<u16, Setting>>,
     /// Settings changed since last load
     dirty: bool,
 }
@@ -58,7 +61,7 @@ impl SettingsManager {
     }
 
     /// Get a setting by number
-    pub fn get_setting(&self, number: u8) -> Option<&Setting> {
+    pub fn get_setting(&self, number: u16) -> Option<&Setting> {
         self.settings.get(&number)
     }
 
@@ -68,12 +71,12 @@ impl SettingsManager {
     }
 
     /// Get a setting's numeric value
-    pub fn get_value(&self, number: u8) -> Option<f64> {
+    pub fn get_value(&self, number: u16) -> Option<f64> {
         self.settings.get(&number).and_then(|s| s.numeric_value)
     }
 
     /// Get a setting's string value
-    pub fn get_string_value(&self, number: u8) -> Option<String> {
+    pub fn get_string_value(&self, number: u16) -> Option<String> {
         self.settings.get(&number).map(|s| s.value.clone())
     }
 
@@ -84,7 +87,7 @@ impl SettingsManager {
     ///
     /// # Returns
     /// * Setting if parsed successfully, None otherwise
-    pub fn parse_setting_line(line: &str) -> Option<(u8, String)> {
+    pub fn parse_setting_line(line: &str) -> Option<(u16, String)> {
         if !line.starts_with('$') {
             return None;
         }
@@ -94,7 +97,7 @@ impl SettingsManager {
             let num_str = &line[..eq_pos];
             let value_str = line[eq_pos + 1..].trim();
 
-            if let Ok(number) = num_str.parse::<u8>() {
+            if let Ok(number) = num_str.parse::<u16>() {
                 // GRBL often returns: "$0=10 (step pulse, usec)".
                 // We only want the raw value so downstream numeric parsing works.
                 let end = value_str
@@ -108,7 +111,7 @@ impl SettingsManager {
     }
 
     /// Validate a setting value
-    pub fn validate_setting(&self, number: u8, value: &str) -> anyhow::Result<()> {
+    pub fn validate_setting(&self, number: u16, value: &str) -> anyhow::Result<()> {
         if let Some(setting) = self.settings.get(&number) {
             if setting.read_only {
                 return Err(anyhow::anyhow!("Setting {} is read-only", number));
