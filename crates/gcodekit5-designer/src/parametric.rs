@@ -61,7 +61,7 @@ impl ParameterConstraint {
 
     /// Clamp a value to this constraint
     pub fn clamp(&self, value: f64) -> f64 {
-        value.max(self.min).min(self.max)
+        value.clamp(self.min, self.max)
     }
 
     /// Check if constraint is valid

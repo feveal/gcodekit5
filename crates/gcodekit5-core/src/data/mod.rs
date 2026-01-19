@@ -612,7 +612,7 @@ impl MachineStatusSnapshot {
 
     /// Builder method to set active WCS
     pub fn with_active_wcs(mut self, wcs: u8) -> Self {
-        self.active_wcs = wcs.max(1).min(6);
+        self.active_wcs = wcs.clamp(1, 6);
         self
     }
 

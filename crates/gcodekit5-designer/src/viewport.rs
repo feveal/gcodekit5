@@ -167,7 +167,7 @@ impl Viewport {
         let zoom_y = (self.canvas_height * padding_factor) / height;
 
         // Use the smaller zoom to fit everything
-        let new_zoom = zoom_x.min(zoom_y).max(0.1).min(50.0);
+        let new_zoom = zoom_x.min(zoom_y).clamp(0.1, 50.0);
 
         // Center the content
         let content_pixel_width = width * new_zoom;

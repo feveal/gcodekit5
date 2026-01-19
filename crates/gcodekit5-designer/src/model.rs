@@ -193,6 +193,19 @@ pub struct DesignRectangle {
     pub is_slot: bool,
 }
 
+impl DesignRectangle {
+    /// Calculate the effective corner radius based on slot mode
+    pub fn effective_corner_radius(&self) -> f64 {
+        if self.is_slot {
+            // In slot mode, use half of the smaller dimension
+            self.width.min(self.height) / 2.0
+        } else {
+            // Normal mode, use the stored corner_radius
+            self.corner_radius
+        }
+    }
+}
+
 impl DesignerShape for DesignRectangle {
     fn render(&self) -> Path {
         let mut builder = Path::builder();
@@ -201,13 +214,14 @@ impl DesignerShape for DesignRectangle {
         let x = -half_w;
         let y = -half_h;
 
-        if self.corner_radius > 0.0 {
+        let effective_radius = self.effective_corner_radius();
+        if effective_radius > 0.0 {
             builder.add_rounded_rectangle(
                 &lyon::math::Box2D::new(
                     point(x as f32, y as f32),
                     point((x + self.width) as f32, (y + self.height) as f32),
                 ),
-                &lyon::path::builder::BorderRadii::new(self.corner_radius as f32),
+                &lyon::path::builder::BorderRadii::new(effective_radius as f32),
                 lyon::path::Winding::Positive,
             );
         } else {
@@ -236,8 +250,9 @@ impl DesignerShape for DesignRectangle {
     }
 
     fn as_csg(&self) -> Sketch<()> {
-        let sketch = if self.corner_radius > 0.0 {
-            Sketch::rounded_rectangle(self.width, self.height, self.corner_radius, 8, None)
+        let effective_radius = self.effective_corner_radius();
+        let sketch = if effective_radius > 0.0 {
+            Sketch::rounded_rectangle(self.width, self.height, effective_radius, 8, None)
         } else {
             Sketch::rectangle(self.width, self.height, None)
         };
@@ -756,7 +771,7 @@ impl DesignerShape for DesignLine {
         let t = ((p.x - self.start.x) * (self.end.x - self.start.x)
             + (p.y - self.start.y) * (self.end.y - self.start.y))
             / l2;
-        let t = t.max(0.0).min(1.0);
+        let t = t.clamp(0.0, 1.0);
         let proj_x = self.start.x + t * (self.end.x - self.start.x);
         let proj_y = self.start.y + t * (self.end.y - self.start.y);
         let dist_sq = (p.x - proj_x).powi(2) + (p.y - proj_y).powi(2);

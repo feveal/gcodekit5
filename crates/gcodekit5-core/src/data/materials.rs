@@ -390,11 +390,13 @@ pub fn init_standard_library() -> MaterialLibrary {
     red_oak.surface_finish = SurfaceFinishability::Good;
     red_oak.notes = "Good grain structure, moderate dulling of tools\nDensity (12% MC): ~705 kg/m³ https://amesweb.info/Materials/Density-of-Wood.aspx\nTensile strength (parallel to grain): ~104 MPa (US FPL Wood Handbook, ch5) https://www.fpl.fs.usda.gov/documnts/fplgtr/fplgtr190/chapter_05.pdf".to_string();
 
-    let mut oak_params = CuttingParameters::default();
-    oak_params.rpm_range = (16000, 20000);
-    oak_params.feed_rate_range = (1200.0, 2000.0);
-    oak_params.max_doc = 6.0;
-    oak_params.stepover_percent = (40.0, 60.0);
+    let oak_params = CuttingParameters {
+        rpm_range: (16000, 20000),
+        feed_rate_range: (1200.0, 2000.0),
+        max_doc: 6.0,
+        stepover_percent: (40.0, 60.0),
+        ..Default::default()
+    };
     red_oak.set_cutting_params("endmill_flat".to_string(), oak_params);
 
     library.add_material(red_oak);
@@ -415,11 +417,13 @@ pub fn init_standard_library() -> MaterialLibrary {
     acrylic.heat_sensitivity = HeatSensitivity::High;
     acrylic.notes = "Keep tool speed high and feed moderate to avoid heat buildup.\nPMMA Tg (used for melting_point field): ~105 °C; tensile strength: ~70 MPa. Sources: https://polymers.netzsch.com/Materials/Details/29 ; https://matmake.com/materials-data/polymethyl-methacrylate-properties.html".to_string();
 
-    let mut acrylic_params = CuttingParameters::default();
-    acrylic_params.rpm_range = (18000, 24000);
-    acrylic_params.feed_rate_range = (1000.0, 1800.0);
-    acrylic_params.max_doc = 3.0;
-    acrylic_params.coolant_type = CoolantType::AirOnly;
+    let acrylic_params = CuttingParameters {
+        rpm_range: (18000, 24000),
+        feed_rate_range: (1000.0, 1800.0),
+        max_doc: 3.0,
+        coolant_type: CoolantType::AirOnly,
+        ..Default::default()
+    };
     acrylic.set_cutting_params("endmill_flat".to_string(), acrylic_params);
 
     library.add_material(acrylic);
@@ -440,16 +444,18 @@ pub fn init_standard_library() -> MaterialLibrary {
     aluminum_6061.required_ppe = vec![PPE::EyeProtection, PPE::HearingProtection];
     aluminum_6061.notes = "6061-T6: density ~2700 kg/m³; UTS ~310 MPa; melting range ~582–652 °C (solidus–liquidus). Source: https://asm.matweb.com/search/specificmaterial.asp?bassnum=ma6061t6".to_string();
 
-    let mut aluminum_params = CuttingParameters::default();
-    aluminum_params.rpm_range = (8000, 12000);
-    aluminum_params.feed_rate_range = (900.0, 2200.0);
-    aluminum_params.plunge_rate_percent = 40.0;
-    aluminum_params.max_doc = 3.0;
-    aluminum_params.stepover_percent = (35.0, 65.0);
-    aluminum_params.surface_speed_m_min = Some(300.0);
-    aluminum_params.chip_load_mm = Some(0.05);
-    aluminum_params.coolant_type = CoolantType::WaterSoluble;
-    aluminum_params.notes = "12k spindle baseline (assumes ~6mm, 2-flute carbide endmill); adjust by tool diameter using surface speed + chip load. Sources: https://www.machiningdoctor.com/mds/?matId=3850 ; https://www.harveytool.com/resources/general-machining-guidelines".to_string();
+    let aluminum_params = CuttingParameters {
+        rpm_range: (8000, 12000),
+        feed_rate_range: (900.0, 2200.0),
+        plunge_rate_percent: 40.0,
+        max_doc: 3.0,
+        stepover_percent: (35.0, 65.0),
+        surface_speed_m_min: Some(300.0),
+        chip_load_mm: Some(0.05),
+        coolant_type: CoolantType::WaterSoluble,
+        notes: "12k spindle baseline (assumes ~6mm, 2-flute carbide endmill); adjust by tool diameter using surface speed + chip load. Sources: https://www.machiningdoctor.com/mds/?matId=3850 ; https://www.harveytool.com/resources/general-machining-guidelines".to_string(),
+        ..Default::default()
+    };
     aluminum_6061.set_cutting_params("endmill_flat".to_string(), aluminum_params);
 
     library.add_material(aluminum_6061);

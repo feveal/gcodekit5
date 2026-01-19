@@ -83,6 +83,7 @@ pub struct DrawingObject {
     pub offset: f64,
     pub fillet: f64,
     pub chamfer: f64,
+    pub lock_aspect_ratio: bool,
 }
 
 impl DrawingObject {
@@ -148,6 +149,7 @@ impl DrawingObject {
             offset: 0.0,
             fillet: 0.0,
             chamfer: 0.0,
+            lock_aspect_ratio: true,
         }
     }
 }
@@ -833,6 +835,7 @@ impl Canvas {
                 offset: obj.offset,
                 fillet: obj.fillet,
                 chamfer: obj.chamfer,
+                lock_aspect_ratio: obj.lock_aspect_ratio,
             };
 
             self.shape_store.insert(id, new_obj);

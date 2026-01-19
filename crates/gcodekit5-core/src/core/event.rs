@@ -63,6 +63,7 @@ impl std::fmt::Display for ControllerEvent {
 }
 
 /// Event dispatcher for publishing events to subscribers
+#[derive(Clone)]
 pub struct EventDispatcher {
     tx: broadcast::Sender<ControllerEvent>,
 }
@@ -98,14 +99,6 @@ impl EventDispatcher {
     /// Get number of active subscribers
     pub fn subscriber_count(&self) -> usize {
         self.tx.receiver_count()
-    }
-}
-
-impl Clone for EventDispatcher {
-    fn clone(&self) -> Self {
-        Self {
-            tx: self.tx.clone(),
-        }
     }
 }
 

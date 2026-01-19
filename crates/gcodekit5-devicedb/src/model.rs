@@ -1,19 +1,14 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum DeviceType {
+    #[default]
     CncMill,
     CncLathe,
     LaserCutter,
     ThreeDPrinter,
     Plotter,
-}
-
-impl Default for DeviceType {
-    fn default() -> Self {
-        Self::CncMill
-    }
 }
 
 impl std::fmt::Display for DeviceType {
@@ -28,8 +23,9 @@ impl std::fmt::Display for DeviceType {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum ControllerType {
+    #[default]
     Grbl,
     GrblHal,
     TinyG,
@@ -37,12 +33,6 @@ pub enum ControllerType {
     Smoothieware,
     FluidNC,
     Marlin,
-}
-
-impl Default for ControllerType {
-    fn default() -> Self {
-        Self::Grbl
-    }
 }
 
 impl std::fmt::Display for ControllerType {

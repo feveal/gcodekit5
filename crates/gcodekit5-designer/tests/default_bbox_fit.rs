@@ -13,7 +13,7 @@ fn test_fit_to_default_bbox() {
     let padding_factor = 1.0 - (padding * 2.0);
     let expected_zoom_x = (vp.canvas_width() * padding_factor) / width;
     let expected_zoom_y = (vp.canvas_height() * padding_factor) / height;
-    let expected_zoom = expected_zoom_x.min(expected_zoom_y).max(0.1).min(50.0);
+    let expected_zoom = expected_zoom_x.min(expected_zoom_y).clamp(0.1, 50.0);
 
     assert!(
         (vp.zoom() - expected_zoom).abs() < 1e-10,

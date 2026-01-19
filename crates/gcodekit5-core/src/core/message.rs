@@ -94,6 +94,7 @@ impl std::fmt::Display for Message {
 }
 
 /// Message dispatcher for publishing messages to subscribers
+#[derive(Clone)]
 pub struct MessageDispatcher {
     tx: broadcast::Sender<Message>,
     min_level: Arc<parking_lot::RwLock<MessageLevel>>,
@@ -192,15 +193,6 @@ impl MessageDispatcher {
         text: impl Into<String>,
     ) -> Result<usize, broadcast::error::SendError<Message>> {
         self.publish(Message::verbose(source, text))
-    }
-}
-
-impl Clone for MessageDispatcher {
-    fn clone(&self) -> Self {
-        Self {
-            tx: self.tx.clone(),
-            min_level: Arc::clone(&self.min_level),
-        }
     }
 }
 

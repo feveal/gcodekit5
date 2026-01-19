@@ -92,7 +92,7 @@ impl MultiPassConfig {
 
         let ramp_progress =
             (progress * passes - (passes - self.ramp_start_depth)) / self.ramp_start_depth;
-        let clamped = ramp_progress.max(0.0).min(1.0);
+        let clamped = ramp_progress.clamp(0.0, 1.0);
 
         start_depth + (end_depth - start_depth) * clamped
     }

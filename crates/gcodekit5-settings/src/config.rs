@@ -69,21 +69,16 @@ impl Default for ConnectionSettings {
 }
 
 /// Theme selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum Theme {
     /// Follow system preference
+    #[default]
     System,
     /// Force light theme
     Light,
     /// Force dark theme
     Dark,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Self::System
-    }
 }
 
 impl std::fmt::Display for Theme {
@@ -103,9 +98,10 @@ impl std::fmt::Display for Theme {
 // Removed local definition, imported from gcodekit5_core::units
 
 /// Startup tab selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum StartupTab {
+    #[default]
     Machine,
     Console,
     Editor,
@@ -117,12 +113,6 @@ pub enum StartupTab {
     Devices,
     Tools,
     Materials,
-}
-
-impl Default for StartupTab {
-    fn default() -> Self {
-        Self::Machine
-    }
 }
 
 impl std::fmt::Display for StartupTab {

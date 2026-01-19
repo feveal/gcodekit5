@@ -134,20 +134,15 @@ fn point_in_polygon(poly: &[Point], test: Point) -> bool {
 }
 
 /// Strategy for pocket milling.
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Default)]
 pub enum PocketStrategy {
     /// Zig-Zag or Raster milling.
     Raster { angle: f64, bidirectional: bool },
     /// Contour-parallel (offset) milling.
+    #[default]
     ContourParallel,
     /// Adaptive clearing (trochoidal-like).
     Adaptive,
-}
-
-impl Default for PocketStrategy {
-    fn default() -> Self {
-        PocketStrategy::ContourParallel
-    }
 }
 
 /// Represents a pocket operation configuration.
@@ -1236,13 +1231,12 @@ impl PocketGenerator {
                     let p1 = rotated_vertices[i];
                     let p2 = rotated_vertices[(i + 1) % rotated_vertices.len()];
 
-                    if (p1.y <= current_y && p2.y > current_y)
-                        || (p2.y <= current_y && p1.y > current_y)
+                    if ((p1.y <= current_y && p2.y > current_y)
+                        || (p2.y <= current_y && p1.y > current_y))
+                        && (p2.y - p1.y).abs() > 1e-9
                     {
-                        if (p2.y - p1.y).abs() > 1e-9 {
-                            let x = p1.x + (current_y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
-                            intersections.push(x);
-                        }
+                        let x = p1.x + (current_y - p1.y) * (p2.x - p1.x) / (p2.y - p1.y);
+                        intersections.push(x);
                     }
                 }
 

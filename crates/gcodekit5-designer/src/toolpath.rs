@@ -213,7 +213,7 @@ impl ToolpathGenerator {
         let x = cx - w / 2.0;
         let y = cy - h / 2.0;
 
-        let r = rect.corner_radius.min(w / 2.0).min(h / 2.0);
+        let r = rect.effective_corner_radius().min(w / 2.0).min(h / 2.0);
         let rotation = rect.rotation;
 
         // Helper to rotate a point if needed
@@ -715,7 +715,7 @@ impl ToolpathGenerator {
         step_in: f64,
     ) -> Vec<Toolpath> {
         let r = rect
-            .corner_radius
+            .effective_corner_radius()
             .min(rect.width.abs() / 2.0)
             .min(rect.height.abs() / 2.0);
 

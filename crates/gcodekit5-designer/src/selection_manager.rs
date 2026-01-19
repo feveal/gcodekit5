@@ -186,12 +186,10 @@ impl SelectionManager {
                     }
                 } else {
                     // Handle single shape selection: use precise hit test
-                    if candidates.contains(&obj.id) {
-                        if obj.contains_point(point, tolerance) {
-                            found_id = Some(obj.id);
-                            found_group_id = None;
-                            break;
-                        }
+                    if candidates.contains(&obj.id) && obj.contains_point(point, tolerance) {
+                        found_id = Some(obj.id);
+                        found_group_id = None;
+                        break;
                     }
                 }
             }

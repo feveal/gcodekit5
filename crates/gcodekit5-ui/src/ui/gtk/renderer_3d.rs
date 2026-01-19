@@ -355,7 +355,7 @@ fn push_arc(
     }
 
     let segments = (angle_diff.abs() * radius * 2.0).ceil() as i32; // Adaptive segments
-    let segments = segments.max(4).min(100); // Clamp
+    let segments = segments.clamp(4, 100);
 
     let z_diff = to.z - from.z;
 

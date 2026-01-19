@@ -731,7 +731,7 @@ impl DesignerToolbox {
             let getter = Rc::new(move || state_getter.borrow().simulation_resolution);
             let state_setter = state.clone();
             let setter = Rc::new(move |val: f32| {
-                state_setter.borrow_mut().simulation_resolution = val.max(0.01).min(2.0);
+                state_setter.borrow_mut().simulation_resolution = val.clamp(0.01, 2.0);
             });
             create_stock_setting(
                 t!("Resolution"),

@@ -3384,12 +3384,13 @@ impl DesignerCanvas {
                     cr.rotate(rect.rotation.to_radians());
                 }
 
-                if rect.corner_radius > 0.001 {
+                let effective_radius = rect.effective_corner_radius();
+                if effective_radius > 0.001 {
                     let x = -rect.width / 2.0;
                     let y = -rect.height / 2.0;
                     let w = rect.width;
                     let h = rect.height;
-                    let r = rect.corner_radius.min(w / 2.0).min(h / 2.0);
+                    let r = effective_radius.min(w / 2.0).min(h / 2.0);
                     let pi = std::f64::consts::PI;
 
                     cr.new_sub_path();
@@ -3828,9 +3829,9 @@ impl DesignerCanvas {
                     rect.width *= sx.abs();
                     rect.height *= sy.abs();
 
-                    if rect.is_slot {
-                        rect.corner_radius = rect.width.min(rect.height) / 2.0;
-                    } else {
+                    // Only scale corner_radius if not in slot mode
+                    // (slot mode calculates radius dynamically)
+                    if !rect.is_slot {
                         rect.corner_radius *= sx.abs().min(sy.abs());
                     }
                 }
@@ -5683,8 +5684,9 @@ impl DesignerView {
                                 Shape::Rectangle(r) => {
                                     let x = r.center.x - r.width / 2.0;
                                     let y = r.center.y - r.height / 2.0;
+                                    let effective_radius = r.effective_corner_radius();
                                     svg.push_str(&format!(r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" rx="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
-                                        x, y, r.width, r.height, r.corner_radius, style,
+                                        x, y, r.width, r.height, effective_radius, style,
                                         r.rotation, r.center.x, r.center.y
                                     ));
                                 }

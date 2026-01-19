@@ -283,6 +283,7 @@ impl CommandListener for NoOpCommandListener {
 pub type CommandListenerHandle = Arc<dyn CommandListener>;
 
 /// Command numbering generator for sequential tracking
+#[derive(Clone)]
 pub struct CommandNumberGenerator {
     counter: Arc<AtomicU32>,
 }
@@ -314,14 +315,6 @@ impl CommandNumberGenerator {
 impl Default for CommandNumberGenerator {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Clone for CommandNumberGenerator {
-    fn clone(&self) -> Self {
-        Self {
-            counter: Arc::clone(&self.counter),
-        }
     }
 }
 

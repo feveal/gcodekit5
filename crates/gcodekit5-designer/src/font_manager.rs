@@ -3,29 +3,14 @@ use rusttype::Font;
 use std::{
     collections::{HashMap, HashSet},
     fs,
-    hash::{Hash, Hasher},
     sync::{Mutex, OnceLock},
 };
 
-#[derive(Clone, Eq)]
+#[derive(Clone, Eq, PartialEq, Hash)]
 struct FontKey {
     family: String,
     bold: bool,
     italic: bool,
-}
-
-impl PartialEq for FontKey {
-    fn eq(&self, other: &Self) -> bool {
-        self.family == other.family && self.bold == other.bold && self.italic == other.italic
-    }
-}
-
-impl Hash for FontKey {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.family.hash(state);
-        self.bold.hash(state);
-        self.italic.hash(state);
-    }
 }
 
 fn default_font() -> &'static Font<'static> {

@@ -222,10 +222,8 @@ impl GerberConverter {
             if end_angle >= start_angle {
                 end_angle -= 2.0 * std::f64::consts::PI;
             }
-        } else {
-            if end_angle <= start_angle {
-                end_angle += 2.0 * std::f64::consts::PI;
-            }
+        } else if end_angle <= start_angle {
+            end_angle += 2.0 * std::f64::consts::PI;
         }
 
         let diff = end_angle - start_angle;
@@ -542,10 +540,10 @@ impl GerberConverter {
                     use gerber_types::GCode as GGCode;
                     match gcode {
                         GGCode::InterpolationMode(mode) => {
-                            interpolation = mode.clone();
+                            interpolation = *mode;
                         }
                         GGCode::QuadrantMode(mode) => {
-                            _quadrant_mode = mode.clone();
+                            _quadrant_mode = *mode;
                         }
                         _ => {}
                     }
@@ -719,10 +717,8 @@ impl GerberConverter {
                         if end_angle <= start_angle {
                             end_angle += 2.0 * std::f64::consts::PI;
                         }
-                    } else {
-                        if end_angle >= start_angle {
-                            end_angle -= 2.0 * std::f64::consts::PI;
-                        }
+                    } else if end_angle >= start_angle {
+                        end_angle -= 2.0 * std::f64::consts::PI;
                     }
                     let segments = 8;
                     for j in 1..segments {

@@ -60,6 +60,7 @@ pub struct PropertiesPanel {
     pos_y_entry: Entry,
     width_entry: Entry,
     height_entry: Entry,
+    lock_aspect_ratio: CheckButton,
     rotation_entry: Entry,
     // Rectangle widgets
     corner_radius_entry: Entry,
@@ -119,6 +120,8 @@ pub struct PropertiesPanel {
     updating: Rc<RefCell<bool>>,
     // Flag to track if any widget has focus (being edited)
     has_focus: Rc<RefCell<bool>>,
+    // Aspect ratio (width/height) for locked resizing
+    aspect_ratio: Rc<RefCell<f64>>,
 }
 
 impl PropertiesPanel {
@@ -215,12 +218,19 @@ impl PropertiesPanel {
         height_unit_label.set_halign(gtk4::Align::End);
         height_unit_label.set_xalign(1.0);
 
+        let lock_aspect_label = Label::new(Some(&t!("Lock Aspect:")));
+        lock_aspect_label.set_halign(gtk4::Align::Start);
+        let lock_aspect_ratio = CheckButton::new();
+        lock_aspect_ratio.set_active(true);
+
         size_grid.attach(&width_label, 0, 0, 1, 1);
         size_grid.attach(&width_entry, 1, 0, 1, 1);
         size_grid.attach(&width_unit_label, 2, 0, 1, 1);
         size_grid.attach(&height_label, 0, 1, 1, 1);
         size_grid.attach(&height_entry, 1, 1, 1, 1);
         size_grid.attach(&height_unit_label, 2, 1, 1, 1);
+        size_grid.attach(&lock_aspect_label, 0, 2, 1, 1);
+        size_grid.attach(&lock_aspect_ratio, 1, 2, 1, 1);
 
         size_frame.set_child(Some(&size_grid));
         content.append(&size_frame);
@@ -654,9 +664,11 @@ impl PropertiesPanel {
             offset_unit_label,
             fillet_unit_label,
             chamfer_unit_label,
+            lock_aspect_ratio: lock_aspect_ratio.clone(),
             redraw_callback: Rc::new(RefCell::new(None)),
             updating: Rc::new(RefCell::new(false)),
             has_focus: Rc::new(RefCell::new(bool::default())),
+            aspect_ratio: Rc::new(RefCell::new(1.0)),
         });
 
         // Connect value change handlers
@@ -781,6 +793,8 @@ impl PropertiesPanel {
         let height = self.height_entry.clone();
         let redraw3 = self.redraw_callback.clone();
         let updating3 = self.updating.clone();
+        let lock_aspect_check = self.lock_aspect_ratio.clone();
+        let aspect_ratio_ref = self.aspect_ratio.clone();
 
         // Width changed (on Enter/activate)
         self.width_entry.connect_activate(move |entry| {
@@ -793,20 +807,31 @@ impl PropertiesPanel {
                 let mut designer_state = state.borrow_mut();
                 let selected_count = designer_state.selected_count();
 
+                let w = val as f64;
+                let mut h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
+
+                // If aspect ratio is locked, adjust height to maintain ratio
+                if lock_aspect_check.is_active() {
+                    let ratio = *aspect_ratio_ref.borrow();
+                    if ratio > 0.0 {
+                        h = w / ratio;
+                        // Update the height entry to reflect the new value
+                        *updating3.borrow_mut() = true;
+                        height.set_text(&units::format_length(h as f32, system));
+                        *updating3.borrow_mut() = false;
+                    }
+                }
+
                 if selected_count == 1 {
                     // Single selection - use undo-aware method
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
-                    let w = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 } else if selected_count > 1 {
                     // Multi-selection - use bounding box
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let h = units::parse_length(&height.text(), system).unwrap_or(0.0) as f64;
-                    let w = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 }
@@ -827,6 +852,8 @@ impl PropertiesPanel {
         let _height = self.height_entry.clone();
         let redraw4 = self.redraw_callback.clone();
         let updating4 = self.updating.clone();
+        let lock_aspect_check2 = self.lock_aspect_ratio.clone();
+        let aspect_ratio_ref2 = self.aspect_ratio.clone();
 
         // Height changed (on Enter/activate)
         self.height_entry.connect_activate(move |entry| {
@@ -839,20 +866,31 @@ impl PropertiesPanel {
                 let mut designer_state = state.borrow_mut();
                 let selected_count = designer_state.selected_count();
 
+                let h = val as f64;
+                let mut w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
+
+                // If aspect ratio is locked, adjust width to maintain ratio
+                if lock_aspect_check2.is_active() {
+                    let ratio = *aspect_ratio_ref2.borrow();
+                    if ratio > 0.0 {
+                        w = h * ratio;
+                        // Update the width entry to reflect the new value
+                        *updating4.borrow_mut() = true;
+                        width.set_text(&units::format_length(w as f32, system));
+                        *updating4.borrow_mut() = false;
+                    }
+                }
+
                 if selected_count == 1 {
                     // Single selection - use undo-aware method
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
-                    let h = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 } else if selected_count > 1 {
                     // Multi-selection - use bounding box
                     let x = units::parse_length(&pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let w = units::parse_length(&width.text(), system).unwrap_or(0.0) as f64;
-                    let h = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 }
@@ -862,6 +900,45 @@ impl PropertiesPanel {
                 }
             } else {
                 entry.add_css_class("entry-invalid");
+            }
+        });
+
+        // Lock aspect ratio changed - store current aspect ratio
+        let lock_aspect_settings = self.settings.clone();
+        let lock_aspect_width = self.width_entry.clone();
+        let lock_aspect_height = self.height_entry.clone();
+        let lock_aspect_ratio_ref = self.aspect_ratio.clone();
+        let lock_aspect_state = self.state.clone();
+        
+        self.lock_aspect_ratio.connect_toggled(move |check| {
+            let is_active = check.is_active();
+            
+            if is_active {
+                // Store current aspect ratio when locked
+                let system = lock_aspect_settings.borrow().config().ui.measurement_system;
+                if let (Ok(w), Ok(h)) = (
+                    units::parse_length(&lock_aspect_width.text(), system),
+                    units::parse_length(&lock_aspect_height.text(), system),
+                ) {
+                    if h > 0.0 {
+                        *lock_aspect_ratio_ref.borrow_mut() = w as f64 / h as f64;
+                    }
+                }
+            }
+            
+            // Save lock_aspect_ratio to the selected shape(s)
+            let mut designer_state = lock_aspect_state.borrow_mut();
+            let selected_ids: Vec<u64> = designer_state
+                .canvas
+                .shapes()
+                .filter(|s| s.selected)
+                .map(|s| s.id)
+                .collect();
+                
+            for id in selected_ids {
+                if let Some(obj) = designer_state.canvas.get_shape_mut(id) {
+                    obj.lock_aspect_ratio = is_active;
+                }
             }
         });
 
@@ -1794,6 +1871,8 @@ impl PropertiesPanel {
         let width_redraw = self.redraw_callback.clone();
         let width_updating = self.updating.clone();
         let width_entry_clone = self.width_entry.clone();
+        let width_lock_aspect = self.lock_aspect_ratio.clone();
+        let width_aspect_ratio = self.aspect_ratio.clone();
         
         width_focus_controller.connect_leave(move |_| {
             if *width_updating.borrow() {
@@ -1805,20 +1884,31 @@ impl PropertiesPanel {
                 let mut designer_state = width_state.borrow_mut();
                 let selected_count = designer_state.selected_count();
 
+                let w = val as f64;
+                let mut h = units::parse_length(&width_height.text(), system).unwrap_or(0.0) as f64;
+
+                // If aspect ratio is locked, adjust height to maintain ratio
+                if width_lock_aspect.is_active() {
+                    let ratio = *width_aspect_ratio.borrow();
+                    if ratio > 0.0 {
+                        h = w / ratio;
+                        // Update the height entry to reflect the new value
+                        *width_updating.borrow_mut() = true;
+                        width_height.set_text(&units::format_length(h as f32, system));
+                        *width_updating.borrow_mut() = false;
+                    }
+                }
+
                 if selected_count == 1 {
                     // Single selection - use undo-aware method
                     let x = units::parse_length(&width_pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&width_pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let h = units::parse_length(&width_height.text(), system).unwrap_or(0.0) as f64;
-                    let w = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 } else if selected_count > 1 {
                     // Multi-selection - use bounding box
                     let x = units::parse_length(&width_pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&width_pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let h = units::parse_length(&width_height.text(), system).unwrap_or(0.0) as f64;
-                    let w = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 }
@@ -1841,6 +1931,8 @@ impl PropertiesPanel {
         let height_redraw = self.redraw_callback.clone();
         let height_updating = self.updating.clone();
         let height_entry_clone = self.height_entry.clone();
+        let height_lock_aspect = self.lock_aspect_ratio.clone();
+        let height_aspect_ratio = self.aspect_ratio.clone();
         
         height_focus_controller.connect_leave(move |_| {
             if *height_updating.borrow() {
@@ -1848,24 +1940,34 @@ impl PropertiesPanel {
             }
             let system = height_settings.borrow().config().ui.measurement_system;
             if let Ok(val) = units::parse_length(&height_entry_clone.text(), system) {
-                height_entry_clone.remove_css_class("entry-invalid");
                 let mut designer_state = height_state.borrow_mut();
                 let selected_count = designer_state.selected_count();
+
+                let h = val as f64;
+                let mut w = units::parse_length(&height_width.text(), system).unwrap_or(0.0) as f64;
+
+                // If aspect ratio is locked, adjust width to maintain ratio
+                if height_lock_aspect.is_active() {
+                    let ratio = *height_aspect_ratio.borrow();
+                    if ratio > 0.0 {
+                        w = h * ratio;
+                        // Update the width entry to reflect the new value
+                        *height_updating.borrow_mut() = true;
+                        height_width.set_text(&units::format_length(w as f32, system));
+                        *height_updating.borrow_mut() = false;
+                    }
+                }
 
                 if selected_count == 1 {
                     // Single selection - use undo-aware method
                     let x = units::parse_length(&height_pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&height_pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let w = units::parse_length(&height_width.text(), system).unwrap_or(0.0) as f64;
-                    let h = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 } else if selected_count > 1 {
                     // Multi-selection - use bounding box
                     let x = units::parse_length(&height_pos_x.text(), system).unwrap_or(0.0) as f64;
                     let y = units::parse_length(&height_pos_y.text(), system).unwrap_or(0.0) as f64;
-                    let w = units::parse_length(&height_width.text(), system).unwrap_or(0.0) as f64;
-                    let h = val as f64;
 
                     designer_state.set_selected_position_and_size_with_flags(x, y, w, h, false, true);
                 }
@@ -1943,6 +2045,7 @@ impl PropertiesPanel {
                     obj.fillet,
                     obj.chamfer,
                     any_not_text,
+                    obj.lock_aspect_ratio,
                 ))
             } else {
                 // Multiple selection - only show CAM properties (use first shape's values)
@@ -1962,6 +2065,7 @@ impl PropertiesPanel {
                     obj.fillet,
                     obj.chamfer,
                     any_not_text,
+                    false, // Multi-selection: don't lock aspect ratio
                 ))
             }
         };
@@ -1980,6 +2084,7 @@ impl PropertiesPanel {
             fillet,
             chamfer,
             any_not_text,
+            lock_aspect,
         )) = selection_data
         {
             // Set flag to prevent feedback loop during updates
@@ -2406,6 +2511,21 @@ impl PropertiesPanel {
             self.offset_entry.set_text(&units::format_length(offset as f32, system));
             self.fillet_entry.set_text(&units::format_length(fillet as f32, system));
             self.chamfer_entry.set_text(&units::format_length(chamfer as f32, system));
+
+            // Calculate and store aspect ratio from current width/height before setting the checkbox
+            if lock_aspect {
+                if let (Ok(w), Ok(h)) = (
+                    units::parse_length(&self.width_entry.text(), system),
+                    units::parse_length(&self.height_entry.text(), system),
+                ) {
+                    if h > 0.0 {
+                        *self.aspect_ratio.borrow_mut() = w as f64 / h as f64;
+                    }
+                }
+            }
+
+            // Update lock aspect ratio checkbox from shape's value
+            self.lock_aspect_ratio.set_active(lock_aspect);
 
             // Enable CAM controls
             self.op_type_combo.set_sensitive(true);

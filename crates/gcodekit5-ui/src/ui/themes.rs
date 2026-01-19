@@ -322,13 +322,13 @@ impl ThemeManager {
 
     /// Apply font size multiplier
     pub fn set_font_size_scale(&mut self, scale: f32) {
-        let scale = scale.max(0.8).min(2.0); // Clamp between 0.8x and 2.0x
+        let scale = scale.clamp(0.8, 2.0); // Clamp between 0.8x and 2.0x
         self.current_theme.font.base_size = 12.0 * scale;
     }
 
     /// Apply spacing multiplier
     pub fn set_spacing_scale(&mut self, scale: f32) {
-        let scale = scale.max(0.5).min(2.0);
+        let scale = scale.clamp(0.5, 2.0);
         self.current_theme.spacing = scale;
     }
 }

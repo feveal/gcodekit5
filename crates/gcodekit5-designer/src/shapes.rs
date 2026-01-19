@@ -2,14 +2,9 @@
 //! Deprecated: Use crate::model instead.
 
 /// Type of CAM operation to perform on the shape.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OperationType {
+    #[default]
     Profile,
     Pocket,
-}
-
-impl Default for OperationType {
-    fn default() -> Self {
-        Self::Profile
-    }
 }

@@ -8,19 +8,14 @@ use std::fmt;
 use std::str::FromStr;
 
 /// Measurement system
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum MeasurementSystem {
     /// Metric system (mm)
+    #[default]
     Metric,
     /// Imperial system (inches)
     Imperial,
-}
-
-impl Default for MeasurementSystem {
-    fn default() -> Self {
-        Self::Metric
-    }
 }
 
 impl fmt::Display for MeasurementSystem {
@@ -45,10 +40,11 @@ impl FromStr for MeasurementSystem {
 }
 
 /// Feed rate units selection
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FeedRateUnits {
     /// Millimeters per minute
+    #[default]
     MmPerMin,
     /// Millimeters per second
     MmPerSec,
@@ -56,12 +52,6 @@ pub enum FeedRateUnits {
     InPerMin,
     /// Inches per second
     InPerSec,
-}
-
-impl Default for FeedRateUnits {
-    fn default() -> Self {
-        Self::MmPerMin
-    }
 }
 
 impl fmt::Display for FeedRateUnits {

@@ -130,6 +130,12 @@ pub struct ShapeData {
     pub fillet: f64,
     #[serde(default)]
     pub chamfer: f64,
+    #[serde(default = "default_lock_aspect_ratio")]
+    pub lock_aspect_ratio: bool,
+}
+
+fn default_lock_aspect_ratio() -> bool {
+    true
 }
 
 fn default_raster_fill_ratio() -> f64 {
@@ -361,6 +367,7 @@ impl DesignFile {
             offset: obj.offset,
             fillet: obj.fillet,
             chamfer: obj.chamfer,
+            lock_aspect_ratio: obj.lock_aspect_ratio,
         }
     }
 
@@ -500,6 +507,7 @@ impl DesignFile {
             offset: data.offset,
             fillet: data.fillet,
             chamfer: data.chamfer,
+            lock_aspect_ratio: data.lock_aspect_ratio,
         })
     }
 }

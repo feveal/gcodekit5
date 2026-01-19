@@ -259,7 +259,7 @@ impl GcodeVisualizer {
 
             let zoom_x = available_width / work_width;
             let zoom_y = available_height / work_height;
-            let new_zoom = zoom_x.min(zoom_y).max(0.1).min(50.0);
+            let new_zoom = zoom_x.min(zoom_y).clamp(0.1, 50.0);
 
             vis.zoom_scale = new_zoom;
 
@@ -1637,7 +1637,7 @@ impl GcodeVisualizer {
                 let min_pos = 280;
                 let max_25 = ((width as f64) * 0.25) as i32;
                 let max_canvas = (width - 420).max(min_pos);
-                let max_pos = max_25.min(max_canvas).max(min_pos);
+                let max_pos = max_25.min(max_canvas).clamp(min_pos, i32::MAX);
 
                 let mut pos = stored.unwrap_or_else(|| max_25);
                 if pos < min_pos {
@@ -1711,7 +1711,7 @@ impl GcodeVisualizer {
                     let min_pos = 280;
                     let max_25 = ((width as f64) * 0.25) as i32;
                     let max_canvas = (width - 420).max(min_pos);
-                    let max_pos = max_25.min(max_canvas).max(min_pos);
+                    let max_pos = max_25.min(max_canvas).clamp(min_pos, i32::MAX);
 
                     let mut pos = last_pos.get();
                     if pos <= 0 {
@@ -1762,7 +1762,7 @@ impl GcodeVisualizer {
             let min_pos = 280;
             let max_25 = ((width as f64) * 0.25) as i32;
             let max_canvas = (width - 420).max(min_pos);
-            let max_pos = max_25.min(max_canvas).max(min_pos);
+            let max_pos = max_25.min(max_canvas).clamp(min_pos, i32::MAX);
 
             let mut pos = paned.position();
             if pos < min_pos {

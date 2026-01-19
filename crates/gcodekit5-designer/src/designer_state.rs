@@ -1913,7 +1913,7 @@ impl DesignerState {
             if obj.selected {
                 if let crate::model::Shape::Rectangle(rect) = &obj.shape {
                     let max_radius = rect.width.min(rect.height) / 2.0;
-                    let new_radius = radius.min(max_radius).max(0.0);
+                    let new_radius = radius.clamp(0.0, max_radius);
 
                     if (rect.corner_radius - new_radius).abs() > f64::EPSILON {
                         let mut new_obj = obj.clone();
@@ -2092,9 +2092,7 @@ impl DesignerState {
                         let mut new_obj = obj.clone();
                         if let crate::model::Shape::Rectangle(new_rect) = &mut new_obj.shape {
                             new_rect.is_slot = is_slot;
-                            if is_slot {
-                                new_rect.corner_radius = new_rect.width.min(new_rect.height) / 2.0;
-                            }
+                            // Don't modify corner_radius - effective_corner_radius() handles slot mode dynamically
                         }
 
                         commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
@@ -2118,17 +2116,15 @@ impl DesignerState {
     pub fn set_selected_name(&mut self, name: String) {
         let mut commands = Vec::new();
         for obj in self.canvas.shapes_mut() {
-            if obj.selected {
-                if obj.name != name {
-                    let mut new_obj = obj.clone();
-                    new_obj.name = name.clone();
+            if obj.selected && obj.name != name {
+                let mut new_obj = obj.clone();
+                new_obj.name = name.clone();
 
-                    commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
-                        id: obj.id,
-                        old_state: obj.clone(),
-                        new_state: new_obj,
-                    }));
-                }
+                commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
+                    id: obj.id,
+                    old_state: obj.clone(),
+                    new_state: new_obj,
+                }));
             }
         }
         if !commands.is_empty() {

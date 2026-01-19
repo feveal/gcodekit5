@@ -522,13 +522,13 @@ impl SettingsPersistence {
 
         if let Some(setting) = dialog.get_setting("grid_major_line_width") {
             if let Ok(value) = setting.value.as_str().parse::<f64>() {
-                self.config.ui.grid_major_line_width = value.max(0.5).min(10.0);
+                self.config.ui.grid_major_line_width = value.clamp(0.5, 10.0);
             }
         }
 
         if let Some(setting) = dialog.get_setting("grid_minor_line_width") {
             if let Ok(value) = setting.value.as_str().parse::<f64>() {
-                self.config.ui.grid_minor_line_width = value.max(0.5).min(10.0);
+                self.config.ui.grid_minor_line_width = value.clamp(0.5, 10.0);
             }
         }
 

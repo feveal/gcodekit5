@@ -76,6 +76,7 @@ impl Notification {
 }
 
 /// Notification manager
+#[derive(Clone)]
 pub struct NotificationManager {
     notifications: Arc<Mutex<Vec<Notification>>>,
 }
@@ -179,14 +180,6 @@ impl NotificationManager {
 impl Default for NotificationManager {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Clone for NotificationManager {
-    fn clone(&self) -> Self {
-        Self {
-            notifications: Arc::clone(&self.notifications),
-        }
     }
 }
 

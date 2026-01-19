@@ -55,8 +55,10 @@ pub fn render_canvas(
     let mut paint = Paint::default();
     paint.set_color(crosshair_color());
     paint.anti_alias = false; // Sharp lines for axes
-    let mut stroke = Stroke::default();
-    stroke.width = 2.0;
+    let stroke = Stroke {
+        width: 2.0,
+        ..Default::default()
+    };
 
     let mut pb = PathBuilder::new();
     // X-axis (y=0)
@@ -124,11 +126,10 @@ pub fn render_canvas(
                 pb.move_to(line.start.x as f32, line.start.y as f32);
                 pb.line_to(line.end.x as f32, line.end.y as f32);
                 if let Some(path) = pb.finish() {
-                    let mut stroke = Stroke::default();
-                    stroke.width = 1.0; // 1 pixel width in world space? No, usually 1px screen space.
-                                        // If we apply transform to stroke, width scales.
-                                        // To keep 1px screen width, we should calculate width / zoom.
-                    stroke.width = 1.0 / zoom;
+                    let stroke = Stroke {
+                        width: 1.0 / zoom,
+                        ..Default::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, transform, None);
                 }
             }
@@ -185,8 +186,10 @@ pub fn render_canvas(
                     }
                 }
                 if let Some(path) = pb.finish() {
-                    let mut stroke = Stroke::default();
-                    stroke.width = 1.0 / zoom;
+                    let stroke = Stroke {
+                        width: 1.0 / zoom,
+                        ..Default::default()
+                    };
                     pixmap.stroke_path(&path, &paint, &stroke, transform, None);
                 }
             }
@@ -371,8 +374,10 @@ pub fn render_canvas(
 
             if let Some(r) = rect {
                 let path = PathBuilder::from_rect(r);
-                let mut stroke = Stroke::default();
-                stroke.width = 1.0 / zoom;
+                let stroke = Stroke {
+                    width: 1.0 / zoom,
+                    ..Default::default()
+                };
                 let mut paint = Paint::default();
                 paint.set_color(selection_color());
 
