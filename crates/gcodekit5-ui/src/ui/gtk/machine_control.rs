@@ -13,8 +13,8 @@ use gtk4::glib;
 use gtk4::prelude::*;
 use gtk4::{
     accessible::Property as AccessibleProperty, pango::EllipsizeMode, Align, Box, Button,
-    CheckButton, ComboBoxText, EventControllerKey, Grid, Image, Label, Orientation, Overlay,
-    Paned, PolicyType, ScrolledWindow, SizeGroup, SizeGroupMode, ToggleButton,
+    CheckButton, ComboBoxText, EventControllerKey, Grid, Image, Label, Orientation, Overlay, Paned,
+    PolicyType, ScrolledWindow, SizeGroup, SizeGroupMode, ToggleButton,
 };
 use std::cell::Cell;
 use std::collections::VecDeque;
@@ -588,12 +588,16 @@ impl MachineControlView {
         zero_actions.append(&zero_all_btn);
 
         let goto_zero_btn = make_icon_label_button("go-jump-symbolic", &t!("Go to Work Zero"));
-        goto_zero_btn.set_tooltip_text(Some(&t!("Rapid move to work origin (X/Y, or X/Y/Z if Include Z is checked)")));
+        goto_zero_btn.set_tooltip_text(Some(&t!(
+            "Rapid move to work origin (X/Y, or X/Y/Z if Include Z is checked)"
+        )));
 
         // Checkbox for including Z axis in go to work zero
         let goto_zero_include_z = CheckButton::with_label(&t!("Include Z"));
         goto_zero_include_z.set_active(false);
-        goto_zero_include_z.set_tooltip_text(Some(&t!("When checked, Go to Work Zero will also move to Z0")));
+        goto_zero_include_z.set_tooltip_text(Some(&t!(
+            "When checked, Go to Work Zero will also move to Z0"
+        )));
 
         let goto_zero_row = Box::new(Orientation::Horizontal, 8);
         goto_zero_row.set_halign(Align::Start);
@@ -1008,11 +1012,13 @@ impl MachineControlView {
                 );
             }
             step_combo.set_active_id(Some("1"));
-            *jog_step_mm.lock().unwrap() = 1.0;
+            *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) = 1.0;
 
             jog_feed_units.set_text(&initial_feed_units.to_string());
             jog_feed_entry.set_text(&format_feed_rate(2000.0, initial_feed_units));
-            *jog_feed_mm_per_min.lock().unwrap() = 2000.0;
+            *jog_feed_mm_per_min
+                .lock()
+                .unwrap_or_else(|p| p.into_inner()) = 2000.0;
         }
 
         // Listen for unit changes
@@ -1041,7 +1047,7 @@ impl MachineControlView {
                     let unit_label = get_unit_label(units);
                     step_label_clone.set_text(&format!("Step ({unit_label}):"));
 
-                    let selected_mm = *jog_step_mm_clone.lock().unwrap();
+                    let selected_mm = *jog_step_mm_clone.lock().unwrap_or_else(|p| p.into_inner());
                     step_combo_clone.remove_all();
                     let presets_mm: [f32; 6] = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0];
                     for mm in presets_mm {
@@ -1060,9 +1066,11 @@ impl MachineControlView {
                         "in/sec" => FeedRateUnits::InPerSec,
                         _ => FeedRateUnits::MmPerMin,
                     };
-                    *feed_units_clone.lock().unwrap() = new_units;
+                    *feed_units_clone.lock().unwrap_or_else(|p| p.into_inner()) = new_units;
                     jog_feed_units_clone.set_text(&new_units.to_string());
-                    let current_mm_per_min = *jog_feed_mm_per_min_clone.lock().unwrap();
+                    let current_mm_per_min = *jog_feed_mm_per_min_clone
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner());
                     jog_feed_entry_clone.set_text(&format_feed_rate(current_mm_per_min, new_units));
                 }
             });
@@ -1157,7 +1165,7 @@ impl MachineControlView {
             view.step_combo.connect_changed(move |c| {
                 if let Some(id) = c.active_id() {
                     if let Ok(v) = id.parse::<f32>() {
-                        *jog_step_mm.lock().unwrap() = v;
+                        *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) = v;
                     }
                 }
             });
@@ -1167,9 +1175,11 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let current_feed_units = view.current_feed_units.clone();
             view.jog_feed_entry.connect_changed(move |e| {
-                let units = *current_feed_units.lock().unwrap();
+                let units = *current_feed_units.lock().unwrap_or_else(|p| p.into_inner());
                 if let Ok(v) = parse_feed_rate(&e.text(), units) {
-                    *jog_feed_mm_per_min.lock().unwrap() = v;
+                    *jog_feed_mm_per_min
+                        .lock()
+                        .unwrap_or_else(|p| p.into_inner()) = v;
                 }
             });
         }
@@ -1225,8 +1235,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_x_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('X', step, &communicator, feed, &console);
             });
         }
@@ -1236,8 +1248,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_x_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('X', -step, &communicator, feed, &console);
             });
         }
@@ -1247,8 +1261,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_y_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('Y', step, &communicator, feed, &console);
             });
         }
@@ -1258,8 +1274,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_y_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('Y', -step, &communicator, feed, &console);
             });
         }
@@ -1269,8 +1287,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_z_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('Z', step, &communicator, feed, &console);
             });
         }
@@ -1280,8 +1300,10 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_z_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
                 send_jog('Z', -step, &communicator, feed, &console);
             });
         }
@@ -1309,8 +1331,10 @@ impl MachineControlView {
                     return glib::Propagation::Proceed;
                 };
 
-                let step = *jog_step_mm.lock().unwrap();
-                let feed = *jog_feed_mm_per_min.lock().unwrap();
+                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
+                let feed = *jog_feed_mm_per_min
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner());
 
                 match ch {
                     '8' => send_jog('Y', step, &communicator, feed, &console),
@@ -1345,7 +1369,7 @@ impl MachineControlView {
                 if let Ok(mut comm) = communicator.lock() {
                     let _ = comm.send(b"!");
                 }
-                *is_paused.lock().unwrap() = true;
+                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = true;
             });
         }
         {
@@ -1363,18 +1387,20 @@ impl MachineControlView {
                 if let Ok(mut comm) = communicator.lock() {
                     let _ = comm.send(b"~");
                 }
-                *is_paused.lock().unwrap() = false;
+                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
 
                 // Kickstart if stalled (streaming, not waiting for ack, and has commands)
-                if *is_streaming.lock().unwrap() && !*waiting_for_ack.lock().unwrap() {
-                    let mut queue = send_queue.lock().unwrap();
+                if *is_streaming.lock().unwrap_or_else(|p| p.into_inner())
+                    && !*waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner())
+                {
+                    let mut queue = send_queue.lock().unwrap_or_else(|p| p.into_inner());
                     if let Some(cmd) = queue.pop_front() {
                         if let Some(c) = console.as_ref() {
                             c.append_log(&format!("> {}\n", cmd));
                         }
                         if let Ok(mut comm) = communicator.lock() {
                             let _ = comm.send_command(&cmd);
-                            *waiting_for_ack.lock().unwrap() = true;
+                            *waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner()) = true;
                         }
                     }
                 }
@@ -1397,11 +1423,11 @@ impl MachineControlView {
                     // 0x18 = Ctrl-x = Soft Reset
                     let _ = comm.send(&[0x18]);
                 }
-                *is_streaming.lock().unwrap() = false;
-                *is_paused.lock().unwrap() = false;
-                *waiting_for_ack.lock().unwrap() = false;
-                *job_start_time.lock().unwrap() = None;
-                send_queue.lock().unwrap().clear();
+                *is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                *waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                *job_start_time.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                send_queue.lock().unwrap_or_else(|p| p.into_inner()).clear();
 
                 // Reset progress
                 if let Some(sb) = status_bar.as_ref() {
@@ -1663,11 +1689,11 @@ impl MachineControlView {
 
         let view_clone = view.clone();
         view.connect_btn.connect_clicked(move |_| {
-            let is_connected = view_clone.communicator.lock().unwrap().is_connected();
+            let is_connected = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner()).is_connected();
 
             if is_connected {
                 // Disconnect
-                let mut comm = view_clone.communicator.lock().unwrap();
+                let mut comm = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner());
                 match comm.disconnect() {
                     Ok(_) => {
                         set_button_icon_label(&view_clone.connect_btn, "network-wired-symbolic", &t!("Connect"));
@@ -1747,7 +1773,7 @@ impl MachineControlView {
                     };
 
                     // Perform synchronous connection (it's fast)
-                    let result = view_clone.communicator.lock().unwrap().connect(&params);
+                    let result = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner()).connect(&params);
 
                     match result {
                         Ok(_) => {
@@ -1966,7 +1992,7 @@ impl MachineControlView {
                                                             line_for_log = format!("{} - {}", line, decoded);
 
                                                             // Only show dialog if NOT streaming, otherwise just log
-                                                            if !*is_streaming_poll.lock().unwrap() {
+                                                            if !*is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) {
                                                                 let secondary = format!("error:{} - {}", code, decoded);
                                                                 let dialog = gtk4::MessageDialog::builder()
                                                                     .message_type(gtk4::MessageType::Error)
@@ -1998,15 +2024,15 @@ impl MachineControlView {
                                                 }
 
                                                 if is_ack || is_error {
-                                                     *waiting_for_ack_poll.lock().unwrap() = false;
+                                                     *waiting_for_ack_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
 
                                                      // If error, we might want to stop, but for now we continue
                                                      // if is_error { ... logic to stop ... }
 
-                                                     if *is_streaming_poll.lock().unwrap() {
-                                                         if !*is_paused_poll.lock().unwrap() {
-                                                              let mut queue = send_queue_poll.lock().unwrap();
-                                                              let total_lines_val = *total_lines_poll.lock().unwrap();
+                                                     if *is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) {
+                                                         if !*is_paused_poll.lock().unwrap_or_else(|p| p.into_inner()) {
+                                                              let mut queue = send_queue_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                              let total_lines_val = *total_lines_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                               let remaining = queue.len();
                                                               let sent = total_lines_val - remaining;
 
@@ -2019,7 +2045,7 @@ impl MachineControlView {
                                                                   };
 
                                                                   // Calculate actual elapsed time
-                                                                  let elapsed_secs = if let Some(start) = *job_start_time_poll.lock().unwrap() {
+                                                                  let elapsed_secs = if let Some(start) = *job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner()) {
                                                                       start.elapsed().as_secs_f64()
                                                                   } else {
                                                                       0.0
@@ -2052,14 +2078,14 @@ impl MachineControlView {
                                                                        c.append_log(&format!("> {}\n", next_cmd));
                                                                    }
                                                                    let _ = comm.send_command(&next_cmd);
-                                                                    *waiting_for_ack_poll.lock().unwrap() = true;
+                                                                    *waiting_for_ack_poll.lock().unwrap_or_else(|p| p.into_inner()) = true;
                                                               } else {
                                                                    // Done streaming
-                                                                   *is_streaming_poll.lock().unwrap() = false;
-                                                                   *is_paused_poll.lock().unwrap() = false;
+                                                                   *is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                                                                   *is_paused_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
 
                                                                    // Don't clear job_start_time yet - wait for machine to be Idle
-                                                                   // *job_start_time_poll.lock().unwrap() = None;
+                                                                   // *job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner()) = None;
 
                                                                    if let Some(c) = device_console_poll.as_ref() {
                                                                        c.append_log(&format!("{}\n", t!("Streaming Completed.")));
@@ -2112,8 +2138,8 @@ impl MachineControlView {
                                                         }
 
                                                         // If machine is Idle and not streaming, clear job timer
-                                                        if state == "Idle" && !*is_streaming_poll.lock().unwrap() {
-                                                            let mut start_time = job_start_time_poll.lock().unwrap();
+                                                        if state == "Idle" && !*is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) {
+                                                            let mut start_time = job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                             if start_time.is_some() {
                                                                 *start_time = None;
                                                                 if let Some(sb) = status_bar_poll.as_ref() {
@@ -2140,7 +2166,7 @@ impl MachineControlView {
 
                                                     // Update machine position (MPos)
                                                     if let Some(mpos) = full_status.mpos {
-                                                        let units = *current_units_poll.lock().unwrap();
+                                                        let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                         let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                         world_x_poll.set_text(&format!(
@@ -2179,7 +2205,7 @@ impl MachineControlView {
                                                     // WPos is either reported directly by GRBL or derived from MPos-WCO
                                                     // parse_full() automatically derives it when possible
                                                     if let Some(wpos) = full_status.wpos {
-                                                        let units = *current_units_poll.lock().unwrap();
+                                                        let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                         let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                         // Update DRO (Digital ReadOut) with work coordinates
@@ -2220,7 +2246,7 @@ impl MachineControlView {
                                                             use gcodekit5_communication::firmware::grbl::status_parser::StatusParser;
                                                             let wpos = StatusParser::wpos_from_mpos_wco(mpos, wco);
 
-                                                            let units = *current_units_poll.lock().unwrap();
+                                                            let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                             let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                             // Update DRO with derived work coordinates
@@ -2289,7 +2315,7 @@ impl MachineControlView {
                                                     let display_feed = commanded_feed.or(reported_feed);
 
                                                     if let Some(feed_rate) = display_feed {
-                                                        let units = *current_feed_units_poll.lock().unwrap();
+                                                        let units = *current_feed_units_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                         let feed = format_feed_rate(feed_rate, units);
                                                         state_feed_label_poll.set_text(&format!(
                                                             "{} {} {}",
@@ -2343,7 +2369,7 @@ impl MachineControlView {
 
                                                     // Update status bar and device_status if we have both
                                                     if let (Some(feed_rate), Some(spindle_speed)) = (display_feed, display_spindle) {
-                                                        let units = *current_feed_units_poll.lock().unwrap();
+                                                        let units = *current_feed_units_poll.lock().unwrap_or_else(|p| p.into_inner());
                                                         let feed_spindle = FeedSpindleState {
                                                             feed_rate: feed_rate as f64,
                                                             spindle_speed: spindle_speed as u32,
@@ -2565,11 +2591,11 @@ impl MachineControlView {
     }
 
     pub fn get_step_size(&self) -> f64 {
-        *self.jog_step_mm.lock().unwrap() as f64
+        *self.jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) as f64
     }
 
     pub fn start_job(&self, content: &str) {
-        if *self.is_streaming.lock().unwrap() {
+        if *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) {
             return;
         }
 
@@ -2626,28 +2652,37 @@ impl MachineControlView {
         }
 
         {
-            let mut queue = self.send_queue.lock().unwrap();
+            let mut queue = self.send_queue.lock().unwrap_or_else(|p| p.into_inner());
             queue.clear();
             for line in lines.iter() {
                 queue.push_back(line.clone());
             }
-            *self.total_lines.lock().unwrap() = queue.len();
+            *self.total_lines.lock().unwrap_or_else(|p| p.into_inner()) = queue.len();
         }
 
-        *self.is_streaming.lock().unwrap() = true;
-        *self.is_paused.lock().unwrap() = false;
-        *self.waiting_for_ack.lock().unwrap() = false;
-        *self.job_start_time.lock().unwrap() = Some(std::time::Instant::now());
+        *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = true;
+        *self.is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
+        *self
+            .waiting_for_ack
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = false;
+        *self
+            .job_start_time
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = Some(std::time::Instant::now());
 
         // Kickstart
         if let Ok(mut comm) = self.communicator.lock() {
-            let mut queue = self.send_queue.lock().unwrap();
+            let mut queue = self.send_queue.lock().unwrap_or_else(|p| p.into_inner());
             if let Some(cmd) = queue.pop_front() {
                 if let Some(c) = self.device_console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
                 let _ = comm.send_command(&cmd);
-                *self.waiting_for_ack.lock().unwrap() = true;
+                *self
+                    .waiting_for_ack
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner()) = true;
             }
         }
     }
@@ -2657,11 +2692,20 @@ impl MachineControlView {
             let _ = comm.send(&[0x18]);
         }
 
-        *self.is_streaming.lock().unwrap() = false;
-        *self.is_paused.lock().unwrap() = false;
-        *self.waiting_for_ack.lock().unwrap() = false;
-        *self.job_start_time.lock().unwrap() = None;
-        self.send_queue.lock().unwrap().clear();
+        *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = false;
+        *self.is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
+        *self
+            .waiting_for_ack
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = false;
+        *self
+            .job_start_time
+            .lock()
+            .unwrap_or_else(|p| p.into_inner()) = None;
+        self.send_queue
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
+            .clear();
 
         // Reset progress
         if let Some(sb) = self.status_bar.as_ref() {

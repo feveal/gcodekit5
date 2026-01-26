@@ -19,7 +19,7 @@ fn test_svg_import_comprehensive() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Verify format
     assert_eq!(design.format, FileFormat::Svg);
@@ -45,7 +45,7 @@ fn test_svg_import_with_scaling() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Dimensions should be scaled
     assert_eq!(design.dimensions.0, 200.0);
@@ -66,7 +66,7 @@ fn test_svg_import_with_offset() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Should have one circle with offset applied
     assert_eq!(design.shapes.len(), 1);
@@ -81,7 +81,7 @@ fn test_svg_import_empty_file() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Should succeed but have no shapes
     assert_eq!(design.shapes.len(), 0);
@@ -109,7 +109,7 @@ fn test_svg_import_path_commands() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Path with M, L, H, V, Z should create 1 PathShape
     assert_eq!(design.shapes.len(), 1);
@@ -131,7 +131,7 @@ fn test_svg_import_nested_groups() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Should flatten hierarchy and import both shapes
     assert_eq!(design.shapes.len(), 2);
@@ -147,7 +147,7 @@ fn test_svg_import_tigershead_asset_has_shapes() {
     let result = importer.import_string(&svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert!(
         !design.shapes.is_empty(),
         "expected at least one imported shape"

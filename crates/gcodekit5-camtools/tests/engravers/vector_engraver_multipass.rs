@@ -12,16 +12,16 @@ fn test_multipass_generation() {
   <path d="M 10 10 L 90 90"/>
 </svg>"#;
 
-    fs::write(&svg_path, svg_content).unwrap();
+    fs::write(&svg_path, svg_content).expect("write failed");
 
     let mut params = VectorEngravingParameters::default();
     params.multi_pass = true;
     params.num_passes = 3;
     params.z_step_down = 0.5;
 
-    let engraver = VectorEngraver::from_file(&svg_path, params).unwrap();
+    let engraver = VectorEngraver::from_file(&svg_path, params).expect("from_file failed");
 
-    let gcode = engraver.generate_gcode().unwrap();
+    let gcode = engraver.generate_gcode().expect("generate_gcode failed");
 
     // Verify multi-pass is implemented
     assert!(gcode.contains("Pass 2 of 3"), "Should have pass 2 comment");
@@ -62,13 +62,13 @@ fn test_single_pass_no_multipass() {
   <path d="M 10 10 L 90 90"/>
 </svg>"#;
 
-    fs::write(&svg_path, svg_content).unwrap();
+    fs::write(&svg_path, svg_content).expect("write failed");
 
     let params = VectorEngravingParameters::default();
 
-    let engraver = VectorEngraver::from_file(&svg_path, params).unwrap();
+    let engraver = VectorEngraver::from_file(&svg_path, params).expect("from_file failed");
 
-    let gcode = engraver.generate_gcode().unwrap();
+    let gcode = engraver.generate_gcode().expect("generate_gcode failed");
 
     // No pass comments when multi_pass is false
     assert!(
@@ -99,13 +99,13 @@ fn test_laser_disabled_at_path_end() {
   <path d="M 20 20 L 80 80"/>
 </svg>"#;
 
-    fs::write(&svg_path, svg_content).unwrap();
+    fs::write(&svg_path, svg_content).expect("write failed");
 
     let params = VectorEngravingParameters::default();
 
-    let engraver = VectorEngraver::from_file(&svg_path, params).unwrap();
+    let engraver = VectorEngraver::from_file(&svg_path, params).expect("from_file failed");
 
-    let gcode = engraver.generate_gcode().unwrap();
+    let gcode = engraver.generate_gcode().expect("generate_gcode failed");
 
     // Count M3 (laser on) and M5 (laser off) commands
     let m3_count = gcode.matches("M3").count();

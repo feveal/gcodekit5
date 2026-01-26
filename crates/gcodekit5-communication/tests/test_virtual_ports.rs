@@ -1,19 +1,19 @@
 //! Test virtual port detection (e.g., /dev/ttyGRBL for grblHAL simulator)
 
-use gcodekit5_communication::serial::list_ports;
+use gcodekit5_communication::communication::serial::list_ports;
 
 #[test]
 fn test_virtual_port_detection() {
     // This test verifies that virtual ports like /dev/ttyGRBL are detected
     // when they exist on the system
-    
+
     match list_ports() {
         Ok(ports) => {
             println!("Found {} port(s):", ports.len());
             for port in &ports {
                 println!("  - {} ({})", port.port_name, port.description);
             }
-            
+
             // Check if /dev/ttyGRBL exists on the system
             #[cfg(target_os = "linux")]
             {

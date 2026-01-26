@@ -127,8 +127,8 @@ fn test_default_box() {
     params.offset_x = 0.0;
     params.offset_y = 0.0;
 
-    let mut maker = TabbedBoxMaker::new(params).unwrap();
-    maker.generate().unwrap();
+    let mut maker = TabbedBoxMaker::new(params).expect("constructor failed");
+    maker.generate().expect("generate failed");
     let gcode = maker.to_gcode();
 
     assert!(gcode.contains("G21"));
@@ -171,7 +171,7 @@ fn test_default_box() {
 #[test]
 fn test_finger_calculation() {
     let params = BoxParameters::default();
-    let maker = TabbedBoxMaker::new(params).unwrap();
+    let maker = TabbedBoxMaker::new(params).expect("constructor failed");
 
     // For 100mm length with finger=2*t=6mm and space=2*t=6mm
     // fingers should be about 8-9
@@ -212,7 +212,7 @@ fn test_slots_containment_with_optimization() {
     let mut walls = Vec::new();
     let mut slots = Vec::new();
 
-    for path in &paths {
+    for path in paths.iter() {
         let min_x = path.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
         let max_x = path.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
         let min_y = path.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);

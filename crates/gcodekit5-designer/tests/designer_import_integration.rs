@@ -22,7 +22,7 @@ fn test_svg_import_empty_string() {
     let result = importer.import_string("<svg></svg>");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
     // Layer count not asserted here; importer may return 0 layers for empty SVGs
 }
@@ -38,7 +38,7 @@ fn test_svg_import_with_valid_content() {
     let result = importer.import_string(svg_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
     assert_eq!(design.dimensions, (100.0, 100.0));
 }
@@ -61,7 +61,7 @@ fn test_dxf_import_empty_content() {
     let result = importer.import_string("0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
 }
 
@@ -102,7 +102,7 @@ fn test_svg_with_offset() {
     let result = importer.import_string("<svg></svg>");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
 }
 
@@ -112,7 +112,7 @@ fn test_dxf_with_offset() {
     let result = importer.import_string("0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
 }
 
@@ -122,7 +122,7 @@ fn test_imported_design_properties() {
     let result = importer.import_string("<svg></svg>");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
 
     // Verify basic design properties
     assert!(!design.shapes.is_empty() || design.shapes.is_empty()); // Can be either
@@ -177,7 +177,7 @@ fn test_svg_import_complex_svg() {
     let result = importer.import_string(complex_svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
 }
 
@@ -191,7 +191,7 @@ fn test_svg_import_framework_ready() {
         importer.import_string(r#"<?xml version="1.0"?><svg width="100" height="100"></svg>"#);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
 
     // Framework ready for Phase 4 implementation
@@ -223,7 +223,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
     assert_eq!(design.shapes.len(), 1);
 }
@@ -252,7 +252,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
     assert_eq!(design.shapes.len(), 1);
 }
@@ -301,7 +301,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
     assert_eq!(design.shapes.len(), 3);
 }
@@ -332,7 +332,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.shapes.len(), 1);
 }
 
@@ -360,7 +360,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.shapes.len(), 1);
 }
 
@@ -396,7 +396,7 @@ EOF"#;
     let result = importer.import_string(dxf_content);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     // Polyline is converted to a single PathShape
     assert_eq!(design.shapes.len(), 1);
 }

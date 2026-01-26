@@ -2,12 +2,12 @@ use gcodekit5_communication::firmware::firmware_version::*;
 
 #[test]
 fn test_semantic_version_parse() {
-    let v = SemanticVersion::parse("1.2.3").unwrap();
+    let v = SemanticVersion::parse("1.2.3").expect("parse failed");
     assert_eq!(v.major, 1);
     assert_eq!(v.minor, 2);
     assert_eq!(v.patch, 3);
 
-    let v2 = SemanticVersion::parse("0.9j").unwrap();
+    let v2 = SemanticVersion::parse("0.9j").expect("parse failed");
     assert_eq!(v2.major, 0);
     assert_eq!(v2.minor, 9);
     // Patch might be 0 or parsed from 'j' depending on implementation,
@@ -56,7 +56,7 @@ fn test_firmware_version_display() {
 
 #[test]
 fn test_grbl_version_parsing() {
-    let v = SemanticVersion::parse("1.1h").unwrap();
+    let v = SemanticVersion::parse("1.1h").expect("parse failed");
     assert_eq!(v.major, 1);
     assert_eq!(v.minor, 1);
 }

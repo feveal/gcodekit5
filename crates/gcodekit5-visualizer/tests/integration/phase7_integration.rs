@@ -191,7 +191,7 @@ fn test_format_exporter_workflow() {
 
     assert!(exporter.export(&gcode).is_ok());
 
-    let result = exporter.export(&gcode).unwrap();
+    let result = exporter.export(&gcode).expect("export failed");
     assert!(result.contains("G0"));
     assert!(result.contains("G1"));
 }
@@ -312,7 +312,7 @@ fn test_communication_diagnostics_tracking() {
 #[test]
 fn test_buffer_diagnostics_validation() {
     // Valid buffer state
-    let diag = BufferDiagnostics::new(1000, 250).unwrap();
+    let diag = BufferDiagnostics::new(1000, 250).expect("constructor failed");
     assert_eq!(diag.fill_percentage, 25.0);
     assert_eq!(diag.available_space, 750);
 
@@ -322,7 +322,7 @@ fn test_buffer_diagnostics_validation() {
 
 #[test]
 fn test_buffer_diagnostics_full() {
-    let diag = BufferDiagnostics::new(512, 512).unwrap();
+    let diag = BufferDiagnostics::new(512, 512).expect("constructor failed");
     assert_eq!(diag.fill_percentage, 100.0);
     assert_eq!(diag.available_space, 0);
 }

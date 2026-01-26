@@ -24,7 +24,7 @@ fn test_linear_array_single_row() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 5);
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (10.0, 0.0));
@@ -42,7 +42,7 @@ fn test_linear_array_grid_pattern() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 9);
     // Check first row
     assert_eq!(offsets[0], (0.0, 0.0));
@@ -64,7 +64,7 @@ fn test_linear_array_rectangular_spacing() {
     let operation = ArrayOperation::Linear(params);
 
     let result = ArrayGenerator::generate(&operation);
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
 
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (15.0, 0.0));
@@ -162,7 +162,7 @@ fn test_grid_array_single_column() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 5);
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (0.0, 10.0));
@@ -180,7 +180,7 @@ fn test_grid_array_single_row() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 5);
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (10.0, 0.0));
@@ -198,7 +198,7 @@ fn test_grid_array_rectangular_pattern() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 6);
     // Row 0
     assert_eq!(offsets[0], (0.0, 0.0));
@@ -265,7 +265,7 @@ fn test_array_zero_spacing() {
     assert!(result.is_ok());
 
     // All offsets should be at origin when spacing is zero
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     for offset in offsets {
         assert_eq!(offset, (0.0, 0.0));
     }
@@ -280,7 +280,7 @@ fn test_circular_array_generation() {
     let result = ArrayGenerator::generate(&operation);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 8);
 
     // First offset should always be zero

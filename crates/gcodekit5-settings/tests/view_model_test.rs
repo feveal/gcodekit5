@@ -51,11 +51,18 @@ fn test_settings_export_import() {
     let setting = Setting::new("theme", "Theme", SettingValue::String("dark".to_string()));
     dialog.add_setting(setting);
 
-    let json = dialog.export_settings().unwrap();
+    let json = dialog.export_settings().expect("export failed");
     let mut dialog2 = SettingsDialog::new();
     let setting2 = Setting::new("theme", "Theme", SettingValue::String("light".to_string()));
     dialog2.add_setting(setting2);
-    dialog2.import_settings(&json).unwrap();
+    dialog2.import_settings(&json).expect("import failed");
 
-    assert_eq!(dialog2.get_setting("theme").unwrap().value.as_str(), "dark");
+    assert_eq!(
+        dialog2
+            .get_setting("theme")
+            .expect("setting not found")
+            .value
+            .as_str(),
+        "dark"
+    );
 }

@@ -110,7 +110,7 @@ pub fn generate_spur_gear(
         points.extend(right_points);
 
         if root_radius < base_radius {
-            let p_last = points.last().unwrap();
+            let p_last = points.last().expect("empty collection");
             let angle_last = (p_last.y - center.y).atan2(p_last.x - center.x);
             points.push(Point::new(
                 center.x + root_radius * angle_last.cos(),
@@ -385,7 +385,8 @@ pub fn generate_helical_gear(
             let angle = tooth_center_angle - (PI / (2.0 * teeth as f64)) - phi_pitch + phi;
 
             // Add helical offset
-            let helical_angle = angle + (r - root_radius) * helix_offset / (outer_radius - root_radius);
+            let helical_angle =
+                angle + (r - root_radius) * helix_offset / (outer_radius - root_radius);
 
             tooth_points.push(Point::new(
                 center.x + r * helical_angle.cos(),
@@ -418,7 +419,8 @@ pub fn generate_helical_gear(
                 .atan2(t_pitch.cos() + t_pitch * t_pitch.sin());
 
             let angle = tooth_center_angle + (PI / (2.0 * teeth as f64)) + phi_pitch + phi;
-            let helical_angle = angle + (r - root_radius) * helix_offset / (outer_radius - root_radius);
+            let helical_angle =
+                angle + (r - root_radius) * helix_offset / (outer_radius - root_radius);
 
             right_points.push(Point::new(
                 center.x + r * helical_angle.cos(),
@@ -428,7 +430,7 @@ pub fn generate_helical_gear(
         points.extend(right_points);
 
         if root_radius < base_radius {
-            let p_last = points.last().unwrap();
+            let p_last = points.last().expect("empty collection");
             let angle_last = (p_last.y - center.y).atan2(p_last.x - center.x);
             points.push(Point::new(
                 center.x + root_radius * angle_last.cos(),
@@ -527,12 +529,7 @@ pub fn generate_timing_pulley(
 }
 
 /// Generate a slot (rectangular cutout)
-pub fn generate_slot(
-    center: Point,
-    length: f64,
-    width: f64,
-    corner_radius: f64,
-) -> Path {
+pub fn generate_slot(center: Point, length: f64, width: f64, corner_radius: f64) -> Path {
     let mut builder = Path::builder();
 
     let half_length = length / 2.0;
@@ -543,8 +540,14 @@ pub fn generate_slot(
         let cr = corner_radius.min(half_width).min(half_length);
         builder.add_rounded_rectangle(
             &lyon::math::Box2D::new(
-                point((center.x - half_length) as f32, (center.y - half_width) as f32),
-                point((center.x + half_length) as f32, (center.y + half_width) as f32),
+                point(
+                    (center.x - half_length) as f32,
+                    (center.y - half_width) as f32,
+                ),
+                point(
+                    (center.x + half_length) as f32,
+                    (center.y + half_width) as f32,
+                ),
             ),
             &lyon::path::builder::BorderRadii::new(cr as f32),
             lyon::path::Winding::Positive,
@@ -553,8 +556,14 @@ pub fn generate_slot(
         // Rectangular slot
         builder.add_rectangle(
             &lyon::math::Box2D::new(
-                point((center.x - half_length) as f32, (center.y - half_width) as f32),
-                point((center.x + half_length) as f32, (center.y + half_width) as f32),
+                point(
+                    (center.x - half_length) as f32,
+                    (center.y - half_width) as f32,
+                ),
+                point(
+                    (center.x + half_length) as f32,
+                    (center.y + half_width) as f32,
+                ),
             ),
             lyon::path::Winding::Positive,
         );
@@ -582,7 +591,10 @@ pub fn generate_l_bracket(
         Point::new(center.x - half_width, center.y - half_height),
         Point::new(center.x + half_width, center.y - half_height),
         Point::new(center.x + half_width, center.y - half_height + thickness),
-        Point::new(center.x - half_width + thickness, center.y - half_height + thickness),
+        Point::new(
+            center.x - half_width + thickness,
+            center.y - half_height + thickness,
+        ),
         Point::new(center.x - half_width + thickness, center.y + half_height),
         Point::new(center.x - half_width, center.y + half_height),
     ];
@@ -596,9 +608,18 @@ pub fn generate_l_bracket(
     // Add mounting holes
     let hole_radius = hole_diameter / 2.0;
     let hole_centers = vec![
-        Point::new(center.x - half_width + thickness / 2.0, center.y - half_height + thickness / 2.0),
-        Point::new(center.x + half_width - hole_spacing, center.y - half_height + thickness / 2.0),
-        Point::new(center.x - half_width + thickness / 2.0, center.y + half_height - hole_spacing),
+        Point::new(
+            center.x - half_width + thickness / 2.0,
+            center.y - half_height + thickness / 2.0,
+        ),
+        Point::new(
+            center.x + half_width - hole_spacing,
+            center.y - half_height + thickness / 2.0,
+        ),
+        Point::new(
+            center.x - half_width + thickness / 2.0,
+            center.y + half_height - hole_spacing,
+        ),
     ];
 
     for hc in hole_centers {
@@ -632,8 +653,14 @@ pub fn generate_u_bracket(
         Point::new(center.x + half_length, center.y - half_width),
         Point::new(center.x + half_length, center.y + half_width),
         Point::new(center.x + half_length - thickness, center.y + half_width),
-        Point::new(center.x + half_length - thickness, center.y - half_width + thickness),
-        Point::new(center.x - half_length + thickness, center.y - half_width + thickness),
+        Point::new(
+            center.x + half_length - thickness,
+            center.y - half_width + thickness,
+        ),
+        Point::new(
+            center.x - half_length + thickness,
+            center.y - half_width + thickness,
+        ),
         Point::new(center.x - half_length + thickness, center.y + half_width),
         Point::new(center.x - half_length, center.y + half_width),
     ];
@@ -647,10 +674,22 @@ pub fn generate_u_bracket(
     // Add mounting holes
     let hole_radius = hole_diameter / 2.0;
     let hole_centers = vec![
-        Point::new(center.x - half_length + thickness / 2.0, center.y - half_width + thickness / 2.0),
-        Point::new(center.x + half_length - thickness / 2.0, center.y - half_width + thickness / 2.0),
-        Point::new(center.x - half_length + thickness / 2.0, center.y + half_width - hole_spacing),
-        Point::new(center.x + half_length - thickness / 2.0, center.y + half_width - hole_spacing),
+        Point::new(
+            center.x - half_length + thickness / 2.0,
+            center.y - half_width + thickness / 2.0,
+        ),
+        Point::new(
+            center.x + half_length - thickness / 2.0,
+            center.y - half_width + thickness / 2.0,
+        ),
+        Point::new(
+            center.x - half_length + thickness / 2.0,
+            center.y + half_width - hole_spacing,
+        ),
+        Point::new(
+            center.x + half_length - thickness / 2.0,
+            center.y + half_width - hole_spacing,
+        ),
     ];
 
     for hc in hole_centers {

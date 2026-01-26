@@ -307,7 +307,7 @@ fn test_template_get_parameter_by_name() {
 
     let retrieved = template.get_parameter("test_param");
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().name, "test_param");
+    assert_eq!(retrieved.expect("not found").name, "test_param");
 
     let not_found = template.get_parameter("nonexistent");
     assert!(not_found.is_none());
@@ -413,6 +413,6 @@ fn test_template_library_update() {
 
     // Verify changes
     let updated = library.get_template("box");
-    assert_eq!(updated.unwrap().name, "Box v2");
-    assert_eq!(updated.unwrap().version, "2.0");
+    assert_eq!(updated.expect("updated is None").name, "Box v2");
+    assert_eq!(updated.expect("updated is None").version, "2.0");
 }

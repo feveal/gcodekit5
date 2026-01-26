@@ -263,11 +263,11 @@ mod tests {
         let macro_def = GcodeMacro::new("home", "Home All", "G28");
         panel.add_macro(macro_def);
 
-        let json = panel.export_macros().unwrap();
+        let json = panel.export_macros().expect("export failed");
         let mut panel2 = MacrosPanel::new();
-        panel2.import_macros(&json).unwrap();
+        panel2.import_macros(&json).expect("import failed");
 
         assert_eq!(panel2.list_macros().len(), 1);
-        assert_eq!(panel2.get_macro("home").unwrap().name, "Home All");
+        assert_eq!(panel2.get_macro("home").expect("macro not found").name, "Home All");
     }
 }

@@ -12,7 +12,7 @@ fn test_spoilboard_grid_generation_metric() {
     };
 
     let generator = SpoilboardGridGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     assert!(gcode.contains("G21 ; Set units to millimeters"));
     assert!(gcode.contains("X100.0"));
@@ -42,7 +42,7 @@ fn test_spoilboard_grid_generation_imperial_converted() {
     };
 
     let generator = SpoilboardGridGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     assert!(gcode.contains("G21 ; Set units to millimeters")); // Always generates metric G-code
 
@@ -75,7 +75,7 @@ fn test_spoilboard_grid_generation_fractional_inch_converted() {
     };
 
     let generator = SpoilboardGridGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     // Should have lines at 0, 12.7, 25.4
     // X=0: Up (Start Y=0)

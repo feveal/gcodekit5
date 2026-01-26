@@ -747,7 +747,7 @@ impl TabbedBoxMaker {
         let mut path_iter = path.into_iter();
         let mut current_slot_idx = 0;
         let mut sorted_slots = slots.to_vec();
-        sorted_slots.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        sorted_slots.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
 
         if let Some(start) = path_iter.next() {
             new_path.push(start.clone());
@@ -1424,14 +1424,11 @@ impl TabbedBoxMaker {
                         "; Pass {}/{} at Z{:.2}\n",
                         pass_num, self.params.laser_passes, z_depth
                     ));
-                    
+
                     if pass_num > 1 {
-                        gcode.push_str(&format!(
-                            "G0 Z{:.2} ; Move to pass depth\n",
-                            z_depth
-                        ));
+                        gcode.push_str(&format!("G0 Z{:.2} ; Move to pass depth\n", z_depth));
                     }
-                    
+
                     gcode.push_str(&format!("M3 S{} ; Laser on\n", self.params.laser_power));
 
                     for (idx, point) in path.iter().skip(1).enumerate() {

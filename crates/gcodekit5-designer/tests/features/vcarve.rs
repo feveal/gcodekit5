@@ -151,7 +151,7 @@ fn test_calculate_depth() {
     let result = VCarveGenerator::calculate_depth(&tool, 1.0);
 
     assert!(result.is_ok());
-    let depth = result.unwrap();
+    let depth = result.expect("result failed");
     assert!((depth - 0.5).abs() < 0.01);
 }
 
@@ -176,7 +176,7 @@ fn test_generate_passes_single() {
     let result = VCarveGenerator::generate_passes(&params, &path);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].len(), 2);
 }
@@ -194,7 +194,7 @@ fn test_generate_passes_multiple() {
     let result = VCarveGenerator::generate_passes(&params, &path);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 3);
 }
 
@@ -207,7 +207,7 @@ fn test_estimate_time() {
     let result = VCarveGenerator::estimate_time(&params, &path);
     assert!(result.is_ok());
 
-    let time = result.unwrap();
+    let time = result.expect("result failed");
     // 100mm path / 100 mm/min = 1 minute
     assert!((time - 1.0).abs() < 0.01);
 }

@@ -239,7 +239,7 @@ pub fn present_for_parent(topic: &str, parent: Option<&gtk4::Window>) {
     );
 
     gtk4::style_context_add_provider_for_display(
-        &gtk4::gdk::Display::default().unwrap(),
+        &gtk4::gdk::Display::default().expect("no display"),
         &provider,
         gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
     );

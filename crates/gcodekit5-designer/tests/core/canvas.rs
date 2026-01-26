@@ -66,7 +66,11 @@ fn test_resize_handle_sequence() {
     let shapes: Vec<_> = canvas.shapes().collect();
     let shape = &shapes[0];
     let (x1, y1, x2, y2) = shape.shape.bounds();
-    assert_eq!((x1, y1, x2, y2), (0.0, 0.0, 100.0, 120.0));
+    // Use approximate comparison for floating point precision
+    assert!((x1 - 0.0).abs() < 1e-5, "x1 mismatch: {}", x1);
+    assert!((y1 - 0.0).abs() < 1e-5, "y1 mismatch: {}", y1);
+    assert!((x2 - 100.0).abs() < 1e-5, "x2 mismatch: {}", x2);
+    assert!((y2 - 120.0).abs() < 1e-5, "y2 mismatch: {}", y2);
 
     // Drag center handle by (10, 10)
     canvas.resize_selected(4, 10.0, 10.0);
@@ -75,7 +79,10 @@ fn test_resize_handle_sequence() {
     let (x1, y1, x2, y2) = shape.shape.bounds();
     // Expected: center was at (50, 60), moving by (10, 10) should give (60, 70)
     // Which means rect should be at (10, 10, 110, 130)
-    assert_eq!((x1, y1, x2, y2), (10.0, 10.0, 110.0, 130.0));
+    assert!((x1 - 10.0).abs() < 1e-5, "x1 mismatch: {}", x1);
+    assert!((y1 - 10.0).abs() < 1e-5, "y1 mismatch: {}", y1);
+    assert!((x2 - 110.0).abs() < 1e-5, "x2 mismatch: {}", x2);
+    assert!((y2 - 130.0).abs() < 1e-5, "y2 mismatch: {}", y2);
 }
 
 #[test]

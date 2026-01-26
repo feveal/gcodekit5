@@ -86,7 +86,7 @@ impl ProbeMesh {
             .iter()
             .map(|p| (p, (p.x - x).powi(2) + (p.y - y).powi(2)))
             .collect::<Vec<_>>();
-        nearest.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+        nearest.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
         if nearest.len() < 4 {
             return Some(nearest[0].0.z);
@@ -1237,7 +1237,7 @@ mod tests {
         let mut wcs = WorkCoordinateSystem::new();
         wcs.set_offset(1, WorkOffset::new(10.0, 20.0, 30.0));
 
-        let offset = wcs.get_offset(1).unwrap();
+        let offset = wcs.get_offset(1).expect("offset not found");
         assert_eq!(offset.x, 10.0);
     }
 

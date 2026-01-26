@@ -283,7 +283,7 @@ fn test_adaptive_algorithm_estimate_load() {
     let result = AdaptiveAlgorithm::estimate_load(3.175, 100.0, 2.0, 10000, &mat);
     assert!(result.is_ok());
 
-    let load = result.unwrap();
+    let load = result.expect("result failed");
     assert!(load > 0.0 && load <= 1.0);
 }
 
@@ -303,7 +303,7 @@ fn test_adaptive_algorithm_generate_passes() {
     let result = AdaptiveAlgorithm::generate_passes(&clearing, 100.0, 5);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 5);
 }
 
@@ -314,7 +314,7 @@ fn test_adaptive_algorithm_optimize_feed_rate() {
     let result = AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 1.0);
     assert!(result.is_ok());
 
-    let feed = result.unwrap();
+    let feed = result.expect("result failed");
     assert!(feed > 0.0 && feed <= mat.max_feed_rate);
 }
 
@@ -322,8 +322,10 @@ fn test_adaptive_algorithm_optimize_feed_rate() {
 fn test_adaptive_algorithm_feed_rate_tool_wear() {
     let mat = MaterialProperties::aluminum();
 
-    let new_tool = AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 1.0).unwrap();
-    let worn_tool = AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 0.5).unwrap();
+    let new_tool =
+        AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 1.0).expect("optimize failed");
+    let worn_tool =
+        AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 0.5).expect("optimize failed");
 
     // Worn tool should have lower or equal feed rate
     assert!(new_tool >= worn_tool);

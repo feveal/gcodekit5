@@ -25,7 +25,7 @@ fn test_add_setting() {
 
     let retrieved = manager.get_setting(110);
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().name, "Baud Rate");
+    assert_eq!(retrieved.expect("not found").name, "Baud Rate");
 }
 
 #[test]
@@ -33,7 +33,7 @@ fn test_parse_setting_line_valid() {
     let result = SettingsManager::parse_setting_line("$110=115200.000");
     assert!(result.is_some());
 
-    let (number, value) = result.unwrap();
+    let (number, value) = result.expect("result failed");
     assert_eq!(number, 110);
     assert_eq!(value, "115200.000");
 }
@@ -123,7 +123,7 @@ fn test_validate_setting_range() {
 #[test]
 fn test_get_sorted_settings() {
     let mut manager = SettingsManager::new();
-    for i in [120u8, 110, 130].iter() {
+    for i in [120u16, 110, 130].iter() {
         let setting = Setting {
             number: *i,
             name: format!("Setting {}", i),

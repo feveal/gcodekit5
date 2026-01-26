@@ -646,7 +646,11 @@ mod tests {
     fn test_toolbar_item_enable() {
         let mut toolbar = Toolbar::new();
         toolbar.set_item_enabled("connect", false);
-        let item = toolbar.items.iter().find(|i| i.id == "connect").unwrap();
+        let item = toolbar
+            .items
+            .iter()
+            .find(|i| i.id == "connect")
+            .expect("item not found");
         assert!(!item.enabled);
     }
 }

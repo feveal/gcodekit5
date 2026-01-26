@@ -71,12 +71,18 @@ fn test_design_template_metadata() {
 
     template.set_thumbnail("base64-encoded-image".to_string());
     assert!(template.thumbnail.is_some());
-    assert_eq!(template.thumbnail.unwrap(), "base64-encoded-image");
+    assert_eq!(
+        template.thumbnail.expect("thumbnail is None"),
+        "base64-encoded-image"
+    );
 
     template
         .metadata
         .insert("brand".to_string(), "Precision Tools".to_string());
-    assert_eq!(template.metadata.get("brand").unwrap(), "Precision Tools");
+    assert_eq!(
+        template.metadata.get("brand").expect("get failed"),
+        "Precision Tools"
+    );
 }
 
 #[test]
@@ -228,7 +234,7 @@ fn test_design_template_library_get() {
 
     let retrieved = library.get_template("tmpl-1");
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().name, "Template 1");
+    assert_eq!(retrieved.expect("not found").name, "Template 1");
 
     let not_found = library.get_template("non-existent");
     assert!(not_found.is_none());
@@ -504,7 +510,7 @@ fn test_template_persistence_save_and_load() {
     let loaded = TemplatePersistence::load(&lib_path);
     assert!(loaded.is_ok());
 
-    let loaded_lib = loaded.unwrap();
+    let loaded_lib = loaded.expect("loaded is None");
     assert_eq!(loaded_lib.count(), 1);
     assert!(loaded_lib.get_template("tmpl-1").is_some());
 }
@@ -531,7 +537,7 @@ fn test_template_persistence_single_template() {
     let loaded = TemplatePersistence::load_template(&template_path);
     assert!(loaded.is_ok());
 
-    let loaded_template = loaded.unwrap();
+    let loaded_template = loaded.expect("loaded is None");
     assert_eq!(loaded_template.id, "tmpl-1");
     assert_eq!(loaded_template.name, "Test Template");
 }

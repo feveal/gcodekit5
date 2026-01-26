@@ -10,12 +10,13 @@ use async_trait::async_trait;
 use gcodekit5_core::{ControllerState, ControllerStatus, PartialPosition};
 use gcodekit5_core::{ControllerTrait, OverrideState};
 use parking_lot::RwLock;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time::Duration;
+use uuid::Uuid;
 
 /// GRBL Controller state management
 #[derive(Debug, Clone)]
@@ -67,6 +68,8 @@ pub struct GrblController {
     command_tx: Arc<RwLock<Option<mpsc::Sender<String>>>>,
     /// Shutdown signal
     shutdown_signal: Arc<RwLock<Option<mpsc::Sender<()>>>>,
+    /// Registered controller listeners
+    listeners: Arc<RwLock<HashMap<String, Arc<dyn gcodekit5_core::ControllerListener>>>>,
     /// Connection parameters
     connection_params: ConnectionParams,
 }
@@ -86,6 +89,7 @@ impl GrblController {
             io_task: Arc::new(RwLock::new(None)),
             command_tx: Arc::new(RwLock::new(None)),
             shutdown_signal: Arc::new(RwLock::new(None)),
+            listeners: Arc::new(RwLock::new(HashMap::new())),
             connection_params,
         })
     }
@@ -103,6 +107,7 @@ impl GrblController {
 
         let communicator = self.communicator.clone();
         let state = self.state.clone();
+        let listeners = self.listeners.clone();
 
         let handle = tokio::spawn(async move {
             let mut buffer = String::new();
@@ -180,6 +185,21 @@ impl GrblController {
                                             s if s.starts_with("Jog") => ControllerStatus::Run,
                                             _ => ControllerStatus::Idle,
                                         };
+
+                                        // Notify registered listeners about state/status change
+                                        let new_state = state_guard.state;
+                                        let new_status = state_guard.status;
+                                        // Drop write guard before notifying
+                                        drop(state_guard);
+                                        let listeners_clone = listeners.clone();
+                                        for listener in listeners_clone.read().values().cloned() {
+                                            let s_copy = new_status;
+                                            let st_copy = new_state;
+                                            tokio::spawn(async move {
+                                                let _ = listener.on_state_changed(st_copy).await;
+                                                let _ = listener.on_status_changed(&s_copy).await;
+                                            });
+                                        }
                                     }
                                 } else if line == "ok" {
                                     // Acknowledge command
@@ -543,17 +563,103 @@ impl ControllerTrait for GrblController {
 
     fn register_listener(
         &mut self,
-        _listener: Arc<dyn gcodekit5_core::ControllerListener>,
+        listener: Arc<dyn gcodekit5_core::ControllerListener>,
     ) -> gcodekit5_core::ControllerListenerHandle {
-        // TODO: Implement listener registration
-        gcodekit5_core::ControllerListenerHandle("grbl_listener_1".to_string())
+        let id = Uuid::new_v4().to_string();
+        let handle = gcodekit5_core::ControllerListenerHandle(id.clone());
+        self.listeners.write().insert(id, listener);
+        handle
     }
 
-    fn unregister_listener(&mut self, _handle: gcodekit5_core::ControllerListenerHandle) {
-        // TODO: Implement listener unregistration
+    fn unregister_listener(&mut self, handle: gcodekit5_core::ControllerListenerHandle) {
+        let _ = self.listeners.write().remove(&handle.0);
     }
 
     fn listener_count(&self) -> usize {
-        0
+        self.listeners.read().len()
+    }
+}
+
+// Test helpers and unit tests
+#[cfg(test)]
+impl GrblController {
+    /// Notify listeners of a status change (test helper)
+    pub(crate) fn notify_status_change(&self, status: gcodekit5_core::ControllerStatus) {
+        let listeners = self.listeners.clone();
+        for listener in listeners.read().values().cloned() {
+            let s_copy = status;
+            tokio::spawn(async move {
+                let _ = listener.on_status_changed(&s_copy).await;
+            });
+        }
+    }
+
+    /// Notify listeners of a state change (test helper)
+    pub(crate) fn notify_state_change(&self, state: gcodekit5_core::ControllerState) {
+        let listeners = self.listeners.clone();
+        for listener in listeners.read().values().cloned() {
+            let st_copy = state;
+            tokio::spawn(async move {
+                let _ = listener.on_state_changed(st_copy).await;
+            });
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_trait::async_trait;
+    use std::sync::Arc;
+    use std::time::Duration;
+    use tokio::sync::Mutex;
+
+    struct TestListener {
+        calls: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl TestListener {
+        fn new() -> Self {
+            Self {
+                calls: Arc::new(Mutex::new(Vec::new())),
+            }
+        }
+    }
+
+    #[async_trait]
+    impl gcodekit5_core::ControllerListener for TestListener {
+        async fn on_status_changed(&self, status: &gcodekit5_core::ControllerStatus) {
+            let mut g = self.calls.lock().await;
+            g.push(format!("status:{:?}", status));
+        }
+
+        async fn on_state_changed(&self, new_state: gcodekit5_core::ControllerState) {
+            let mut g = self.calls.lock().await;
+            g.push(format!("state:{:?}", new_state));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_register_unregister_listener() {
+        let mut controller =
+            GrblController::new(ConnectionParams::default(), Some("test".to_string())).unwrap();
+        let listener = Arc::new(TestListener::new());
+        let handle = controller.register_listener(listener.clone());
+        assert_eq!(controller.listener_count(), 1);
+        controller.unregister_listener(handle);
+        assert_eq!(controller.listener_count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_listener_receives_status_change() {
+        let mut controller =
+            GrblController::new(ConnectionParams::default(), Some("test".to_string())).unwrap();
+        let listener = Arc::new(TestListener::new());
+        let calls = listener.calls.clone();
+        let _handle = controller.register_listener(listener.clone());
+        controller.notify_status_change(gcodekit5_core::ControllerStatus::Alarm);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let g = calls.lock().await;
+        assert!(g.iter().any(|s| s.contains("status:Alarm")));
     }
 }

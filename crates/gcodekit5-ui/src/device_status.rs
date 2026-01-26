@@ -189,5 +189,8 @@ pub fn get_grbl_setting_numeric(number: u16) -> Option<f64> {
 
 /// Get a snapshot of the current device status
 pub fn get_status() -> GrblDeviceStatus {
-    DEVICE_STATUS.read().unwrap().clone()
+    DEVICE_STATUS
+        .read()
+        .unwrap_or_else(|p| p.into_inner())
+        .clone()
 }

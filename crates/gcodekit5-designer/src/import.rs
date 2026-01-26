@@ -651,52 +651,52 @@ impl StlImporter {
             projection_direction: nalgebra::Vector3::new(0.0, 0.0, -1.0), // Project along Z-axis
         }
     }
-    
+
     pub fn with_scale(mut self, scale: f32) -> Self {
         self.scale = scale;
         self
     }
-    
+
     pub fn with_centering(mut self, center: bool) -> Self {
         self.center_model = center;
         self
     }
-    
+
     pub fn with_projection_direction(mut self, direction: nalgebra::Vector3<f32>) -> Self {
         self.projection_direction = direction.normalize();
         self
     }
-    
+
     /// Import STL file and return both 3D mesh and 2D shadow projection
     pub fn import_file(&self, path: &str) -> Result<ImportedDesign> {
         let importer = Model3DImporter::new()
             .with_scale(self.scale)
             .with_centering(self.center_model);
-            
+
         let mesh = importer.import_file(path)?;
         self.create_imported_design(mesh)
     }
-    
+
     /// Import STL from binary data
     pub fn import_data(&self, data: &[u8]) -> Result<ImportedDesign> {
         let importer = Model3DImporter::new()
             .with_scale(self.scale)
             .with_centering(self.center_model);
-            
+
         let mesh = importer.import_stl_data(data)?;
         self.create_imported_design(mesh)
     }
-    
+
     /// Project 3D mesh to 2D shadow and create ImportedDesign
     fn create_imported_design(&self, mesh: Mesh3D) -> Result<ImportedDesign> {
         // Generate 2D shadow projection
         let shapes = mesh.project_shadow_z()?;
-        
+
         // Calculate 2D dimensions from mesh bounds
         let width = (mesh.bounds_max.x - mesh.bounds_min.x) as f64;
         let height = (mesh.bounds_max.y - mesh.bounds_min.y) as f64;
         let dimensions = (width, height);
-        
+
         Ok(ImportedDesign {
             shapes,
             dimensions,
@@ -705,23 +705,23 @@ impl StlImporter {
             mesh_3d: Some(mesh),
         })
     }
-    
+
     /// Import STL and slice at specific Z height
     pub fn import_with_slice(&self, path: &str, z_height: f32) -> Result<ImportedDesign> {
         let importer = Model3DImporter::new()
             .with_scale(self.scale)
             .with_centering(self.center_model);
-            
+
         let mesh = importer.import_file(path)?;
-        
+
         // Generate 2D slice instead of shadow projection
         let shapes = mesh.slice_at_z(z_height)?;
-        
+
         // Calculate 2D dimensions from mesh bounds
         let width = (mesh.bounds_max.x - mesh.bounds_min.x) as f64;
         let height = (mesh.bounds_max.y - mesh.bounds_min.y) as f64;
         let dimensions = (width, height);
-        
+
         Ok(ImportedDesign {
             shapes,
             dimensions,

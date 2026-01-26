@@ -2,8 +2,8 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, Entry, FileChooserAction, FileChooserDialog,
-    Label, Orientation, Paned, ResponseType, ScrolledWindow, Stack,
+    Align, Box, Button, CheckButton, Entry, FileChooserAction, FileChooserDialog, Label,
+    Orientation, Paned, ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
@@ -15,7 +15,9 @@ use std::rc::Rc;
 use super::common::{create_dimension_row, set_paned_initial_fraction};
 use super::CamToolsView;
 use crate::ui::gtk::help_browser;
-use gcodekit5_camtools::spoilboard_surfacing::{SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters};
+use gcodekit5_camtools::spoilboard_surfacing::{
+    SpoilboardSurfacingGenerator, SpoilboardSurfacingParameters,
+};
 use gcodekit5_core::units;
 use gcodekit5_settings::SettingsController;
 
@@ -350,7 +352,10 @@ impl SpoilboardSurfacingTool {
                             "stepover_percent": w_clone.6,
                             "safe_z": w_clone.7,
                         });
-                        let _ = fs::write(path, serde_json::to_string_pretty(&json).unwrap());
+                        let _ = fs::write(
+                            path,
+                            serde_json::to_string_pretty(&json).unwrap_or_default(),
+                        );
                     }
                 }
             }

@@ -245,7 +245,7 @@ mod tests {
         });
 
         assert_eq!(panel.issues.len(), 1);
-        assert_eq!(panel.severity_counts.get("WARNING").unwrap(), &1);
+        assert_eq!(panel.severity_counts.get("WARNING").expect("count missing"), &1);
     }
 
     #[test]

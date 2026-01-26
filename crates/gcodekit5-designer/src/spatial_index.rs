@@ -126,8 +126,7 @@ fn insert_into_node(
     }
 
     // If we have children, try to insert into them
-    if node.children.is_some() {
-        let children = node.children.as_mut().unwrap();
+    if let Some(children) = node.children.as_mut() {
         for child in children.iter_mut() {
             insert_into_node(child, id, bounds, max_depth, max_items);
         }
@@ -146,11 +145,12 @@ fn insert_into_node(
         // Redistribute items among children
         let items: Vec<u64> = node.items.drain(..).collect();
         for item_id in items {
-            let children = node.children.as_mut().unwrap();
-            // Insert into only the children that intersect with the item bounds
-            for child in children.iter_mut() {
-                if child.bounds.intersects(bounds) && !child.items.contains(&item_id) {
-                    child.items.push(item_id);
+            if let Some(children) = node.children.as_mut() {
+                // Insert into only the children that intersect with the item bounds
+                for child in children.iter_mut() {
+                    if child.bounds.intersects(bounds) && !child.items.contains(&item_id) {
+                        child.items.push(item_id);
+                    }
                 }
             }
         }

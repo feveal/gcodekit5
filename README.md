@@ -4,7 +4,7 @@ A modern, cross-platform G-Code sender and CNC machine controller written in Rus
 
 [![Build Status](https://github.com/thawkins/gcodekit5/workflows/Build%20and%20Release/badge.svg)](https://github.com/thawkins/gcodekit5/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/Version-0.40.0--alpha.6-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-0.50.2--alpha.0-brightgreen.svg)](CHANGELOG.md)
 
 ## Overview
 
@@ -407,6 +407,23 @@ RUST_LOG=gcodekit5::communication=debug cargo run
 ## Contributing
 
 Contributions are welcome! Please follow these guidelines:
+
+### Pre-commit Hooks
+
+GCodeKit5 uses pre-commit hooks to ensure code quality. To enable them:
+
+```bash
+# Configure git to use the project hooks
+git config core.hooksPath .githooks
+
+# The hook will automatically run before each commit:
+# 1. cargo fmt --check (formatting)
+# 2. cargo clippy (linting - warnings don't block)
+# 3. cargo test --lib (unit tests)
+
+# To skip hooks for a quick commit (not recommended):
+git commit --no-verify
+```
 
 ### Code Standards
 - Follow Rust standard naming conventions (snake_case, PascalCase)

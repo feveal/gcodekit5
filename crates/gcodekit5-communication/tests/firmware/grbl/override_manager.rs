@@ -186,7 +186,7 @@ fn test_real_time_override_command_values() {
     assert_eq!(RealTimeOverrideCommand::FeedHold.as_byte(), 0x21);
     assert_eq!(RealTimeOverrideCommand::CycleStart.as_byte(), 0x7E);
     assert_eq!(RealTimeOverrideCommand::RapidOv100.as_byte(), 0x97);
-    assert_eq!(RealTimeOverrideCommand::SpindleStop.as_byte(), 0x9D);
+    assert_eq!(RealTimeOverrideCommand::SpindleStop.as_byte(), 0x9E); // Fixed: was 0x9D
 }
 
 #[test]

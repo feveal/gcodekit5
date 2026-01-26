@@ -451,7 +451,7 @@ mod tests {
         let mut panel = CoordinateSystemPanel::new();
         panel.set_active_offset(10.0, 20.0, 5.0);
         panel.zero_axis('X');
-        let offset = panel.get_active_system().unwrap().offset;
+        let offset = panel.get_active_system().expect("no active system").offset;
         assert_eq!(offset.x, 0.0);
     }
 
@@ -460,7 +460,7 @@ mod tests {
         let mut panel = CoordinateSystemPanel::new();
         panel.set_active_offset(10.0, 20.0, 5.0);
         panel.zero_all_axes();
-        let offset = panel.get_active_system().unwrap().offset;
+        let offset = panel.get_active_system().expect("no active system").offset;
         assert_eq!(offset.x, 0.0);
         assert_eq!(offset.y, 0.0);
         assert_eq!(offset.z, 0.0);
@@ -471,7 +471,7 @@ mod tests {
         let mut panel = CoordinateSystemPanel::new();
         panel.update_position(100.0, 200.0, 50.0);
         panel.set_work_position(10.0, 20.0, 5.0);
-        let offset = panel.get_active_system().unwrap().offset;
+        let offset = panel.get_active_system().expect("no active system").offset;
         assert_eq!(offset.x, -90.0);
         assert_eq!(offset.y, -180.0);
         assert_eq!(offset.z, -45.0);

@@ -63,7 +63,7 @@ impl ToolpathCache {
 
     fn rebuild_paths(&mut self) {
         debug!("Rebuilding SVG paths from {} commands", self.commands.len());
-        
+
         self.cached_path.clear();
         self.cached_rapid_path.clear();
         self.cached_g1_path.clear();
@@ -141,7 +141,7 @@ impl ToolpathCache {
                     // Treat them as line segments instead
                     if radius.is_finite() && radius > 0.001 {
                         trace!("Arc[{}]: valid radius={:.4}", cmd_idx, radius);
-                        
+
                         let sweep = if *clockwise { 0 } else { 1 };
 
                         use std::f32::consts::PI;
@@ -188,9 +188,13 @@ impl ToolpathCache {
                         *last_target_pos = Some(*to);
                     } else {
                         invalid_arc_count += 1;
-                        trace!("Arc[{}]: invalid radius={:.4} (finite={}), treating as line segment", 
-                               cmd_idx, radius, radius.is_finite());
-                        
+                        trace!(
+                            "Arc[{}]: invalid radius={:.4} (finite={}), treating as line segment",
+                            cmd_idx,
+                            radius,
+                            radius.is_finite()
+                        );
+
                         // Invalid arc - treat as a line segment
                         let _ = write!(self.cached_path, "L {:.2} {:.2} ", to.x, -to.y);
                         last_pos = Some(*to);
@@ -220,11 +224,11 @@ impl ToolpathCache {
                 }
             }
         }
-        
+
         debug!("Paths rebuilt: {} arcs, {} invalid arcs - total path sizes: toolpath={}, rapid={}, g1={}, g2={}, g3={}, g4={}",
-               arc_count, invalid_arc_count, 
-               self.cached_path.len(), self.cached_rapid_path.len(), 
-               self.cached_g1_path.len(), self.cached_g2_path.len(), 
+               arc_count, invalid_arc_count,
+               self.cached_path.len(), self.cached_rapid_path.len(),
+               self.cached_g1_path.len(), self.cached_g2_path.len(),
                self.cached_g3_path.len(), self.cached_g4_path.len());
     }
 }

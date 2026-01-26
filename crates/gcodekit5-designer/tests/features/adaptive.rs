@@ -131,7 +131,7 @@ fn test_estimate_load() {
     let result = AdaptiveAlgorithm::estimate_load(3.175, 100.0, 2.0, 10000, &mat);
 
     assert!(result.is_ok());
-    let load = result.unwrap();
+    let load = result.expect("result failed");
     assert!(load > 0.0 && load <= 1.0);
 }
 
@@ -143,7 +143,7 @@ fn test_generate_passes() {
     let result = AdaptiveAlgorithm::generate_passes(&clearing, 100.0, 5);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 5);
 }
 
@@ -153,7 +153,7 @@ fn test_optimize_feed_rate() {
     let result = AdaptiveAlgorithm::optimize_feed_rate(&mat, 2, 12000, 1.0);
 
     assert!(result.is_ok());
-    let feed = result.unwrap();
+    let feed = result.expect("result failed");
     assert!(feed > 0.0 && feed <= mat.max_feed_rate);
 }
 

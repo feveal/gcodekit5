@@ -116,7 +116,7 @@ fn test_vcarve_path_generation_simple() {
     let result = VCarveGenerator::generate_passes(&params, &path);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].len(), 1);
 }
@@ -135,7 +135,7 @@ fn test_vcarve_path_generation_multi_segment() {
     let result = VCarveGenerator::generate_passes(&params, &path);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     assert_eq!(passes.len(), 1);
     assert_eq!(passes[0].len(), 3); // 3 segments for 4 points
 }
@@ -146,7 +146,7 @@ fn test_vcarve_depth_values_in_segments() {
     let params = VCarveParams::new(tool, 1.0, 0.5, 10000, 100.0);
     let path = vec![Point::new(0.0, 0.0), Point::new(10.0, 0.0)];
 
-    let passes = VCarveGenerator::generate_passes(&params, &path).unwrap();
+    let passes = VCarveGenerator::generate_passes(&params, &path).expect("generate_passes failed");
 
     // Check that segments have correct depth
     for segment in &passes[0] {
@@ -161,7 +161,7 @@ fn test_vcarve_time_estimate_simple() {
     let params = VCarveParams::new(tool, 1.0, 0.5, 10000, 100.0);
     let path = vec![Point::new(0.0, 0.0), Point::new(100.0, 0.0)];
 
-    let time = VCarveGenerator::estimate_time(&params, &path).unwrap();
+    let time = VCarveGenerator::estimate_time(&params, &path).expect("estimate_time failed");
     // 100mm / 100 mm/min = 1 minute (single pass)
     assert!((time - 1.0).abs() < 0.01);
 }
@@ -172,7 +172,7 @@ fn test_vcarve_time_estimate_multi_pass() {
     let params = VCarveParams::new(tool, 2.0, 0.3, 10000, 100.0); // 4 passes
     let path = vec![Point::new(0.0, 0.0), Point::new(100.0, 0.0)];
 
-    let time = VCarveGenerator::estimate_time(&params, &path).unwrap();
+    let time = VCarveGenerator::estimate_time(&params, &path).expect("estimate_time failed");
     // 100mm * 4 passes / 100 mm/min = 4 minutes
     assert!((time - 4.0).abs() < 0.01);
 }
@@ -243,7 +243,7 @@ fn test_vcarve_segment_length_calculation() {
         Point::new(3.0, 4.0), // 5mm segment
     ];
 
-    let passes = VCarveGenerator::generate_passes(&params, &path).unwrap();
+    let passes = VCarveGenerator::generate_passes(&params, &path).expect("generate_passes failed");
     assert_eq!(passes[0][0].length(), 5.0);
 }
 
@@ -285,7 +285,7 @@ fn test_vcarve_complex_path() {
     let result = VCarveGenerator::generate_passes(&params, &path);
     assert!(result.is_ok());
 
-    let passes = result.unwrap();
+    let passes = result.expect("result failed");
     // Should have 2 passes (0.5mm depth / 0.3mm per pass = 2)
     assert_eq!(passes.len(), 2);
     // Each pass should have 5 segments (6 points - 1)

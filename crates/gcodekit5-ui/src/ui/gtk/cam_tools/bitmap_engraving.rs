@@ -2,9 +2,8 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction,
-    FileChooserDialog, Label, Orientation, Overlay, Paned,
-    ResponseType, ScrolledWindow, Stack,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction, FileChooserDialog,
+    Label, Orientation, Overlay, Paned, ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};

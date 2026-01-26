@@ -29,7 +29,7 @@ fn test_find_device_by_name() {
 
     let found = db.find_device_by_name("Device 2");
     assert!(found.is_some());
-    assert_eq!(found.unwrap().firmware_type, FirmwareType::TinyG);
+    assert_eq!(found.expect("not found").firmware_type, FirmwareType::TinyG);
 }
 
 #[test]
@@ -43,7 +43,7 @@ fn test_find_device_by_serial() {
 
     let found = db.find_device_by_serial("SN12345");
     assert!(found.is_some());
-    assert_eq!(found.unwrap().name, "Test Device");
+    assert_eq!(found.expect("not found").name, "Test Device");
 }
 
 #[test]
@@ -54,8 +54,8 @@ fn test_set_primary_device() {
 
     let _ = db.set_primary_device(&id2);
 
-    assert!(!db.get_device(&id1).unwrap().is_primary);
-    assert!(db.get_device(&id2).unwrap().is_primary);
+    assert!(!db.get_device(&id1).expect("device not found").is_primary);
+    assert!(db.get_device(&id2).expect("device not found").is_primary);
 }
 
 #[test]
@@ -63,10 +63,10 @@ fn test_first_device_is_primary() {
     let mut db = DeviceDatabase::new();
     let id1 = db.create_device("Device 1".to_string(), FirmwareType::Grbl);
 
-    assert!(db.get_device(&id1).unwrap().is_primary);
+    assert!(db.get_device(&id1).expect("device not found").is_primary);
 
     let id2 = db.create_device("Device 2".to_string(), FirmwareType::Grbl);
-    assert!(!db.get_device(&id2).unwrap().is_primary);
+    assert!(!db.get_device(&id2).expect("device not found").is_primary);
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_create_device() {
     let mut db = DeviceDatabase::new();
     let id = db.create_device("Test Device".to_string(), FirmwareType::Grbl);
 
-    let device = db.get_device(&id).unwrap();
+    let device = db.get_device(&id).expect("device not found");
     assert_eq!(device.name, "Test Device");
     assert_eq!(device.firmware_type, FirmwareType::Grbl);
 }
@@ -97,7 +97,7 @@ fn test_device_notes() {
         device.notes = "A test CNC machine".to_string();
     }
 
-    let device = db.get_device(&id).unwrap();
+    let device = db.get_device(&id).expect("device not found");
     assert_eq!(device.notes, "A test CNC machine");
 }
 
@@ -116,7 +116,7 @@ fn test_favorite_devices() {
     assert_eq!(favorites[0].id, id1);
 
     // Primary is not necessarily favorite unless set
-    assert!(!db.get_device(&id2).unwrap().is_favorite);
+    assert!(!db.get_device(&id2).expect("device not found").is_favorite);
 }
 
 #[test]
@@ -128,7 +128,7 @@ fn test_record_connection() {
         device.record_connection();
     }
 
-    let device = db.get_device(&id).unwrap();
+    let device = db.get_device(&id).expect("device not found");
     assert!(device.last_connected.is_some());
     assert_eq!(device.connection_count, 1);
 }

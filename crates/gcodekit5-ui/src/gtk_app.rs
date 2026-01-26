@@ -19,8 +19,8 @@ use gcodekit5_settings::config::{StartupTab, Theme};
 use gtk4::gio;
 use gtk4::prelude::*;
 use gtk4::{
-    glib, Application, ApplicationWindow, Box as GtkBox, CssProvider, Orientation, PopoverMenuBar, Stack,
-    StackSwitcher,
+    glib, Application, ApplicationWindow, Box as GtkBox, CssProvider, Orientation, PopoverMenuBar,
+    Stack, StackSwitcher,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -225,7 +225,9 @@ pub fn main() {
         let send_cmd = move || {
             let text = console_clone.command_entry.text();
             if !text.is_empty() {
-                let mut comm = communicator.lock().unwrap();
+                let mut comm = communicator
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
                 if comm.is_connected() {
                     if let Err(e) = comm.send_command(&text) {
                         console_clone.append_log(&format!("Error sending: {}\n", e));
@@ -319,7 +321,9 @@ pub fn main() {
 
         // Update device info when connection changes
         glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
-            let comm = communicator_for_device.lock().unwrap();
+            let comm = communicator_for_device
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             let connected = comm.is_connected();
 
             if connected {
@@ -390,11 +394,22 @@ pub fn main() {
                     let _ = comm.send(&[0x18]);
                 }
 
-                *is_streaming.lock().unwrap() = false;
-                *is_paused.lock().unwrap() = false;
-                *waiting_for_ack.lock().unwrap() = false;
-                *job_start_time.lock().unwrap() = None;
-                send_queue.lock().unwrap().clear();
+                // Reset streaming state - recover from poisoned locks
+                if let Ok(mut guard) = is_streaming.lock() {
+                    *guard = false;
+                }
+                if let Ok(mut guard) = is_paused.lock() {
+                    *guard = false;
+                }
+                if let Ok(mut guard) = waiting_for_ack.lock() {
+                    *guard = false;
+                }
+                if let Ok(mut guard) = job_start_time.lock() {
+                    *guard = None;
+                }
+                if let Ok(mut guard) = send_queue.lock() {
+                    guard.clear();
+                }
 
                 sb.set_progress(0.0, "", "");
 
@@ -417,7 +432,8 @@ pub fn main() {
                 visualizer_redraw.queue_draw();
                 designer_redraw.queue_draw();
             });
-            let win = SettingsWindow::new_with_callback(settings_controller_clone.clone(), Some(on_save));
+            let win =
+                SettingsWindow::new_with_callback(settings_controller_clone.clone(), Some(on_save));
             win.present();
         });
         app.add_action(&settings_action);

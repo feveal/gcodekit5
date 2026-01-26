@@ -560,7 +560,7 @@ mod tests {
         let test_file = temp_dir.join("test_recent.nc");
         let _ = fs::write(&test_file, "G0 X10");
 
-        let entry = RecentFileEntry::new(&test_file, 1024).unwrap();
+        let entry = RecentFileEntry::new(&test_file, 1024).expect("test entry");
         assert_eq!(entry.name, "test_recent.nc");
         assert_eq!(entry.file_size, 1024);
         assert!(entry.formatted_size().contains("KB"));
@@ -600,10 +600,10 @@ mod tests {
         let test_file = temp_dir.join("size_test.nc");
         let _ = fs::write(&test_file, "G0 X10");
 
-        let entry = RecentFileEntry::new(&test_file, 2048).unwrap();
+        let entry = RecentFileEntry::new(&test_file, 2048).expect("test entry");
         assert!(entry.formatted_size().contains("KB"));
 
-        let entry2 = RecentFileEntry::new(&test_file, 1024 * 1024 * 2).unwrap();
+        let entry2 = RecentFileEntry::new(&test_file, 1024 * 1024 * 2).expect("test entry");
         assert!(entry2.formatted_size().contains("MB"));
 
         // Cleanup

@@ -180,7 +180,7 @@ impl TinyGResponseParser {
 
         // Check for settings
         if json_obj.len() == 1 {
-            let key = json_obj.keys().next().unwrap();
+            let key = json_obj.keys().next().expect("json has key");
             if key.starts_with('f') || key.starts_with('m') || key.starts_with('$') {
                 return Ok(TinyGResponse {
                     response_type: TinyGResponseType::Settings,

@@ -2,9 +2,8 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction,
-    FileChooserDialog, Label, Orientation, Paned, ResponseType,
-    ScrolledWindow, Stack,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction, FileChooserDialog,
+    Label, Orientation, Paned, ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
@@ -130,7 +129,11 @@ impl GerberTool {
                         continue;
                     }
 
-                    let name = path.file_name().unwrap().to_string_lossy().to_lowercase();
+                    let name = path
+                        .file_name()
+                        .map(|n| n.to_string_lossy())
+                        .unwrap_or_default()
+                        .to_lowercase();
                     let ext = path
                         .extension()
                         .map(|e| e.to_string_lossy().to_lowercase())
@@ -192,7 +195,11 @@ impl GerberTool {
                         if let Some(path) = file.path() {
                             let map = detect_layers(&path);
                             *lf.borrow_mut() = map;
-                            fl.set_text(path.file_name().unwrap().to_str().unwrap());
+                            fl.set_text(
+                                path.file_name()
+                                    .and_then(|n| n.to_str())
+                                    .unwrap_or("unnamed"),
+                            );
                         }
                     }
                 }
@@ -395,9 +402,11 @@ impl GerberTool {
 
                 let files = w_layer.layer_files.borrow();
                 if let Some(path) = files.get(&layer_type) {
-                    w_layer
-                        .file_label
-                        .set_text(path.file_name().unwrap().to_str().unwrap());
+                    w_layer.file_label.set_text(
+                        path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("unnamed"),
+                    );
                 } else {
                     w_layer.file_label.set_text("Layer not found in directory");
                 }
@@ -657,7 +666,11 @@ impl GerberTool {
                             continue;
                         }
 
-                        let name = path.file_name().unwrap().to_string_lossy().to_lowercase();
+                        let name = path
+                            .file_name()
+                            .map(|n| n.to_string_lossy())
+                            .unwrap_or_default()
+                            .to_lowercase();
                         let ext = path
                             .extension()
                             .map(|e| e.to_string_lossy().to_lowercase())
@@ -700,14 +713,20 @@ impl GerberTool {
                     }
                 }
                 *w.layer_files.borrow_mut() = map;
-                w.file_label
-                    .set_text(path.file_name().unwrap().to_str().unwrap());
+                w.file_label.set_text(
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .unwrap_or("unnamed"),
+                );
 
                 // Update label for selected layer
                 let files = w.layer_files.borrow();
                 if let Some(path) = files.get(&p.layer_type) {
-                    w.file_label
-                        .set_text(path.file_name().unwrap().to_str().unwrap());
+                    w.file_label.set_text(
+                        path.file_name()
+                            .and_then(|n| n.to_str())
+                            .unwrap_or("unnamed"),
+                    );
                 } else {
                     w.file_label.set_text("Layer not found in directory");
                 }

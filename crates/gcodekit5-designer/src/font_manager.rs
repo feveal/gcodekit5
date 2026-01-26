@@ -52,7 +52,7 @@ pub fn get_font_for(family: &str, bold: bool, italic: bool) -> &'static Font<'st
         italic,
     };
 
-    if let Some(font) = cache.lock().unwrap().get(&key) {
+    if let Some(font) = cache.lock().unwrap_or_else(|p| p.into_inner()).get(&key) {
         return *font;
     }
 
@@ -62,7 +62,10 @@ pub fn get_font_for(family: &str, bold: bool, italic: bool) -> &'static Font<'st
         None => return default_font(),
     };
 
-    cache.lock().unwrap().insert(key, font_ref);
+    cache
+        .lock()
+        .unwrap_or_else(|p| p.into_inner())
+        .insert(key, font_ref);
     font_ref
 }
 

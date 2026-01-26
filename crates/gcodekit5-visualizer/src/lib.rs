@@ -3,6 +3,7 @@
 //! G-code visualization, parsing, and processing for GCodeKit4.
 //! Includes parser, preprocessors, stream readers, and visualizer components.
 
+pub mod error;
 pub mod gcode;
 pub mod helpers;
 pub mod utils;

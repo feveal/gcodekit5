@@ -155,7 +155,10 @@ fn is_valid_cnc_port(port_name: &str) -> bool {
     }
 
     // Linux USB and ACM devices
-    if port_name.starts_with("/dev/ttyUSB") || port_name.starts_with("/dev/ttyACM") || port_name.starts_with("/dev/ttyGRBL") {
+    if port_name.starts_with("/dev/ttyUSB")
+        || port_name.starts_with("/dev/ttyACM")
+        || port_name.starts_with("/dev/ttyGRBL")
+    {
         return true;
     }
 
@@ -192,9 +195,7 @@ fn get_port_description(port: &serialport::SerialPortInfo) -> String {
 fn check_virtual_ports(port_infos: &mut Vec<SerialPortInfo>) {
     #[cfg(target_os = "linux")]
     {
-        let virtual_ports = [
-            ("/dev/ttyGRBL", "grblHAL Simulator (Virtual Port)"),
-        ];
+        let virtual_ports = [("/dev/ttyGRBL", "grblHAL Simulator (Virtual Port)")];
 
         for (port_name, description) in &virtual_ports {
             // Check if this port already exists in the list

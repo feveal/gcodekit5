@@ -75,12 +75,20 @@ impl DeviceConsoleManager {
             DeviceMessageType::Command => MessageLevel::Info,
         };
 
-        if msg_type == DeviceMessageType::Verbose && !*self.verbose_enabled.lock().unwrap() {
+        // Check if verbose filtering applies - recover from poisoned lock
+        let verbose_check = self
+            .verbose_enabled
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if msg_type == DeviceMessageType::Verbose && !*verbose_check {
             return;
         }
 
         {
-            let mut console = self.console.lock().unwrap();
+            let mut console = self
+                .console
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             if msg_type == DeviceMessageType::Command {
                 console.add_command(&content);
             } else {
@@ -94,34 +102,49 @@ impl DeviceConsoleManager {
     /// Add command to history
     pub fn add_command_to_history(&self, command: impl Into<String>) {
         let command = command.into();
-        let mut console = self.console.lock().unwrap();
+        let mut console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         console.add_to_history(&command);
     }
 
     /// Get console output as model
     pub fn get_model(&self) -> Vec<String> {
-        let console = self.console.lock().unwrap();
+        let console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let messages = console.get_displayed_strings(1000);
         messages
     }
 
     /// Get console output as string
     pub fn get_output(&self) -> String {
-        let console = self.console.lock().unwrap();
+        let console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let messages = console.get_displayed_strings(1000);
         messages.join("\n")
     }
 
     /// Get recent messages
     pub fn get_recent_messages(&self, count: usize) -> Vec<String> {
-        let console = self.console.lock().unwrap();
+        let console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         console.get_displayed_strings(count)
     }
 
     /// Clear console
     pub fn clear(&self) {
         {
-            let mut console = self.console.lock().unwrap();
+            let mut console = self
+                .console
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             console.clear();
         }
         self.emit_event(ConsoleEvent::Cleared);
@@ -130,29 +153,44 @@ impl DeviceConsoleManager {
     /// Set verbose output enabled
     pub fn set_verbose_enabled(&self, enabled: bool) {
         {
-            *self.verbose_enabled.lock().unwrap() = enabled;
+            *self
+                .verbose_enabled
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = enabled;
         }
         self.emit_event(ConsoleEvent::SettingsChanged);
     }
 
     /// Get verbose output enabled state
     pub fn is_verbose_enabled(&self) -> bool {
-        *self.verbose_enabled.lock().unwrap()
+        *self
+            .verbose_enabled
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Set auto-scroll enabled
     pub fn set_auto_scroll_enabled(&self, enabled: bool) {
         {
-            let mut console = self.console.lock().unwrap();
+            let mut console = self
+                .console
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             console.auto_scroll = enabled;
-            *self.auto_scroll_enabled.lock().unwrap() = enabled;
+            *self
+                .auto_scroll_enabled
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()) = enabled;
         }
         self.emit_event(ConsoleEvent::SettingsChanged);
     }
 
     /// Get auto-scroll enabled state
     pub fn is_auto_scroll_enabled(&self) -> bool {
-        *self.auto_scroll_enabled.lock().unwrap()
+        *self
+            .auto_scroll_enabled
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Set maximum number of console lines to keep
@@ -179,13 +217,19 @@ impl DeviceConsoleManager {
 
     /// Get command history
     pub fn get_history(&self) -> Vec<String> {
-        let console = self.console.lock().unwrap();
+        let console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         console.get_history()
     }
 
     /// Get total message count
     pub fn message_count(&self) -> usize {
-        let console = self.console.lock().unwrap();
+        let console = self
+            .console
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         console.message_count()
     }
 
@@ -309,7 +353,9 @@ impl CommunicatorListener for ConsoleListener {
                     Ok(detection) => {
                         // Store in shared state if available
                         if let Some(ref fw_state) = self.detected_firmware {
-                            *fw_state.lock().unwrap() = Some(detection.clone());
+                            if let Ok(mut guard) = fw_state.lock() {
+                                *guard = Some(detection.clone());
+                            }
                         }
 
                         // Update global device status (so UI doesn't stay "Unknown")
@@ -348,7 +394,9 @@ impl CommunicatorListener for ConsoleListener {
                     Ok(detection) => {
                         // Store in shared state if available
                         if let Some(ref fw_state) = self.detected_firmware {
-                            *fw_state.lock().unwrap() = Some(detection.clone());
+                            if let Ok(mut guard) = fw_state.lock() {
+                                *guard = Some(detection.clone());
+                            }
                         }
 
                         // Update global device status (so UI doesn't stay "Unknown")
@@ -420,15 +468,16 @@ impl CommunicatorListener for ConsoleListener {
             }
 
             for token in clean_line.split_whitespace() {
-                if token.len() > 1 {
-                    let first_char = token.chars().next().unwrap();
-                    if first_char == 'F' || first_char == 'f' {
-                        if let Ok(val) = token[1..].parse::<f32>() {
-                            device_status::update_commanded_feed_rate(val);
-                        }
-                    } else if first_char == 'S' || first_char == 's' {
-                        if let Ok(val) = token[1..].parse::<f32>() {
-                            device_status::update_commanded_spindle_speed(val);
+                if let Some(first_char) = token.chars().next() {
+                    if token.len() > 1 {
+                        if first_char == 'F' || first_char == 'f' {
+                            if let Ok(val) = token[1..].parse::<f32>() {
+                                device_status::update_commanded_feed_rate(val);
+                            }
+                        } else if first_char == 'S' || first_char == 's' {
+                            if let Ok(val) = token[1..].parse::<f32>() {
+                                device_status::update_commanded_spindle_speed(val);
+                            }
                         }
                     }
                 }

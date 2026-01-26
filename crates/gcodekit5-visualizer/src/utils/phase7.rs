@@ -993,7 +993,7 @@ mod tests {
 
     #[test]
     fn test_buffer_diagnostics() {
-        let diag = BufferDiagnostics::new(1000, 500).unwrap();
+        let diag = BufferDiagnostics::new(1000, 500).expect("diagnostics failed");
         assert_eq!(diag.buffer_size, 1000);
         assert_eq!(diag.used_space, 500);
         assert_eq!(diag.available_space, 500);

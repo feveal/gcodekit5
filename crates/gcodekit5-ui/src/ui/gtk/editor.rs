@@ -631,7 +631,7 @@ impl GcodeEditor {
                             }
                             Err(e) => {
                                 error!("Error reading file: {}", e);
-                                // TODO: Show error dialog
+                                // TODO(#15): Show error dialog
                             }
                         }
                     }
@@ -653,7 +653,7 @@ impl GcodeEditor {
 
             if let Err(e) = fs::write(&path, content.as_str()) {
                 error!("Error saving file: {}", e);
-                // TODO: Show error dialog
+                // TODO(#15): Show error dialog
             }
         } else {
             self.save_as_file();
@@ -703,7 +703,7 @@ impl GcodeEditor {
                             }
                             Err(e) => {
                                 error!("Error saving file: {}", e);
-                                // TODO: Show error dialog
+                                // TODO(#15): Show error dialog
                             }
                         }
                     }

@@ -50,10 +50,10 @@ impl std::fmt::Display for GerberLayerType {
 pub fn clean_polyline(mut pline: Polyline<f64>) -> Polyline<f64> {
     pline.remove_repeat_pos(1e-5);
     if pline.is_closed() && pline.vertex_count() > 1 {
-        let first = pline.get(0).unwrap();
-        let last = pline.get(pline.vertex_count() - 1).unwrap();
-        if (first.x - last.x).abs() < 1e-5 && (first.y - last.y).abs() < 1e-5 {
-            pline.remove(pline.vertex_count() - 1);
+        if let (Some(first), Some(last)) = (pline.get(0), pline.get(pline.vertex_count() - 1)) {
+            if (first.x - last.x).abs() < 1e-5 && (first.y - last.y).abs() < 1e-5 {
+                pline.remove(pline.vertex_count() - 1);
+            }
         }
     }
     pline
@@ -267,7 +267,7 @@ impl GerberConverter {
         // Sanitize content
         let mut sanitized = gerber_content.to_string();
         {
-            let re_fs = Regex::new(r"%FS.*?\*%").unwrap();
+            let re_fs = Regex::new(r"%FS.*?\*%").expect("invalid regex pattern");
             let mut count = 0;
             sanitized = re_fs
                 .replace_all(&sanitized, |caps: &regex::Captures| {
@@ -280,7 +280,7 @@ impl GerberConverter {
                 })
                 .to_string();
 
-            let re_mo = Regex::new(r"%MO.*?\*%").unwrap();
+            let re_mo = Regex::new(r"%MO.*?\*%").expect("invalid regex pattern");
             let mut count = 0;
             sanitized = re_mo
                 .replace_all(&sanitized, |caps: &regex::Captures| {
@@ -798,7 +798,11 @@ impl GerberConverter {
                         if !path.is_file() {
                             continue;
                         }
-                        let name = path.file_name().unwrap().to_string_lossy().to_lowercase();
+                        let name = path
+                            .file_name()
+                            .map(|n| n.to_string_lossy())
+                            .unwrap_or_default()
+                            .to_lowercase();
                         let ext = path
                             .extension()
                             .map(|e| e.to_string_lossy().to_lowercase())

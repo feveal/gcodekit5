@@ -107,7 +107,7 @@ impl UndoManager {
             if !batch.is_empty() {
                 // Merge batch into single change if possible
                 if batch.len() == 1 {
-                    self.push_undo(batch.into_iter().next().unwrap());
+                    self.push_undo(batch.into_iter().next().expect("batch not empty"));
                 } else {
                     // For multiple changes, push them individually
                     // (could be optimized to merge adjacent changes)
@@ -184,7 +184,7 @@ mod tests {
         assert!(mgr.can_undo());
         assert!(!mgr.can_redo());
 
-        let undo_change = mgr.undo().unwrap();
+        let undo_change = mgr.undo().expect("undo available");
         assert_eq!(undo_change.new_text, "");
         assert_eq!(undo_change.old_text, "Hello");
         assert!(!mgr.can_undo());
@@ -200,7 +200,7 @@ mod tests {
         mgr.record(change);
         mgr.undo();
 
-        let redo_change = mgr.redo().unwrap();
+        let redo_change = mgr.redo().expect("redo available");
         assert_eq!(redo_change.old_text, "");
         assert_eq!(redo_change.new_text, "Hello");
     }

@@ -221,7 +221,7 @@ impl Visualizer {
     /// Parse G-Code and extract movement commands
     pub fn parse_gcode(&mut self, gcode: &str) {
         debug!("Starting G-code parse, input size: {} bytes", gcode.len());
-        
+
         let mut hasher = DefaultHasher::new();
         gcode.hash(&mut hasher);
         let new_hash = hasher.finish();
@@ -232,7 +232,7 @@ impl Visualizer {
         }
 
         debug!("Parsing new G-code (hash: {})", new_hash);
-        
+
         let mut commands = Vec::new();
         let mut current_pos = Point3D::new(0.0, 0.0, 0.0);
         self.current_intensity = 0.0;
@@ -304,8 +304,14 @@ impl Visualizer {
             }
         }
 
-        debug!("Parse complete: G0={}, G1={}, G2={}, G3={}, total commands={}", 
-               _g0_count, _g1_count, _g2_count, _g3_count, commands.len());
+        debug!(
+            "Parse complete: G0={}, G1={}, G2={}, G3={}, total commands={}",
+            _g0_count,
+            _g1_count,
+            _g2_count,
+            _g3_count,
+            commands.len()
+        );
 
         (
             self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z,
@@ -313,8 +319,10 @@ impl Visualizer {
         self.current_pos = current_pos;
 
         self.toolpath_cache.update(new_hash, commands);
-        debug!("Bounds: x=[{:.2}, {:.2}], y=[{:.2}, {:.2}], z=[{:.2}, {:.2}]",
-               self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z);
+        debug!(
+            "Bounds: x=[{:.2}, {:.2}], y=[{:.2}, {:.2}], z=[{:.2}, {:.2}]",
+            self.min_x, self.max_x, self.min_y, self.max_y, self.min_z, self.max_z
+        );
     }
 
     /// Calculate viewbox for the current view state
@@ -337,7 +345,9 @@ impl Visualizer {
             if part.len() < 2 {
                 continue;
             }
-            let first_char = part.chars().next().unwrap();
+            let Some(first_char) = part.chars().next() else {
+                continue;
+            };
             match first_char {
                 'P' | 'X' => {
                     if let Ok(val) = part[1..].parse::<f32>() {
@@ -373,7 +383,9 @@ impl Visualizer {
             if part.len() < 2 {
                 continue;
             }
-            let first_char = part.chars().next().unwrap();
+            let Some(first_char) = part.chars().next() else {
+                continue;
+            };
             match first_char {
                 'X' => {
                     if let Ok(val) = part[1..].parse::<f32>() {
@@ -436,7 +448,9 @@ impl Visualizer {
             if part.len() < 2 {
                 continue;
             }
-            let first_char = part.chars().next().unwrap();
+            let Some(first_char) = part.chars().next() else {
+                continue;
+            };
             match first_char {
                 'X' => {
                     if let Ok(val) = part[1..].parse::<f32>() {
@@ -476,8 +490,9 @@ impl Visualizer {
             let z = new_z.unwrap_or(current_pos.z);
             let to = Point3D::new(x, y, z);
             let center = Point3D::new(current_pos.x + i, current_pos.y + j, current_pos.z);
-            
-            let radius = ((current_pos.x - center.x).powi(2) + (current_pos.y - center.y).powi(2)).sqrt();
+
+            let radius =
+                ((current_pos.x - center.x).powi(2) + (current_pos.y - center.y).powi(2)).sqrt();
             trace!("Arc: from=({:.2},{:.2}), to=({:.2},{:.2}), center=({:.2},{:.2}), radius={:.4}, cw={}", 
                    current_pos.x, current_pos.y, x, y, center.x, center.y, radius, clockwise);
 
@@ -505,7 +520,9 @@ impl Visualizer {
             if part.len() < 2 {
                 continue;
             }
-            let first_char = part.chars().next().unwrap();
+            let Some(first_char) = part.chars().next() else {
+                continue;
+            };
             if param_names.contains(&first_char) {
                 if let Ok(value) = part[1..].parse::<f32>() {
                     params.insert(first_char, value);

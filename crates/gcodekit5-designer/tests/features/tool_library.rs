@@ -42,7 +42,10 @@ fn test_tool_library_add_and_retrieve() {
     library.add_tool(tool.clone());
 
     assert!(library.get_tool("test1").is_some());
-    assert_eq!(library.get_tool("test1").unwrap().id, "test1");
+    assert_eq!(
+        library.get_tool("test1").expect("tool not found").id,
+        "test1"
+    );
 }
 
 #[test]
@@ -59,7 +62,10 @@ fn test_tool_library_default_tool() {
     library.add_tool(tool);
 
     assert!(library.get_default_tool().is_some());
-    assert_eq!(library.get_default_tool().unwrap().id, "test1");
+    assert_eq!(
+        library.get_default_tool().expect("no default tool").id,
+        "test1"
+    );
 }
 
 #[test]

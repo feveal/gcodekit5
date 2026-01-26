@@ -37,7 +37,7 @@ pub fn render_canvas(
     _pan_x: f32,
     _pan_y: f32,
 ) -> RgbImage {
-    let mut pixmap = Pixmap::new(width, height).unwrap();
+    let mut pixmap = Pixmap::new(width, height).expect("failed to create pixmap");
     pixmap.fill(bg_color());
 
     let viewport = canvas.viewport();

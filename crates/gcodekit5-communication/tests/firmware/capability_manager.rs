@@ -18,8 +18,8 @@ fn test_update_firmware_grbl() {
 
     let state = manager.get_state();
     assert_eq!(state.firmware_type, Some(FirmwareType::Grbl));
-    assert_eq!(state.version.as_ref().unwrap().major, 1);
-    assert_eq!(state.version.as_ref().unwrap().minor, 1);
+    assert_eq!(state.version.as_ref().expect("version is None").major, 1);
+    assert_eq!(state.version.as_ref().expect("version is None").minor, 1);
 
     assert!(state.supports_variable_spindle);
     assert!(state.supports_status_reports);

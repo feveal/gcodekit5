@@ -303,68 +303,82 @@ impl GcodeEditor {
         }
     }
 
+    /// Acquire file lock with poisoned lock recovery
+    fn lock_file(&self) -> std::sync::MutexGuard<'_, GcodeFile> {
+        self.file
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
+    /// Acquire editable lock with poisoned lock recovery
+    fn lock_editable(&self) -> std::sync::MutexGuard<'_, bool> {
+        self.editable
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+
     /// Load a file from content
     pub fn load_content(&self, content: &str) -> anyhow::Result<()> {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.load_content(content);
         Ok(())
     }
 
     /// Get formatted content with line numbers and execution state
     pub fn get_display_content(&self) -> String {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.get_formatted_content()
     }
 
     /// Get plain content without formatting
     pub fn get_plain_content(&self) -> String {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.get_plain_content()
     }
 
     /// Mark a line as executed
     pub fn mark_line_executed(&self, line_number: usize) {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.mark_executed(line_number);
     }
 
     /// Set the current executing line
     pub fn set_current_line(&self, line_number: usize) {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.set_current_line(line_number);
     }
 
     /// Get the current line number
     pub fn get_current_line(&self) -> usize {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.get_current_line()
     }
 
     /// Clear all execution state
     pub fn clear_execution_state(&self) {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.clear_execution_state();
     }
 
     /// Get line count
     pub fn get_line_count(&self) -> usize {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.lines.len()
     }
 
     /// Set whether the editor is editable
     pub fn set_editable(&self, editable: bool) {
-        *self.editable.lock().unwrap() = editable;
+        *self.lock_editable() = editable;
     }
 
     /// Check if the editor is editable
     pub fn is_editable(&self) -> bool {
-        *self.editable.lock().unwrap()
+        *self.lock_editable()
     }
 
     /// Search for text in all lines
     pub fn search(&self, query: &str) -> Vec<(usize, usize)> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         let mut results = Vec::new();
         let query_lower = query.to_lowercase();
 
@@ -383,7 +397,7 @@ impl GcodeEditor {
 
     /// Replace all occurrences of text
     pub fn replace_all(&self, old: &str, new: &str) -> usize {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         let mut count = 0;
 
         for line in &mut file.lines {
@@ -400,7 +414,7 @@ impl GcodeEditor {
 
     /// Replace occurrence at specific line and position
     pub fn replace_at(&self, line_number: usize, position: usize, old: &str, new: &str) -> bool {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
 
         if line_number > 0 && line_number <= file.lines.len() {
             let line = &mut file.lines[line_number - 1];
@@ -423,7 +437,7 @@ impl GcodeEditor {
             return false;
         }
 
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
 
         if line_number > 0 && line_number <= file.lines.len() {
             let line = &mut file.lines[line_number - 1];
@@ -442,7 +456,7 @@ impl GcodeEditor {
             return false;
         }
 
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
 
         if line_number > 0 && line_number <= file.lines.len() {
             let line = &mut file.lines[line_number - 1];
@@ -457,7 +471,7 @@ impl GcodeEditor {
 
     /// Get a specific line's text
     pub fn get_line_text(&self, line_number: usize) -> Option<String> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
 
         if line_number > 0 && line_number <= file.lines.len() {
             Some(file.lines[line_number - 1].text.clone())
@@ -468,7 +482,7 @@ impl GcodeEditor {
 
     /// Get all line texts
     pub fn get_all_lines(&self) -> Vec<String> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.lines.iter().map(|l| l.text.clone()).collect()
     }
 
@@ -499,7 +513,7 @@ impl GcodeEditor {
         let content = std::fs::read_to_string(path)?;
         self.load_content(&content)?;
 
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.path = Some(path.to_string_lossy().to_string());
         Ok(())
     }
@@ -513,7 +527,7 @@ impl GcodeEditor {
 
     /// Save file to disk with given content
     pub fn save_file_with_content(&self, content: &str) -> anyhow::Result<()> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
 
         if let Some(path) = &file.path {
             std::fs::write(path, content)?;
@@ -525,7 +539,7 @@ impl GcodeEditor {
 
     /// Save file to disk (uses internal content)
     pub fn save_file(&self) -> anyhow::Result<()> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
 
         if let Some(path) = &file.path {
             let content = file.get_plain_content();
@@ -552,13 +566,13 @@ impl GcodeEditor {
     /// Save file with a new name
     pub fn save_as(&self, path: &Path) -> anyhow::Result<()> {
         let content = {
-            let file = self.file.lock().unwrap();
+            let file = self.lock_file();
             file.get_plain_content()
         };
 
         std::fs::write(path, content)?;
 
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.path = Some(path.to_string_lossy().to_string());
         Ok(())
     }
@@ -567,7 +581,7 @@ impl GcodeEditor {
     pub fn save_as_with_content(&self, path: &Path, content: &str) -> anyhow::Result<()> {
         std::fs::write(path, content)?;
 
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.path = Some(path.to_string_lossy().to_string());
         Ok(())
     }
@@ -588,13 +602,13 @@ impl GcodeEditor {
 
     /// Get the current file path
     pub fn get_file_path(&self) -> Option<String> {
-        let file = self.file.lock().unwrap();
+        let file = self.lock_file();
         file.path.clone()
     }
 
     /// Set the file path (useful for tracking)
     pub fn set_file_path(&self, path: Option<String>) {
-        let mut file = self.file.lock().unwrap();
+        let mut file = self.lock_file();
         file.path = path;
     }
 
@@ -659,7 +673,7 @@ mod tests {
     #[test]
     fn test_editor_content() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10\nG01 Y20").unwrap();
+        editor.load_content("G00 X10\nG01 Y20").expect("load failed");
         editor.set_current_line(1);
         let content = editor.get_display_content();
         assert!(content.contains("▶")); // Current line marker shows for current line
@@ -674,7 +688,7 @@ mod tests {
     #[test]
     fn test_search() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10\nG01 Y20\nG00 X30").unwrap();
+        editor.load_content("G00 X10\nG01 Y20\nG00 X30").expect("load failed");
         let results = editor.search("G00");
         assert_eq!(results.len(), 2);
     }
@@ -682,7 +696,7 @@ mod tests {
     #[test]
     fn test_search_case_insensitive() {
         let editor = GcodeEditor::new();
-        editor.load_content("g00 X10\nG01 Y20").unwrap();
+        editor.load_content("g00 X10\nG01 Y20").expect("load failed");
         let results = editor.search("G00");
         assert_eq!(results.len(), 1);
     }
@@ -690,7 +704,7 @@ mod tests {
     #[test]
     fn test_replace_all() {
         let editor = GcodeEditor::new();
-        editor.load_content("X10 Y10\nX20 Y10").unwrap();
+        editor.load_content("X10 Y10\nX20 Y10").expect("load failed");
         let count = editor.replace_all("Y10", "Y30");
         assert_eq!(count, 2);
 
@@ -702,7 +716,7 @@ mod tests {
     #[test]
     fn test_insert_text() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10").unwrap();
+        editor.load_content("G00 X10").expect("load failed");
         editor.set_editable(true);
 
         let result = editor.insert_text(1, 4, " Y20");
@@ -715,7 +729,7 @@ mod tests {
     #[test]
     fn test_delete_char() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10").unwrap();
+        editor.load_content("G00 X10").expect("load failed");
         editor.set_editable(true);
 
         let result = editor.delete_char(1, 3);
@@ -728,7 +742,7 @@ mod tests {
     #[test]
     fn test_read_only_mode() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10").unwrap();
+        editor.load_content("G00 X10").expect("load failed");
         editor.set_read_only(true);
 
         let result = editor.insert_text(1, 0, "test");
@@ -741,7 +755,7 @@ mod tests {
     #[test]
     fn test_file_path_tracking() {
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10").unwrap();
+        editor.load_content("G00 X10").expect("load failed");
 
         let path = Some("/path/to/file.gcode".to_string());
         editor.set_file_path(path.clone());
@@ -754,15 +768,15 @@ mod tests {
         use tempfile::NamedTempFile;
 
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10\nG01 Y20").unwrap();
+        editor.load_content("G00 X10\nG01 Y20").expect("load failed");
 
-        let temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().expect("temp file failed");
         let path = temp_file.path();
 
         let result = editor.export_to(path);
         assert!(result.is_ok());
 
-        let content = std::fs::read_to_string(path).unwrap();
+        let content = std::fs::read_to_string(path).expect("read failed");
         assert_eq!(content, "G00 X10\nG01 Y20");
     }
 
@@ -771,9 +785,9 @@ mod tests {
         use tempfile::NamedTempFile;
 
         let editor = GcodeEditor::new();
-        editor.load_content("G00 X10").unwrap();
+        editor.load_content("G00 X10").expect("load failed");
 
-        let temp_file = NamedTempFile::new().unwrap();
+        let temp_file = NamedTempFile::new().expect("temp file failed");
         let path = temp_file.path();
 
         let result = editor.save_as(path);
@@ -783,7 +797,7 @@ mod tests {
             Some(path.to_string_lossy().to_string())
         );
 
-        let content = std::fs::read_to_string(path).unwrap();
+        let content = std::fs::read_to_string(path).expect("read failed");
         assert_eq!(content, "G00 X10");
     }
 }

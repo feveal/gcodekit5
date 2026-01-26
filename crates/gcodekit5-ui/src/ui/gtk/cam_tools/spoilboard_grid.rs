@@ -2,9 +2,8 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction,
-    FileChooserDialog, Label, Orientation, Paned, ResponseType,
-    ScrolledWindow, Stack,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction, FileChooserDialog,
+    Label, Orientation, Paned, ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
@@ -340,7 +339,10 @@ impl SpoilboardGridTool {
                             "laser_power": w_clone.4,
                             "laser_mode": w_clone.5,
                         });
-                        let _ = fs::write(path, serde_json::to_string_pretty(&json).unwrap());
+                        let _ = fs::write(
+                            path,
+                            serde_json::to_string_pretty(&json).unwrap_or_default(),
+                        );
                     }
                 }
             }
@@ -416,4 +418,3 @@ impl SpoilboardGridTool {
         dialog.show();
     }
 }
-

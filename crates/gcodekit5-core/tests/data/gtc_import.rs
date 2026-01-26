@@ -6,15 +6,21 @@ fn test_tool_type_mapping() {
     let importer = GtcImporter::new(1);
 
     assert_eq!(
-        importer.map_tool_type("End Mill").unwrap(),
+        importer
+            .map_tool_type("End Mill")
+            .expect("map_tool_type failed"),
         ToolType::EndMillFlat
     );
     assert_eq!(
-        importer.map_tool_type("Ball End Mill").unwrap(),
+        importer
+            .map_tool_type("Ball End Mill")
+            .expect("map_tool_type failed"),
         ToolType::EndMillBall
     );
     assert_eq!(
-        importer.map_tool_type("Drill Bit").unwrap(),
+        importer
+            .map_tool_type("Drill Bit")
+            .expect("map_tool_type failed"),
         ToolType::DrillBit
     );
 }
@@ -50,7 +56,7 @@ fn test_gtc_tool_conversion() {
         cutting_parameters: None,
     };
 
-    let tool = importer.convert_gtc_tool(gtc_tool).unwrap();
+    let tool = importer.convert_gtc_tool(gtc_tool).expect("convert failed");
     assert_eq!(tool.diameter, 6.0);
     assert_eq!(tool.tool_type, ToolType::EndMillFlat);
     assert_eq!(tool.number, 100);

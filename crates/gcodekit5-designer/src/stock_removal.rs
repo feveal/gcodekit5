@@ -4,6 +4,8 @@
 //! during CNC machining operations. It supports both 2D height-map based simulation
 //! and 3D voxel-based simulation.
 
+use tracing::debug;
+
 /// Represents the stock material dimensions and position
 #[derive(Debug, Clone)]
 pub struct StockMaterial {
@@ -282,20 +284,24 @@ impl StockSimulator2D {
             }
         }
 
-        eprintln!(
-            "DEBUG: Toolpath coordinate range: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]",
-            min_x, max_x, min_y, max_y
+        debug!(
+            x_min = min_x,
+            x_max = max_x,
+            y_min = min_y,
+            y_max = max_y,
+            "toolpath coordinate range"
         );
-        eprintln!(
-            "DEBUG: Stock bounds: X:[{:.2}, {:.2}], Y:[{:.2}, {:.2}]",
-            self.stock.origin.0,
-            self.stock.origin.0 + self.stock.width,
-            self.stock.origin.1,
-            self.stock.origin.1 + self.stock.height
+        debug!(
+            stock_x_min = self.stock.origin.0,
+            stock_x_max = self.stock.origin.0 + self.stock.width,
+            stock_y_min = self.stock.origin.1,
+            stock_y_max = self.stock.origin.1 + self.stock.height,
+            "stock bounds"
         );
-        eprintln!(
-            "DEBUG: Processed {} cutting moves, skipped {} rapid moves",
-            processed_count, skipped_count
+        debug!(
+            processed = processed_count,
+            skipped = skipped_count,
+            "processed cutting moves"
         );
     }
 
@@ -311,9 +317,12 @@ impl StockSimulator2D {
         static MOVE_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let count = MOVE_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if count < 5 {
-            eprintln!(
-                "DEBUG: Linear move {} - z_depth={}, calculated z={}, stock.thickness={}",
-                count, z_depth, z, self.stock.thickness
+            debug!(
+                move_num = count,
+                z_depth,
+                z,
+                stock_thickness = self.stock.thickness,
+                "linear move"
             );
         }
 
@@ -396,8 +405,17 @@ impl StockSimulator2D {
             std::sync::atomic::AtomicUsize::new(0);
         let count = FOOTPRINT_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if count < 5 {
-            eprintln!("DEBUG: apply_tool_footprint #{} - pos:({:.2},{:.2}), z:{:.2}, tool_radius:{:.2}, radius_px:{}, center_px:({},{})", 
-                count, cx, cy, cz, self.tool_radius, radius_px, center_px, center_py);
+            debug!(
+                footprint_num = count,
+                pos_x = cx,
+                pos_y = cy,
+                z = cz,
+                tool_radius = self.tool_radius,
+                radius_px,
+                center_px,
+                center_py,
+                "apply tool footprint"
+            );
         }
 
         // Iterate over a square bounding box around the tool
@@ -716,11 +734,11 @@ mod tests {
         // Check that material was removed along the path
         let height_at_start = simulator.height_map.get_height(20.0, 20.0);
         assert!(height_at_start.is_some());
-        assert!(height_at_start.unwrap() <= 5.0);
+        assert!(height_at_start.expect("height not found") <= 5.0);
 
         let height_at_end = simulator.height_map.get_height(80.0, 80.0);
         assert!(height_at_end.is_some());
-        assert!(height_at_end.unwrap() <= 5.0);
+        assert!(height_at_end.expect("height not found") <= 5.0);
     }
 
     #[test]

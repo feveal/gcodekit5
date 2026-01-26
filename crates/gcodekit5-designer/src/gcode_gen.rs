@@ -91,7 +91,8 @@ impl ToolpathToGcode {
 
     /// Generates the G-code body (moves) for a toolpath.
     pub fn generate_body(&self, toolpath: &Toolpath, start_line_number: u32) -> String {
-        self.generate_body_continuing(toolpath, start_line_number, self.safe_z).0
+        self.generate_body_continuing(toolpath, start_line_number, self.safe_z)
+            .0
     }
 
     /// Generates the G-code body continuing from a given Z position.
@@ -302,7 +303,10 @@ impl ToolpathToGcode {
         let mut gcode = String::new();
         gcode.push('\n');
         gcode.push_str("M5          ; Spindle off\n");
-        gcode.push_str(&format!("G00 Z{:.3}   ; Raise tool to safe height\n", self.safe_z));
+        gcode.push_str(&format!(
+            "G00 Z{:.3}   ; Raise tool to safe height\n",
+            self.safe_z
+        ));
         gcode.push_str("G00 X0 Y0   ; Return to origin\n");
         gcode.push_str("M30         ; End program\n");
         gcode

@@ -1,9 +1,7 @@
 //! Speeds and Feeds Calculator Tool
 
 use gtk4::prelude::*;
-use gtk4::{
-    Align, Box, Button, ComboBoxText, Label, Orientation, Paned, ScrolledWindow, Stack,
-};
+use gtk4::{Align, Box, Button, ComboBoxText, Label, Orientation, Paned, ScrolledWindow, Stack};
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
 use std::rc::Rc;

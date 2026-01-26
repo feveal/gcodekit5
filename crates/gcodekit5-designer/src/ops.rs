@@ -12,10 +12,10 @@ pub enum BooleanOp {
 pub fn clean_polyline(mut pline: Polyline) -> Polyline {
     pline.remove_repeat_pos(1e-5);
     if pline.is_closed() && pline.vertex_count() > 1 {
-        let first = pline.get(0).unwrap();
-        let last = pline.get(pline.vertex_count() - 1).unwrap();
-        if (first.x - last.x).abs() < 1e-5 && (first.y - last.y).abs() < 1e-5 {
-            pline.remove(pline.vertex_count() - 1);
+        if let (Some(first), Some(last)) = (pline.get(0), pline.get(pline.vertex_count() - 1)) {
+            if (first.x - last.x).abs() < 1e-5 && (first.y - last.y).abs() < 1e-5 {
+                pline.remove(pline.vertex_count() - 1);
+            }
         }
     }
     pline
@@ -40,28 +40,26 @@ pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
         // If the path has rotation, apply it to the sketch first
         if path.rotation.abs() > 1e-6 {
             use nalgebra::{Matrix4, Vector3};
-            
+
             // Calculate center of rotation
             let bb = csgrs::traits::CSG::bounding_box(&path.sketch);
             let center_x = (bb.mins.x + bb.maxs.x) / 2.0;
             let center_y = (bb.mins.y + bb.maxs.y) / 2.0;
-            
+
             // Create rotation matrix around center (rotation is in degrees)
             let angle_rad = path.rotation.to_radians();
             let cos_a = angle_rad.cos();
             let sin_a = angle_rad.sin();
-            
+
             // Translate to origin, rotate, translate back
             let to_origin = Matrix4::new_translation(&Vector3::new(-center_x, -center_y, 0.0));
             let rotation_mat = Matrix4::new(
-                cos_a, -sin_a, 0.0, 0.0,
-                sin_a, cos_a, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
+                cos_a, -sin_a, 0.0, 0.0, sin_a, cos_a, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                1.0,
             );
             let from_origin = Matrix4::new_translation(&Vector3::new(center_x, center_y, 0.0));
             let transform = from_origin * rotation_mat * to_origin;
-            
+
             // Apply rotation to sketch and set rotation to 0 (rotation is now baked into geometry)
             (path.sketch.transform(&transform), 0.0)
         } else {
@@ -70,7 +68,7 @@ pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
     } else {
         (shape.as_csg(), 0.0)
     };
-    
+
     let mp = sketch.to_multipolygon();
 
     let mut result_sketch = csgrs::sketch::Sketch::new();
@@ -159,8 +157,9 @@ pub fn perform_chamfer(shape: &Shape, distance: f64) -> Shape {
         for mut inward in inward_offsets {
             // Remove bulges to make it "chamfered"
             for i in 0..inward.vertex_count() {
-                let v = inward.get(i).unwrap();
-                inward.set(i, v.x, v.y, 0.0);
+                if let Some(v) = inward.get(i) {
+                    inward.set(i, v.x, v.y, 0.0);
+                }
             }
 
             let inward = clean_polyline(inward);
@@ -173,8 +172,9 @@ pub fn perform_chamfer(shape: &Shape, distance: f64) -> Shape {
             for mut offset in outward_offsets {
                 // Remove bulges again
                 for i in 0..offset.vertex_count() {
-                    let v = offset.get(i).unwrap();
-                    offset.set(i, v.x, v.y, 0.0);
+                    if let Some(v) = offset.get(i) {
+                        offset.set(i, v.x, v.y, 0.0);
+                    }
                 }
 
                 let pts: Vec<[f64; 2]> = offset.vertex_data.iter().map(|v| [v.x, v.y]).collect();
@@ -201,8 +201,9 @@ pub fn perform_chamfer(shape: &Shape, distance: f64) -> Shape {
 
             for mut inward in inward_offsets {
                 for i in 0..inward.vertex_count() {
-                    let v = inward.get(i).unwrap();
-                    inward.set(i, v.x, v.y, 0.0);
+                    if let Some(v) = inward.get(i) {
+                        inward.set(i, v.x, v.y, 0.0);
+                    }
                 }
 
                 let inward = clean_polyline(inward);
@@ -214,8 +215,9 @@ pub fn perform_chamfer(shape: &Shape, distance: f64) -> Shape {
 
                 for mut offset in outward_offsets {
                     for i in 0..offset.vertex_count() {
-                        let v = offset.get(i).unwrap();
-                        offset.set(i, v.x, v.y, 0.0);
+                        if let Some(v) = offset.get(i) {
+                            offset.set(i, v.x, v.y, 0.0);
+                        }
                     }
 
                     let pts: Vec<[f64; 2]> =

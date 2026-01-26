@@ -36,7 +36,7 @@ impl Communicator for MockCommunicator {
 
     fn send(&mut self, data: &[u8]) -> gcodekit5_core::Result<usize> {
         let s = String::from_utf8_lossy(data).to_string();
-        self.sent_data.lock().unwrap().push(s);
+        self.sent_data.lock().expect("lock failed").push(s);
         Ok(data.len())
     }
 
@@ -67,10 +67,14 @@ fn test_buffered_queueing() {
     let wrapper = BufferedCommunicatorWrapper::new(mock, config);
 
     // Queue some commands
-    wrapper.queue_command("G0 X0 Y0".to_string()).unwrap();
-    wrapper.queue_command("G1 X10 Y10".to_string()).unwrap();
+    wrapper
+        .queue_command("G0 X0 Y0".to_string())
+        .expect("queue failed");
+    wrapper
+        .queue_command("G1 X10 Y10".to_string())
+        .expect("queue failed");
 
-    assert_eq!(wrapper.queued_commands_count().unwrap(), 2);
+    assert_eq!(wrapper.queued_commands_count().expect("count failed"), 2);
 }
 
 #[test]
@@ -101,7 +105,7 @@ fn test_buffered_streaming() {
         }
         fn send(&mut self, data: &[u8]) -> gcodekit5_core::Result<usize> {
             let s = String::from_utf8_lossy(data).to_string();
-            self.sent_data.lock().unwrap().push(s);
+            self.sent_data.lock().expect("lock failed").push(s);
             Ok(data.len())
         }
         fn receive(&mut self) -> gcodekit5_core::Result<Vec<u8>> {
@@ -134,14 +138,18 @@ fn test_buffered_streaming() {
 
     let mut wrapper = BufferedCommunicatorWrapper::new(mock, config);
 
-    wrapper.queue_command("G0 X0 Y0".to_string()).unwrap();
-    wrapper.queue_command("G1 X10 Y10".to_string()).unwrap();
+    wrapper
+        .queue_command("G0 X0 Y0".to_string())
+        .expect("queue failed");
+    wrapper
+        .queue_command("G1 X10 Y10".to_string())
+        .expect("queue failed");
 
     // Stream commands
-    wrapper.stream_commands().unwrap();
+    wrapper.stream_commands().expect("stream failed");
 
     // Verify commands were sent
-    let sent = sent_data.lock().unwrap();
+    let sent = sent_data.lock().expect("lock failed");
     assert_eq!(sent.len(), 4); // 2 commands + 2 newlines (send_command sends data then newline)
     assert_eq!(sent[0], "G0 X0 Y0");
     assert_eq!(sent[1], "\n");
@@ -149,8 +157,8 @@ fn test_buffered_streaming() {
     assert_eq!(sent[3], "\n");
 
     // Verify active commands
-    assert_eq!(wrapper.active_commands_count().unwrap(), 2);
-    assert_eq!(wrapper.queued_commands_count().unwrap(), 0);
+    assert_eq!(wrapper.active_commands_count().expect("count failed"), 2);
+    assert_eq!(wrapper.queued_commands_count().expect("count failed"), 0);
 }
 
 #[test]
@@ -174,7 +182,7 @@ fn test_flow_control() {
         }
         fn send(&mut self, data: &[u8]) -> gcodekit5_core::Result<usize> {
             let s = String::from_utf8_lossy(data).to_string();
-            self.sent_data.lock().unwrap().push(s);
+            self.sent_data.lock().expect("lock failed").push(s);
             Ok(data.len())
         }
         fn receive(&mut self) -> gcodekit5_core::Result<Vec<u8>> {
@@ -212,13 +220,19 @@ fn test_flow_control() {
     // "G1 X10 Y10" is 10 chars + 1 newline = 11 bytes
     // Total 20 bytes.
 
-    wrapper.queue_command("G0 X0 Y0".to_string()).unwrap(); // 9 bytes
-    wrapper.queue_command("G1 X10 Y10".to_string()).unwrap(); // 11 bytes. 9+11 = 20. Fits exactly?
-    wrapper.queue_command("M5".to_string()).unwrap(); // 2+1 = 3 bytes. Should not fit.
+    wrapper
+        .queue_command("G0 X0 Y0".to_string())
+        .expect("queue failed"); // 9 bytes
+    wrapper
+        .queue_command("G1 X10 Y10".to_string())
+        .expect("queue failed"); // 11 bytes. 9+11 = 20. Fits exactly?
+    wrapper
+        .queue_command("M5".to_string())
+        .expect("queue failed"); // 2+1 = 3 bytes. Should not fit.
 
-    wrapper.stream_commands().unwrap();
+    wrapper.stream_commands().expect("stream failed");
 
-    let sent = sent_data.lock().unwrap();
+    let sent = sent_data.lock().expect("lock failed");
     // Should have sent first two commands
     // Wait, has_room_in_buffer check: used_space = sent_buffer_size + command_size + 1
     // 1. sent_buffer_size = 0. cmd="G0 X0 Y0" (8). used = 0 + 8 + 1 = 9 <= 20. OK.
@@ -230,24 +244,24 @@ fn test_flow_control() {
     // So we expect 4 sends (cmd, nl, cmd, nl)
     assert_eq!(sent.len(), 4);
 
-    assert_eq!(wrapper.active_commands_count().unwrap(), 2);
-    assert_eq!(wrapper.queued_commands_count().unwrap(), 1);
+    assert_eq!(wrapper.active_commands_count().expect("count failed"), 2);
+    assert_eq!(wrapper.queued_commands_count().expect("count failed"), 1);
 
     drop(sent);
 
     // Acknowledge first command
-    wrapper.handle_acknowledgment().unwrap();
+    wrapper.handle_acknowledgment().expect("ack failed");
 
     // Now buffer size should be 20 - 9 = 11.
     // Try streaming again
-    wrapper.stream_commands().unwrap();
+    wrapper.stream_commands().expect("stream failed");
 
     // "M5" needs 3 bytes. 11 + 3 = 14 <= 20. OK.
 
-    let sent = sent_data.lock().unwrap();
+    let sent = sent_data.lock().expect("lock failed");
     assert_eq!(sent.len(), 6); // + cmd, nl
     assert_eq!(sent[4], "M5");
 
-    assert_eq!(wrapper.active_commands_count().unwrap(), 2); // 1 remaining from before + 1 new
-    assert_eq!(wrapper.queued_commands_count().unwrap(), 0);
+    assert_eq!(wrapper.active_commands_count().expect("count failed"), 2); // 1 remaining from before + 1 new
+    assert_eq!(wrapper.queued_commands_count().expect("count failed"), 0);
 }

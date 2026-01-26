@@ -368,7 +368,9 @@ impl SettingsPersistence {
                 "3D Stock Removal Visualization",
                 SettingValue::Boolean(ui.enable_stock_removal_3d),
             )
-            .with_description("Enable experimental 3D stock removal visualization in the visualizer")
+            .with_description(
+                "Enable experimental 3D stock removal visualization in the visualizer",
+            )
             .with_category(SettingsCategory::Advanced),
         );
 
@@ -378,7 +380,9 @@ impl SettingsPersistence {
                 "STL File Import",
                 SettingValue::Boolean(ui.enable_stl_import),
             )
-            .with_description("Enable experimental STL import with shadow projection in the designer")
+            .with_description(
+                "Enable experimental STL import with shadow projection in the designer",
+            )
             .with_category(SettingsCategory::Advanced),
         );
     }

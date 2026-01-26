@@ -271,7 +271,7 @@ fn test_phase3_drilling_pattern_types() {
 fn test_phase3_combined_workflow() {
     // Create tool library
     let library = ToolLibrary::with_defaults();
-    let tool = library.get_tool("em_125").unwrap();
+    let tool = library.get_tool("em_125").expect("tool not found");
 
     // Create pocket operation
     let pocket_op = PocketOperation::new("pocket1".to_string(), -10.0, tool.diameter);

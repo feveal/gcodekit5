@@ -369,11 +369,11 @@ mod tests {
         panel.add_parameter(param);
 
         panel.create_backup();
-        panel.set_parameter_value("$0", "20").unwrap();
+        panel.set_parameter_value("$0", "20").expect("set failed");
         assert!(panel.has_changes());
 
-        panel.restore_backup().unwrap();
-        assert_eq!(panel.get_parameter("$0").unwrap().value, "10");
+        panel.restore_backup().expect("restore failed");
+        assert_eq!(panel.get_parameter("$0").expect("param not found").value, "10");
     }
 
     #[test]
@@ -382,12 +382,12 @@ mod tests {
         let param = FirmwareParameter::new("$0", "Step Pulse", "10");
         panel.add_parameter(param);
 
-        let json = panel.export_parameters().unwrap();
+        let json = panel.export_parameters().expect("export failed");
         let mut panel2 = FirmwareSettingsPanel::new("GRBL", "1.1");
         let param2 = FirmwareParameter::new("$0", "Step Pulse", "5");
         panel2.add_parameter(param2);
 
-        panel2.import_parameters(&json).unwrap();
-        assert_eq!(panel2.get_parameter("$0").unwrap().value, "10");
+        panel2.import_parameters(&json).expect("import failed");
+        assert_eq!(panel2.get_parameter("$0").expect("param not found").value, "10");
     }
 }

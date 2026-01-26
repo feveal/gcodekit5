@@ -68,6 +68,7 @@ pub mod canvas;
 pub mod commands;
 pub mod drilling_patterns;
 pub mod dxf_parser;
+pub mod error;
 pub mod font_manager;
 pub mod gcode_gen;
 pub mod helpers;

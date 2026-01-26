@@ -6,7 +6,7 @@ use std::io::Write;
 fn test_svg_mirroring() {
     // Create a temporary SVG file
     let file_name = "temp_mirror_test.svg";
-    let mut file = std::fs::File::create(file_name).unwrap();
+    let mut file = std::fs::File::create(file_name).expect("file create failed");
 
     // SVG with two paths at top and bottom
     // Path 1: (10, 10) to (20, 10) -> Y=10
@@ -24,13 +24,13 @@ fn test_svg_mirroring() {
 </svg>
 "#,
     )
-    .unwrap();
+    .expect("operation failed");
 
     let params = VectorEngravingParameters::default();
-    let engraver = VectorEngraver::from_file(file_name, params).unwrap();
+    let engraver = VectorEngraver::from_file(file_name, params).expect("from_file failed");
 
     // Clean up
-    std::fs::remove_file(file_name).unwrap();
+    std::fs::remove_file(file_name).expect("file remove failed");
 
     assert_eq!(engraver.paths.len(), 2);
 

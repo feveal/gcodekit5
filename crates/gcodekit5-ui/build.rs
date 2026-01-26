@@ -11,7 +11,7 @@ fn main() {
 
     // Compile PO files
     let po_dir = Path::new("../../po");
-    let out_dir = env::var("OUT_DIR").unwrap();
+    let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
     let locale_dir = Path::new(&out_dir).join("locale");
 
     println!("cargo:rerun-if-changed=../../po");
@@ -22,7 +22,7 @@ fn main() {
             let entry = entry.expect("Failed to read entry");
             let path = entry.path();
             if path.extension().map_or(false, |ext| ext == "po") {
-                let lang = path.file_stem().unwrap().to_string_lossy();
+                let lang = path.file_stem().expect("file stem").to_string_lossy();
                 let lang_dir = locale_dir.join(&*lang).join("LC_MESSAGES");
                 fs::create_dir_all(&lang_dir).expect("Failed to create locale dir");
 

@@ -84,7 +84,7 @@ impl FirmwareDetector {
                     .trim_start_matches("[FIRMWARE:")
                     .trim_end_matches(']')
                     .to_lowercase();
-                
+
                 if firmware_name.contains("grblhal") {
                     is_grblhal = true;
                     tracing::info!("Detected grblHAL firmware from [FIRMWARE:grblHAL] tag");

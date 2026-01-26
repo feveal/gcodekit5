@@ -146,7 +146,8 @@ impl VectorEngraver {
         let mut _viewbox_height = 100.0f32;
 
         // Parse viewBox
-        let re_viewbox = Regex::new(r#"viewBox\s*=\s*["']([^"']+)["']"#).unwrap();
+        let re_viewbox =
+            Regex::new(r#"viewBox\s*=\s*["']([^"']+)["']"#).expect("invalid viewbox regex");
         if let Some(caps) = re_viewbox.captures(&content) {
             let viewbox_str = &caps[1];
             let parts: Vec<&str> = viewbox_str.split_whitespace().collect();
@@ -158,18 +159,19 @@ impl VectorEngraver {
 
         // Parse group transform (simplified, only first one found)
         let mut group_transform = None;
-        let re_g = Regex::new(r#"<g\s+([^>]+)>"#).unwrap();
+        let re_g = Regex::new(r#"<g\s+([^>]+)>"#).expect("invalid g regex");
         if let Some(caps) = re_g.captures(&content) {
             let attrs = &caps[1];
-            let re_transform = Regex::new(r#"transform\s*=\s*["']([^"']+)["']"#).unwrap();
+            let re_transform =
+                Regex::new(r#"transform\s*=\s*["']([^"']+)["']"#).expect("invalid transform regex");
             if let Some(t_caps) = re_transform.captures(attrs) {
                 group_transform = Self::parse_matrix_transform(&t_caps[1]);
             }
         }
 
         // Parse paths
-        let re_path = Regex::new(r#"<path\s+([^>]+)>"#).unwrap();
-        let re_d = Regex::new(r#"d\s*=\s*["']([^"']+)["']"#).unwrap();
+        let re_path = Regex::new(r#"<path\s+([^>]+)>"#).expect("invalid path regex");
+        let re_d = Regex::new(r#"d\s*=\s*["']([^"']+)["']"#).expect("invalid d regex");
 
         for cap in re_path.captures_iter(&content) {
             let attrs = &cap[1];

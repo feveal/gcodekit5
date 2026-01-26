@@ -107,7 +107,9 @@ impl UndoManager {
             if !batch.is_empty() {
                 // Merge batch into single change if possible
                 if batch.len() == 1 {
-                    self.push_undo(batch.into_iter().next().unwrap());
+                    if let Some(change) = batch.into_iter().next() {
+                        self.push_undo(change);
+                    }
                 } else {
                     // For multiple changes, push them individually
                     // (could be optimized to merge adjacent changes)

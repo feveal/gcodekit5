@@ -703,11 +703,7 @@ impl PocketGenerator {
                     } else {
                         // Subsequent step-ins or subsequent Z passes: use LinearMove
                         // (the G-code generator will handle the Z plunge based on toolpath.depth)
-                        let last_pt = toolpath
-                            .segments
-                            .last()
-                            .map(|s| s.end)
-                            .unwrap_or(start_pt);
+                        let last_pt = toolpath.segments.last().map(|s| s.end).unwrap_or(start_pt);
                         toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::LinearMove,
                             last_pt,
@@ -797,7 +793,7 @@ impl PocketGenerator {
         if let Some(first) = vertices.first() {
             clean_vertices.push(*first);
             for p in vertices.iter().skip(1) {
-                let last = clean_vertices.last().unwrap();
+                let last = clean_vertices.last().expect("empty collection");
                 let dist = ((p.x - last.x).powi(2) + (p.y - last.y).powi(2)).sqrt();
                 if dist > tolerance {
                     clean_vertices.push(*p);
@@ -806,8 +802,8 @@ impl PocketGenerator {
 
             // Remove closing vertex if it's the same as the first
             if clean_vertices.len() > 1 {
-                let first = clean_vertices.first().unwrap();
-                let last = clean_vertices.last().unwrap();
+                let first = clean_vertices.first().expect("empty collection");
+                let last = clean_vertices.last().expect("empty collection");
                 let dist = ((last.x - first.x).powi(2) + (last.y - first.y).powi(2)).sqrt();
                 if dist < tolerance {
                     clean_vertices.pop();
@@ -910,11 +906,7 @@ impl PocketGenerator {
                         is_first_stepin = false;
                     } else {
                         // Subsequent step-ins or subsequent Z passes: use LinearMove
-                        let last_pt = toolpath
-                            .segments
-                            .last()
-                            .map(|s| s.end)
-                            .unwrap_or(points[0]);
+                        let last_pt = toolpath.segments.last().map(|s| s.end).unwrap_or(points[0]);
                         toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::LinearMove,
                             last_pt,
@@ -1085,11 +1077,7 @@ impl PocketGenerator {
                     };
 
                     if needs_traverse {
-                        let last_pt = toolpath
-                            .segments
-                            .last()
-                            .map(|s| s.end)
-                            .unwrap_or(start_pt);
+                        let last_pt = toolpath.segments.last().map(|s| s.end).unwrap_or(start_pt);
                         toolpath.add_segment(ToolpathSegment::new(
                             ToolpathSegmentType::LinearMove,
                             last_pt,
@@ -1285,7 +1273,7 @@ impl PocketGenerator {
                             // Close enough - traverse directly at cutting depth
                             toolpath.add_segment(ToolpathSegment::new(
                                 ToolpathSegmentType::LinearMove,
-                                toolpath.segments.last().unwrap().end,
+                                toolpath.segments.last().expect("empty collection").end,
                                 start_pt,
                                 self.operation.feed_rate,
                                 self.operation.spindle_speed,
@@ -1315,11 +1303,8 @@ impl PocketGenerator {
                             }
                         } else {
                             // Not first segment, but not close - still traverse at cutting depth
-                            let last_point = toolpath
-                                .segments
-                                .last()
-                                .map(|s| s.end)
-                                .unwrap_or(start_pt);
+                            let last_point =
+                                toolpath.segments.last().map(|s| s.end).unwrap_or(start_pt);
                             toolpath.add_segment(ToolpathSegment::new(
                                 ToolpathSegmentType::LinearMove,
                                 last_point,

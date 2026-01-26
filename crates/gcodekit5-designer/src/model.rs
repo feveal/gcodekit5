@@ -1149,7 +1149,11 @@ impl DesignPath {
         let mut i = 0usize;
 
         fn is_cmd_token(s: &str) -> bool {
-            s.len() == 1 && s.chars().next().unwrap().is_ascii_alphabetic()
+            s.len() == 1
+                && s.chars()
+                    .next()
+                    .map(|c| c.is_ascii_alphabetic())
+                    .unwrap_or(false)
         }
 
         fn parse_f32(s: &str) -> Option<f32> {
@@ -2145,7 +2149,6 @@ impl DesignerShape for DesignSprocket {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DesignTriangle {

@@ -367,7 +367,7 @@ mod tests {
             let backend = ToolsManagerBackend::new();
             let loaded = backend.get_tool(&ToolId("test_persist_tool".to_string()));
             assert!(loaded.is_some());
-            assert_eq!(loaded.unwrap().name, "Test Persist Tool");
+            assert_eq!(loaded.expect("load failed").name, "Test Persist Tool");
         }
 
         // Cleanup

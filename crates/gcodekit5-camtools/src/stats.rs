@@ -56,8 +56,8 @@ impl StatsCalculator {
             ..Default::default()
         };
 
-        let g_code_regex = Regex::new(r"[GgMm]\d+").unwrap();
-        let coord_regex = Regex::new(r"([XYZFST])(-?\d+\.?\d*)").unwrap();
+        let g_code_regex = Regex::new(r"[GgMm]\d+").expect("invalid regex pattern");
+        let coord_regex = Regex::new(r"([XYZFST])(-?\d+\.?\d*)").expect("invalid regex pattern");
 
         for line in lines {
             let trimmed = line.trim();
@@ -70,9 +70,9 @@ impl StatsCalculator {
             // Count command types
             for cap in g_code_regex.find_iter(trimmed) {
                 let code_str = cap.as_str();
-                if code_str.len() > 1 {
+                if let Some(first_char) = code_str.chars().next() {
                     if let Ok(num) = code_str[1..].parse::<u32>() {
-                        match code_str.chars().next().unwrap() {
+                        match first_char {
                             'G' | 'g' => match num {
                                 0 => stats.rapid_count += 1,
                                 1 => stats.linear_count += 1,

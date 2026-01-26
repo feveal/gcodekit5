@@ -40,7 +40,7 @@ pub fn decode_error(code: u8) -> String {
         36 => "There are unused, leftover G-code words that aren't used by any command in the block.".to_string(),
         37 => "The G43.1 dynamic tool length offset command cannot apply an offset to an axis other than its configured axis.".to_string(),
         38 => "Tool number greater than max supported value.".to_string(),
-        
+
         // grblHAL Extended Error Codes (39-75)
         39 => "Canned cycle is not active. G-code requires an active canned cycle (G81-G89) context.".to_string(),
         40 => "Value word (N, P, R) is missing or undefined.".to_string(),
@@ -79,7 +79,7 @@ pub fn decode_error(code: u8) -> String {
         73 => "Self-test failed. Controller hardware self-test reported failure.".to_string(),
         74 => "Busy. Controller busy processing previous command.".to_string(),
         75 => "Command requires single axis. Multi-axis movement not allowed for this command.".to_string(),
-        
+
         _ => format!("Unknown error code: {}", code),
     }
 }
@@ -96,7 +96,7 @@ pub fn decode_alarm(code: u8) -> String {
         7 => "Homing fail. Safety door was opened during active homing cycle.".to_string(),
         8 => "Homing fail. Cycle failed to clear limit switch when pulling off. Try increasing pull-off setting or check wiring.".to_string(),
         9 => "Homing fail. Could not find limit switch within search distance. Defined as 1.5 * max_travel on search and 5 * pulloff on locate phases.".to_string(),
-        
+
         // grblHAL Extended Alarm Codes (10-20)
         10 => "Limit switch engaged. Cannot complete homing cycle because limit switch is already triggered.".to_string(),
         11 => "Homing required. Machine must be homed before performing this operation.".to_string(),
@@ -109,7 +109,7 @@ pub fn decode_alarm(code: u8) -> String {
         18 => "Spindle sync error. Spindle synchronization lost during threading or rigid tapping.".to_string(),
         19 => "Power supply fault. Input power issue detected.".to_string(),
         20 => "Controller error. Internal controller error or malfunction.".to_string(),
-        
+
         _ => format!("Unknown alarm code: {}", code),
     }
 }

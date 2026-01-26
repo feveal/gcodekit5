@@ -19,7 +19,7 @@ fn test_svg_import_basic() {
     let result = importer.import_string(svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Svg);
     assert_eq!(design.dimensions.0, 100.0);
     assert_eq!(design.dimensions.1, 100.0);
@@ -32,7 +32,7 @@ fn test_svg_import_rectangle() {
     let result = importer.import_string(svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.shapes.len(), 1);
 }
 
@@ -43,7 +43,7 @@ fn test_svg_import_circle() {
     let result = importer.import_string(svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.shapes.len(), 1);
 }
 
@@ -54,7 +54,7 @@ fn test_svg_import_line() {
     let result = importer.import_string(svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.shapes.len(), 1);
 }
 
@@ -65,7 +65,7 @@ fn test_svg_import_with_scale() {
     let result = importer.import_string(svg);
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.dimensions.0, 200.0);
     assert_eq!(design.dimensions.1, 200.0);
 }
@@ -76,6 +76,6 @@ fn test_dxf_import_framework() {
     let result = importer.import_string("0\nSECTION\n2\nENTITIES\n0\nENDSEC\n0\nEOF");
 
     assert!(result.is_ok());
-    let design = result.unwrap();
+    let design = result.expect("result failed");
     assert_eq!(design.format, FileFormat::Dxf);
 }

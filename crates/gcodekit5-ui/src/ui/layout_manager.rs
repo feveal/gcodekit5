@@ -447,7 +447,7 @@ mod tests {
     fn test_toggle_panel_visibility() {
         let mut mgr = LayoutManager::new();
         mgr.toggle_panel(PanelId::Connection);
-        assert!(!mgr.get_panel(PanelId::Connection).unwrap().visible);
+        assert!(!mgr.get_panel(PanelId::Connection).expect("panel not found").visible);
     }
 
     #[test]
@@ -474,7 +474,7 @@ mod tests {
     fn test_float_panel() {
         let mut mgr = LayoutManager::new();
         mgr.float_panel(PanelId::Connection);
-        let panel = mgr.get_panel(PanelId::Connection).unwrap();
+        let panel = mgr.get_panel(PanelId::Connection).expect("panel not found");
         assert!(!panel.is_docked);
         assert_eq!(panel.z_order, 1);
     }

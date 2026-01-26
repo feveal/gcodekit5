@@ -2,9 +2,8 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction,
-    FileChooserDialog, Label, Orientation, Paned, ResponseType,
-    ScrolledWindow, Stack,
+    Align, Box, Button, CheckButton, ComboBoxText, Entry, FileChooserAction, FileChooserDialog,
+    Label, Orientation, Paned, ResponseType, ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
@@ -15,7 +14,9 @@ use std::rc::Rc;
 use super::common::{create_dimension_row, set_paned_initial_fraction};
 use super::CamToolsView;
 use crate::ui::gtk::help_browser;
-use gcodekit5_camtools::tabbed_box::{BoxParameters, BoxType, KeyDividerType, TabbedBoxMaker as Generator};
+use gcodekit5_camtools::tabbed_box::{
+    BoxParameters, BoxType, KeyDividerType, TabbedBoxMaker as Generator,
+};
 use gcodekit5_core::units;
 use gcodekit5_designer::{PathShape, Point, Shape};
 use gcodekit5_settings::SettingsController;
@@ -173,7 +174,8 @@ impl TabbedBoxMaker {
         let power = Entry::builder().text("1000").valign(Align::Center).build();
         let feed_rate = Entry::builder().text("500").valign(Align::Center).build();
 
-        let (z_step_down_row, z_step_down, z_step_down_unit) = create_dimension_row("Z Step Down:", 0.1, &settings);
+        let (z_step_down_row, z_step_down, z_step_down_unit) =
+            create_dimension_row("Z Step Down:", 0.1, &settings);
 
         let (offset_x_row, offset_x, offset_x_unit) =
             create_dimension_row("Offset X:", 10.0, &settings);
@@ -536,16 +538,21 @@ impl TabbedBoxMaker {
                         generator.generate()?;
 
                         // Convert paths to shapes
-                        let shapes: Vec<Shape> = generator.paths().iter().map(|path| {
-                            // Convert Vec<Point> to Vec<gcodekit5_designer::Point>
-                            let points: Vec<Point> = path.iter().map(|p| {
-                                Point::new(p.x as f64, p.y as f64)
-                            }).collect();
+                        let shapes: Vec<Shape> = generator
+                            .paths()
+                            .iter()
+                            .map(|path| {
+                                // Convert Vec<Point> to Vec<gcodekit5_designer::Point>
+                                let points: Vec<Point> = path
+                                    .iter()
+                                    .map(|p| Point::new(p.x as f64, p.y as f64))
+                                    .collect();
 
-                            // Create PathShape from points (closed paths for box panels)
-                            let path_shape = PathShape::from_points(&points, true);
-                            Shape::Path(path_shape)
-                        }).collect();
+                                // Create PathShape from points (closed paths for box panels)
+                                let path_shape = PathShape::from_points(&points, true);
+                                Shape::Path(path_shape)
+                            })
+                            .collect();
 
                         Ok(shapes)
                     })();

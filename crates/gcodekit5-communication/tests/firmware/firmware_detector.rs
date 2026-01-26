@@ -4,7 +4,7 @@ use gcodekit5_communication::firmware::firmware_version::FirmwareType;
 #[test]
 fn test_parse_grbl_version_info() {
     let response = "[VER:1.1h.20190825:Some string]\n[OPT:V,15,128]";
-    let result = FirmwareDetector::parse_grbl_version_info(response).unwrap();
+    let result = FirmwareDetector::parse_grbl_version_info(response).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::Grbl);
     assert_eq!(result.version.major, 1);
@@ -17,7 +17,7 @@ fn test_parse_grbl_version_info() {
 #[test]
 fn test_parse_grblhal_version_info() {
     let response = "[VER:1.1h.20190825:]\n[OPT:VPNM,128,128]\n[FIRMWARE:grblHAL]\nok";
-    let result = FirmwareDetector::parse_grbl_version_info(response).unwrap();
+    let result = FirmwareDetector::parse_grbl_version_info(response).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::GrblHal);
     assert_eq!(result.version.major, 1);
@@ -30,7 +30,7 @@ fn test_parse_grblhal_version_info() {
 #[test]
 fn test_parse_grbl_startup() {
     let message = "Grbl 1.1f ['$' for help]";
-    let result = FirmwareDetector::parse_grbl_startup(message).unwrap();
+    let result = FirmwareDetector::parse_grbl_startup(message).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::Grbl);
     assert_eq!(result.version.major, 1);
@@ -41,7 +41,7 @@ fn test_parse_grbl_startup() {
 #[test]
 fn test_parse_grbl_startup_1_2h() {
     let message = "Grbl 1.2h ['$' for help]";
-    let result = FirmwareDetector::parse_grbl_startup(message).unwrap();
+    let result = FirmwareDetector::parse_grbl_startup(message).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::Grbl);
     assert_eq!(result.version.major, 1);
@@ -52,7 +52,7 @@ fn test_parse_grbl_startup_1_2h() {
 #[test]
 fn test_parse_grbl_startup_with_prefix_banner() {
     let message = "QC V2.2.\nGrbl 1.2h ['$' for help]";
-    let result = FirmwareDetector::parse_grbl_startup(message).unwrap();
+    let result = FirmwareDetector::parse_grbl_startup(message).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::Grbl);
     assert_eq!(result.version.major, 1);
@@ -63,7 +63,7 @@ fn test_parse_grbl_startup_with_prefix_banner() {
 #[test]
 fn test_parse_marlin_version_info() {
     let response = "FIRMWARE_NAME:Marlin 2.0.9.3\nPROTOCOL_VERSION:1.0";
-    let result = FirmwareDetector::parse_marlin_version_info(response).unwrap();
+    let result = FirmwareDetector::parse_marlin_version_info(response).expect("parse failed");
 
     assert_eq!(result.version.major, 2);
     assert_eq!(result.version.minor, 0);
@@ -73,7 +73,7 @@ fn test_parse_marlin_version_info() {
 #[test]
 fn test_parse_generic_grbl_response() {
     let response = "[VER:1.1h.20190825:]\n[OPT:V,15,128]";
-    let result = FirmwareDetector::parse_response(response).unwrap();
+    let result = FirmwareDetector::parse_response(response).expect("parse failed");
 
     assert_eq!(result.firmware_type, FirmwareType::Grbl);
     assert_eq!(result.version.major, 1);

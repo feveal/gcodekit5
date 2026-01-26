@@ -45,10 +45,22 @@ fn test_save_and_load() {
         pocket_strategy: PocketStrategy::ContourParallel,
         raster_fill_ratio: 0.5,
         sides: 0,
+        teeth: 0,
+        module: 0.0,
+        pressure_angle: 0.0,
+        pitch: 0.0,
+        roller_diameter: 0.0,
+        thickness: 0.0,
+        depth: 0.0,
+        tab_size: 0.0,
+        offset: 0.0,
+        fillet: 0.0,
+        chamfer: 0.0,
+        lock_aspect_ratio: true,
     });
 
-    design.save_to_file(&file_path).unwrap();
-    let loaded = DesignFile::load_from_file(&file_path).unwrap();
+    design.save_to_file(&file_path).expect("save failed");
+    let loaded = DesignFile::load_from_file(&file_path).expect("load failed");
 
     assert_eq!(loaded.shapes.len(), 1);
     assert_eq!(loaded.shapes[0].width, 100.0);

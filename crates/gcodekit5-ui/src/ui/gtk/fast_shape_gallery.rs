@@ -6,9 +6,7 @@ use crate::t;
 use gcodekit5_designer::model::{DesignGear, DesignPath, DesignSprocket, Point, Shape};
 use gcodekit5_designer::parametric_shapes::*;
 use gtk4::prelude::*;
-use gtk4::{
-    Box, Dialog, FlowBox, Frame, Image, Label, Orientation, ResponseType, ScrolledWindow,
-};
+use gtk4::{Box, Dialog, FlowBox, Frame, Image, Label, Orientation, ResponseType, ScrolledWindow};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -22,7 +20,12 @@ pub struct FastShapeTemplate {
 }
 
 impl FastShapeTemplate {
-    pub fn new(name: String, description: String, icon_name: String, generator: Rc<dyn Fn(Point) -> Shape>) -> Self {
+    pub fn new(
+        name: String,
+        description: String,
+        icon_name: String,
+        generator: Rc<dyn Fn(Point) -> Shape>,
+    ) -> Self {
         Self {
             name,
             description,
@@ -126,7 +129,9 @@ impl FastShapeGallery {
 
             let template_clone = template.clone();
             let dialog_clone = dialog.clone();
-            let on_shape_selected: std::rc::Weak<RefCell<Option<std::boxed::Box<dyn Fn(Shape) + 'static>>>> = Rc::downgrade(&gallery.on_shape_selected);
+            let on_shape_selected: std::rc::Weak<
+                RefCell<Option<std::boxed::Box<dyn Fn(Shape) + 'static>>>,
+            > = Rc::downgrade(&gallery.on_shape_selected);
 
             // Make the frame clickable
             let gesture = gtk4::GestureClick::new();
@@ -170,9 +175,8 @@ impl FastShapeGallery {
                 "system-run-symbolic".to_string(),
                 Rc::new(|center| {
                     Shape::Gear(DesignGear::new(
-                        center,
-                        2.0,  // module
-                        20,   // teeth
+                        center, 2.0, // module
+                        20,  // teeth
                     ))
                 }),
             ),
@@ -181,16 +185,13 @@ impl FastShapeGallery {
                 t!("Helical gear with angled teeth"),
                 "system-run-symbolic".to_string(),
                 Rc::new(|center| {
-                    Shape::Path(DesignPath::from_lyon_path(
-                        &generate_helical_gear(
-                            center,
-                            2.0,  // module
-                            20,   // teeth
-                            20.0, // pressure angle
-                            15.0, // helix angle
-                            5.0,  // hole radius
-                        )
-                    ))
+                    Shape::Path(DesignPath::from_lyon_path(&generate_helical_gear(
+                        center, 2.0,  // module
+                        20,   // teeth
+                        20.0, // pressure angle
+                        15.0, // helix angle
+                        5.0,  // hole radius
+                    )))
                 }),
             ),
             FastShapeTemplate::new(
@@ -199,8 +200,7 @@ impl FastShapeGallery {
                 "emblem-system-symbolic".to_string(),
                 Rc::new(|center| {
                     Shape::Sprocket(DesignSprocket::new(
-                        center,
-                        12.7, // pitch (ANSI 40)
+                        center, 12.7, // pitch (ANSI 40)
                         15,   // teeth
                     ))
                 }),
@@ -210,32 +210,25 @@ impl FastShapeGallery {
                 t!("XL timing belt pulley"),
                 "emblem-system-symbolic".to_string(),
                 Rc::new(|center| {
-                    Shape::Path(DesignPath::from_lyon_path(
-                        &generate_timing_pulley(
-                            center,
-                            5.08, // pitch (XL)
-                            20,   // teeth
-                            9.4,  // belt width
-                            5.0,  // hole radius
-                        )
-                    ))
+                    Shape::Path(DesignPath::from_lyon_path(&generate_timing_pulley(
+                        center, 5.08, // pitch (XL)
+                        20,   // teeth
+                        9.4,  // belt width
+                        5.0,  // hole radius
+                    )))
                 }),
             ),
-
             // Structural shapes
             FastShapeTemplate::new(
                 t!("Slot"),
                 t!("Rectangular slot/cutout"),
                 "media-playback-start-symbolic".to_string(),
                 Rc::new(|center| {
-                    Shape::Path(DesignPath::from_lyon_path(
-                        &generate_slot(
-                            center,
-                            50.0, // length
-                            20.0, // width
-                            5.0,  // corner radius
-                        )
-                    ))
+                    Shape::Path(DesignPath::from_lyon_path(&generate_slot(
+                        center, 50.0, // length
+                        20.0, // width
+                        5.0,  // corner radius
+                    )))
                 }),
             ),
             FastShapeTemplate::new(
@@ -243,16 +236,13 @@ impl FastShapeGallery {
                 t!("L-shaped bracket with holes"),
                 "view-grid-symbolic".to_string(),
                 Rc::new(|center| {
-                    Shape::Path(DesignPath::from_lyon_path(
-                        &generate_l_bracket(
-                            center,
-                            80.0,  // width
-                            60.0,  // height
-                            5.0,   // thickness
-                            8.0,   // hole diameter
-                            15.0,  // hole spacing
-                        )
-                    ))
+                    Shape::Path(DesignPath::from_lyon_path(&generate_l_bracket(
+                        center, 80.0, // width
+                        60.0, // height
+                        5.0,  // thickness
+                        8.0,  // hole diameter
+                        15.0, // hole spacing
+                    )))
                 }),
             ),
             FastShapeTemplate::new(
@@ -260,16 +250,13 @@ impl FastShapeGallery {
                 t!("U-shaped channel bracket"),
                 "view-grid-symbolic".to_string(),
                 Rc::new(|center| {
-                    Shape::Path(DesignPath::from_lyon_path(
-                        &generate_u_bracket(
-                            center,
-                            100.0, // length
-                            40.0,  // width
-                            5.0,   // thickness
-                            8.0,   // hole diameter
-                            15.0,  // hole spacing
-                        )
-                    ))
+                    Shape::Path(DesignPath::from_lyon_path(&generate_u_bracket(
+                        center, 100.0, // length
+                        40.0,  // width
+                        5.0,   // thickness
+                        8.0,   // hole diameter
+                        15.0,  // hole spacing
+                    )))
                 }),
             ),
         ]

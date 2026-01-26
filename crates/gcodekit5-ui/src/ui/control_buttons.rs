@@ -456,7 +456,7 @@ mod tests {
         let mut panel = ControlButtonsPanel::new();
         panel.disable_all();
         panel.enable_all();
-        assert!(panel.get_button(ButtonType::Start).unwrap().is_enabled());
+        assert!(panel.get_button(ButtonType::Start).expect("button not found").is_enabled());
     }
 
     #[test]
@@ -464,10 +464,10 @@ mod tests {
         let mut panel = ControlButtonsPanel::new();
         panel.disable_all();
         panel.enable_run_controls();
-        assert!(panel.get_button(ButtonType::Start).unwrap().is_enabled());
-        assert!(panel.get_button(ButtonType::Pause).unwrap().is_enabled());
-        assert!(panel.get_button(ButtonType::Stop).unwrap().is_enabled());
-        assert!(!panel.get_button(ButtonType::Home).unwrap().is_enabled());
+        assert!(panel.get_button(ButtonType::Start).expect("button not found").is_enabled());
+        assert!(panel.get_button(ButtonType::Pause).expect("button not found").is_enabled());
+        assert!(panel.get_button(ButtonType::Stop).expect("button not found").is_enabled());
+        assert!(!panel.get_button(ButtonType::Home).expect("button not found").is_enabled());
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod tests {
         let mut panel = ControlButtonsPanel::new();
         panel.set_button_loading(ButtonType::Start);
         assert_eq!(
-            panel.get_button(ButtonType::Start).unwrap().state,
+            panel.get_button(ButtonType::Start).expect("button not found").state,
             ButtonState::Loading
         );
     }

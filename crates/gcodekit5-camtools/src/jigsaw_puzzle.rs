@@ -533,14 +533,11 @@ impl JigsawPuzzleMaker {
                         "; Pass {}/{} at Z{:.2}\n",
                         pass_num, self.params.laser_passes, z_depth
                     ));
-                    
+
                     if pass_num > 1 {
-                        gcode.push_str(&format!(
-                            "G0 Z{:.2} ; Move to pass depth\n",
-                            z_depth
-                        ));
+                        gcode.push_str(&format!("G0 Z{:.2} ; Move to pass depth\n", z_depth));
                     }
-                    
+
                     gcode.push_str(&format!("M3 S{} ; Laser on\n", self.params.laser_power));
 
                     // Add feed rate to every G1 command for GRBL compatibility

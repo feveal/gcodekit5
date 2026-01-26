@@ -4,7 +4,7 @@ use gcodekit5_communication::firmware::g2core::capabilities::*;
 
 #[test]
 fn test_g2core_version_parse() {
-    let version = G2CoreVersion::parse("100.00").unwrap();
+    let version = G2CoreVersion::parse("100.00").expect("parse failed");
     assert_eq!(version.major, 100);
     assert_eq!(version.minor, 0);
     assert_eq!(version.build, None);
@@ -12,7 +12,7 @@ fn test_g2core_version_parse() {
 
 #[test]
 fn test_g2core_version_parse_with_build() {
-    let version = G2CoreVersion::parse("100.10.05").unwrap();
+    let version = G2CoreVersion::parse("100.10.05").expect("parse failed");
     assert_eq!(version.major, 100);
     assert_eq!(version.minor, 10);
     assert_eq!(version.build, Some(5));

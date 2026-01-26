@@ -453,3 +453,17 @@ if can_group {
   - `feed_rate`, `spindle_speed`, `tool_diameter`, `cut_depth` for tool settings
   - `stock_width`, `stock_height`, `stock_thickness`, `safe_z_height` for stock settings
 - **Result**: Design files now properly persist and restore all tool settings, stock settings, and per-shape properties (operation type, pocket depth, step down, step in, etc.)
+## Modularization Strategies
+
+### Splitting Large Widget Structs
+When extracting a struct to a separate module:
+1. **Add `#[derive(Clone)]`** if methods use `self.clone()` inside closures - this allows capturing the struct in `'static` closures
+2. **Make accessed fields `pub`** for cross-module access (e.g., `pub state: Rc<RefCell<...>>`)
+3. **Keep helper functions in the same module** as the struct that uses them (constants like `MM_PER_PT`, converter functions)
+4. **Re-export from mod.rs** with `pub mod new_module;` to maintain API
+
+### Closure Capture Patterns
+- GTK signal handlers require `'static` lifetime
+- Use `Rc<T>` fields and `self.clone()` pattern to share state with closures
+- The `Clone` trait on the outer struct clones all `Rc` fields (cheap)
+- Pattern: `let canvas = self.clone(); btn.connect_clicked(move |_| canvas.method());`

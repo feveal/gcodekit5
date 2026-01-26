@@ -17,7 +17,7 @@ fn test_simple_drilling() {
     };
 
     let generator = DrillPressGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     assert!(gcode.contains("G1 Z-10.000 F100.0"));
     assert!(gcode.contains("M3 S1000"));
@@ -41,7 +41,7 @@ fn test_peck_drilling() {
     };
 
     let generator = DrillPressGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     // Should have multiple plunges
     assert!(gcode.contains("G1 Z-2.000 F100.0"));
@@ -68,7 +68,7 @@ fn test_helical_drilling() {
     };
 
     let generator = DrillPressGenerator::new(params);
-    let gcode = generator.generate().unwrap();
+    let gcode = generator.generate().expect("generate failed");
 
     // Radius = (10 - 6) / 2 = 2.0
     assert!(gcode.contains("G0 X2.000 Y0.000"));

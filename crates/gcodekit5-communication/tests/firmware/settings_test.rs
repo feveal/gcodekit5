@@ -15,7 +15,13 @@ fn test_add_and_get_setting() {
     };
     settings.add_setting(setting.clone());
 
-    assert_eq!(settings.get_setting("test").unwrap().value, "100");
+    assert_eq!(
+        settings
+            .get_setting("test")
+            .expect("setting not found")
+            .value,
+        "100"
+    );
 }
 
 #[test]

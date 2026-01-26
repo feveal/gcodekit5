@@ -265,7 +265,9 @@ impl WorkCoordinateManager {
 
     /// Get current offset
     pub fn current_offset(&self) -> &CoordinateOffset {
-        self.offsets.get(&self.current_wcs).unwrap()
+        self.offsets
+            .get(&self.current_wcs)
+            .expect("missing WCS offset")
     }
 
     /// Select WCS

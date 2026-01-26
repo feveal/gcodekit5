@@ -4,8 +4,8 @@ use super::pocket_operations::{PocketGenerator, PocketOperation, PocketStrategy}
 use crate::font_manager;
 use crate::model::{
     rotate_point, DesignCircle as Circle, DesignGear, DesignLine as Line, DesignPath as PathShape,
-    DesignPolygon as Polygon, DesignRectangle as Rectangle, DesignSprocket, DesignText as TextShape,
-    DesignTriangle as Triangle, DesignerShape, Point,
+    DesignPolygon as Polygon, DesignRectangle as Rectangle, DesignSprocket,
+    DesignText as TextShape, DesignTriangle as Triangle, DesignerShape, Point,
 };
 use lyon::path::iterator::PathIterator;
 use rusttype::{GlyphId, OutlineBuilder, Scale};
@@ -1269,7 +1269,7 @@ impl ToolpathGenerator {
 
             if out.len() > 2 {
                 let first = out[0];
-                let last = *out.last().unwrap();
+                let last = *out.last().expect("empty collection");
                 if last.distance_to(&first) <= tol {
                     out.pop();
                 }
@@ -1551,8 +1551,6 @@ impl ToolpathGenerator {
         let path_shape = PathShape::from_lyon_path(&path);
         self.generate_path_pocket(&path_shape, pocket_depth, step_down, step_in)
     }
-
-
 }
 
 fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point>> {
@@ -1563,13 +1561,10 @@ fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point
         match seg.segment_type {
             ToolpathSegmentType::RapidMove => {
                 if current.len() >= 2 {
-                    if current
-                        .last()
-                        .unwrap()
-                        .distance_to(current.first().unwrap())
-                        <= 1e-6
-                    {
-                        current.pop();
+                    if let (Some(last), Some(first)) = (current.last(), current.first()) {
+                        if last.distance_to(first) <= 1e-6 {
+                            current.pop();
+                        }
                     }
                     if current.len() >= 2 {
                         contours.push(std::mem::take(&mut current));
@@ -1590,13 +1585,10 @@ fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point
     }
 
     if current.len() >= 2 {
-        if current
-            .last()
-            .unwrap()
-            .distance_to(current.first().unwrap())
-            <= 1e-6
-        {
-            current.pop();
+        if let (Some(last), Some(first)) = (current.last(), current.first()) {
+            if last.distance_to(first) <= 1e-6 {
+                current.pop();
+            }
         }
         if current.len() >= 2 {
             contours.push(current);

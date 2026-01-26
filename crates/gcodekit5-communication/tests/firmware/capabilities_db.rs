@@ -12,7 +12,7 @@ fn test_grbl_1_1_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::Grbl, &SemanticVersion::new(1, 1, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 3);
     assert!(caps.arc_support);
@@ -29,7 +29,7 @@ fn test_grbl_1_2_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::Grbl, &SemanticVersion::new(1, 2, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 3);
     assert!(caps.arc_support);
@@ -47,7 +47,7 @@ fn test_grbl_1_3_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::Grbl, &SemanticVersion::new(1, 3, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 3);
     assert!(caps.arc_support);
@@ -65,7 +65,7 @@ fn test_grbl_0_9_limited_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::Grbl, &SemanticVersion::new(0, 9, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert!(!caps.arc_support);
     assert!(!caps.tool_change);
@@ -78,7 +78,7 @@ fn test_tinyg_full_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::TinyG, &SemanticVersion::new(2, 0, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 4);
     assert!(caps.arc_support);
@@ -93,7 +93,7 @@ fn test_g2core_advanced_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::G2Core, &SemanticVersion::new(3, 0, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 6);
     assert!(caps.arc_support);
@@ -106,7 +106,7 @@ fn test_fluidnc_max_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::FluidNC, &SemanticVersion::new(3, 0, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 9);
     assert!(caps.arc_support);
@@ -152,7 +152,7 @@ fn test_smoothieware_capabilities() {
     let db = CapabilitiesDatabase::new();
     let caps = db
         .get_capabilities(FirmwareType::Smoothieware, &SemanticVersion::new(1, 0, 0))
-        .unwrap();
+        .expect("operation failed");
 
     assert_eq!(caps.max_axes, 5);
     assert!(caps.arc_support);

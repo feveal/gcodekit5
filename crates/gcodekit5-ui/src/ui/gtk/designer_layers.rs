@@ -145,22 +145,19 @@ impl LayersPanel {
 
         let bring_front_btn = Button::from_icon_name("go-top-symbolic");
         bring_front_btn.set_tooltip_text(Some(&t!("Move to First")));
-        bring_front_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Move to First"))]);
+        bring_front_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Move to First"))]);
         bring_front_btn.set_sensitive(false);
         z_order_box.append(&bring_front_btn);
 
         let bring_forward_btn = Button::from_icon_name("go-up-symbolic");
         bring_forward_btn.set_tooltip_text(Some(&t!("Move Up")));
-        bring_forward_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Move Up"))]);
+        bring_forward_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Move Up"))]);
         bring_forward_btn.set_sensitive(false);
         z_order_box.append(&bring_forward_btn);
 
         let send_backward_btn = Button::from_icon_name("go-down-symbolic");
         send_backward_btn.set_tooltip_text(Some(&t!("Move Down")));
-        send_backward_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Move Down"))]);
+        send_backward_btn.update_property(&[gtk4::accessible::Property::Label(&t!("Move Down"))]);
         send_backward_btn.set_sensitive(false);
         z_order_box.append(&send_backward_btn);
 
@@ -279,17 +276,17 @@ impl LayersPanel {
                 // Update button sensitivity based on selection position
                 let total_rows = Self::list_box_rows(list).len();
                 let has_selection = !rows.is_empty();
-                
+
                 if has_selection && rows.len() == 1 {
                     // Single selection: enable based on position
                     let selected_idx = rows[0].index() as usize;
                     let is_first = selected_idx == 0;
                     let is_last = selected_idx == total_rows.saturating_sub(1);
-                    
+
                     // Up/First buttons: enabled only if NOT first
                     bring_front_btn_clone.set_sensitive(!is_first);
                     bring_forward_btn_clone.set_sensitive(!is_first);
-                    
+
                     // Down/Last buttons: enabled only if NOT last
                     send_backward_btn_clone.set_sensitive(!is_last);
                     send_back_btn_clone.set_sensitive(!is_last);
@@ -332,12 +329,12 @@ impl LayersPanel {
         let rows = self.list_box.selected_rows();
         let total_rows = Self::list_box_rows(&self.list_box).len();
         let has_selection = !rows.is_empty();
-        
+
         if has_selection && rows.len() == 1 {
             let selected_idx = rows[0].index() as usize;
             let is_first = selected_idx == 0;
             let is_last = selected_idx == total_rows.saturating_sub(1);
-            
+
             self.bring_front_btn.set_sensitive(!is_first);
             self.bring_forward_btn.set_sensitive(!is_first);
             self.send_backward_btn.set_sensitive(!is_last);

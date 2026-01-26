@@ -133,12 +133,12 @@ impl FirmwareSettingsTrait for DefaultFirmwareSettings {
     }
 
     fn load_from_file(&mut self, _path: &str) -> anyhow::Result<()> {
-        // TODO: Implement file loading
+        // TODO(#13): Implement file loading
         Ok(())
     }
 
     fn save_to_file(&self, _path: &str) -> anyhow::Result<()> {
-        // TODO: Implement file saving
+        // TODO(#13): Implement file saving
         Ok(())
     }
 }

@@ -6,6 +6,7 @@
 //! Includes firmware-specific implementations for GRBL, TinyG, g2core, etc.
 
 pub mod communication;
+pub mod error;
 pub mod firmware;
 
 pub use communication::{

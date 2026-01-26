@@ -11,8 +11,8 @@ pub mod camera;
 pub mod canvas_renderer;
 pub mod controls;
 pub mod features;
-pub mod mesh_rendering;
 pub mod mesh_renderer;
+pub mod mesh_rendering;
 pub mod mesh_shaders;
 pub mod scene3d;
 pub mod setup;
@@ -32,9 +32,9 @@ pub use controls::{CameraController, ViewPreset, VisualizerControls};
 pub use features::{
     BoundingBox, GridConfig, MachineLimits, SceneFeatures, ToolMarker, WorkCoordinateSystem,
 };
-pub use mesh_rendering::{RenderableMesh, MeshCollection, MeshMaterial};
-pub use mesh_renderer::{MeshRenderer, LightingParams, MeshRenderError};
-pub use scene3d::{Scene3D, Scene3DStats, Renderer3D, stl_integration};
+pub use mesh_renderer::{LightingParams, MeshRenderError, MeshRenderer};
+pub use mesh_rendering::{MeshCollection, MeshMaterial, RenderableMesh};
+pub use scene3d::{stl_integration, Renderer3D, Scene3D, Scene3DStats};
 pub use setup::{Camera, CameraType, Color, Light, LightType, Renderer, Scene, Vector3};
 pub use stock_removal_3d::{
     generate_surface_mesh, StockSimulator3D, ToolpathSegment, ToolpathSegmentType, VoxelGrid,

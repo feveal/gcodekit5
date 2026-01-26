@@ -65,14 +65,14 @@ fn load_gl_func(name: &str) -> *const std::ffi::c_void {
                     b"epoxy_get_proc_addr",
                 )
             {
-                let c_name = std::ffi::CString::new(name).unwrap();
+                let c_name = std::ffi::CString::new(name).expect("invalid CString");
                 let ptr = get_proc_addr(c_name.as_ptr());
                 if !ptr.is_null() {
                     return ptr;
                 }
             }
             // Fallback: try to load symbol directly from epoxy
-            let c_name = std::ffi::CString::new(name).unwrap();
+            let c_name = std::ffi::CString::new(name).expect("invalid CString");
             if let Ok(sym) = lib.get::<*const std::ffi::c_void>(c_name.as_bytes()) {
                 return *sym;
             }
@@ -80,7 +80,7 @@ fn load_gl_func(name: &str) -> *const std::ffi::c_void {
 
         // Try libGL as fallback
         if let Some(lib) = (*(&raw const GL_LIB)).as_ref() {
-            let c_name = std::ffi::CString::new(name).unwrap();
+            let c_name = std::ffi::CString::new(name).expect("invalid CString");
             if let Ok(sym) = lib.get::<*const std::ffi::c_void>(c_name.as_bytes()) {
                 return *sym;
             }
@@ -2109,7 +2109,8 @@ impl GcodeVisualizer {
                         let result_sim = simulator;
 
                         // Store in Arc
-                        *result_arc_clone.lock().unwrap() = Some(result_sim);
+                        *result_arc_clone.lock().unwrap_or_else(|p| p.into_inner()) =
+                            Some(result_sim);
                     });
 
                     // Poll for completion on main thread with timeout limit
@@ -2295,7 +2296,7 @@ impl GcodeVisualizer {
 
         gl_area.connect_render(move |area, _context| {
             if let Some(err) = area.error() {
-                eprintln!("GLArea error: {}", err);
+                tracing::error!(error = %err, "GLArea error");
                 return gtk4::glib::Propagation::Stop;
             }
 
@@ -2348,27 +2349,27 @@ impl GcodeVisualizer {
                     }
                     (shader, rapid, cut, grid, axis, tool, bounds) => {
                         if let Err(e) = shader {
-                            eprintln!("Shader init failed: {}", e);
+                            tracing::error!(error = %e, "shader init failed");
                         }
                         if let Err(e) = rapid {
-                            eprintln!("Rapid buffer init failed: {}", e);
+                            tracing::error!(error = %e, "rapid buffer init failed");
                         }
                         if let Err(e) = cut {
-                            eprintln!("Cut buffer init failed: {}", e);
+                            tracing::error!(error = %e, "cut buffer init failed");
                         }
                         if let Err(e) = grid {
-                            eprintln!("Grid buffer init failed: {}", e);
+                            tracing::error!(error = %e, "grid buffer init failed");
                         }
                         if let Err(e) = axis {
-                            eprintln!("Axis buffer init failed: {}", e);
+                            tracing::error!(error = %e, "axis buffer init failed");
                         }
                         if let Err(e) = tool {
-                            eprintln!("Tool buffer init failed: {}", e);
+                            tracing::error!(error = %e, "tool buffer init failed");
                         }
                         if let Err(e) = bounds {
-                            eprintln!("Bounds buffer init failed: {}", e);
+                            tracing::error!(error = %e, "bounds buffer init failed");
                         }
-                        eprintln!("Failed to initialize 3D renderer");
+                        tracing::error!("failed to initialize 3D renderer");
                         return gtk4::glib::Propagation::Stop;
                     }
                 }
@@ -2384,7 +2385,7 @@ impl GcodeVisualizer {
                 }
 
                 // Update buffers
-                // TODO: Only update when dirty
+                // TODO(#18): Only update when dirty
                 let vis = visualizer_3d.borrow();
                 let (rapid_data, cut_data) = generate_vertex_data(&vis);
                 state.rapid_buffers.update(&rapid_data);
@@ -2477,7 +2478,7 @@ impl GcodeVisualizer {
                         if state.stock_removal_shader.is_none() {
                             match StockRemovalShaderProgram::new(gl.clone()) {
                                 Ok(stock_shader) => state.stock_removal_shader = Some(stock_shader),
-                                Err(e) => eprintln!("Failed to create stock removal shader: {}", e),
+                                Err(e) => tracing::error!(error = %e, "failed to create stock removal shader"),
                             }
                         }
 
@@ -2492,7 +2493,7 @@ impl GcodeVisualizer {
                                     state.stock_removal_buffers = Some(buffers);
                                 }
                                 Err(e) => {
-                                    eprintln!("Failed to create stock removal mesh buffers: {}", e)
+                                    tracing::error!(error = %e, "failed to create stock removal mesh buffers")
                                 }
                             }
                             *stock_simulation_3d_pending_render.borrow_mut() = false;
@@ -3129,14 +3130,21 @@ impl GcodeVisualizer {
         let center_x = width / 2.0;
         let center_y = height / 2.0;
 
-        cr.save().unwrap();
+        let _ = cr.save();
         cr.translate(center_x, center_y);
         cr.scale(vis.zoom_scale as f64, -vis.zoom_scale as f64); // Flip Y
         cr.translate(vis.x_offset as f64, vis.y_offset as f64);
 
         // Draw Grid
         if show_grid {
-            Self::draw_grid(cr, vis, grid_spacing_mm.max(0.1), &fg_color, grid_major_line_width, grid_minor_line_width);
+            Self::draw_grid(
+                cr,
+                vis,
+                grid_spacing_mm.max(0.1),
+                &fg_color,
+                grid_major_line_width,
+                grid_minor_line_width,
+            );
         }
 
         // Draw Machine Bounds
@@ -3164,7 +3172,7 @@ impl GcodeVisualizer {
                     cr.set_line_width(3.0 / vis.zoom_scale as f64);
 
                     cr.rectangle(min_x, min_y, width, height);
-                    cr.stroke().unwrap();
+                    let _ = cr.stroke();
                 }
             }
         }
@@ -3177,13 +3185,13 @@ impl GcodeVisualizer {
         cr.set_source_rgb(1.0, 0.0, 0.0);
         cr.move_to(-extent, 0.0);
         cr.line_to(extent, 0.0);
-        cr.stroke().unwrap();
+        let _ = cr.stroke();
 
         // Y Axis Green
         cr.set_source_rgb(0.0, 1.0, 0.0);
         cr.move_to(0.0, -extent);
         cr.line_to(0.0, extent);
-        cr.stroke().unwrap();
+        let _ = cr.stroke();
 
         // Draw Stock Removal - only draw cached result, don't regenerate
         if show_stock_removal {
@@ -3289,7 +3297,7 @@ impl GcodeVisualizer {
                     cr.line_to(to.x as f64, to.y as f64);
                 }
             }
-            cr.stroke().unwrap(); // Single stroke for all rapid moves!
+            let _ = cr.stroke(); // Single stroke for all rapid moves!
         }
 
         // OPTIMIZATION: Batch cutting moves by intensity + LOD
@@ -3388,7 +3396,7 @@ impl GcodeVisualizer {
                         cr.line_to(*tx, *ty);
                     }
 
-                    cr.stroke().unwrap(); // One stroke per intensity level!
+                    let _ = cr.stroke(); // One stroke per intensity level!
                 }
 
                 // Draw arcs separately (usually fewer)
@@ -3445,7 +3453,7 @@ impl GcodeVisualizer {
                                 end_angle,
                             );
                         }
-                        cr.stroke().unwrap();
+                        let _ = cr.stroke();
                     }
                 }
             } else {
@@ -3548,7 +3556,7 @@ impl GcodeVisualizer {
                         _ => {}
                     }
                 }
-                cr.stroke().unwrap(); // Single stroke for all cutting moves!
+                let _ = cr.stroke(); // Single stroke for all cutting moves!
             }
         }
 
@@ -3624,7 +3632,7 @@ impl GcodeVisualizer {
                     (bounds_max_x - bounds_min_x) as f64,
                     (bounds_max_y - bounds_min_y) as f64,
                 );
-                cr.fill().unwrap();
+                let _ = cr.fill();
 
                 // Draw outline
                 cr.set_source_rgb(1.0, 1.0, 0.0);
@@ -3635,7 +3643,7 @@ impl GcodeVisualizer {
                     (bounds_max_x - bounds_min_x) as f64,
                     (bounds_max_y - bounds_min_y) as f64,
                 );
-                cr.stroke().unwrap();
+                let _ = cr.stroke();
             }
         }
 
@@ -3653,10 +3661,10 @@ impl GcodeVisualizer {
                 0.0,
                 2.0 * std::f64::consts::PI,
             );
-            cr.fill().unwrap();
+            let _ = cr.fill();
         }
 
-        cr.restore().unwrap();
+        let _ = cr.restore();
     }
 
     fn draw_grid(
@@ -3700,7 +3708,7 @@ impl GcodeVisualizer {
             y += minor_spacing;
         }
 
-        cr.stroke().unwrap();
+        let _ = cr.stroke();
 
         // Major grid lines (darker) - configurable constant width
         cr.set_source_rgba(
@@ -3725,7 +3733,7 @@ impl GcodeVisualizer {
             y += grid_size;
         }
 
-        cr.stroke().unwrap();
+        let _ = cr.stroke();
     }
 
     fn draw_stock_removal_cached(
@@ -3753,7 +3761,7 @@ impl GcodeVisualizer {
                 for point in &contour[1..] {
                     cr.line_to(point.0 as f64, point.1 as f64);
                 }
-                cr.stroke().unwrap();
+                let _ = cr.stroke();
             }
         }
     }

@@ -237,11 +237,11 @@ fn test_dxf_file_layer_organization() {
 
     let layer1 = file.get_layer_entities("Layer1");
     assert!(layer1.is_some());
-    assert_eq!(layer1.unwrap().len(), 2);
+    assert_eq!(layer1.expect("layer1 is None").len(), 2);
 
     let layer2 = file.get_layer_entities("Layer2");
     assert!(layer2.is_some());
-    assert_eq!(layer2.unwrap().len(), 1);
+    assert_eq!(layer2.expect("layer2 is None").len(), 1);
 }
 
 #[test]
@@ -437,7 +437,7 @@ fn test_dxf_file_layer_retrieval() {
 
     let layer = file.get_layer_entities("TestLayer");
     assert!(layer.is_some());
-    assert_eq!(layer.unwrap().len(), 1);
+    assert_eq!(layer.expect("layer is None").len(), 1);
 
     let missing = file.get_layer_entities("NonExistent");
     assert!(missing.is_none());
@@ -471,7 +471,7 @@ EOF"#;
     let result = DxfParser::parse(dxf_content);
     assert!(result.is_ok());
 
-    let file = result.unwrap();
+    let file = result.expect("result failed");
     assert_eq!(file.entity_count(), 1);
 
     if let DxfEntity::Line(line) = &file.entities[0] {
@@ -512,7 +512,7 @@ EOF"#;
     let result = DxfParser::parse(dxf_content);
     assert!(result.is_ok());
 
-    let file = result.unwrap();
+    let file = result.expect("result failed");
     assert_eq!(file.entity_count(), 1);
 
     if let DxfEntity::Circle(circle) = &file.entities[0] {
@@ -554,7 +554,7 @@ EOF"#;
     let result = DxfParser::parse(dxf_content);
     assert!(result.is_ok());
 
-    let file = result.unwrap();
+    let file = result.expect("result failed");
     assert_eq!(file.entity_count(), 1);
 
     if let DxfEntity::Arc(arc) = &file.entities[0] {
@@ -599,6 +599,6 @@ EOF"#;
     let result = DxfParser::parse(dxf_content);
     assert!(result.is_ok());
 
-    let file = result.unwrap();
+    let file = result.expect("result failed");
     assert_eq!(file.entity_count(), 2);
 }

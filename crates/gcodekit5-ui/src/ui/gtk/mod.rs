@@ -1,13 +1,14 @@
 pub mod cam_tools;
 pub mod command_history;
 pub mod designer;
+pub mod designer_canvas;
 pub mod designer_layers;
 pub mod designer_properties;
 pub mod designer_toolbox;
-pub mod fast_shape_gallery;
 pub mod device_console;
 pub mod device_manager;
 pub mod editor;
+pub mod fast_shape_gallery;
 pub mod help_browser;
 pub mod machine_control;
 pub mod nav_cube;

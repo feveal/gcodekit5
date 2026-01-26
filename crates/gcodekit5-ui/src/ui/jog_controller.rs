@@ -346,7 +346,7 @@ mod tests {
         jog.button_press(JogDirection::YNeg);
         let cmd = jog.next_jog_command();
         assert!(cmd.is_some());
-        let (axis, increment, _) = cmd.unwrap();
+        let (axis, increment, _) = cmd.expect("no command");
         assert_eq!(axis, 'Y');
         assert!(increment < 0.0);
     }

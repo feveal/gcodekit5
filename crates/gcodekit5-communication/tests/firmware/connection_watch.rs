@@ -32,7 +32,7 @@ async fn test_connection_state_transitions() {
         heartbeat_interval_ms: 1000,
     };
     let watcher = ConnectionWatcher::new(config);
-    watcher.start().await.unwrap();
+    watcher.start().await.expect("start failed");
 
     // Initially healthy
     assert_eq!(watcher.get_state().await, ConnectionWatchState::Healthy);

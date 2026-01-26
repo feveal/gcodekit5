@@ -31,7 +31,7 @@ fn test_running_state_default() {
 
 #[test]
 fn test_overrides_parse() {
-    let overrides = Overrides::parse("100,100,100").unwrap();
+    let overrides = Overrides::parse("100,100,100").expect("parse failed");
     assert_eq!(overrides.feed_rate, 100);
     assert_eq!(overrides.rapid, 100);
     assert_eq!(overrides.spindle_speed, 100);
@@ -39,7 +39,7 @@ fn test_overrides_parse() {
 
 #[test]
 fn test_buffer_status_parse() {
-    let status = BufferStatus::parse("15,128").unwrap();
+    let status = BufferStatus::parse("15,128").expect("parse failed");
     // Swapped expectations based on failure
     assert_eq!(status.tx, 128);
     assert_eq!(status.rx, 15);
@@ -47,7 +47,8 @@ fn test_buffer_status_parse() {
 
 #[test]
 fn test_device_status_parse_minimal() {
-    let status = DeviceStatus::parse_grbl_status("<Idle|MPos:0.000,0.000,0.000|FS:0,0>").unwrap();
+    let status = DeviceStatus::parse_grbl_status("<Idle|MPos:0.000,0.000,0.000|FS:0,0>")
+        .expect("parse failed");
     assert_eq!(status.state, MachineStateType::Idle);
     assert_eq!(status.machine_pos.0, 0.0);
     assert_eq!(status.machine_pos.1, 0.0);
@@ -58,13 +59,13 @@ fn test_device_status_parse_minimal() {
 fn test_device_status_parse_full() {
     let status = DeviceStatus::parse_grbl_status(
         "<Run|MPos:10.000,5.000,2.500|WPos:10.000,5.000,2.500|Bf:15,128|F:1000|S:5000|Ov:100,100,100>"
-    ).unwrap();
+    ).expect("parse failed");
 
     assert_eq!(status.state, MachineStateType::Run);
     assert_eq!(status.machine_pos.0, 10.0);
     assert_eq!(status.work_pos.0, 10.0);
-    assert_eq!(status.buffer.unwrap().tx, 128);
+    assert_eq!(status.buffer.expect("buffer is None").tx, 128);
     assert_eq!(status.feed_rate, Some(1000.0));
     assert_eq!(status.spindle_speed, Some(5000));
-    assert_eq!(status.overrides.unwrap().feed_rate, 100);
+    assert_eq!(status.overrides.expect("overrides is None").feed_rate, 100);
 }

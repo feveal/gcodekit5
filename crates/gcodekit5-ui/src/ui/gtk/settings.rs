@@ -1,8 +1,8 @@
 use gtk4::prelude::*;
 use gtk4::{
-    glib, Align, Button, Dialog, Entry, FileChooserAction, FileChooserNative, Label, Notebook,
-    Orientation, PolicyType, PositionType, ResponseType, ScrolledWindow, StringList, Switch,
-    Box as GtkBox,
+    glib, Align, Box as GtkBox, Button, Dialog, Entry, FileChooserAction, FileChooserNative, Label,
+    Notebook, Orientation, PolicyType, PositionType, ResponseType, ScrolledWindow, StringList,
+    Switch,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, ComboRow, PreferencesGroup, PreferencesPage, PreferencesRow};
@@ -26,7 +26,10 @@ impl SettingsWindow {
         Self::new_with_callback(controller, None)
     }
 
-    pub fn new_with_callback(controller: Rc<SettingsController>, on_save: Option<Box<dyn Fn()>>) -> Self {
+    pub fn new_with_callback(
+        controller: Rc<SettingsController>,
+        on_save: Option<Box<dyn Fn()>>,
+    ) -> Self {
         let dialog = Dialog::builder()
             .title("Preferences")
             .modal(true)

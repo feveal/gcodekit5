@@ -1025,7 +1025,8 @@ impl GcodeParser {
     /// Remove comments from a G-Code line
     fn remove_comments(&self, line: &str) -> String {
         static COMMENT_REGEX: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
-        let regex = COMMENT_REGEX.get_or_init(|| Regex::new(r"[;(].*").unwrap());
+        let regex =
+            COMMENT_REGEX.get_or_init(|| Regex::new(r"[;(].*").expect("invalid regex pattern"));
         regex.replace(line, "").to_string()
     }
 

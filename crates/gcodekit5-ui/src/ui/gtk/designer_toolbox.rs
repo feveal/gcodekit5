@@ -312,7 +312,7 @@ impl DesignerToolbox {
 
                     Rc::new(move || {
                         let val_mm = getter();
-                        let units = *current_units.lock().unwrap();
+                        let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
 
                         let (val_display, unit_str) = match units_kind {
                             UnitsKind::Length => match units {
@@ -344,7 +344,7 @@ impl DesignerToolbox {
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f64>() {
                             e.remove_css_class("entry-invalid");
-                            let units = *current_units.lock().unwrap();
+                            let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
                             let val_mm = match units_kind {
                                 UnitsKind::Length | UnitsKind::FeedRate => match units {
                                     MeasurementSystem::Metric => val,
@@ -368,11 +368,13 @@ impl DesignerToolbox {
                             if let Ok(system) =
                                 serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
                             {
-                                *current_units.lock().unwrap() = system;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) = system;
                             } else if value == "Metric" {
-                                *current_units.lock().unwrap() = MeasurementSystem::Metric;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
+                                    MeasurementSystem::Metric;
                             } else if value == "Imperial" {
-                                *current_units.lock().unwrap() = MeasurementSystem::Imperial;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
+                                    MeasurementSystem::Imperial;
                             }
                             update_display();
                         }
@@ -563,7 +565,7 @@ impl DesignerToolbox {
 
                     Rc::new(move || {
                         let val_mm = getter();
-                        let units = *current_units.lock().unwrap();
+                        let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
 
                         let (val_display, unit_str) = match units {
                             MeasurementSystem::Metric => (val_mm, "mm"),
@@ -587,7 +589,7 @@ impl DesignerToolbox {
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f32>() {
                             e.remove_css_class("entry-invalid");
-                            let units = *current_units.lock().unwrap();
+                            let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
                             let val_mm = match units {
                                 MeasurementSystem::Metric => val,
                                 MeasurementSystem::Imperial => val * 25.4,
@@ -608,11 +610,13 @@ impl DesignerToolbox {
                             if let Ok(system) =
                                 serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
                             {
-                                *current_units.lock().unwrap() = system;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) = system;
                             } else if value == "Metric" {
-                                *current_units.lock().unwrap() = MeasurementSystem::Metric;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
+                                    MeasurementSystem::Metric;
                             } else if value == "Imperial" {
-                                *current_units.lock().unwrap() = MeasurementSystem::Imperial;
+                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
+                                    MeasurementSystem::Imperial;
                             }
                             update_display();
                         }

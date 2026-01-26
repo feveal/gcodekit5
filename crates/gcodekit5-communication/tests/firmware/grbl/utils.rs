@@ -120,7 +120,7 @@ fn test_format_positions() {
 
 #[test]
 fn test_parse_setting_response() {
-    let (num, val) = parse_setting_response("$110=1000.000").unwrap();
+    let (num, val) = parse_setting_response("$110=1000.000").expect("parse failed");
     assert_eq!(num, 110);
     assert_eq!(val, "1000.000");
 }

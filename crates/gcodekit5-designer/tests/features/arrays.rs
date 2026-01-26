@@ -164,7 +164,7 @@ fn test_array_generator_linear() {
     let result = ArrayGenerator::generate_linear(&params);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 4);
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (10.0, 0.0));
@@ -179,7 +179,7 @@ fn test_array_generator_circular() {
     let result = ArrayGenerator::generate_circular(&params);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 4);
 }
 
@@ -189,7 +189,7 @@ fn test_array_generator_grid() {
     let result = ArrayGenerator::generate_grid(&params);
     assert!(result.is_ok());
 
-    let offsets = result.unwrap();
+    let offsets = result.expect("result failed");
     assert_eq!(offsets.len(), 6);
     assert_eq!(offsets[0], (0.0, 0.0));
     assert_eq!(offsets[1], (10.0, 0.0));
@@ -204,7 +204,7 @@ fn test_array_generator_main() {
     let linear = ArrayOperation::Linear(LinearArrayParams::new(2, 2, 10.0, 10.0));
     let result = ArrayGenerator::generate(&linear);
     assert!(result.is_ok());
-    assert_eq!(result.unwrap().len(), 4);
+    assert_eq!(result.expect("result failed").len(), 4);
 }
 
 #[test]

@@ -340,7 +340,7 @@ mod tests {
             let backend = MaterialsManagerBackend::new();
             let loaded = backend.get_material(&MaterialId("test_persist".to_string()));
             assert!(loaded.is_some());
-            assert_eq!(loaded.unwrap().name, "Test Persist Material");
+            assert_eq!(loaded.expect("load failed").name, "Test Persist Material");
         }
 
         // Cleanup

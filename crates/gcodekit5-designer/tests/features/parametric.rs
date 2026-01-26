@@ -169,7 +169,7 @@ fn test_template_library_get_template() {
     let _ = library.add_template(template);
     let retrieved = library.get_template("circle");
     assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().name, "Circle");
+    assert_eq!(retrieved.expect("not found").name, "Circle");
 }
 
 #[test]

@@ -21,7 +21,7 @@ fn test_parameter_validation() {
 #[test]
 fn test_generate_simple_puzzle() {
     let params = PuzzleParameters::default();
-    let mut maker = JigsawPuzzleMaker::new(params).unwrap();
+    let mut maker = JigsawPuzzleMaker::new(params).expect("constructor failed");
 
     let result = maker.generate();
     assert!(result.is_ok());
@@ -32,8 +32,8 @@ fn test_generate_simple_puzzle() {
 #[test]
 fn test_gcode_generation() {
     let params = PuzzleParameters::default();
-    let mut maker = JigsawPuzzleMaker::new(params).unwrap();
-    maker.generate().unwrap();
+    let mut maker = JigsawPuzzleMaker::new(params).expect("constructor failed");
+    maker.generate().expect("generate failed");
 
     let gcode = maker.to_gcode(300.0, 3.0);
     assert!(gcode.contains("G21"));

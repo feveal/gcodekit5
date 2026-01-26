@@ -102,7 +102,7 @@ fn test_integration_design_tracking() {
 
     integration.export_design(design_id.clone(), export);
 
-    let exports = integration.get_design_exports(design_id.as_ref().unwrap());
+    let exports = integration.get_design_exports(design_id.as_ref().expect("design_id is None"));
     assert_eq!(exports.len(), 1);
 }
 

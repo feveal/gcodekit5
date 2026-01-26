@@ -2,7 +2,9 @@
 
 use gtk4::prelude::*;
 use gtk4::{
-    accessible::Property as AccessibleProperty, Align, Box, Button, CheckButton, Entry, FileChooserAction, FileChooserDialog, Image, Label, Orientation, Paned, ResponseType, ScrolledWindow, Stack,
+    accessible::Property as AccessibleProperty, Align, Box, Button, CheckButton, Entry,
+    FileChooserAction, FileChooserDialog, Image, Label, Orientation, Paned, ResponseType,
+    ScrolledWindow, Stack,
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};

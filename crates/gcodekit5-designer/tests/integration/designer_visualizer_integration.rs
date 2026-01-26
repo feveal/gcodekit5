@@ -129,7 +129,7 @@ fn test_integration_realtime_updates() {
     assert!(
         integration
             .current_visualization()
-            .unwrap()
+            .expect("visualization not available")
             .real_time_updates
     );
 }

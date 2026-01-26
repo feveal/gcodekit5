@@ -76,7 +76,12 @@ impl CamToolsView {
         stack.add_named(&dashboard, Some("dashboard"));
 
         // Tool Pages
-        let tabbed_box = TabbedBoxMaker::new(&stack, settings.clone(), on_generate.clone(), designer_view.clone());
+        let tabbed_box = TabbedBoxMaker::new(
+            &stack,
+            settings.clone(),
+            on_generate.clone(),
+            designer_view.clone(),
+        );
         stack.add_named(tabbed_box.widget(), Some("tabbed_box"));
 
         // Placeholders for other tools

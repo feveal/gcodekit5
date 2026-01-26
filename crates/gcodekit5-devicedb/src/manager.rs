@@ -54,10 +54,13 @@ impl DeviceManager {
             .map(String::from);
 
         {
-            let mut profiles_lock = self.profiles.write().unwrap();
+            let mut profiles_lock = self.profiles.write().unwrap_or_else(|p| p.into_inner());
             *profiles_lock = profiles_map;
 
-            let mut active_lock = self.active_profile_id.write().unwrap();
+            let mut active_lock = self
+                .active_profile_id
+                .write()
+                .unwrap_or_else(|p| p.into_inner());
             *active_lock = active_id;
         }
 
@@ -66,10 +69,13 @@ impl DeviceManager {
 
     pub fn save(&self) -> Result<()> {
         // Acquire file lock to prevent concurrent writes
-        let _file_guard = self.file_lock.lock().unwrap();
+        let _file_guard = self.file_lock.lock().unwrap_or_else(|p| p.into_inner());
 
-        let profiles_lock = self.profiles.read().unwrap();
-        let active_lock = self.active_profile_id.read().unwrap();
+        let profiles_lock = self.profiles.read().unwrap_or_else(|p| p.into_inner());
+        let active_lock = self
+            .active_profile_id
+            .read()
+            .unwrap_or_else(|p| p.into_inner());
 
         let profiles_vec: Vec<&DeviceProfile> = profiles_lock.values().collect();
 
@@ -89,16 +95,25 @@ impl DeviceManager {
     }
 
     pub fn get_profile(&self, id: &str) -> Option<DeviceProfile> {
-        self.profiles.read().unwrap().get(id).cloned()
+        self.profiles
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .get(id)
+            .cloned()
     }
 
     pub fn get_all_profiles(&self) -> Vec<DeviceProfile> {
-        self.profiles.read().unwrap().values().cloned().collect()
+        self.profiles
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .values()
+            .cloned()
+            .collect()
     }
 
     pub fn save_profile(&self, profile: DeviceProfile) -> Result<()> {
         {
-            let mut lock = self.profiles.write().unwrap();
+            let mut lock = self.profiles.write().unwrap_or_else(|p| p.into_inner());
             lock.insert(profile.id.clone(), profile);
         }
         self.save()
@@ -106,13 +121,16 @@ impl DeviceManager {
 
     pub fn delete_profile(&self, id: &str) -> Result<()> {
         {
-            let mut lock = self.profiles.write().unwrap();
+            let mut lock = self.profiles.write().unwrap_or_else(|p| p.into_inner());
             lock.remove(id);
         }
 
         // If active profile was deleted, clear active selection
         {
-            let mut active_lock = self.active_profile_id.write().unwrap();
+            let mut active_lock = self
+                .active_profile_id
+                .write()
+                .unwrap_or_else(|p| p.into_inner());
             if let Some(active) = &*active_lock {
                 if active == id {
                     *active_lock = None;
@@ -124,10 +142,17 @@ impl DeviceManager {
     }
 
     pub fn set_active_profile(&self, id: &str) -> Result<()> {
-        let exists = self.profiles.read().unwrap().contains_key(id);
+        let exists = self
+            .profiles
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .contains_key(id);
         if exists {
             {
-                let mut lock = self.active_profile_id.write().unwrap();
+                let mut lock = self
+                    .active_profile_id
+                    .write()
+                    .unwrap_or_else(|p| p.into_inner());
                 *lock = Some(id.to_string());
             }
             self.save()?;
@@ -138,7 +163,11 @@ impl DeviceManager {
     }
 
     pub fn get_active_profile(&self) -> Option<DeviceProfile> {
-        let active_id = self.active_profile_id.read().unwrap().clone()?;
+        let active_id = self
+            .active_profile_id
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .clone()?;
         self.get_profile(&active_id)
     }
 }
