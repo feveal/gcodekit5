@@ -11,7 +11,6 @@ use gtk4::{
 };
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct ConfigSettingRow {
@@ -65,13 +64,14 @@ impl From<&Setting> for ConfigSettingRow {
 use crate::ui::gtk::device_console::DeviceConsoleView;
 use crate::ui::gtk::device_info::DeviceInfoView;
 use crate::ui::gtk::help_browser;
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption, ThreadSafe};
 
 pub struct ConfigSettingsView {
     pub container: Box,
     pub device_info_view: Rc<DeviceInfoView>,
     #[allow(dead_code)]
     pub(crate) settings_controller: Rc<SettingsController>,
-    pub(crate) settings_manager: Rc<RefCell<SettingsManager>>,
+    pub(crate) settings_manager: Shared<SettingsManager>,
     pub(crate) last_synced_settings_count: Cell<usize>,
     pub(crate) last_persisted_settings_count: Cell<usize>,
     pub(crate) device_manager: RefCell<Option<std::sync::Arc<gcodekit5_devicedb::DeviceManager>>>,
@@ -83,8 +83,8 @@ pub struct ConfigSettingsView {
     pub(crate) reload_btn: Button,
     pub(crate) save_btn: Button,
     pub(crate) restore_btn: Button,
-    pub(crate) communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>,
-    pub(crate) device_console: Rc<RefCell<Option<Rc<DeviceConsoleView>>>>,
+    pub(crate) communicator: SharedOption<ThreadSafe<SerialCommunicator>>,
+    pub(crate) device_console: SharedOption<Rc<DeviceConsoleView>>,
 }
 
 impl ConfigSettingsView {
@@ -265,7 +265,7 @@ impl ConfigSettingsView {
         container.append(&status_bar);
 
         // Construct view with device_info embedded
-        let settings_manager = Rc::new(RefCell::new(SettingsManager::new()));
+        let settings_manager = shared(SettingsManager::new());
 
         outer.append(&left_panel);
         outer.append(&sep);
@@ -286,8 +286,8 @@ impl ConfigSettingsView {
             reload_btn: reload_btn.clone(),
             save_btn: save_btn.clone(),
             restore_btn: restore_btn.clone(),
-            communicator: Rc::new(RefCell::new(None)),
-            device_console: Rc::new(RefCell::new(None)),
+            communicator: shared_none(),
+            device_console: shared_none(),
         });
 
         // Set up callback from device_info_view to refresh settings display
@@ -397,7 +397,7 @@ impl ConfigSettingsView {
         view
     }
 
-    pub fn set_communicator(&self, communicator: Arc<Mutex<SerialCommunicator>>) {
+    pub fn set_communicator(&self, communicator: ThreadSafe<SerialCommunicator>) {
         *self.communicator.borrow_mut() = Some(communicator.clone());
 
         // Also pass the communicator to the device info view so it can send $32 commands

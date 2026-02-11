@@ -6,9 +6,8 @@
 use crate::communication::ConnectionParams;
 use async_trait::async_trait;
 use gcodekit5_core::ControllerTrait;
+use gcodekit5_core::{thread_safe_rw, ThreadSafeRw};
 use gcodekit5_core::{ControllerState, ControllerStatus, Position};
-use parking_lot::RwLock;
-use std::sync::Arc;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 
@@ -57,11 +56,11 @@ pub struct TinyGController {
     /// Name identifier
     name: String,
     /// Controller state
-    state: Arc<RwLock<TinyGControllerState>>,
+    state: ThreadSafeRw<TinyGControllerState>,
     /// Status polling handle
-    poll_task: Arc<RwLock<Option<JoinHandle<()>>>>,
+    poll_task: ThreadSafeRw<Option<JoinHandle<()>>>,
     /// Shutdown signal
-    shutdown_signal: Arc<RwLock<Option<std::sync::Arc<tokio::sync::Notify>>>>,
+    shutdown_signal: ThreadSafeRw<Option<std::sync::Arc<tokio::sync::Notify>>>,
     /// Connection parameters
     connection_params: ConnectionParams,
 }
@@ -71,9 +70,9 @@ impl TinyGController {
     pub fn new(connection_params: ConnectionParams, name: Option<String>) -> anyhow::Result<Self> {
         Ok(Self {
             name: name.unwrap_or_else(|| "TinyG".to_string()),
-            state: Arc::new(RwLock::new(TinyGControllerState::default())),
-            poll_task: Arc::new(RwLock::new(None)),
-            shutdown_signal: Arc::new(RwLock::new(None)),
+            state: thread_safe_rw(TinyGControllerState::default()),
+            poll_task: thread_safe_rw(None),
+            shutdown_signal: thread_safe_rw(None),
             connection_params,
         })
     }

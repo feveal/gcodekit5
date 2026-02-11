@@ -128,17 +128,28 @@ impl GerberConverter {
 
         writeln!(gcode, "; Home and set work coordinate system")?;
         writeln!(gcode, " ; Home all axes (bottom-left corner)")?;
-        writeln!(gcode, "G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset")?;
+        if params.num_axes >= 3 {
+            writeln!(gcode, "G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset")?;
+        } else {
+            writeln!(gcode, "G10 L2 P1 X0 Y0 ; Clear G54 offset")?;
+        }
         writeln!(gcode, "G54 ; Select work coordinate system 1")?;
         writeln!(
             gcode,
             "G0 X{:.3} Y{:.3} ; Move to work origin",
             params.offset_x, params.offset_y
         )?;
-        writeln!(
-            gcode,
-            "G10 L20 P1 X0 Y0 Z0 ; Set current position as work zero"
-        )?;
+        if params.num_axes >= 3 {
+            writeln!(
+                gcode,
+                "G10 L20 P1 X0 Y0 Z0 ; Set current position as work zero"
+            )?;
+        } else {
+            writeln!(
+                gcode,
+                "G10 L20 P1 X0 Y0 ; Set current position as work zero"
+            )?;
+        }
         if params.num_axes >= 3 {
             writeln!(gcode, "G0 Z{:.3} F500 ; Move to safe height", params.safe_z)?;
         }

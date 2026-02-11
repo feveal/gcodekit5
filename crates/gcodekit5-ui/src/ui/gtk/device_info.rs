@@ -7,9 +7,8 @@ use gtk4::{
 use crate::device_status;
 use gcodekit5_communication::firmware::grbl::settings::{Setting, SettingsManager};
 use gcodekit5_communication::SerialCommunicator;
-use std::cell::RefCell;
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption, ThreadSafe};
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct CapabilityItem {
@@ -29,7 +28,7 @@ pub struct DeviceInfoView {
     copy_btn: Button,
     capabilities_list: ListBox,
     capabilities_expander: Expander,
-    connected: Rc<RefCell<bool>>,
+    connected: Shared<bool>,
 
     // Device type radio buttons
     pub device_type_cnc: CheckButton,
@@ -37,13 +36,13 @@ pub struct DeviceInfoView {
     pub device_type_other: CheckButton,
 
     // Communicator for sending commands
-    communicator: Rc<RefCell<Option<Arc<Mutex<SerialCommunicator>>>>>,
+    communicator: SharedOption<ThreadSafe<SerialCommunicator>>,
 
     // Settings manager to update when settings change
-    settings_manager: Rc<RefCell<Option<Rc<RefCell<SettingsManager>>>>>,
+    settings_manager: SharedOption<Shared<SettingsManager>>,
 
     // Callback to notify when settings change (for refreshing settings display)
-    on_setting_changed: Rc<RefCell<Option<std::boxed::Box<dyn Fn()>>>>,
+    on_setting_changed: SharedOption<std::boxed::Box<dyn Fn()>>,
 }
 
 impl DeviceInfoView {
@@ -140,13 +139,13 @@ impl DeviceInfoView {
             copy_btn: copy_btn.clone(),
             capabilities_list,
             capabilities_expander,
-            connected: Rc::new(RefCell::new(false)),
+            connected: shared(false),
             device_type_cnc: device_type_cnc.clone(),
             device_type_laser: device_type_laser.clone(),
             device_type_other: device_type_other.clone(),
-            communicator: Rc::new(RefCell::new(None)),
-            settings_manager: Rc::new(RefCell::new(None)),
-            on_setting_changed: Rc::new(RefCell::new(None)),
+            communicator: shared_none(),
+            settings_manager: shared_none(),
+            on_setting_changed: shared_none(),
         });
 
         // Connect signals
@@ -344,12 +343,12 @@ impl DeviceInfoView {
     }
 
     /// Set the communicator for sending commands to the device
-    pub fn set_communicator(&self, communicator: Arc<Mutex<SerialCommunicator>>) {
+    pub fn set_communicator(&self, communicator: ThreadSafe<SerialCommunicator>) {
         *self.communicator.borrow_mut() = Some(communicator);
     }
 
     /// Set the settings manager for updating settings
-    pub fn set_settings_manager(&self, manager: Rc<RefCell<SettingsManager>>) {
+    pub fn set_settings_manager(&self, manager: Shared<SettingsManager>) {
         *self.settings_manager.borrow_mut() = Some(manager);
     }
 
@@ -379,7 +378,7 @@ impl DeviceInfoView {
         if let Some(ref comm) = *self.communicator.borrow() {
             let command = format!("$32={}", laser_mode_value);
 
-            if let Ok(mut comm_lock) = comm.try_lock() {
+            if let Some(mut comm_lock) = comm.try_lock() {
                 // Send command using Communicator trait method
                 use gcodekit5_communication::Communicator;
                 if Communicator::send_command(&mut *comm_lock, &command).is_ok() {

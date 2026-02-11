@@ -5,9 +5,8 @@
 use super::{SmoothiewareCapabilities, SmoothiewareCommandCreator, SmoothiewareResponseParser};
 use crate::communication::ConnectionParams;
 use gcodekit5_core::OverrideState;
+use gcodekit5_core::{thread_safe_rw, ThreadSafeRw};
 use gcodekit5_core::{ControllerState, ControllerStatus, Position};
-use parking_lot::RwLock;
-use std::sync::Arc;
 
 /// Smoothieware Controller state
 #[derive(Debug, Clone)]
@@ -40,9 +39,9 @@ pub struct SmoothiewareController {
     /// Connection parameters
     connection_params: ConnectionParams,
     /// Controller state
-    state: Arc<RwLock<SmoothiewareControllerState>>,
+    state: ThreadSafeRw<SmoothiewareControllerState>,
     /// Response parser
-    parser: Arc<RwLock<SmoothiewareResponseParser>>,
+    parser: ThreadSafeRw<SmoothiewareResponseParser>,
     /// Command creator
     command_creator: SmoothiewareCommandCreator,
     /// Capabilities
@@ -55,8 +54,8 @@ impl SmoothiewareController {
         Ok(Self {
             name: name.unwrap_or_else(|| "Smoothieware".to_string()),
             connection_params,
-            state: Arc::new(RwLock::new(SmoothiewareControllerState::default())),
-            parser: Arc::new(RwLock::new(SmoothiewareResponseParser::new())),
+            state: thread_safe_rw(SmoothiewareControllerState::default()),
+            parser: thread_safe_rw(SmoothiewareResponseParser::new()),
             command_creator: SmoothiewareCommandCreator::new(),
             capabilities: SmoothiewareCapabilities::default(),
         })

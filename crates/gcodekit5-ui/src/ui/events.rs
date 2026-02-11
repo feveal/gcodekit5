@@ -4,6 +4,7 @@
 
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
+use gcodekit5_core::{thread_safe_vec, ThreadSafeVec};
 
 /// UI event types
 #[derive(Debug, Clone)]
@@ -85,7 +86,7 @@ pub struct UiEventBus {
     /// Event receiver
     receiver: Receiver<UiEvent>,
     /// Event subscriptions
-    subscriptions: Arc<Mutex<Vec<EventSubscription>>>,
+    subscriptions: ThreadSafeVec<EventSubscription>,
 }
 
 impl UiEventBus {
@@ -95,7 +96,7 @@ impl UiEventBus {
         Self {
             sender,
             receiver,
-            subscriptions: Arc::new(Mutex::new(Vec::new())),
+            subscriptions: thread_safe_vec(),
         }
     }
 
@@ -113,7 +114,7 @@ impl UiEventBus {
             subscriber: subscriber.into(),
         };
 
-        if let Ok(mut subs) = self.subscriptions.lock() {
+        { let mut subs = self.subscriptions.lock();
             subs.push(subscription);
         }
 
@@ -122,12 +123,9 @@ impl UiEventBus {
 
     /// Unsubscribe from events
     pub fn unsubscribe(&self, subscription_id: &str) -> bool {
-        if let Ok(mut subs) = self.subscriptions.lock() {
-            subs.retain(|s| s.id != subscription_id);
-            true
-        } else {
-            false
-        }
+        let mut subs = self.subscriptions.lock();
+        subs.retain(|s| s.id != subscription_id);
+        true
     }
 
     /// Get next event (non-blocking)
@@ -137,7 +135,7 @@ impl UiEventBus {
 
     /// Get subscriptions count
     pub fn subscription_count(&self) -> usize {
-        self.subscriptions.lock().map(|s| s.len()).unwrap_or(0)
+        self.subscriptions.lock().len()
     }
 }
 

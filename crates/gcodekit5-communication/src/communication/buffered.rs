@@ -12,8 +12,7 @@
 //! - Pause/resume capabilities
 
 use crate::communication::Communicator;
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
+use gcodekit5_core::{thread_safe_deque, thread_safe_vec, ThreadSafeDeque, ThreadSafeVec};
 
 /// Status of a command in the buffer
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,9 +119,9 @@ pub struct BufferedCommunicatorWrapper {
     /// Configuration for buffering
     config: BufferedCommunicatorConfig,
     /// Queue of commands to send
-    command_queue: Arc<Mutex<VecDeque<BufferedCommand>>>,
+    command_queue: ThreadSafeDeque<BufferedCommand>,
     /// Currently sent commands awaiting acknowledgment
-    active_commands: Arc<Mutex<Vec<BufferedCommand>>>,
+    active_commands: ThreadSafeVec<BufferedCommand>,
     /// Current amount of data in controller buffer
     sent_buffer_size: usize,
     /// Whether sending is paused
@@ -135,8 +134,8 @@ impl BufferedCommunicatorWrapper {
         Self {
             communicator,
             config,
-            command_queue: Arc::new(Mutex::new(VecDeque::new())),
-            active_commands: Arc::new(Mutex::new(Vec::new())),
+            command_queue: thread_safe_deque(),
+            active_commands: thread_safe_vec(),
             sent_buffer_size: 0,
             send_paused: false,
         }
@@ -144,9 +143,7 @@ impl BufferedCommunicatorWrapper {
 
     /// Queue a command for sending
     pub fn queue_command(&self, command: String) -> gcodekit5_core::Result<()> {
-        let mut queue = self.command_queue.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock command queue: {}", e))
-        })?;
+        let mut queue = self.command_queue.lock();
 
         if queue.len() >= self.config.queue_size {
             return Err(gcodekit5_core::Error::other("Command queue is full"));
@@ -158,17 +155,13 @@ impl BufferedCommunicatorWrapper {
 
     /// Get the number of queued commands
     pub fn queued_commands_count(&self) -> gcodekit5_core::Result<usize> {
-        let queue = self.command_queue.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock command queue: {}", e))
-        })?;
+        let queue = self.command_queue.lock();
         Ok(queue.len())
     }
 
     /// Get the number of active commands
     pub fn active_commands_count(&self) -> gcodekit5_core::Result<usize> {
-        let active = self.active_commands.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock active commands: {}", e))
-        })?;
+        let active = self.active_commands.lock();
         Ok(active.len())
     }
 
@@ -189,9 +182,7 @@ impl BufferedCommunicatorWrapper {
         }
 
         loop {
-            let mut queue = self.command_queue.lock().map_err(|e| {
-                gcodekit5_core::Error::other(format!("Failed to lock command queue: {}", e))
-            })?;
+            let mut queue = self.command_queue.lock();
 
             if queue.is_empty() {
                 break;
@@ -210,9 +201,7 @@ impl BufferedCommunicatorWrapper {
 
                 self.send_buffered_command(&mut command)?;
 
-                let mut active = self.active_commands.lock().map_err(|e| {
-                    gcodekit5_core::Error::other(format!("Failed to lock active commands: {}", e))
-                })?;
+                let mut active = self.active_commands.lock();
                 active.push(command);
             } else {
                 break;
@@ -242,9 +231,7 @@ impl BufferedCommunicatorWrapper {
 
     /// Handle acknowledgment from the device
     pub fn handle_acknowledgment(&mut self) -> gcodekit5_core::Result<()> {
-        let mut active = self.active_commands.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock active commands: {}", e))
-        })?;
+        let mut active = self.active_commands.lock();
 
         if let Some(command) = active.first_mut() {
             let command_size = command.command.len() + 1;
@@ -260,9 +247,7 @@ impl BufferedCommunicatorWrapper {
 
     /// Handle error response from the device
     pub fn handle_error(&mut self, error_msg: String) -> gcodekit5_core::Result<()> {
-        let mut active = self.active_commands.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock active commands: {}", e))
-        })?;
+        let mut active = self.active_commands.lock();
 
         if let Some(command) = active.first_mut() {
             command.mark_failed();
@@ -277,9 +262,7 @@ impl BufferedCommunicatorWrapper {
 
                 // Move failed command back to queue for retry
                 let retry_command = active.remove(0);
-                let mut queue = self.command_queue.lock().map_err(|e| {
-                    gcodekit5_core::Error::other(format!("Failed to lock command queue: {}", e))
-                })?;
+                let mut queue = self.command_queue.lock();
                 queue.push_front(retry_command);
 
                 if let Some(front) = queue.front() {
@@ -315,14 +298,10 @@ impl BufferedCommunicatorWrapper {
 
     /// Clear all queued commands
     pub fn clear_queue(&mut self) -> gcodekit5_core::Result<()> {
-        let mut queue = self.command_queue.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock command queue: {}", e))
-        })?;
+        let mut queue = self.command_queue.lock();
         queue.clear();
 
-        let mut active = self.active_commands.lock().map_err(|e| {
-            gcodekit5_core::Error::other(format!("Failed to lock active commands: {}", e))
-        })?;
+        let mut active = self.active_commands.lock();
         active.clear();
 
         self.sent_buffer_size = 0;

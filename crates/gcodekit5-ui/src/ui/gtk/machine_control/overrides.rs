@@ -19,7 +19,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Feed +10%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x91]); // Feed +10%
                 }
             });
@@ -31,7 +32,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Feed +1%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x93]); // Feed +1%
                 }
             });
@@ -43,7 +45,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Feed -1%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x94]); // Feed -1%
                 }
             });
@@ -55,7 +58,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Feed -10%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x92]); // Feed -10%
                 }
             });
@@ -67,7 +71,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Feed Reset (100%)\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x90]); // Feed override reset to 100%
                 }
             });
@@ -88,7 +93,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle +10%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x9A]); // Spindle +10%
                 }
             });
@@ -100,7 +106,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle +1%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x9C]); // Spindle +1%
                 }
             });
@@ -112,7 +119,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle -1%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x9D]); // Spindle -1%
                 }
             });
@@ -124,7 +132,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle -10%\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x9B]); // Spindle -10%
                 }
             });
@@ -136,7 +145,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle Stop\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x9E]); // Spindle stop
                 }
             });
@@ -148,7 +158,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> Spindle Reset (100%)\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x99]); // Spindle override reset to 100%
                 }
             });

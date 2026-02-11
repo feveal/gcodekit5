@@ -4,8 +4,7 @@ use gcodekit5_core::units::{
 use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, Image, Label, Orientation, ProgressBar};
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use gcodekit5_core::{shared_none, SharedOption};
 
 #[derive(Clone)]
 #[allow(clippy::type_complexity)]
@@ -25,7 +24,7 @@ pub struct StatusBar {
     remaining_label: Label,
     progress_bar: ProgressBar,
     cancel_btn: Button,
-    cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>>,
+    cancel_action: SharedOption<std::boxed::Box<dyn Fn() + 'static>>,
 }
 
 impl Default for StatusBar {
@@ -136,8 +135,7 @@ impl StatusBar {
 
         // Cancel (for long-running, cancellable UI tasks)
         #[allow(clippy::type_complexity)]
-        let cancel_action: Rc<RefCell<Option<std::boxed::Box<dyn Fn() + 'static>>>> =
-            Rc::new(RefCell::new(None));
+        let cancel_action: SharedOption<std::boxed::Box<dyn Fn() + 'static>> = shared_none();
 
         let cancel_btn = Button::builder().tooltip_text("Cancel").build();
         cancel_btn.set_visible(false);

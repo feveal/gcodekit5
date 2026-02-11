@@ -7,7 +7,8 @@
 use crate::device_status;
 use crate::ui::console_panel::{ConsolePanel, MessageLevel};
 use gcodekit5_communication::CommunicatorListener;
-use std::sync::{Arc, Mutex};
+use gcodekit5_core::{thread_safe, thread_safe_vec, ThreadSafe, ThreadSafeOption, ThreadSafeVec};
+use std::sync::Arc;
 
 /// Message type for device communication
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,23 +45,23 @@ pub enum ConsoleEvent {
 #[allow(clippy::type_complexity)]
 pub struct DeviceConsoleManager {
     /// Console panel
-    console: Arc<Mutex<ConsolePanel>>,
+    console: ThreadSafe<ConsolePanel>,
     /// Whether verbose output is enabled
-    verbose_enabled: Arc<Mutex<bool>>,
+    verbose_enabled: ThreadSafe<bool>,
     /// Whether auto-scroll is enabled
-    auto_scroll_enabled: Arc<Mutex<bool>>,
+    auto_scroll_enabled: ThreadSafe<bool>,
     /// Event callbacks (with interior mutability)
-    on_event: Arc<Mutex<Vec<Box<dyn Fn(ConsoleEvent) + Send + Sync>>>>,
+    on_event: ThreadSafeVec<Box<dyn Fn(ConsoleEvent) + Send + Sync>>,
 }
 
 impl DeviceConsoleManager {
     /// Create new device console manager
     pub fn new() -> Self {
         Self {
-            console: Arc::new(Mutex::new(ConsolePanel::new())),
-            verbose_enabled: Arc::new(Mutex::new(false)),
-            auto_scroll_enabled: Arc::new(Mutex::new(true)),
-            on_event: Arc::new(Mutex::new(Vec::new())),
+            console: thread_safe(ConsolePanel::new()),
+            verbose_enabled: thread_safe(false),
+            auto_scroll_enabled: thread_safe(true),
+            on_event: thread_safe_vec(),
         }
     }
 
@@ -77,19 +78,13 @@ impl DeviceConsoleManager {
         };
 
         // Check if verbose filtering applies - recover from poisoned lock
-        let verbose_check = self
-            .verbose_enabled
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let verbose_check = self.verbose_enabled.lock();
         if msg_type == DeviceMessageType::Verbose && !*verbose_check {
             return;
         }
 
         {
-            let mut console = self
-                .console
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut console = self.console.lock();
             if msg_type == DeviceMessageType::Command {
                 console.add_command(&content);
             } else {
@@ -103,49 +98,34 @@ impl DeviceConsoleManager {
     /// Add command to history
     pub fn add_command_to_history(&self, command: impl Into<String>) {
         let command = command.into();
-        let mut console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut console = self.console.lock();
         console.add_to_history(&command);
     }
 
     /// Get console output as model
     pub fn get_model(&self) -> Vec<String> {
-        let console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let console = self.console.lock();
 
         console.get_displayed_strings(1000)
     }
 
     /// Get console output as string
     pub fn get_output(&self) -> String {
-        let console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let console = self.console.lock();
         let messages = console.get_displayed_strings(1000);
         messages.join("\n")
     }
 
     /// Get recent messages
     pub fn get_recent_messages(&self, count: usize) -> Vec<String> {
-        let console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let console = self.console.lock();
         console.get_displayed_strings(count)
     }
 
     /// Clear console
     pub fn clear(&self) {
         {
-            let mut console = self
-                .console
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut console = self.console.lock();
             console.clear();
         }
         self.emit_event(ConsoleEvent::Cleared);
@@ -154,60 +134,43 @@ impl DeviceConsoleManager {
     /// Set verbose output enabled
     pub fn set_verbose_enabled(&self, enabled: bool) {
         {
-            *self
-                .verbose_enabled
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()) = enabled;
+            *self.verbose_enabled.lock() = enabled;
         }
         self.emit_event(ConsoleEvent::SettingsChanged);
     }
 
     /// Get verbose output enabled state
     pub fn is_verbose_enabled(&self) -> bool {
-        *self
-            .verbose_enabled
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        *self.verbose_enabled.lock()
     }
 
     /// Set auto-scroll enabled
     pub fn set_auto_scroll_enabled(&self, enabled: bool) {
         {
-            let mut console = self
-                .console
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut console = self.console.lock();
             console.auto_scroll = enabled;
-            *self
-                .auto_scroll_enabled
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()) = enabled;
+            *self.auto_scroll_enabled.lock() = enabled;
         }
         self.emit_event(ConsoleEvent::SettingsChanged);
     }
 
     /// Get auto-scroll enabled state
     pub fn is_auto_scroll_enabled(&self) -> bool {
-        *self
-            .auto_scroll_enabled
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        *self.auto_scroll_enabled.lock()
     }
 
     /// Set maximum number of console lines to keep
     pub fn set_max_lines(&self, max_lines: usize) {
-        if let Ok(mut console) = self.console.lock() {
+        {
+            let mut console = self.console.lock();
             console.max_messages = max_lines;
         }
     }
 
     /// Get maximum number of console lines
     pub fn get_max_lines(&self) -> usize {
-        if let Ok(console) = self.console.lock() {
-            console.max_messages
-        } else {
-            500
-        }
+        let console = self.console.lock();
+        console.max_messages
     }
 
     /// Toggle auto-scroll
@@ -218,19 +181,13 @@ impl DeviceConsoleManager {
 
     /// Get command history
     pub fn get_history(&self) -> Vec<String> {
-        let console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let console = self.console.lock();
         console.get_history()
     }
 
     /// Get total message count
     pub fn message_count(&self) -> usize {
-        let console = self
-            .console
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let console = self.console.lock();
         console.message_count()
     }
 
@@ -251,7 +208,8 @@ impl DeviceConsoleManager {
 
     /// Emit console event
     fn emit_event(&self, event: ConsoleEvent) {
-        if let Ok(callbacks) = self.on_event.lock() {
+        {
+            let callbacks = self.on_event.lock();
             for callback in callbacks.iter() {
                 callback(event.clone());
             }
@@ -263,7 +221,8 @@ impl DeviceConsoleManager {
     where
         F: Fn(ConsoleEvent) + Send + Sync + 'static,
     {
-        if let Ok(mut callbacks) = self.on_event.lock() {
+        {
+            let mut callbacks = self.on_event.lock();
             callbacks.push(Box::new(callback));
         }
     }
@@ -287,10 +246,10 @@ pub fn get_console_manager() -> Arc<DeviceConsoleManager> {
 pub struct ConsoleListener {
     console_manager: Arc<DeviceConsoleManager>,
     /// Buffer for accumulating multi-line responses (like $I)
-    _response_buffer: Arc<Mutex<String>>,
+    _response_buffer: ThreadSafe<String>,
     /// Shared firmware detection result (optional)
     detected_firmware:
-        Option<Arc<Mutex<Option<gcodekit5_communication::firmware::FirmwareDetectionResult>>>>,
+        Option<ThreadSafeOption<gcodekit5_communication::firmware::FirmwareDetectionResult>>,
 }
 
 impl ConsoleListener {
@@ -298,7 +257,7 @@ impl ConsoleListener {
     pub fn new(console_manager: Arc<DeviceConsoleManager>) -> Arc<Self> {
         Arc::new(Self {
             console_manager,
-            _response_buffer: Arc::new(Mutex::new(String::new())),
+            _response_buffer: thread_safe(String::new()),
             detected_firmware: None,
         })
     }
@@ -306,13 +265,13 @@ impl ConsoleListener {
     /// Create with firmware detection state sharing
     pub fn new_with_firmware_state(
         console_manager: Arc<DeviceConsoleManager>,
-        detected_firmware: Arc<
-            Mutex<Option<gcodekit5_communication::firmware::FirmwareDetectionResult>>,
+        detected_firmware: ThreadSafeOption<
+            gcodekit5_communication::firmware::FirmwareDetectionResult,
         >,
     ) -> Arc<Self> {
         Arc::new(Self {
             console_manager,
-            _response_buffer: Arc::new(Mutex::new(String::new())),
+            _response_buffer: thread_safe(String::new()),
             detected_firmware: Some(detected_firmware),
         })
     }
@@ -354,7 +313,8 @@ impl CommunicatorListener for ConsoleListener {
                     Ok(detection) => {
                         // Store in shared state if available
                         if let Some(ref fw_state) = self.detected_firmware {
-                            if let Ok(mut guard) = fw_state.lock() {
+                            {
+                                let mut guard = fw_state.lock();
                                 *guard = Some(detection.clone());
                             }
                         }
@@ -395,7 +355,8 @@ impl CommunicatorListener for ConsoleListener {
                     Ok(detection) => {
                         // Store in shared state if available
                         if let Some(ref fw_state) = self.detected_firmware {
-                            if let Ok(mut guard) = fw_state.lock() {
+                            {
+                                let mut guard = fw_state.lock();
                                 *guard = Some(detection.clone());
                             }
                         }

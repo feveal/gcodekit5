@@ -1,4 +1,4 @@
-## [0.50.3-alpha.0] - 2026-02-11
+## [0.51.0-alpha.0] - 2026-02-11
 
 ### Added
 - **Shared error dialog helper** (`file_dialog::show_error_dialog`): modal, transient, with parent window support
@@ -8,6 +8,8 @@
 - **Null/invalid state guards**: debug_assert checks, NaN/Inf guards, state transition validation
 
 ### Changed
+- **Task 3.1 — Reduce Complex Type Nesting**: Adopted `gcodekit5_core::types::aliases` (`Shared<T>`, `ThreadSafe<T>`, `ThreadSafeRw<T>`, etc.) across entire workspace, replacing ~180 raw `Rc<RefCell<T>>`, `Arc<Mutex<T>>`, and `Arc<RwLock<T>>` patterns with readable type aliases and constructor helpers (`shared()`, `thread_safe()`, `thread_safe_rw()`)
+- **G10 Z-axis suppression**: G10 offset commands (L2/L20) now omit Z0 when device num_axes < 3 in vector_engraver, laser_engraver, jigsaw_puzzle, gerber, tabbed_box, and spoilboard_grid
 - **Issue #15 — Editor error dialogs**: file read/save errors now show GTK4 MessageDialog with file path
 - **Consolidated 5 duplicate `show_error_dialog` implementations** into shared helper
 - **FileChooserNative → FileChooserDialog** across all file operations (KDE/Kubuntu compatibility)

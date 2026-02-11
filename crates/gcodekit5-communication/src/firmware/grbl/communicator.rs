@@ -5,7 +5,7 @@
 //! needing traditional handshaking.
 
 use crate::communication::{Communicator, ConnectionParams};
-use parking_lot::RwLock;
+use gcodekit5_core::{thread_safe_rw, ThreadSafeRw};
 use std::sync::Arc;
 
 /// GRBL communicator configuration
@@ -41,23 +41,23 @@ pub struct CharacterCountingState {
 /// real-time character counting instead of traditional flow control.
 pub struct GrblCommunicator {
     /// Underlying communicator
-    communicator: Arc<RwLock<Box<dyn Communicator>>>,
+    communicator: ThreadSafeRw<Box<dyn Communicator>>,
     /// Character counting state
-    char_counting: Arc<RwLock<CharacterCountingState>>,
+    char_counting: ThreadSafeRw<CharacterCountingState>,
     /// Configuration
     config: Arc<GrblCommunicatorConfig>,
     /// Whether communicator is running
-    running: Arc<RwLock<bool>>,
+    running: ThreadSafeRw<bool>,
 }
 
 impl GrblCommunicator {
     /// Create a new GRBL communicator from an existing communicator
     pub fn new(communicator: Box<dyn Communicator>, config: GrblCommunicatorConfig) -> Self {
         Self {
-            communicator: Arc::new(RwLock::new(communicator)),
-            char_counting: Arc::new(RwLock::new(CharacterCountingState::default())),
+            communicator: thread_safe_rw(communicator),
+            char_counting: thread_safe_rw(CharacterCountingState::default()),
             config: Arc::new(config),
-            running: Arc::new(RwLock::new(false)),
+            running: thread_safe_rw(false),
         }
     }
 

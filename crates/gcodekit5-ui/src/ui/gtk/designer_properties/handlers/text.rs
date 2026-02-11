@@ -1,12 +1,12 @@
 //! Text property handlers (content, font family, size, bold, italic).
 
+use gcodekit5_core::{Shared, SharedOption};
 use gcodekit5_designer::canvas::DrawingObject;
 use gcodekit5_designer::commands::{ChangeProperty, DesignerCommand};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::model::Shape;
 use gtk4::prelude::*;
 use gtk4::{CheckButton, DropDown, Entry};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 const MM_PER_PT: f64 = 25.4 / 72.0;
@@ -51,9 +51,9 @@ where
 #[allow(clippy::type_complexity)]
 pub fn setup_text_content_handler(
     text_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     text_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -79,9 +79,9 @@ pub fn setup_text_content_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_font_size_handler(
     font_size_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     font_size_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -113,9 +113,9 @@ pub fn setup_font_family_handler(
     font_family_combo: &DropDown,
     font_bold_check: &CheckButton,
     font_italic_check: &CheckButton,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let bold_check = font_bold_check.clone();
     let italic_check = font_italic_check.clone();
@@ -155,9 +155,9 @@ pub fn setup_font_bold_handler(
     font_bold_check: &CheckButton,
     font_family_combo: &DropDown,
     font_italic_check: &CheckButton,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let font_combo = font_family_combo.clone();
     let italic_check = font_italic_check.clone();
@@ -197,9 +197,9 @@ pub fn setup_font_italic_handler(
     font_italic_check: &CheckButton,
     font_family_combo: &DropDown,
     font_bold_check: &CheckButton,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let font_combo = font_family_combo.clone();
     let bold_check = font_bold_check.clone();

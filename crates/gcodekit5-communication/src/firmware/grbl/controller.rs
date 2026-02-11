@@ -7,10 +7,10 @@ use crate::communication::{ConnectionParams, NoOpCommunicator};
 use crate::firmware::grbl::status_parser::StatusParser;
 use crate::firmware::grbl::{GrblCommunicator, GrblCommunicatorConfig};
 use async_trait::async_trait;
+use gcodekit5_core::{thread_safe_rw, ThreadSafeRw, ThreadSafeRwMap};
 use gcodekit5_core::{ControllerState, ControllerStatus, PartialPosition};
 use gcodekit5_core::{ControllerTrait, OverrideState};
-use parking_lot::RwLock;
-use std::collections::{HashMap, VecDeque};
+use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
@@ -61,15 +61,15 @@ pub struct GrblController {
     /// Communicator for GRBL protocol
     communicator: Arc<GrblCommunicator>,
     /// Controller state
-    state: Arc<RwLock<GrblControllerState>>,
+    state: ThreadSafeRw<GrblControllerState>,
     /// IO task handle
-    io_task: Arc<RwLock<Option<JoinHandle<()>>>>,
+    io_task: ThreadSafeRw<Option<JoinHandle<()>>>,
     /// Command sender channel
-    command_tx: Arc<RwLock<Option<mpsc::Sender<String>>>>,
+    command_tx: ThreadSafeRw<Option<mpsc::Sender<String>>>,
     /// Shutdown signal
-    shutdown_signal: Arc<RwLock<Option<mpsc::Sender<()>>>>,
+    shutdown_signal: ThreadSafeRw<Option<mpsc::Sender<()>>>,
     /// Registered controller listeners
-    listeners: Arc<RwLock<HashMap<String, Arc<dyn gcodekit5_core::ControllerListener>>>>,
+    listeners: ThreadSafeRwMap<String, Arc<dyn gcodekit5_core::ControllerListener>>,
     /// Connection parameters
     connection_params: ConnectionParams,
 }
@@ -85,11 +85,11 @@ impl GrblController {
         Ok(Self {
             name: name.unwrap_or_else(|| "GRBL".to_string()),
             communicator,
-            state: Arc::new(RwLock::new(GrblControllerState::default())),
-            io_task: Arc::new(RwLock::new(None)),
-            command_tx: Arc::new(RwLock::new(None)),
-            shutdown_signal: Arc::new(RwLock::new(None)),
-            listeners: Arc::new(RwLock::new(HashMap::new())),
+            state: thread_safe_rw(GrblControllerState::default()),
+            io_task: thread_safe_rw(None),
+            command_tx: thread_safe_rw(None),
+            shutdown_signal: thread_safe_rw(None),
+            listeners: thread_safe_rw(std::collections::HashMap::new()),
             connection_params,
         })
     }

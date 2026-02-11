@@ -5,18 +5,19 @@ use gtk4::{
     ScrolledWindow, SearchEntry, SelectionMode, SpinButton, Stack, StackSwitcher, TextView,
     WrapMode,
 };
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::ui::gtk::help_browser;
 use crate::ui::materials_manager_backend;
 use crate::ui::materials_manager_backend::MaterialsManagerBackend;
 use gcodekit5_core::data::materials::{Material, MaterialCategory, MaterialId};
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption};
 
 #[derive(Clone)]
 pub struct MaterialsManagerView {
     pub widget: Paned,
-    backend: Rc<RefCell<MaterialsManagerBackend>>,
+    backend: Shared<MaterialsManagerBackend>,
     materials_list: ListBox,
     search_entry: SearchEntry,
     category_filter: ComboBoxText,
@@ -43,8 +44,8 @@ pub struct MaterialsManagerView {
     edit_notes: TextView,
 
     // State
-    selected_material: Rc<RefCell<Option<Material>>>,
-    is_creating: Rc<RefCell<bool>>,
+    selected_material: SharedOption<Material>,
+    is_creating: Shared<bool>,
 
     // Action buttons
     save_btn: Button,
@@ -58,7 +59,7 @@ impl MaterialsManagerView {
     const DEFAULT_MACHINABILITY: f64 = 7.0;
 
     pub fn new() -> Rc<Self> {
-        let backend = Rc::new(RefCell::new(MaterialsManagerBackend::new()));
+        let backend = shared(MaterialsManagerBackend::new());
 
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
@@ -276,8 +277,8 @@ impl MaterialsManagerView {
             edit_fume_hazard,
             edit_coolant_required,
             edit_notes,
-            selected_material: Rc::new(RefCell::new(None)),
-            is_creating: Rc::new(RefCell::new(false)),
+            selected_material: shared_none(),
+            is_creating: shared(false),
             save_btn,
             cancel_btn,
             delete_btn,

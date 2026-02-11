@@ -9,6 +9,7 @@ use crate::ui::gtk::designer_layers::LayersPanel;
 use crate::ui::gtk::designer_properties::PropertiesPanel;
 use crate::ui::gtk::designer_toolbox::{DesignerTool, DesignerToolbox};
 use crate::ui::gtk::osd_format::format_zoom_center_cursor;
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::model::{DesignerShape, Shape};
 use gcodekit5_designer::serialization::DesignFile;
@@ -21,7 +22,7 @@ use gtk4::{
     Adjustment, Box, EventControllerKey, FileChooserAction, FileChooserNative, GestureClick, Grid,
     Label, Orientation, Overlay, Paned, Popover, ResponseType, Scrollbar,
 };
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::atomic::Ordering;
@@ -37,9 +38,9 @@ pub struct DesignerView {
     pub(crate) layers: Rc<LayersPanel>,
     pub(crate) status_label: Label,
     pub(crate) _coord_label: Label,
-    pub(crate) current_file: Rc<RefCell<Option<PathBuf>>>,
-    pub(crate) on_gcode_generated: Rc<RefCell<Option<std::boxed::Box<dyn Fn(String)>>>>,
-    pub(crate) settings_persistence: Option<Rc<RefCell<gcodekit5_settings::SettingsPersistence>>>,
+    pub(crate) current_file: SharedOption<PathBuf>,
+    pub(crate) on_gcode_generated: SharedOption<std::boxed::Box<dyn Fn(String)>>,
+    pub(crate) settings_persistence: Option<Shared<gcodekit5_settings::SettingsPersistence>>,
 }
 
 impl DesignerView {
@@ -53,7 +54,7 @@ impl DesignerView {
         container.set_vexpand(true);
 
         // Create designer state
-        let state = Rc::new(RefCell::new(DesignerState::new()));
+        let state = shared(DesignerState::new());
 
         // Create main horizontal layout (toolbox + canvas + properties)
         let main_box = Box::new(Orientation::Horizontal, 0);
@@ -482,10 +483,9 @@ impl DesignerView {
             settings_controller.clone(),
         );
 
-        let current_file = Rc::new(RefCell::new(None));
+        let current_file = shared_none();
         #[allow(clippy::type_complexity)]
-        let on_gcode_generated: Rc<RefCell<Option<std::boxed::Box<dyn Fn(String)>>>> =
-            Rc::new(RefCell::new(None));
+        let on_gcode_generated: SharedOption<std::boxed::Box<dyn Fn(String)>> = shared_none();
 
         // Connect Generate G-Code button
         let canvas_gen = canvas.clone();

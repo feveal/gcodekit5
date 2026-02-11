@@ -1209,7 +1209,11 @@ impl TabbedBoxMaker {
 
         gcode.push_str("; Home and set work coordinate system\n");
         gcode.push_str("$H ; Home all axes\n");
-        gcode.push_str("G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset\n");
+        if self.params.num_axes >= 3 {
+            gcode.push_str("G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset\n");
+        } else {
+            gcode.push_str("G10 L2 P1 X0 Y0 ; Clear G54 offset\n");
+        }
         gcode.push_str("G54 ; Select work coordinate system 1\n");
         if self.params.num_axes >= 3 {
             gcode.push_str(&format!(

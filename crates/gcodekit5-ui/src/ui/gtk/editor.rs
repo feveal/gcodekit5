@@ -1,4 +1,5 @@
 use crate::ui::gtk::status_bar::StatusBar;
+use gcodekit5_core::{shared_none, SharedOption};
 use glib;
 use gtk4::prelude::*;
 use gtk4::{
@@ -8,7 +9,6 @@ use sourceview5::prelude::*;
 use sourceview5::{
     Buffer, LanguageManager, SearchContext, SearchSettings, StyleSchemeManager, View,
 };
-use std::cell::RefCell;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -21,7 +21,7 @@ pub struct GcodeEditor {
     pub view: View,
     pub buffer: Buffer,
     _line_counter_label: Label,
-    current_file: Rc<RefCell<Option<PathBuf>>>,
+    current_file: SharedOption<PathBuf>,
     _search_context: SearchContext,
     _search_settings: SearchSettings,
     _status_bar: Option<StatusBar>,
@@ -490,7 +490,7 @@ impl GcodeEditor {
             view: view.clone(),
             buffer: buffer.clone(),
             _line_counter_label: line_counter_label.clone(),
-            current_file: Rc::new(RefCell::new(None)),
+            current_file: shared_none(),
             _search_context: search_context,
             _search_settings: search_settings,
             _status_bar: status_bar,

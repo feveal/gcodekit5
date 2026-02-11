@@ -1,15 +1,15 @@
 use super::*;
 
+use gcodekit5_core::{shared, Shared};
 use gtk4::gdk::ModifierType;
 use gtk4::prelude::*;
 use gtk4::{DrawingArea, EventControllerScroll, EventControllerScrollFlags, GestureDrag};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 impl GcodeVisualizer {
     pub(crate) fn setup_interaction<F: Fn() + 'static>(
         da: &DrawingArea,
-        vis: &Rc<RefCell<Visualizer>>,
+        vis: &Shared<Visualizer>,
         update_ui: F,
     ) {
         // Scroll to pan (Ctrl+Scroll to zoom)
@@ -54,7 +54,7 @@ impl GcodeVisualizer {
         drag_middle.set_button(2);
         let vis_drag_middle = vis.clone();
 
-        let start_pan = Rc::new(RefCell::new((0.0f32, 0.0f32)));
+        let start_pan = shared((0.0f32, 0.0f32));
         let _da_drag = da.clone();
         let update_drag = update_scroll.clone();
 

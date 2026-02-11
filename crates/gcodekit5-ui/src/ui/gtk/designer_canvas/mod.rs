@@ -17,6 +17,7 @@ use crate::ui::gtk::designer_layers::LayersPanel;
 use crate::ui::gtk::designer_properties::PropertiesPanel;
 use crate::ui::gtk::designer_toolbox::{DesignerTool, DesignerToolbox};
 use gcodekit5_core::constants as core_constants;
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption, SharedVec};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::model::{DesignPath as PathShape, Point, Shape};
 use gcodekit5_designer::toolpath::Toolpath;
@@ -28,7 +29,6 @@ use gtk4::{
     CheckButton, Dialog, DrawingArea, DropDown, Entry, EventControllerMotion, GestureClick,
     GestureDrag,
 };
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -91,51 +91,51 @@ pub enum ResizeHandle {
 #[allow(clippy::type_complexity)]
 pub struct DesignerCanvas {
     pub widget: DrawingArea,
-    pub state: Rc<RefCell<DesignerState>>,
-    pub mouse_pos: Rc<RefCell<(f64, f64)>>, // Canvas coordinates
+    pub state: Shared<DesignerState>,
+    pub mouse_pos: Shared<(f64, f64)>, // Canvas coordinates
     pub(crate) toolbox: Option<Rc<DesignerToolbox>>,
-    pub(crate) properties: Rc<RefCell<Option<Rc<PropertiesPanel>>>>,
-    pub(crate) layers: Rc<RefCell<Option<Rc<LayersPanel>>>>,
+    pub(crate) properties: SharedOption<Rc<PropertiesPanel>>,
+    pub(crate) layers: SharedOption<Rc<LayersPanel>>,
     // Shape creation state
-    pub(crate) creation_start: Rc<RefCell<Option<(f64, f64)>>>,
-    pub(crate) creation_current: Rc<RefCell<Option<(f64, f64)>>>,
+    pub(crate) creation_start: SharedOption<(f64, f64)>,
+    pub(crate) creation_current: SharedOption<(f64, f64)>,
     // Track last drag offset for incremental movement
-    pub(crate) last_drag_offset: Rc<RefCell<(f64, f64)>>,
+    pub(crate) last_drag_offset: Shared<(f64, f64)>,
     // Track if a drag operation occurred
-    pub(crate) did_drag: Rc<RefCell<bool>>,
+    pub(crate) did_drag: Shared<bool>,
     // Resize handle state
-    pub(crate) active_resize_handle: Rc<RefCell<Option<(ResizeHandle, u64)>>>, // (handle, shape_id)
-    pub(crate) resize_original_bounds: Rc<RefCell<Option<(f64, f64, f64, f64)>>>, // (x, y, width, height)
-    pub(crate) resize_original_shapes: Rc<RefCell<Option<Vec<(u64, Shape)>>>>,
+    pub(crate) active_resize_handle: SharedOption<(ResizeHandle, u64)>, // (handle, shape_id)
+    pub(crate) resize_original_bounds: SharedOption<(f64, f64, f64, f64)>, // (x, y, width, height)
+    pub(crate) resize_original_shapes: SharedOption<Vec<(u64, Shape)>>,
     // Scroll adjustments
-    pub(crate) hadjustment: Rc<RefCell<Option<gtk4::Adjustment>>>,
-    pub(crate) vadjustment: Rc<RefCell<Option<gtk4::Adjustment>>>,
+    pub(crate) hadjustment: SharedOption<gtk4::Adjustment>,
+    pub(crate) vadjustment: SharedOption<gtk4::Adjustment>,
     // Keyboard state
-    pub shift_pressed: Rc<RefCell<bool>>,
-    pub(crate) ctrl_pressed: Rc<RefCell<bool>>,
+    pub shift_pressed: Shared<bool>,
+    pub(crate) ctrl_pressed: Shared<bool>,
     // Polyline state
-    pub(crate) polyline_points: Rc<RefCell<Vec<Point>>>,
+    pub(crate) polyline_points: SharedVec<Point>,
     // Preview shapes (e.g. for offset/fillet)
-    pub preview_shapes: Rc<RefCell<Vec<Shape>>>,
+    pub preview_shapes: SharedVec<Shape>,
     // Toolpath preview
-    pub(crate) preview_toolpaths: Rc<RefCell<Vec<Toolpath>>>,
+    pub(crate) preview_toolpaths: SharedVec<Toolpath>,
     pub preview_generating: Rc<std::cell::Cell<bool>>,
     pub(crate) preview_pending: Rc<std::cell::Cell<bool>>,
     pub preview_cancel: Arc<AtomicBool>,
     pub(crate) text_tool_dialog:
-        Rc<RefCell<Option<(Dialog, Entry, DropDown, CheckButton, CheckButton, Entry)>>>,
-    pub(crate) text_tool_last_font_family: Rc<RefCell<String>>,
-    pub(crate) text_tool_last_bold: Rc<RefCell<bool>>,
-    pub(crate) text_tool_last_italic: Rc<RefCell<bool>>,
-    pub(crate) text_tool_last_size_mm: Rc<RefCell<f64>>,
-    pub(crate) text_tool_pending_pos: Rc<RefCell<Option<(f64, f64)>>>,
+        SharedOption<(Dialog, Entry, DropDown, CheckButton, CheckButton, Entry)>,
+    pub(crate) text_tool_last_font_family: Shared<String>,
+    pub(crate) text_tool_last_bold: Shared<bool>,
+    pub(crate) text_tool_last_italic: Shared<bool>,
+    pub(crate) text_tool_last_size_mm: Shared<f64>,
+    pub(crate) text_tool_pending_pos: SharedOption<(f64, f64)>,
     pub(crate) device_manager: Option<Arc<DeviceManager>>,
     pub(crate) status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
 }
 
 impl DesignerCanvas {
     pub fn new(
-        state: Rc<RefCell<DesignerState>>,
+        state: Shared<DesignerState>,
         toolbox: Option<Rc<DesignerToolbox>>,
         device_manager: Option<Arc<DeviceManager>>,
         status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
@@ -147,14 +147,14 @@ impl DesignerCanvas {
             .css_classes(vec!["designer-canvas"])
             .build();
 
-        let mouse_pos = Rc::new(RefCell::new((0.0, 0.0)));
-        let creation_start = Rc::new(RefCell::new(None));
-        let creation_current = Rc::new(RefCell::new(None));
-        let last_drag_offset = Rc::new(RefCell::new((0.0, 0.0)));
-        let did_drag = Rc::new(RefCell::new(false));
-        let polyline_points = Rc::new(RefCell::new(Vec::new()));
-        let preview_shapes = Rc::new(RefCell::new(Vec::new()));
-        let preview_toolpaths = Rc::new(RefCell::new(Vec::new()));
+        let mouse_pos = shared((0.0, 0.0));
+        let creation_start = shared_none();
+        let creation_current = shared_none();
+        let last_drag_offset = shared((0.0, 0.0));
+        let did_drag = shared(false);
+        let polyline_points = shared(Vec::new());
+        let preview_shapes = shared(Vec::new());
+        let preview_toolpaths = shared(Vec::new());
 
         let state_clone = state.clone();
         let mouse_pos_clone = mouse_pos.clone();
@@ -218,31 +218,31 @@ impl DesignerCanvas {
             state: state.clone(),
             mouse_pos: mouse_pos.clone(),
             toolbox: toolbox.clone(),
-            properties: Rc::new(RefCell::new(None)),
-            layers: Rc::new(RefCell::new(None)),
+            properties: shared_none(),
+            layers: shared_none(),
             creation_start: creation_start.clone(),
             creation_current: creation_current.clone(),
             last_drag_offset: last_drag_offset.clone(),
             did_drag: did_drag.clone(),
-            active_resize_handle: Rc::new(RefCell::new(None)),
-            resize_original_bounds: Rc::new(RefCell::new(None)),
-            resize_original_shapes: Rc::new(RefCell::new(None)),
-            hadjustment: Rc::new(RefCell::new(None)),
-            vadjustment: Rc::new(RefCell::new(None)),
-            shift_pressed: Rc::new(RefCell::new(false)),
-            ctrl_pressed: Rc::new(RefCell::new(false)),
+            active_resize_handle: shared_none(),
+            resize_original_bounds: shared_none(),
+            resize_original_shapes: shared_none(),
+            hadjustment: shared_none(),
+            vadjustment: shared_none(),
+            shift_pressed: shared(false),
+            ctrl_pressed: shared(false),
             polyline_points: polyline_points.clone(),
             preview_shapes: preview_shapes.clone(),
             preview_toolpaths: preview_toolpaths.clone(),
             preview_generating: Rc::new(std::cell::Cell::new(false)),
             preview_pending: Rc::new(std::cell::Cell::new(false)),
             preview_cancel: Arc::new(AtomicBool::new(false)),
-            text_tool_dialog: Rc::new(RefCell::new(None)),
-            text_tool_last_font_family: Rc::new(RefCell::new("Sans".to_string())),
-            text_tool_last_bold: Rc::new(RefCell::new(false)),
-            text_tool_last_italic: Rc::new(RefCell::new(false)),
-            text_tool_last_size_mm: Rc::new(RefCell::new(pt_to_mm(20.0))),
-            text_tool_pending_pos: Rc::new(RefCell::new(None)),
+            text_tool_dialog: shared_none(),
+            text_tool_last_font_family: shared("Sans".to_string()),
+            text_tool_last_bold: shared(false),
+            text_tool_last_italic: shared(false),
+            text_tool_last_size_mm: shared(pt_to_mm(20.0)),
+            text_tool_pending_pos: shared_none(),
             device_manager: device_manager.clone(),
             status_bar,
         });

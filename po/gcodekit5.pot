@@ -20,12 +20,6 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-msgid "CAM Tools"
-msgstr ""
-
-msgid "CNC Tools"
-msgstr ""
-
 msgid "Connect"
 msgstr ""
 
@@ -33,15 +27,6 @@ msgid "Copy"
 msgstr ""
 
 msgid "Cut"
-msgstr ""
-
-msgid "Designer"
-msgstr ""
-
-msgid "Device Config"
-msgstr ""
-
-msgid "Device Manager"
 msgstr ""
 
 msgid "Disconnect"
@@ -67,9 +52,6 @@ msgstr ""
 
 #. Polling is now handled centrally by MachineControlView to avoid race conditions on serial read
 #. Add Editor to Stack
-msgid "G-Code Editor"
-msgstr ""
-
 msgid "GCode Toolkit for CNC/Laser Machines"
 msgstr ""
 
@@ -89,12 +71,6 @@ msgid "Import"
 msgstr ""
 
 msgid "Machine"
-msgstr ""
-
-msgid "Machine Control"
-msgstr ""
-
-msgid "Materials"
 msgstr ""
 
 msgid "New"
@@ -130,6 +106,543 @@ msgstr ""
 msgid "Undo"
 msgstr ""
 
-#. 4. Visualizer (Already created)
+# crates/gcodekit5-settings/src/config.rs
+msgid "Machine Control"
+msgstr ""
+
+msgid "G-Code Editor"
+msgstr ""
+
 msgid "Visualizer"
+msgstr ""
+
+msgid "CAM Tools"
+msgstr ""
+
+msgid "Designer"
+msgstr ""
+
+msgid "Device Config"
+msgstr ""
+
+msgid "Device Manager"
+msgstr ""
+
+msgid "CNC Tools"
+msgstr ""
+
+msgid "Materials"
+msgstr ""
+
+# +
+msgid "Device Console"
+msgstr ""
+
+msgid "Device Info"
+msgstr ""
+
+# crates/gcodekit5-ui/src/ui/gtk/designer_toolbox.rs
+msgid "Select"
+msgstr ""
+
+msgid "Rectangle"
+msgstr ""
+
+msgid "Circle"
+msgstr ""
+
+msgid "Line"
+msgstr ""
+
+msgid "Polyline"
+msgstr ""
+
+msgid "Text"
+msgstr ""
+
+msgid "Pan"
+msgstr ""
+
+msgid "Triangle"
+msgstr ""
+
+msgid "Polygon"
+msgstr ""
+
+msgid "Gear"
+msgstr ""
+
+msgid "Sprocket"
+msgstr ""
+
+msgid "Active tool:"
+msgstr ""
+
+msgid "Fast Shapes"
+msgstr ""
+
+msgid "Shape Gallery…"
+msgstr ""
+
+msgid "Feed (Speed Laser)"
+msgstr ""
+
+msgid "Feed Rate or Speed Laser"
+msgstr ""
+
+msgid "Speed (Power Laser)"
+msgstr ""
+
+msgid "Spindle Speed or Power Laser %"
+msgstr ""
+
+msgid "Tool Dia"
+msgstr ""
+
+msgid "Tool Diameter"
+msgstr ""
+
+msgid "Cut Depth"
+msgstr ""
+
+msgid "Target Cut Depth (positive)"
+msgstr ""
+
+msgid "Step Down"
+msgstr ""
+
+msgid "Depth per pass"
+msgstr ""
+
+msgid "Tool Settings…"
+msgstr ""
+
+msgid "Tool Parameters"
+msgstr ""
+
+msgid "Stock Width"
+msgstr ""
+
+msgid "Stock material width"
+msgstr ""
+
+msgid "Stock Height"
+msgstr ""
+
+msgid "Stock material height"
+msgstr ""
+
+msgid "Stock Thickness"
+msgstr ""
+
+msgid "Stock material thickness"
+msgstr ""
+
+msgid "Safe Z Height"
+msgstr ""
+
+msgid "Safe height for rapid moves"
+msgstr ""
+
+msgid "Resolution"
+msgstr ""
+
+msgid "Simulation resolution (lower = more detail)"
+msgstr ""
+
+msgid "Show Stock Removal"
+msgstr ""
+
+msgid "Stock Settings…"
+msgstr ""
+
+msgid "Stock Settings"
+msgstr ""
+
+msgid "Close"
+msgstr ""
+
+msgid "Stock Parameters"
+msgstr ""
+
+msgid "Generate G-Code"
+msgstr ""
+
+# crates/gcodekit5-ui/src/ui/gtk/designer.rs
+msgid "View Controls"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Add"
+msgstr ""
+
+msgid "Enter text"
+msgstr ""
+
+msgid "Font:"
+msgstr ""
+
+msgid "Size:"
+msgstr ""
+
+msgid "Style:"
+msgstr ""
+
+msgid "Zoom Out"
+msgstr ""
+
+msgid "Fit to Content"
+msgstr ""
+
+msgid "Fit to Viewport"
+msgstr ""
+
+msgid "Fit to Device Working Area"
+msgstr ""
+
+msgid "Toggle Scrollbars"
+msgstr ""
+
+msgid "Keyboard Shortcuts"
+msgstr ""
+
+msgid "Designer shortcuts"
+msgstr ""
+
+msgid "Right click for context menu"
+msgstr ""
+
+msgid "Zoom In"
+msgstr ""
+
+msgid "No shapes yet"
+msgstr ""
+
+msgid "Use the toolbox on the left to start drawing."
+msgstr ""
+
+msgid "Load Design"
+msgstr ""
+
+msgid "Hide Properties"
+msgstr ""
+
+msgid "Hide"
+msgstr ""
+
+msgid "Unhide Properties"
+msgstr ""
+
+msgid "Unhide"
+msgstr ""
+
+msgid "Show Grid"
+msgstr ""
+
+msgid "Grid spacing"
+msgstr ""
+
+msgid "Snap"
+msgstr ""
+
+msgid "Snap threshold"
+msgstr ""
+
+msgid "Snap to grid"
+msgstr ""
+
+msgid "Show Toolpaths"
+msgstr ""
+
+msgid "Constraint"
+msgstr ""
+
+msgid "G-Code generated"
+msgstr ""
+
+msgid "New design created"
+msgstr ""
+
+msgid "Open Design File"
+msgstr ""
+
+msgid "GCodeKit Design Files"
+msgstr ""
+
+msgid "All Files"
+msgstr ""
+
+msgid "Loaded:"
+msgstr ""
+
+msgid "Error loading file:"
+msgstr ""
+
+msgid "Import Design File"
+msgstr ""
+
+msgid "Supported Files"
+msgstr ""
+
+msgid "Imported:"
+msgstr ""
+
+msgid "Error importing file:"
+msgstr ""
+
+msgid "Save Design File"
+msgstr ""
+
+msgid "Error saving file:"
+msgstr ""
+
+msgid "Make sure to include the file extension (.nc, .gcode, .gc o .tap)"
+msgstr ""
+
+msgid "Exported G-Code:"
+msgstr ""
+
+msgid "Error exporting G-Code:"
+msgstr ""
+
+msgid "Nothing to export"
+msgstr ""
+
+# crates/gcodekit5-ui/src/ui/gtk/visualizer.rs
+msgid "Hide Sidebar"
+msgstr ""
+
+msgid "2D View"
+msgstr ""
+
+msgid "3D View"
+msgstr ""
+
+msgid "Mode"
+msgstr ""
+
+msgid "Show Rapid Moves"
+msgstr ""
+
+msgid "Show Cutting Moves"
+msgstr ""
+
+msgid "Show Machine Bounds"
+msgstr ""
+
+msgid "Show Intensity"
+msgstr ""
+
+msgid "Show Laser/Spindle"
+msgstr ""
+
+msgid "Guides"
+msgstr ""
+
+msgid "Simulation"
+msgstr ""
+
+msgid "No G-code loaded"
+msgstr ""
+
+msgid "Open a file to preview toolpaths."
+msgstr ""
+
+msgid "Visualizer shortcuts"
+msgstr ""
+
+# crates/gcodekit5-ui/src/ui/gtk/device_manager.rs
+msgid "Delete “{}”? This cannot be undone."
+msgstr ""
+
+# crates/gcodekit5-ui/src/ui/gtk/machine_control.rs
+msgid "No ports available"
+msgstr ""
+
+msgid "Refresh ports"
+msgstr ""
+
+msgid "Connection"
+msgstr ""
+
+msgid "Disconnected"
+msgstr ""
+
+msgid "Feed: -"
+msgstr ""
+
+msgid "Spindle: -"
+msgstr ""
+
+msgid "Unlock from ALARM ($X)"
+msgstr ""
+
+msgid "Machine State"
+msgstr ""
+
+msgid "Work Coordinates"
+msgstr ""
+
+msgid "Send G-code from the editor"
+msgstr ""
+
+msgid "Stop job: abort streaming (does not reset controller)"
+msgstr ""
+
+msgid "Pause streaming (!)"
+msgstr ""
+
+msgid "Resume streaming (~)"
+msgstr ""
+
+msgid "Stop aborts streaming; E‑Stop resets the controller."
+msgstr ""
+
+msgid "Job Control"
+msgstr ""
+
+msgid "Connect to enable controls."
+msgstr ""
+
+msgid "Current Feed & Spindle"
+msgstr ""
+
+msgid "Decrease feed rate by 10%"
+msgstr ""
+
+msgid "Decrease feed rate by 1%"
+msgstr ""
+
+msgid "Reset feed rate to 100%"
+msgstr ""
+
+msgid "Increase feed rate by 1%"
+msgstr ""
+
+msgid "Increase feed rate by 10%"
+msgstr ""
+
+msgid "Decrease spindle speed by 10%"
+msgstr ""
+
+msgid "Decrease spindle speed by 1%"
+msgstr ""
+
+msgid "Reset spindle speed to 100%"
+msgstr ""
+
+msgid "Stop spindle"
+msgstr ""
+
+msgid "Increase spindle speed by 1%"
+msgstr ""
+
+msgid "Increase spindle speed by 10%"
+msgstr ""
+
+msgid "Work Coordinates (WPos)"
+msgstr ""
+
+msgid "Zero"
+msgstr ""
+
+msgid "Set work axis to zero"
+msgstr ""
+
+msgid "Set active work position to 0 for X/Y/Z"
+msgstr ""
+
+msgid "Include Z"
+msgstr ""
+
+msgid "Jog Feed:"
+msgstr ""
+
+msgid "Rapid move to work origin (X/Y, or X/Y/Z if Include Z is checked)"
+msgstr ""
+
+msgid "When checked, Go to Work Zero will also move to Z0"
+msgstr ""
+
+msgid "Machine Coordinates (MPos)"
+msgstr ""
+
+msgid "Keyboard jog: 8/2/4/6 (XY), 9/3 (Z)"
+msgstr ""
+
+msgid "Emergency stop (soft reset Ctrl-X)"
+msgstr ""
+
+msgid "Clear console"
+msgstr ""
+
+msgid "Copy last error"
+msgstr ""
+
+msgid "Device Console not available"
+msgstr ""
+
+msgid "Hide device console"
+msgstr ""
+
+msgid "Show Console"
+msgstr ""
+
+msgid "Show device console"
+msgstr ""
+
+msgid "No G-Code to Send"
+msgstr ""
+
+msgid "Please load or type G-Code into the editor first."
+msgstr ""
+
+msgid "Zero All Axes"
+msgstr ""
+
+msgid "Zero all work axes?"
+msgstr ""
+
+msgid "Go to Work Zero"
+msgstr ""
+
+msgid "This sets the active work coordinate system so the current X/Y/Z becomes 0."
+msgstr ""
+
+msgid "Port: -"
+msgstr ""
+
+msgid "State: Disconnected"
+msgstr ""
+
+msgid "Error disconnecting"
+msgstr ""
+
+msgid "Connecting…"
+msgstr ""
+
+msgid "State: Connecting…"
+msgstr ""
+
+msgid "Connected to"
+msgstr ""
+
+msgid "Controller error"
+msgstr ""
+
+msgid "Streaming Completed."
+msgstr ""
+
+msgid "Job Finished."
+msgstr ""
+
+msgid "ALARM: Unlock required."
+msgstr ""
+
+msgid "Error connecting"
+msgstr ""
+
+msgid "No valid G-Code lines found."
 msgstr ""

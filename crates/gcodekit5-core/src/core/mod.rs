@@ -12,8 +12,8 @@ pub mod listener;
 pub mod message;
 
 use crate::data::{ControllerState, ControllerStatus, PartialPosition};
+use crate::types::{thread_safe_rw, ThreadSafeRw};
 use async_trait::async_trait;
-use parking_lot::RwLock;
 use std::sync::Arc;
 
 pub use listener::{ControllerListener, ControllerListenerHandle};
@@ -231,8 +231,8 @@ pub trait ControllerTrait: Send + Sync {
 
 /// Simple controller implementation for testing
 pub struct SimpleController {
-    state: Arc<RwLock<ControllerState>>,
-    status: Arc<RwLock<ControllerStatus>>,
+    state: ThreadSafeRw<ControllerState>,
+    status: ThreadSafeRw<ControllerStatus>,
     name: String,
 }
 
@@ -240,8 +240,8 @@ impl SimpleController {
     /// Create a new simple controller
     pub fn new(name: &str) -> Self {
         Self {
-            state: Arc::new(RwLock::new(ControllerState::Disconnected)),
-            status: Arc::new(RwLock::new(ControllerStatus::Idle)),
+            state: thread_safe_rw(ControllerState::Disconnected),
+            status: thread_safe_rw(ControllerStatus::Idle),
             name: name.to_string(),
         }
     }

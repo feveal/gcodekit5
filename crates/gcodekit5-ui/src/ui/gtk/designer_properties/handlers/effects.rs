@@ -1,21 +1,21 @@
 //! Effects property handlers (offset, fillet, chamfer with live preview).
 
+use gcodekit5_core::{Shared, SharedOption, SharedVec};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::model::Shape;
 use gtk4::prelude::*;
 use gtk4::{Entry, EventControllerFocus};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 /// Setup offset entry handler with preview
 #[allow(clippy::type_complexity)]
 pub fn setup_offset_handler(
     offset_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    preview_shapes: Rc<RefCell<Vec<Shape>>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
-    has_focus: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    preview_shapes: SharedVec<Shape>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
+    has_focus: Shared<bool>,
 ) {
     let preview = preview_shapes.clone();
     let redraw = redraw_callback.clone();
@@ -106,11 +106,11 @@ pub fn setup_offset_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_fillet_handler(
     fillet_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    preview_shapes: Rc<RefCell<Vec<Shape>>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
-    has_focus: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    preview_shapes: SharedVec<Shape>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
+    has_focus: Shared<bool>,
 ) {
     let preview = preview_shapes.clone();
     let redraw = redraw_callback.clone();
@@ -201,11 +201,11 @@ pub fn setup_fillet_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_chamfer_handler(
     chamfer_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    preview_shapes: Rc<RefCell<Vec<Shape>>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
-    has_focus: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    preview_shapes: SharedVec<Shape>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
+    has_focus: Shared<bool>,
 ) {
     let preview = preview_shapes.clone();
     let redraw = redraw_callback.clone();

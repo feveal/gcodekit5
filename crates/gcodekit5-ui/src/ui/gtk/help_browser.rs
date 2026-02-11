@@ -4,6 +4,7 @@
 //! Navigation uses markdown links of the form `(help:topic_id)`.
 
 use anyhow::{anyhow, Context, Result};
+use gcodekit5_core::{shared, Shared, SharedVec};
 use gio::prelude::*;
 use gtk4::glib;
 use gtk4::prelude::*;
@@ -192,8 +193,8 @@ pub fn present_for_parent(topic: &str, parent: Option<&gtk4::Window>) {
     let header = HeaderBar::new();
     window.set_titlebar(Some(&header));
 
-    let history: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(vec![topic.to_string()]));
-    let history_idx: Rc<RefCell<usize>> = Rc::new(RefCell::new(0));
+    let history: SharedVec<String> = Rc::new(RefCell::new(vec![topic.to_string()]));
+    let history_idx: Shared<usize> = shared(0);
 
     let back_btn = Button::builder()
         .icon_name("go-previous-symbolic")

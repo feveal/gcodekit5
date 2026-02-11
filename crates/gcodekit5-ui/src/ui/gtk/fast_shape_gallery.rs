@@ -3,6 +3,7 @@
 //! Provides a gallery interface for quick insertion of parametric shapes with predefined parameters.
 
 use crate::t;
+use gcodekit5_core::{shared_none, SharedOption};
 use gcodekit5_designer::model::{DesignGear, DesignPath, DesignSprocket, Point, Shape};
 use gcodekit5_designer::parametric_shapes::*;
 use gtk4::prelude::*;
@@ -40,7 +41,7 @@ impl FastShapeTemplate {
 pub struct FastShapeGallery {
     dialog: Dialog,
     templates: Vec<FastShapeTemplate>,
-    on_shape_selected: Rc<RefCell<Option<std::boxed::Box<dyn Fn(Shape) + 'static>>>>,
+    on_shape_selected: SharedOption<std::boxed::Box<dyn Fn(Shape) + 'static>>,
 }
 
 impl FastShapeGallery {
@@ -92,7 +93,7 @@ impl FastShapeGallery {
         let mut gallery = Rc::new(Self {
             dialog: dialog.clone(),
             templates: Vec::new(),
-            on_shape_selected: Rc::new(RefCell::new(None)),
+            on_shape_selected: shared_none(),
         });
 
         // Create templates

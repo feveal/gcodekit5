@@ -500,13 +500,21 @@ impl JigsawPuzzleMaker {
 
         gcode.push_str("; Home and set work coordinate system\n");
         gcode.push_str("$H ; Home all axes (bottom-left corner)\n");
-        gcode.push_str("G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset\n");
+        if self.params.num_axes >= 3 {
+            gcode.push_str("G10 L2 P1 X0 Y0 Z0 ; Clear G54 offset\n");
+        } else {
+            gcode.push_str("G10 L2 P1 X0 Y0 ; Clear G54 offset\n");
+        }
         gcode.push_str("G54 ; Select work coordinate system 1\n");
         gcode.push_str(&format!(
             "G0 X{:.1} Y{:.1} ; Move to work origin\n",
             self.params.offset_x, self.params.offset_y
         ));
-        gcode.push_str("G10 L20 P1 X0 Y0 Z0 ; Set current position as work zero\n");
+        if self.params.num_axes >= 3 {
+            gcode.push_str("G10 L20 P1 X0 Y0 Z0 ; Set current position as work zero\n");
+        } else {
+            gcode.push_str("G10 L20 P1 X0 Y0 ; Set current position as work zero\n");
+        }
         if self.params.num_axes >= 3 {
             gcode.push_str(&format!(
                 "G0 Z{:.2} F{:.0} ; Move to safe height\n",

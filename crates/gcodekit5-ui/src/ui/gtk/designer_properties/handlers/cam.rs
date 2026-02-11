@@ -1,19 +1,18 @@
 //! CAM property handlers (operation type, depth, step down, step in, ramp angle, strategy, raster fill).
 
 use gcodekit5_core::units;
+use gcodekit5_core::Shared;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::pocket_operations::PocketStrategy;
 use gcodekit5_settings::SettingsPersistence;
 use gtk4::prelude::*;
 use gtk4::{DropDown, Entry};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 /// Setup operation type dropdown handler
 pub fn setup_operation_type_handler(
     op_type_combo: &DropDown,
-    state: Rc<RefCell<DesignerState>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    updating: Shared<bool>,
 ) {
     op_type_combo.connect_selected_notify(move |combo| {
         if *updating.borrow() {
@@ -35,9 +34,9 @@ pub fn setup_operation_type_handler(
 pub fn setup_depth_handler(
     depth_entry: &Entry,
     op_type_combo: &DropDown,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    updating: Shared<bool>,
 ) {
     let op_combo = op_type_combo.clone();
 
@@ -60,9 +59,9 @@ pub fn setup_depth_handler(
 /// Setup step down entry handler
 pub fn setup_step_down_handler(
     step_down_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    updating: Shared<bool>,
 ) {
     step_down_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -82,9 +81,9 @@ pub fn setup_step_down_handler(
 /// Setup step in entry handler
 pub fn setup_step_in_handler(
     step_in_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    updating: Shared<bool>,
 ) {
     step_in_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -104,8 +103,8 @@ pub fn setup_step_in_handler(
 /// Setup raster fill entry handler (percentage 0-100)
 pub fn setup_raster_fill_handler(
     raster_fill_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    updating: Shared<bool>,
 ) {
     raster_fill_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -125,8 +124,8 @@ pub fn setup_raster_fill_handler(
 /// Setup ramp angle entry handler
 pub fn setup_ramp_angle_handler(
     ramp_angle_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    updating: Shared<bool>,
 ) {
     ramp_angle_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -145,8 +144,8 @@ pub fn setup_ramp_angle_handler(
 /// Setup strategy dropdown handler
 pub fn setup_strategy_handler(
     strategy_combo: &DropDown,
-    state: Rc<RefCell<DesignerState>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    updating: Shared<bool>,
 ) {
     strategy_combo.connect_selected_notify(move |combo| {
         if *updating.borrow() {

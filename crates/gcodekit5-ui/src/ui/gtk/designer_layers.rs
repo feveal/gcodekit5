@@ -1,10 +1,11 @@
 use gtk4::gdk::ModifierType;
 use gtk4::prelude::*;
 use gtk4::{Box, Button, DrawingArea, Entry, Image, Label, ListBox, Orientation, ScrolledWindow};
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
 
 use crate::t;
+use gcodekit5_core::Shared;
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::shapes::OperationType;
 
@@ -31,7 +32,7 @@ impl LayersPanel {
         out
     }
 
-    pub fn new(state: Rc<RefCell<DesignerState>>, canvas: DrawingArea) -> Self {
+    pub fn new(state: Shared<DesignerState>, canvas: DrawingArea) -> Self {
         // Main container
         let widget = Box::new(Orientation::Vertical, 6);
         widget.set_margin_start(6);
@@ -319,7 +320,7 @@ impl LayersPanel {
         }
     }
 
-    pub fn refresh(&self, state: &Rc<RefCell<DesignerState>>) {
+    pub fn refresh(&self, state: &Shared<DesignerState>) {
         Self::refresh_list_box(&self.list_box, state);
         self.update_button_sensitivity();
     }
@@ -352,7 +353,7 @@ impl LayersPanel {
         }
     }
 
-    fn refresh_list_box(list_box: &ListBox, state: &Rc<RefCell<DesignerState>>) {
+    fn refresh_list_box(list_box: &ListBox, state: &Shared<DesignerState>) {
         // Don't hold a RefCell borrow across GTK mutations, because clearing the list triggers
         // selection-change signals which may borrow_mut() the same state.
         let shapes: Vec<(u64, String, Option<u64>, String, OperationType)> = {
@@ -463,15 +464,15 @@ impl LayersPanel {
         }
     }
 
-    fn group_selected_shapes(state: &Rc<RefCell<DesignerState>>) {
+    fn group_selected_shapes(state: &Shared<DesignerState>) {
         state.borrow_mut().group_selected();
     }
 
-    fn ungroup_selected_shapes(state: &Rc<RefCell<DesignerState>>) {
+    fn ungroup_selected_shapes(state: &Shared<DesignerState>) {
         state.borrow_mut().ungroup_selected();
     }
 
-    fn bring_to_front(state: &Rc<RefCell<DesignerState>>) {
+    fn bring_to_front(state: &Shared<DesignerState>) {
         let mut state_mut = state.borrow_mut();
         if let Some(shape_id) = state_mut.canvas.selection_manager.selected_id() {
             state_mut.canvas.shape_store.bring_to_front(shape_id);
@@ -480,7 +481,7 @@ impl LayersPanel {
         }
     }
 
-    fn bring_forward(state: &Rc<RefCell<DesignerState>>) {
+    fn bring_forward(state: &Shared<DesignerState>) {
         let mut state_mut = state.borrow_mut();
         if let Some(shape_id) = state_mut.canvas.selection_manager.selected_id() {
             state_mut.canvas.shape_store.bring_forward(shape_id);
@@ -489,7 +490,7 @@ impl LayersPanel {
         }
     }
 
-    fn send_backward(state: &Rc<RefCell<DesignerState>>) {
+    fn send_backward(state: &Shared<DesignerState>) {
         let mut state_mut = state.borrow_mut();
         if let Some(shape_id) = state_mut.canvas.selection_manager.selected_id() {
             state_mut.canvas.shape_store.send_backward(shape_id);
@@ -498,7 +499,7 @@ impl LayersPanel {
         }
     }
 
-    fn send_to_back(state: &Rc<RefCell<DesignerState>>) {
+    fn send_to_back(state: &Shared<DesignerState>) {
         let mut state_mut = state.borrow_mut();
         if let Some(shape_id) = state_mut.canvas.selection_manager.selected_id() {
             state_mut.canvas.shape_store.send_to_back(shape_id);

@@ -3,9 +3,9 @@
 //! Provides the core EventBus struct and global instance for
 //! application-wide event distribution.
 
-use parking_lot::RwLock;
-use std::collections::{HashMap, VecDeque};
-use std::sync::{Arc, OnceLock};
+use crate::types::{thread_safe_rw, ThreadSafeRw, ThreadSafeRwMap};
+use std::collections::VecDeque;
+use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 use uuid::Uuid;
@@ -102,9 +102,9 @@ pub struct EventBus {
     /// Broadcast channel sender
     sender: broadcast::Sender<AppEvent>,
     /// Registered synchronous handlers
-    handlers: Arc<RwLock<HashMap<SubscriptionId, (EventFilter, EventHandler)>>>,
+    handlers: ThreadSafeRwMap<SubscriptionId, (EventFilter, EventHandler)>,
     /// Event history (optional)
-    history: Arc<RwLock<VecDeque<TimestampedEvent>>>,
+    history: ThreadSafeRw<VecDeque<TimestampedEvent>>,
     /// Configuration
     config: EventBusConfig,
 }
@@ -120,8 +120,8 @@ impl EventBus {
         let (sender, _) = broadcast::channel(config.channel_capacity);
         Self {
             sender,
-            handlers: Arc::new(RwLock::new(HashMap::new())),
-            history: Arc::new(RwLock::new(VecDeque::new())),
+            handlers: thread_safe_rw(std::collections::HashMap::new()),
+            history: thread_safe_rw(VecDeque::new()),
             config,
         }
     }
@@ -311,6 +311,7 @@ mod tests {
     use super::*;
     use crate::event_bus::events::{ConnectionEvent, MachineEvent};
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
 
     #[test]
     fn test_event_bus_creation() {

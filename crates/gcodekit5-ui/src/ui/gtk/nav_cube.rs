@@ -1,8 +1,7 @@
+use gcodekit5_core::Shared;
 use gcodekit5_visualizer::Camera3D;
 use gtk4::prelude::*;
 use gtk4::{Align, Box, Button, Grid, Orientation};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub struct NavCube {
     pub widget: Box,
@@ -10,7 +9,7 @@ pub struct NavCube {
 }
 
 impl NavCube {
-    pub fn new(camera: Rc<RefCell<Camera3D>>, gl_area: gtk4::GLArea) -> Self {
+    pub fn new(camera: Shared<Camera3D>, gl_area: gtk4::GLArea) -> Self {
         let container = Box::new(Orientation::Vertical, 4);
         container.add_css_class("nav-cube-container");
         container.set_halign(Align::End);

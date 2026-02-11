@@ -50,8 +50,8 @@ impl DesignerCanvas {
 
         let cancel = self.preview_cancel.clone();
         let done_shapes_thread = done_shapes.clone();
-        let result_arc: Arc<std::sync::Mutex<Option<Vec<Toolpath>>>> =
-            Arc::new(std::sync::Mutex::new(None));
+        let result_arc: gcodekit5_core::ThreadSafeOption<Vec<Toolpath>> =
+            gcodekit5_core::thread_safe_none();
         let result_arc_thread = result_arc.clone();
 
         std::thread::spawn(move || {
@@ -182,7 +182,7 @@ impl DesignerCanvas {
                 done_shapes_thread.fetch_add(1, Ordering::Relaxed);
             }
 
-            *result_arc_thread.lock().unwrap_or_else(|p| p.into_inner()) = Some(toolpaths);
+            *result_arc_thread.lock() = Some(toolpaths);
         });
 
         // Poll for completion (non-blocking)
@@ -229,7 +229,7 @@ impl DesignerCanvas {
                 return gtk4::glib::ControlFlow::Break;
             }
 
-            if let Ok(mut guard) = result_arc_poll.try_lock() {
+            if let Some(mut guard) = result_arc_poll.try_lock() {
                 if let Some(tp) = guard.take() {
                     if !cancel_poll.load(Ordering::SeqCst) {
                         *out.borrow_mut() = tp;

@@ -212,7 +212,8 @@ pub fn main() {
         let console_listener =
             crate::ui::device_console_manager::ConsoleListener::new(console_manager);
 
-        if let Ok(mut comm) = machine_control.communicator.lock() {
+        {
+            let mut comm = machine_control.communicator.lock();
             comm.add_listener(console_listener);
         }
         stack.add_titled(
@@ -232,9 +233,7 @@ pub fn main() {
         let send_cmd = move || {
             let text = console_clone.command_entry.text();
             if !text.is_empty() {
-                let mut comm = communicator
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                let mut comm = communicator.lock();
                 if comm.is_connected() {
                     if let Err(e) = comm.send_command(&text) {
                         console_clone.append_log(&format!("Error sending: {}\n", e));
@@ -328,9 +327,7 @@ pub fn main() {
 
         // Update device info when connection changes
         glib::timeout_add_local(std::time::Duration::from_millis(500), move || {
-            let comm = communicator_for_device
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let comm = communicator_for_device.lock();
             let connected = comm.is_connected();
 
             if connected {
@@ -397,24 +394,30 @@ pub fn main() {
             let device_console = device_console.clone();
 
             estop_btn.connect_clicked(move |_| {
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(&[0x18]);
                 }
 
                 // Reset streaming state - recover from poisoned locks
-                if let Ok(mut guard) = is_streaming.lock() {
+                {
+                    let mut guard = is_streaming.lock();
                     *guard = false;
                 }
-                if let Ok(mut guard) = is_paused.lock() {
+                {
+                    let mut guard = is_paused.lock();
                     *guard = false;
                 }
-                if let Ok(mut guard) = waiting_for_ack.lock() {
+                {
+                    let mut guard = waiting_for_ack.lock();
                     *guard = false;
                 }
-                if let Ok(mut guard) = job_start_time.lock() {
+                {
+                    let mut guard = job_start_time.lock();
                     *guard = None;
                 }
-                if let Ok(mut guard) = send_queue.lock() {
+                {
+                    let mut guard = send_queue.lock();
                     guard.clear();
                 }
 

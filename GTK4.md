@@ -484,3 +484,23 @@ When extracting a struct to a separate module:
 - These constructors capture many local variables in closures, making them very difficult to split
 - **Strategy**: Extract non-constructor methods (event handlers, operations, UI builders) into sub-modules, keep `new()` in `mod.rs`
 - For truly massive constructors (2,000+ lines), extract UI builder helper functions that return widgets without closures
+
+## Type Alias Adoption (Task 3.1)
+
+### Key Aliases from `gcodekit5_core::types::aliases`
+- `Shared<T>` = `Rc<RefCell<T>>`, constructor: `shared(x)`
+- `SharedOption<T>` = `Rc<RefCell<Option<T>>>`, constructor: `shared_none()`
+- `SharedVec<T>` = `Rc<RefCell<Vec<T>>>`, constructor: `shared_vec()`
+- `ThreadSafe<T>` = `Arc<parking_lot::Mutex<T>>`, constructor: `thread_safe(x)`
+- `ThreadSafeRw<T>` = `Arc<parking_lot::RwLock<T>>`, constructor: `thread_safe_rw(x)`
+- All aliases re-exported at `gcodekit5_core` crate root
+
+### parking_lot vs std::sync Lock API
+- `parking_lot::Mutex::lock()` returns `MutexGuard` directly (no `Result`, no `.unwrap()`)
+- `parking_lot::Mutex::try_lock()` returns `Option<MutexGuard>` (use `if let Some(g)`, not `if let Ok(g)`)
+- `parking_lot::RwLock::read()/write()` return guards directly (no `.unwrap()`)
+- When converting from `std::sync::Mutex`, remove all `.unwrap()`, `.expect()`, `.map_err()` on lock calls
+- When converting `if let Ok(guard) = x.lock()` patterns, restructure to `let guard = x.lock();` (parking_lot never fails)
+
+### Test Code Caveat
+- Test code using `tokio::sync::Mutex` (async mutex with `.lock().await`) must NOT be converted to `ThreadSafe<T>` aliases — parking_lot Mutex is not async-compatible

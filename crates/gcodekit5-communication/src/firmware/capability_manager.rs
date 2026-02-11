@@ -5,7 +5,7 @@
 
 use super::capabilities_db::{CapabilitiesDatabase, FirmwareCapabilities};
 use super::firmware_version::{FirmwareType, SemanticVersion};
-use std::sync::{Arc, Mutex};
+use gcodekit5_core::{thread_safe, ThreadSafe};
 
 /// UI-friendly capability state
 #[derive(Debug, Clone)]
@@ -183,7 +183,7 @@ pub struct CapabilityManager {
     database: CapabilitiesDatabase,
 
     /// Current capability state
-    state: Arc<Mutex<CapabilityState>>,
+    state: ThreadSafe<CapabilityState>,
 }
 
 impl CapabilityManager {
@@ -191,7 +191,7 @@ impl CapabilityManager {
     pub fn new() -> Self {
         Self {
             database: CapabilitiesDatabase::new(),
-            state: Arc::new(Mutex::new(CapabilityState::default())),
+            state: thread_safe(CapabilityState::default()),
         }
     }
 
@@ -199,63 +199,55 @@ impl CapabilityManager {
     pub fn update_firmware(&self, firmware_type: FirmwareType, version: SemanticVersion) {
         if let Some(caps) = self.database.get_capabilities(firmware_type, &version) {
             let new_state = CapabilityState::from_capabilities(firmware_type, version, &caps);
-
-            if let Ok(mut state) = self.state.lock() {
-                *state = new_state;
-            }
+            *self.state.lock() = new_state;
         }
     }
 
     /// Get current capability state
     pub fn get_state(&self) -> CapabilityState {
-        self.state.lock().map(|s| s.clone()).unwrap_or_default()
+        self.state.lock().clone()
     }
 
     /// Check if a specific capability is supported
     pub fn supports(&self, capability: &str) -> bool {
-        if let Ok(state) = self.state.lock() {
-            match capability {
-                "arcs" => state.supports_arcs,
-                "probing" => state.supports_probing,
-                "tool_change" => state.supports_tool_change,
-                "variable_spindle" => state.supports_variable_spindle,
-                "coolant" => state.supports_coolant,
-                "homing" => state.supports_homing,
-                "status_reports" => state.supports_status_reports,
-                "overrides" => state.supports_overrides,
-                "soft_limits" => state.supports_soft_limits,
-                "hard_limits" => state.supports_hard_limits,
-                "macros" => state.supports_macros,
-                _ => state
-                    .custom_capabilities
-                    .iter()
-                    .any(|(k, v)| k == capability && *v),
-            }
-        } else {
-            false
+        let state = self.state.lock();
+        match capability {
+            "arcs" => state.supports_arcs,
+            "probing" => state.supports_probing,
+            "tool_change" => state.supports_tool_change,
+            "variable_spindle" => state.supports_variable_spindle,
+            "coolant" => state.supports_coolant,
+            "homing" => state.supports_homing,
+            "status_reports" => state.supports_status_reports,
+            "overrides" => state.supports_overrides,
+            "soft_limits" => state.supports_soft_limits,
+            "hard_limits" => state.supports_hard_limits,
+            "macros" => state.supports_macros,
+            _ => state
+                .custom_capabilities
+                .iter()
+                .any(|(k, v)| k == capability && *v),
         }
     }
 
     /// Get maximum number of axes
     pub fn get_max_axes(&self) -> u8 {
-        self.state.lock().map(|s| s.max_axes).unwrap_or(3)
+        self.state.lock().max_axes
     }
 
     /// Get number of coordinate systems
     pub fn get_coordinate_systems(&self) -> u8 {
-        self.state.lock().map(|s| s.coordinate_systems).unwrap_or(1)
+        self.state.lock().coordinate_systems
     }
 
     /// Reset to default (disconnected) state
     pub fn reset(&self) {
-        if let Ok(mut state) = self.state.lock() {
-            *state = CapabilityState::default();
-        }
+        *self.state.lock() = CapabilityState::default();
     }
 
     /// Get shared state reference for thread-safe access
-    pub fn get_state_ref(&self) -> Arc<Mutex<CapabilityState>> {
-        Arc::clone(&self.state)
+    pub fn get_state_ref(&self) -> ThreadSafe<CapabilityState> {
+        self.state.clone()
     }
 }
 

@@ -11,6 +11,7 @@ mod update;
 
 use crate::t;
 use gcodekit5_core::units;
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption, SharedVec};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::font_manager;
 use gcodekit5_designer::model::{DesignerShape, Shape};
@@ -22,7 +23,6 @@ use gtk4::{
     Box, CheckButton, DropDown, Entry, EventControllerFocus, Expression, Frame, Label, Orientation,
     ScrolledWindow, StringList,
 };
-use std::cell::RefCell;
 use std::rc::Rc;
 
 const MM_PER_PT: f64 = 25.4 / 72.0;
@@ -39,9 +39,9 @@ fn format_font_points(mm: f64) -> String {
 #[allow(clippy::type_complexity)]
 pub struct PropertiesPanel {
     pub widget: ScrolledWindow,
-    pub(crate) state: Rc<RefCell<DesignerState>>,
-    pub(crate) settings: Rc<RefCell<SettingsPersistence>>,
-    pub(crate) preview_shapes: Rc<RefCell<Vec<Shape>>>,
+    pub(crate) state: Shared<DesignerState>,
+    pub(crate) settings: Shared<SettingsPersistence>,
+    pub(crate) preview_shapes: SharedVec<Shape>,
     pub(crate) _content: Box,
     pub(crate) header: Label,
 
@@ -115,21 +115,21 @@ pub struct PropertiesPanel {
     pub(crate) fillet_unit_label: Label,
     pub(crate) chamfer_unit_label: Label,
     // Redraw callback
-    pub(crate) redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
+    pub(crate) redraw_callback: SharedOption<Rc<dyn Fn()>>,
     // Flag to prevent feedback loops during updates
-    pub(crate) updating: Rc<RefCell<bool>>,
+    pub(crate) updating: Shared<bool>,
     // Flag to track if any widget has focus (being edited)
-    pub(crate) has_focus: Rc<RefCell<bool>>,
+    pub(crate) has_focus: Shared<bool>,
     // Aspect ratio (width/height) for locked resizing
-    pub(crate) aspect_ratio: Rc<RefCell<f64>>,
+    pub(crate) aspect_ratio: Shared<f64>,
 }
 
 impl PropertiesPanel {
     /// Create a new properties panel.
     pub fn new(
-        state: Rc<RefCell<DesignerState>>,
-        settings: Rc<RefCell<SettingsPersistence>>,
-        preview_shapes: Rc<RefCell<Vec<Shape>>>,
+        state: Shared<DesignerState>,
+        settings: Shared<SettingsPersistence>,
+        preview_shapes: SharedVec<Shape>,
     ) -> Rc<Self> {
         let scrolled = ScrolledWindow::builder()
             .hscrollbar_policy(gtk4::PolicyType::Never)
@@ -294,10 +294,10 @@ impl PropertiesPanel {
             fillet_unit_label,
             chamfer_unit_label,
             lock_aspect_ratio,
-            redraw_callback: Rc::new(RefCell::new(None)),
-            updating: Rc::new(RefCell::new(false)),
-            has_focus: Rc::new(RefCell::new(bool::default())),
-            aspect_ratio: Rc::new(RefCell::new(1.0)),
+            redraw_callback: shared_none(),
+            updating: shared(false),
+            has_focus: shared(bool::default()),
+            aspect_ratio: shared(1.0),
         });
 
         // Connect value change handlers

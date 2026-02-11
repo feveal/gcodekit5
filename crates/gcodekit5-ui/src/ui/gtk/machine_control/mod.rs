@@ -17,8 +17,6 @@ use gtk4::{
     PolicyType, ScrolledWindow, SizeGroup, SizeGroupMode, ToggleButton,
 };
 use std::cell::Cell;
-use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 
 use crate::device_status;
 use crate::t;
@@ -27,6 +25,9 @@ use crate::ui::gtk::editor::GcodeEditor;
 use crate::ui::gtk::help_browser;
 use crate::ui::gtk::status_bar::StatusBar;
 use crate::ui::gtk::visualizer::GcodeVisualizer;
+use gcodekit5_core::{
+    thread_safe, thread_safe_deque, thread_safe_none, ThreadSafe, ThreadSafeDeque, ThreadSafeOption,
+};
 use std::rc::Rc;
 
 fn set_button_icon_label(btn: &Button, icon: &str, label: &str) {
@@ -128,9 +129,9 @@ pub struct MachineControlView {
     pub step_label: Label,
     pub jog_feed_entry: gtk4::Entry,
     pub jog_feed_units: Label,
-    pub jog_step_mm: Arc<Mutex<f32>>,
-    pub jog_feed_mm_per_min: Arc<Mutex<f32>>,
-    pub current_feed_units: Arc<Mutex<FeedRateUnits>>,
+    pub jog_step_mm: ThreadSafe<f32>,
+    pub jog_feed_mm_per_min: ThreadSafe<f32>,
+    pub current_feed_units: ThreadSafe<FeedRateUnits>,
     pub jog_x_pos: Button,
     pub jog_x_neg: Button,
     pub jog_y_pos: Button,
@@ -138,19 +139,19 @@ pub struct MachineControlView {
     pub jog_z_pos: Button,
     pub jog_z_neg: Button,
     pub estop_btn: Button,
-    pub communicator: Arc<Mutex<SerialCommunicator>>,
+    pub communicator: ThreadSafe<SerialCommunicator>,
     pub status_bar: Option<StatusBar>,
     pub device_console: Option<Rc<DeviceConsoleView>>,
     pub editor: Option<Rc<GcodeEditor>>,
     pub visualizer: Option<Rc<GcodeVisualizer>>,
-    pub send_queue: Arc<Mutex<VecDeque<String>>>,
-    pub total_lines: Arc<Mutex<usize>>,
-    pub is_streaming: Arc<Mutex<bool>>,
-    pub is_paused: Arc<Mutex<bool>>,
-    pub waiting_for_ack: Arc<Mutex<bool>>,
-    pub current_units: Arc<Mutex<MeasurementSystem>>,
-    pub last_overrides: Arc<Mutex<OverrideState>>,
-    pub job_start_time: Arc<Mutex<Option<std::time::Instant>>>,
+    pub send_queue: ThreadSafeDeque<String>,
+    pub total_lines: ThreadSafe<usize>,
+    pub is_streaming: ThreadSafe<bool>,
+    pub is_paused: ThreadSafe<bool>,
+    pub waiting_for_ack: ThreadSafe<bool>,
+    pub current_units: ThreadSafe<MeasurementSystem>,
+    pub last_overrides: ThreadSafe<OverrideState>,
+    pub job_start_time: ThreadSafeOption<std::time::Instant>,
 }
 
 impl MachineControlView {
@@ -634,8 +635,8 @@ impl MachineControlView {
         jog_area.set_halign(Align::Center);
         jog_area.set_margin_top(12);
 
-        let jog_step_mm = Arc::new(Mutex::new(1.0_f32));
-        let jog_feed_mm_per_min = Arc::new(Mutex::new(2000.0_f32));
+        let jog_step_mm = thread_safe(1.0_f32);
+        let jog_feed_mm_per_min = thread_safe(2000.0_f32);
 
         // Combined step and feed controls on one line
         let jog_controls_box = Box::new(Orientation::Horizontal, 16);
@@ -979,7 +980,7 @@ impl MachineControlView {
             }
         });
 
-        let communicator = Arc::new(Mutex::new(SerialCommunicator::new()));
+        let communicator = thread_safe(SerialCommunicator::new());
 
         // Initialize units from settings if available
         let initial_units = if let Some(controller) = &settings_controller {
@@ -992,14 +993,14 @@ impl MachineControlView {
         } else {
             MeasurementSystem::Metric
         };
-        let current_units = Arc::new(Mutex::new(initial_units));
+        let current_units = thread_safe(initial_units);
 
         let initial_feed_units = if let Some(controller) = &settings_controller {
             controller.persistence.borrow().config().ui.feed_rate_units
         } else {
             FeedRateUnits::default()
         };
-        let current_feed_units = Arc::new(Mutex::new(initial_feed_units));
+        let current_feed_units = thread_safe(initial_feed_units);
 
         // Populate jog UI from initial settings
         {
@@ -1013,13 +1014,11 @@ impl MachineControlView {
                 );
             }
             step_combo.set_active_id(Some("1"));
-            *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) = 1.0;
+            *jog_step_mm.lock() = 1.0;
 
             jog_feed_units.set_text(&initial_feed_units.to_string());
             jog_feed_entry.set_text(&format_feed_rate(2000.0, initial_feed_units));
-            *jog_feed_mm_per_min
-                .lock()
-                .unwrap_or_else(|p| p.into_inner()) = 2000.0;
+            *jog_feed_mm_per_min.lock() = 2000.0;
         }
 
         // Listen for unit changes
@@ -1040,7 +1039,8 @@ impl MachineControlView {
                         "Imperial" => MeasurementSystem::Imperial,
                         _ => MeasurementSystem::Metric,
                     };
-                    if let Ok(mut u) = units_clone.lock() {
+                    {
+                        let mut u = units_clone.lock();
                         *u = new_units;
                     }
 
@@ -1048,7 +1048,7 @@ impl MachineControlView {
                     let unit_label = get_unit_label(units);
                     step_label_clone.set_text(&format!("Step ({unit_label}):"));
 
-                    let selected_mm = *jog_step_mm_clone.lock().unwrap_or_else(|p| p.into_inner());
+                    let selected_mm = *jog_step_mm_clone.lock();
                     step_combo_clone.remove_all();
                     let presets_mm: [f32; 6] = [0.001, 0.01, 0.1, 1.0, 10.0, 100.0];
                     for mm in presets_mm {
@@ -1067,11 +1067,9 @@ impl MachineControlView {
                         "in/sec" => FeedRateUnits::InPerSec,
                         _ => FeedRateUnits::MmPerMin,
                     };
-                    *feed_units_clone.lock().unwrap_or_else(|p| p.into_inner()) = new_units;
+                    *feed_units_clone.lock() = new_units;
                     jog_feed_units_clone.set_text(&new_units.to_string());
-                    let current_mm_per_min = *jog_feed_mm_per_min_clone
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner());
+                    let current_mm_per_min = *jog_feed_mm_per_min_clone.lock();
                     jog_feed_entry_clone.set_text(&format_feed_rate(current_mm_per_min, new_units));
                 }
             });
@@ -1146,18 +1144,18 @@ impl MachineControlView {
             device_console: device_console.clone(),
             editor,
             visualizer,
-            send_queue: Arc::new(Mutex::new(VecDeque::new())),
-            total_lines: Arc::new(Mutex::new(0)),
-            is_streaming: Arc::new(Mutex::new(false)),
-            is_paused: Arc::new(Mutex::new(false)),
-            waiting_for_ack: Arc::new(Mutex::new(false)),
+            send_queue: thread_safe_deque(),
+            total_lines: thread_safe(0),
+            is_streaming: thread_safe(false),
+            is_paused: thread_safe(false),
+            waiting_for_ack: thread_safe(false),
             current_units,
-            last_overrides: Arc::new(Mutex::new(OverrideState {
+            last_overrides: thread_safe(OverrideState {
                 feed: 100,
                 rapid: 100,
                 spindle: 100,
-            })),
-            job_start_time: Arc::new(Mutex::new(None)),
+            }),
+            job_start_time: thread_safe_none(),
         };
 
         // Keep internal jog values in base units (mm, mm/min)
@@ -1166,7 +1164,7 @@ impl MachineControlView {
             view.step_combo.connect_changed(move |c| {
                 if let Some(id) = c.active_id() {
                     if let Ok(v) = id.parse::<f32>() {
-                        *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) = v;
+                        *jog_step_mm.lock() = v;
                     }
                 }
             });
@@ -1176,11 +1174,9 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let current_feed_units = view.current_feed_units.clone();
             view.jog_feed_entry.connect_changed(move |e| {
-                let units = *current_feed_units.lock().unwrap_or_else(|p| p.into_inner());
+                let units = *current_feed_units.lock();
                 if let Ok(v) = parse_feed_rate(&e.text(), units) {
-                    *jog_feed_mm_per_min
-                        .lock()
-                        .unwrap_or_else(|p| p.into_inner()) = v;
+                    *jog_feed_mm_per_min.lock() = v;
                 }
             });
         }
@@ -1217,7 +1213,7 @@ impl MachineControlView {
         fn send_jog(
             axis: char,
             delta: f32,
-            communicator: &Arc<Mutex<SerialCommunicator>>,
+            communicator: &ThreadSafe<SerialCommunicator>,
             feed_mm_per_min: f32,
             console: &Option<Rc<DeviceConsoleView>>,
         ) {
@@ -1225,7 +1221,8 @@ impl MachineControlView {
             if let Some(c) = console {
                 c.append_log(&format!("> {}\n", jog_cmd.trim()));
             }
-            if let Ok(mut comm) = communicator.lock() {
+            {
+                let mut comm = communicator.lock();
                 let _ = comm.send(jog_cmd.as_bytes());
             }
         }
@@ -1236,10 +1233,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_x_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('X', step, &communicator, feed, &console);
             });
         }
@@ -1249,10 +1244,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_x_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('X', -step, &communicator, feed, &console);
             });
         }
@@ -1262,10 +1255,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_y_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('Y', step, &communicator, feed, &console);
             });
         }
@@ -1275,10 +1266,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_y_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('Y', -step, &communicator, feed, &console);
             });
         }
@@ -1288,10 +1277,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_z_pos.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('Z', step, &communicator, feed, &console);
             });
         }
@@ -1301,10 +1288,8 @@ impl MachineControlView {
             let jog_feed_mm_per_min = view.jog_feed_mm_per_min.clone();
             let console = view.device_console.clone();
             view.jog_z_neg.connect_clicked(move |_| {
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
                 send_jog('Z', -step, &communicator, feed, &console);
             });
         }
@@ -1332,10 +1317,8 @@ impl MachineControlView {
                     return glib::Propagation::Proceed;
                 };
 
-                let step = *jog_step_mm.lock().unwrap_or_else(|p| p.into_inner());
-                let feed = *jog_feed_mm_per_min
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner());
+                let step = *jog_step_mm.lock();
+                let feed = *jog_feed_mm_per_min.lock();
 
                 match ch {
                     '8' => send_jog('Y', step, &communicator, feed, &console),
@@ -1367,10 +1350,11 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> ! (Pause)\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(b"!");
                 }
-                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = true;
+                *is_paused.lock() = true;
             });
         }
         {
@@ -1385,23 +1369,23 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> ~ (Resume)\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send(b"~");
                 }
-                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                *is_paused.lock() = false;
 
                 // Kickstart if stalled (streaming, not waiting for ack, and has commands)
-                if *is_streaming.lock().unwrap_or_else(|p| p.into_inner())
-                    && !*waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner())
-                {
-                    let mut queue = send_queue.lock().unwrap_or_else(|p| p.into_inner());
+                if *is_streaming.lock() && !*waiting_for_ack.lock() {
+                    let mut queue = send_queue.lock();
                     if let Some(cmd) = queue.pop_front() {
                         if let Some(c) = console.as_ref() {
                             c.append_log(&format!("> {}\n", cmd));
                         }
-                        if let Ok(mut comm) = communicator.lock() {
+                        {
+                            let mut comm = communicator.lock();
                             let _ = comm.send_command(&cmd);
-                            *waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner()) = true;
+                            *waiting_for_ack.lock() = true;
                         }
                     }
                 }
@@ -1420,15 +1404,16 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> 0x18 (Stop)\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     // 0x18 = Ctrl-x = Soft Reset
                     let _ = comm.send(&[0x18]);
                 }
-                *is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = false;
-                *is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
-                *waiting_for_ack.lock().unwrap_or_else(|p| p.into_inner()) = false;
-                *job_start_time.lock().unwrap_or_else(|p| p.into_inner()) = None;
-                send_queue.lock().unwrap_or_else(|p| p.into_inner()).clear();
+                *is_streaming.lock() = false;
+                *is_paused.lock() = false;
+                *waiting_for_ack.lock() = false;
+                *job_start_time.lock() = None;
+                send_queue.lock().clear();
 
                 // Reset progress
                 if let Some(sb) = status_bar.as_ref() {
@@ -1480,7 +1465,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> $H\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command("$H");
                 }
             });
@@ -1492,7 +1478,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log("> $X\n");
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command("$X");
                 }
             });
@@ -1510,7 +1497,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(&cmd);
                 }
             });
@@ -1531,7 +1519,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(&cmd);
                 }
             });
@@ -1550,7 +1539,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(&cmd);
                 }
             });
@@ -1569,7 +1559,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(&cmd);
                 }
             });
@@ -1609,7 +1600,7 @@ impl MachineControlView {
                             .unwrap_or(1);
                         let cmd = format!("G10 L20 P{p} X0 Y0 Z0");
                         if let Some(c) = console.as_ref() { c.append_log(&format!("> {}\n", cmd)); }
-                        if let Ok(mut comm) = communicator.lock() {
+                        { let mut comm = communicator.lock();
                             let _ = comm.send_command(&cmd);
                         }
                     }
@@ -1633,7 +1624,8 @@ impl MachineControlView {
                 if let Some(c) = console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(cmd);
                 }
             });
@@ -1668,7 +1660,8 @@ impl MachineControlView {
                 console_clone.append_log(&format!("> {}\n", cmd));
 
                 // Send command
-                if let Ok(mut comm) = communicator.lock() {
+                {
+                    let mut comm = communicator.lock();
                     let _ = comm.send_command(&cmd);
                 }
 
@@ -1690,11 +1683,11 @@ impl MachineControlView {
 
         let view_clone = view.clone();
         view.connect_btn.connect_clicked(move |_| {
-            let is_connected = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner()).is_connected();
+            let is_connected = view_clone.communicator.lock().is_connected();
 
             if is_connected {
                 // Disconnect
-                let mut comm = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner());
+                let mut comm = view_clone.communicator.lock();
                 match comm.disconnect() {
                     Ok(_) => {
                         set_button_icon_label(&view_clone.connect_btn, "network-wired-symbolic", &t!("Connect"));
@@ -1774,7 +1767,7 @@ impl MachineControlView {
                     };
 
                     // Perform synchronous connection (it's fast)
-                    let result = view_clone.communicator.lock().unwrap_or_else(|p| p.into_inner()).connect(&params);
+                    let result = view_clone.communicator.lock().connect(&params);
 
                     match result {
                         Ok(_) => {
@@ -1840,7 +1833,7 @@ impl MachineControlView {
 
                             // Trigger startup banner (some firmwares only emit it after reset) and then query firmware + settings.
                             // Important: some controllers ignore commands sent immediately after Ctrl-X.
-                            if let Ok(mut comm) = view_clone.communicator.lock() {
+                            { let mut comm = view_clone.communicator.lock();
                                 if let Some(c) = view_clone.device_console.as_ref() { c.append_log("> 0x18 (Reset)\n"); }
                                 let _ = comm.send(&[0x18]); // Ctrl-X (soft reset)
                             }
@@ -1850,7 +1843,7 @@ impl MachineControlView {
                                 let communicator_init = view_clone.communicator.clone();
                                 let console = view_clone.device_console.clone();
                                 glib::timeout_add_local(std::time::Duration::from_millis(250), move || {
-                                    if let Ok(mut comm) = communicator_init.try_lock() {
+                                    if let Some(mut comm) = communicator_init.try_lock() {
                                         if comm.is_connected() {
                                             if let Some(c) = console.as_ref() { c.append_log("> $I\n"); }
                                             let _ = comm.send_command("$I");
@@ -1864,7 +1857,7 @@ impl MachineControlView {
                                 let communicator_init = view_clone.communicator.clone();
                                 let console = view_clone.device_console.clone();
                                 glib::timeout_add_local(std::time::Duration::from_millis(800), move || {
-                                    if let Ok(mut comm) = communicator_init.try_lock() {
+                                    if let Some(mut comm) = communicator_init.try_lock() {
                                         if comm.is_connected() {
                                             if let Some(c) = console.as_ref() { c.append_log("> $$\n"); }
                                             let _ = comm.send_command("$$");
@@ -1923,7 +1916,7 @@ impl MachineControlView {
 
                                 // Check if still connected
                                 let is_connected = {
-                                    if let Ok(comm) = communicator_poll.try_lock() {
+                                    if let Some(comm) = communicator_poll.try_lock() {
                                         comm.is_connected()
                                     } else {
                                         return glib::ControlFlow::Continue;
@@ -1935,7 +1928,7 @@ impl MachineControlView {
                                 }
 
                                 // Try to read data (non-blocking, quick)
-                                if let Ok(mut comm) = communicator_poll.try_lock() {
+                                if let Some(mut comm) = communicator_poll.try_lock() {
                                     if let Ok(response_bytes) = comm.receive() {
                                         if !response_bytes.is_empty() {
                                             let s = String::from_utf8_lossy(&response_bytes);
@@ -1993,7 +1986,7 @@ impl MachineControlView {
                                                             line_for_log = format!("{} - {}", line, decoded);
 
                                                             // Only show dialog if NOT streaming, otherwise just log
-                                                            if !*is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) {
+                                                            if !*is_streaming_poll.lock() {
                                                                 let secondary = format!("error:{} - {}", code, decoded);
                                                                 let dialog = gtk4::MessageDialog::builder()
                                                                     .message_type(gtk4::MessageType::Error)
@@ -2025,15 +2018,15 @@ impl MachineControlView {
                                                 }
 
                                                 if is_ack || is_error {
-                                                     *waiting_for_ack_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                                                     *waiting_for_ack_poll.lock() = false;
 
                                                      // If error, we might want to stop, but for now we continue
                                                      // if is_error { ... logic to stop ... }
 
-                                                     if *is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner())
-                                                         && !*is_paused_poll.lock().unwrap_or_else(|p| p.into_inner()) {
-                                                              let mut queue = send_queue_poll.lock().unwrap_or_else(|p| p.into_inner());
-                                                              let total_lines_val = *total_lines_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                     if *is_streaming_poll.lock()
+                                                         && !*is_paused_poll.lock() {
+                                                              let mut queue = send_queue_poll.lock();
+                                                              let total_lines_val = *total_lines_poll.lock();
                                                               let remaining = queue.len();
                                                               let sent = total_lines_val - remaining;
 
@@ -2046,7 +2039,7 @@ impl MachineControlView {
                                                                   };
 
                                                                   // Calculate actual elapsed time
-                                                                  let elapsed_secs = if let Some(start) = *job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner()) {
+                                                                  let elapsed_secs = if let Some(start) = *job_start_time_poll.lock() {
                                                                       start.elapsed().as_secs_f64()
                                                                   } else {
                                                                       0.0
@@ -2079,14 +2072,14 @@ impl MachineControlView {
                                                                        c.append_log(&format!("> {}\n", next_cmd));
                                                                    }
                                                                    let _ = comm.send_command(&next_cmd);
-                                                                    *waiting_for_ack_poll.lock().unwrap_or_else(|p| p.into_inner()) = true;
+                                                                    *waiting_for_ack_poll.lock() = true;
                                                               } else {
                                                                    // Done streaming
-                                                                   *is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
-                                                                   *is_paused_poll.lock().unwrap_or_else(|p| p.into_inner()) = false;
+                                                                   *is_streaming_poll.lock() = false;
+                                                                   *is_paused_poll.lock() = false;
 
                                                                    // Don't clear job_start_time yet - wait for machine to be Idle
-                                                                   // *job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner()) = None;
+                                                                   // *job_start_time_poll.lock() = None;
 
                                                                    if let Some(c) = device_console_poll.as_ref() {
                                                                        c.append_log(&format!("{}\n", t!("Streaming Completed.")));
@@ -2138,8 +2131,8 @@ impl MachineControlView {
                                                         }
 
                                                         // If machine is Idle and not streaming, clear job timer
-                                                        if state == "Idle" && !*is_streaming_poll.lock().unwrap_or_else(|p| p.into_inner()) {
-                                                            let mut start_time = job_start_time_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                        if state == "Idle" && !*is_streaming_poll.lock() {
+                                                            let mut start_time = job_start_time_poll.lock();
                                                             if start_time.is_some() {
                                                                 *start_time = None;
                                                                 if let Some(sb) = status_bar_poll.as_ref() {
@@ -2166,7 +2159,7 @@ impl MachineControlView {
 
                                                     // Update machine position (MPos)
                                                     if let Some(mpos) = full_status.mpos {
-                                                        let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                        let units = *current_units_poll.lock();
                                                         let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                         world_x_poll.set_text(&format!(
@@ -2205,7 +2198,7 @@ impl MachineControlView {
                                                     // WPos is either reported directly by GRBL or derived from MPos-WCO
                                                     // parse_full() automatically derives it when possible
                                                     if let Some(wpos) = full_status.wpos {
-                                                        let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                        let units = *current_units_poll.lock();
                                                         let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                         // Update DRO (Digital ReadOut) with work coordinates
@@ -2246,7 +2239,7 @@ impl MachineControlView {
                                                             use gcodekit5_communication::firmware::grbl::status_parser::StatusParser;
                                                             let wpos = StatusParser::wpos_from_mpos_wco(mpos, wco);
 
-                                                            let units = *current_units_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                            let units = *current_units_poll.lock();
                                                             let unit_label = gcodekit5_core::units::get_unit_label(units);
 
                                                             // Update DRO with derived work coordinates
@@ -2288,14 +2281,14 @@ impl MachineControlView {
 
                                                     // Update overrides
                                                     let (feed_ov, spindle_ov) = if let Some(ov) = full_status.overrides {
-                                                        if let Ok(mut last) = last_overrides_poll.lock() {
+                                                        {
+                                                            let mut last = last_overrides_poll.lock();
                                                             *last = ov;
                                                         }
                                                         (ov.feed, ov.spindle)
-                                                    } else if let Ok(last) = last_overrides_poll.lock() {
-                                                        (last.feed, last.spindle)
                                                     } else {
-                                                        (100, 100)
+                                                        let last = last_overrides_poll.lock();
+                                                        (last.feed, last.spindle)
                                                     };
 
                                                     // Update feed/spindle state
@@ -2304,7 +2297,7 @@ impl MachineControlView {
 
                                                     // Handle feed rate even if spindle is None
                                                     // Prefer commanded feed rate if available, otherwise use reported feed rate
-                                                    let commanded_feed = device_status::DEVICE_STATUS.read().ok().and_then(|s| s.commanded_feed_rate);
+                                                    let commanded_feed = device_status::DEVICE_STATUS.read().commanded_feed_rate;
                                                     let reported_feed = full_status.feed_rate.map(|f| f as f32);
                                                     // If we have a commanded feed rate, use it. If not, fall back to reported.
                                                     // However, if reported is 0 (idle), we might still want to show the last commanded?
@@ -2313,7 +2306,7 @@ impl MachineControlView {
                                                     let display_feed = commanded_feed.or(reported_feed);
 
                                                     if let Some(feed_rate) = display_feed {
-                                                        let units = *current_feed_units_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                        let units = *current_feed_units_poll.lock();
                                                         let feed = format_feed_rate(feed_rate, units);
                                                         state_feed_label_poll.set_text(&format!(
                                                             "{} {} {}",
@@ -2339,7 +2332,7 @@ impl MachineControlView {
                                                     }
 
                                                     // Handle spindle speed even if feed is None
-                                                    let commanded_spindle = device_status::DEVICE_STATUS.read().ok().and_then(|s| s.commanded_spindle_speed);
+                                                    let commanded_spindle = device_status::DEVICE_STATUS.read().commanded_spindle_speed;
                                                     let reported_spindle = full_status.spindle_speed.map(|s| s as f32);
                                                     let display_spindle = commanded_spindle.or(reported_spindle);
 
@@ -2367,7 +2360,7 @@ impl MachineControlView {
 
                                                     // Update status bar and device_status if we have both
                                                     if let (Some(feed_rate), Some(spindle_speed)) = (display_feed, display_spindle) {
-                                                        let units = *current_feed_units_poll.lock().unwrap_or_else(|p| p.into_inner());
+                                                        let units = *current_feed_units_poll.lock();
                                                         let feed_spindle = FeedSpindleState {
                                                             feed_rate: feed_rate as f64,
                                                             spindle_speed: spindle_speed as u32,

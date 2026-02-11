@@ -15,6 +15,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use gcodekit5_core::{thread_safe, ThreadSafe};
 
 /// Token types for G-Code syntax highlighting
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -289,17 +290,17 @@ impl Default for GcodeFile {
 /// G-Code Editor Manager
 pub struct GcodeEditor {
     /// Current file being edited
-    file: Arc<Mutex<GcodeFile>>,
+    file: ThreadSafe<GcodeFile>,
     /// Whether the editor is editable
-    editable: Arc<Mutex<bool>>,
+    editable: ThreadSafe<bool>,
 }
 
 impl GcodeEditor {
     /// Create a new G-Code editor
     pub fn new() -> Self {
         Self {
-            file: Arc::new(Mutex::new(GcodeFile::new())),
-            editable: Arc::new(Mutex::new(true)),
+            file: thread_safe(GcodeFile::new()),
+            editable: thread_safe(true),
         }
     }
 
@@ -307,14 +308,12 @@ impl GcodeEditor {
     fn lock_file(&self) -> std::sync::MutexGuard<'_, GcodeFile> {
         self.file
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Acquire editable lock with poisoned lock recovery
     fn lock_editable(&self) -> std::sync::MutexGuard<'_, bool> {
         self.editable
             .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     /// Load a file from content

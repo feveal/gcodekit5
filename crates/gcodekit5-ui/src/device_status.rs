@@ -3,10 +3,10 @@
 use gcodekit5_communication::firmware::grbl::status_parser::{
     BufferRxState, FeedSpindleState, MachinePosition, WorkCoordinateOffset, WorkPosition,
 };
+use gcodekit5_core::{thread_safe_rw, ThreadSafeRw};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Arc, RwLock};
 
 /// Global GRBL device status
 #[derive(Debug, Clone)]
@@ -65,8 +65,8 @@ impl Default for GrblDeviceStatus {
 }
 
 /// Global device status instance
-pub static DEVICE_STATUS: Lazy<Arc<RwLock<GrblDeviceStatus>>> =
-    Lazy::new(|| Arc::new(RwLock::new(GrblDeviceStatus::default())));
+pub static DEVICE_STATUS: Lazy<ThreadSafeRw<GrblDeviceStatus>> =
+    Lazy::new(|| thread_safe_rw(GrblDeviceStatus::default()));
 
 /// Number of axes on the active device (default 3).
 static ACTIVE_NUM_AXES: AtomicU8 = AtomicU8::new(3);
@@ -83,49 +83,56 @@ pub fn set_active_num_axes(n: u8) {
 
 /// Update the machine state
 pub fn update_state(state: String) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.state = state;
     }
 }
 
 /// Update machine position
 pub fn update_machine_position(position: MachinePosition) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.machine_position = Some(position);
     }
 }
 
 /// Update work position
 pub fn update_work_position(position: WorkPosition) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.work_position = Some(position);
     }
 }
 
 /// Update work coordinate offset
 pub fn update_work_coordinate_offset(offset: WorkCoordinateOffset) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.work_coordinate_offset = Some(offset);
     }
 }
 
 /// Update buffer state
 pub fn update_buffer_state(buffer: BufferRxState) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.buffer_state = Some(buffer);
     }
 }
 
 /// Update feed and spindle state
 pub fn update_feed_spindle_state(feed_spindle: FeedSpindleState) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.feed_spindle_state = Some(feed_spindle);
     }
 }
 
 /// Update connection status
 pub fn update_connection_status(connected: bool, port: Option<String>) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.is_connected = connected;
         status.port_name = port;
         if !connected {
@@ -140,7 +147,8 @@ pub fn update_connection_status(connected: bool, port: Option<String>) {
 
 /// Update firmware information
 pub fn update_firmware_info(firmware_type: String, version: String, device_name: Option<String>) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.firmware_type = Some(firmware_type);
         status.firmware_version = Some(version);
         status.device_name = device_name;
@@ -148,25 +156,29 @@ pub fn update_firmware_info(firmware_type: String, version: String, device_name:
 }
 
 pub fn update_grbl_setting(number: u16, value: String) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.grbl_settings.insert(number, value);
     }
 }
 
 pub fn update_commanded_feed_rate(feed_rate: f32) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.commanded_feed_rate = Some(feed_rate);
     }
 }
 
 pub fn update_commanded_spindle_speed(spindle_speed: f32) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         status.commanded_spindle_speed = Some(spindle_speed);
     }
 }
 
 pub fn update_grbl_settings_bulk(settings: &[(u16, String)]) {
-    if let Ok(mut status) = DEVICE_STATUS.write() {
+    {
+        let mut status = DEVICE_STATUS.write();
         for (n, v) in settings {
             status.grbl_settings.insert(*n, v.clone());
         }
@@ -174,10 +186,7 @@ pub fn update_grbl_settings_bulk(settings: &[(u16, String)]) {
 }
 
 pub fn get_grbl_setting(number: u16) -> Option<String> {
-    DEVICE_STATUS
-        .read()
-        .ok()
-        .and_then(|s| s.grbl_settings.get(&number).cloned())
+    DEVICE_STATUS.read().grbl_settings.get(&number).cloned()
 }
 
 fn parse_numeric_prefix(s: &str) -> Option<f64> {
@@ -203,8 +212,5 @@ pub fn get_grbl_setting_numeric(number: u16) -> Option<f64> {
 
 /// Get a snapshot of the current device status
 pub fn get_status() -> GrblDeviceStatus {
-    DEVICE_STATUS
-        .read()
-        .unwrap_or_else(|p| p.into_inner())
-        .clone()
+    DEVICE_STATUS.read().clone()
 }

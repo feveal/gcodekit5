@@ -7,7 +7,6 @@ use gtk4::{
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, PreferencesGroup};
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -19,6 +18,7 @@ use super::CamToolsView;
 use crate::ui::gtk::help_browser;
 use gcodekit5_camtools::gerber::{GerberConverter, GerberLayerType, GerberParameters};
 use gcodekit5_core::units;
+use gcodekit5_core::{shared, SharedHashMap};
 use gcodekit5_settings::SettingsController;
 
 pub struct GerberTool {
@@ -42,7 +42,7 @@ struct GerberWidgets {
     isolation_width: Entry,
     rubout: CheckButton,
     use_board_outline: CheckButton,
-    layer_files: Rc<RefCell<HashMap<GerberLayerType, PathBuf>>>,
+    layer_files: SharedHashMap<GerberLayerType, PathBuf>,
     file_label: Label,
 }
 
@@ -115,7 +115,7 @@ impl GerberTool {
         file_group.add(&file_row);
         sidebar_box.append(&file_group);
 
-        let layer_files = Rc::new(RefCell::new(HashMap::new()));
+        let layer_files = shared(HashMap::new());
         let layer_files_clone = layer_files.clone();
         let file_label_clone = file_label.clone();
 

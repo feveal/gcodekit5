@@ -13,6 +13,7 @@ use std::rc::Rc;
 use crate::ui::gtk::help_browser;
 use crate::ui::tools_manager_backend::{string_to_tool_material, ToolsManagerBackend};
 use gcodekit5_core::data::tools::{ShankType, Tool, ToolCoating, ToolId, ToolMaterial, ToolType};
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption};
 use gcodekit5_settings::manager::SettingsManager;
 use gcodekit5_settings::SettingsController;
 
@@ -21,7 +22,7 @@ pub(crate) const ROW_TOOL_ID_KEY: &str = "gcodekit5-tool-id";
 #[derive(Clone)]
 pub struct ToolsManagerView {
     pub widget: Paned,
-    pub(crate) backend: Rc<RefCell<ToolsManagerBackend>>,
+    pub(crate) backend: Shared<ToolsManagerBackend>,
     pub(crate) settings_controller: Rc<SettingsController>,
 
     // Left panel widgets
@@ -59,9 +60,9 @@ pub struct ToolsManagerView {
     pub(crate) error_label: Label,
 
     // State
-    pub(crate) selected_tool: Rc<RefCell<Option<Tool>>>,
-    pub(crate) is_creating: Rc<RefCell<bool>>,
-    pub(crate) last_selected_tool_id: Rc<RefCell<Option<String>>>,
+    pub(crate) selected_tool: SharedOption<Tool>,
+    pub(crate) is_creating: Shared<bool>,
+    pub(crate) last_selected_tool_id: SharedOption<String>,
 
     // Action buttons
     pub(crate) save_btn: Button,
@@ -77,7 +78,7 @@ pub struct ToolsManagerView {
 
 impl ToolsManagerView {
     pub fn new(settings_controller: Rc<SettingsController>) -> Rc<Self> {
-        let backend = Rc::new(RefCell::new(ToolsManagerBackend::new()));
+        let backend = shared(ToolsManagerBackend::new());
 
         let widget = Paned::new(Orientation::Horizontal);
         widget.set_hexpand(true);
@@ -349,9 +350,9 @@ impl ToolsManagerView {
             edit_description,
             edit_notes,
             error_label,
-            selected_tool: Rc::new(RefCell::new(None)),
-            is_creating: Rc::new(RefCell::new(false)),
-            last_selected_tool_id: Rc::new(RefCell::new(None)),
+            selected_tool: shared_none(),
+            is_creating: shared(false),
+            last_selected_tool_id: shared_none(),
             save_btn,
             cancel_btn,
             delete_btn,

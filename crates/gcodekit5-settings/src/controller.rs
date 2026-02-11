@@ -6,8 +6,7 @@
 use crate::manager::SettingsManager;
 use crate::persistence::SettingsPersistence;
 use crate::view_model::{SettingValue, SettingsCategory, SettingsDialog};
-use std::cell::RefCell;
-use std::rc::Rc;
+use gcodekit5_core::{shared, Shared, SharedVec};
 
 /// UI-friendly representation of a setting
 #[derive(Debug, Clone)]
@@ -24,22 +23,19 @@ pub struct SettingUiModel {
 
 /// Controller for settings logic
 pub struct SettingsController {
-    pub dialog: Rc<RefCell<SettingsDialog>>,
-    pub persistence: Rc<RefCell<SettingsPersistence>>,
+    pub dialog: Shared<SettingsDialog>,
+    pub persistence: Shared<SettingsPersistence>,
     #[allow(clippy::type_complexity)]
-    listeners: Rc<RefCell<Vec<Box<dyn Fn(&str, &str)>>>>,
+    listeners: SharedVec<Box<dyn Fn(&str, &str)>>,
 }
 
 impl SettingsController {
     /// Create new settings controller
-    pub fn new(
-        dialog: Rc<RefCell<SettingsDialog>>,
-        persistence: Rc<RefCell<SettingsPersistence>>,
-    ) -> Self {
+    pub fn new(dialog: Shared<SettingsDialog>, persistence: Shared<SettingsPersistence>) -> Self {
         Self {
             dialog,
             persistence,
-            listeners: Rc::new(RefCell::new(Vec::new())),
+            listeners: shared(Vec::new()),
         }
     }
 

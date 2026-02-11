@@ -3,16 +3,17 @@ use gtk4::{
     gdk, Box, Button, Entry, EventControllerKey, Label, Orientation, Paned, ScrolledWindow,
     TextView, WrapMode,
 };
-use std::{borrow::Cow, cell::RefCell, rc::Rc};
+use std::{borrow::Cow, rc::Rc};
 
 use crate::ui::gtk::command_history::CommandHistory;
+use gcodekit5_core::{shared, Shared};
 
 pub struct DeviceConsoleView {
     pub widget: Paned,
     pub console_text: TextView,
     pub command_entry: Entry,
     pub send_btn: Button,
-    history: Rc<RefCell<CommandHistory>>,
+    history: Shared<CommandHistory>,
 }
 
 impl DeviceConsoleView {
@@ -86,7 +87,7 @@ impl DeviceConsoleView {
         });
 
         // Load command history
-        let history = Rc::new(RefCell::new(CommandHistory::load()));
+        let history = shared(CommandHistory::load());
 
         let view = Rc::new(Self {
             widget,

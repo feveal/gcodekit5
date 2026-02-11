@@ -43,6 +43,7 @@ use tracing::debug;
 
 use gl_loader::load_gl_func;
 
+use gcodekit5_core::{shared, shared_none, thread_safe_none, Shared, SharedOption};
 use gtk4::prelude::{BoxExt, ButtonExt, CheckButtonExt, WidgetExt};
 use gtk4::{
     accessible::Property as AccessibleProperty, gdk::ModifierType, Adjustment, Box, Button,
@@ -51,7 +52,6 @@ use gtk4::{
     ListBoxRow, Orientation, Overlay, Paned, Revealer, Scrollbar, SelectionMode, Spinner, Stack,
     ToggleButton,
 };
-use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -102,11 +102,11 @@ pub struct GcodeVisualizer {
     pub(crate) stack: Stack,
     pub(crate) drawing_area: DrawingArea,
     pub(crate) gl_area: GLArea,
-    pub(crate) visualizer: Rc<RefCell<Visualizer>>,
-    pub(crate) camera: Rc<RefCell<Camera3D>>,
-    pub(crate) _renderer_state: Rc<RefCell<Option<RendererState>>>,
+    pub(crate) visualizer: Shared<Visualizer>,
+    pub(crate) camera: Shared<Camera3D>,
+    pub(crate) _renderer_state: SharedOption<RendererState>,
     // Phase 4: Render cache
-    pub(crate) render_cache: Rc<RefCell<RenderCache>>,
+    pub(crate) render_cache: Shared<RenderCache>,
     // Visibility toggles
     pub(crate) _show_rapid: CheckButton,
     pub(crate) _show_cut: CheckButton,
@@ -116,14 +116,14 @@ pub struct GcodeVisualizer {
     pub(crate) show_laser: CheckButton,
     pub(crate) show_stock_removal: CheckButton,
     // Stock removal simulation (2D)
-    pub(crate) stock_material: Rc<RefCell<Option<StockMaterial>>>,
-    pub(crate) simulation_result: Rc<RefCell<Option<SimulationResult>>>,
-    pub(crate) _simulation_visualization: Rc<RefCell<Option<StockRemovalVisualization>>>,
-    pub(crate) _simulation_resolution: Rc<RefCell<f32>>,
-    pub(crate) _simulation_running: Rc<RefCell<bool>>,
+    pub(crate) stock_material: SharedOption<StockMaterial>,
+    pub(crate) simulation_result: SharedOption<SimulationResult>,
+    pub(crate) _simulation_visualization: SharedOption<StockRemovalVisualization>,
+    pub(crate) _simulation_resolution: Shared<f32>,
+    pub(crate) _simulation_running: Shared<bool>,
     // Stock removal simulation (3D)
-    pub(crate) _stock_simulator_3d: Rc<RefCell<Option<StockSimulator3D>>>,
-    pub(crate) _stock_simulation_3d_pending: Rc<RefCell<bool>>,
+    pub(crate) _stock_simulator_3d: SharedOption<StockSimulator3D>,
+    pub(crate) _stock_simulation_3d_pending: Shared<bool>,
     // Scrollbars
     pub(crate) hadjustment: Adjustment,
     pub(crate) vadjustment: Adjustment,
@@ -140,7 +140,7 @@ pub struct GcodeVisualizer {
     pub(crate) settings_controller: Rc<SettingsController>,
     #[allow(dead_code)]
     pub(crate) status_bar: Option<StatusBar>,
-    pub(crate) current_pos: Rc<RefCell<(f32, f32, f32)>>,
+    pub(crate) current_pos: Shared<(f32, f32, f32)>,
 }
 
 impl GcodeVisualizer {
@@ -718,11 +718,11 @@ impl GcodeVisualizer {
         stack.add_titled(&grid_3d, Some("3d"), &t!("3D View"));
 
         // Initialize Visualizer logic
-        let visualizer = Rc::new(RefCell::new(Visualizer::new()));
-        let current_pos = Rc::new(RefCell::new((0.0f32, 0.0f32, 0.0f32)));
-        let camera = Rc::new(RefCell::new(Camera3D::default()));
-        let renderer_state = Rc::new(RefCell::new(None));
-        let is_updating_3d = Rc::new(RefCell::new(false));
+        let visualizer = shared(Visualizer::new());
+        let current_pos = shared((0.0f32, 0.0f32, 0.0f32));
+        let camera = shared(Camera3D::default());
+        let renderer_state = shared_none();
+        let is_updating_3d = shared(false);
 
         // Stock removal simulation - use default sensible values
         let initial_stock = Some(StockMaterial {
@@ -732,14 +732,14 @@ impl GcodeVisualizer {
             origin: (0.0, 0.0, 0.0),
             safe_z: 10.0,
         });
-        let stock_material = Rc::new(RefCell::new(initial_stock));
-        let tool_diameter = Rc::new(RefCell::new(3.175f32)); // Default 1/8" end mill
-        let simulation_result = Rc::new(RefCell::new(None));
-        let simulation_visualization = Rc::new(RefCell::new(None));
-        let simulation_resolution = Rc::new(RefCell::new(0.1));
-        let simulation_running = Rc::new(RefCell::new(false));
-        let stock_simulator_3d = Rc::new(RefCell::new(None));
-        let stock_simulation_3d_pending = Rc::new(RefCell::new(false));
+        let stock_material = shared(initial_stock);
+        let tool_diameter = shared(3.175f32); // Default 1/8" end mill
+        let simulation_result = shared_none();
+        let simulation_visualization = shared_none();
+        let simulation_resolution = shared(0.1);
+        let simulation_running = shared(false);
+        let stock_simulator_3d = shared_none();
+        let stock_simulation_3d_pending = shared(false);
 
         // Overlay for floating controls
         let overlay = Overlay::new();
@@ -1039,7 +1039,7 @@ impl GcodeVisualizer {
         });
 
         // Helper to update status
-        let cursor_pos = Rc::new(RefCell::new((0.0_f32, 0.0_f32)));
+        let cursor_pos = shared((0.0_f32, 0.0_f32));
         let update_status_fn: Rc<dyn Fn()> = Rc::new({
             let label = status_label.clone();
             let units_badge = units_badge.clone();
@@ -1363,7 +1363,7 @@ impl GcodeVisualizer {
         }
 
         // Helper to update scrollbars
-        let is_updating = Rc::new(RefCell::new(false));
+        let is_updating = shared(false);
         let update_scrollbars_fn = {
             let vis = visualizer.clone();
             let hadj = hadjustment.clone();
@@ -1731,7 +1731,7 @@ impl GcodeVisualizer {
 
         // Connect Draw Signal
         let vis_draw = visualizer.clone();
-        let render_cache_draw = Rc::new(RefCell::new(RenderCache::default()));
+        let render_cache_draw = shared(RenderCache::default());
         let show_rapid_draw = show_rapid.clone();
         let show_cut_draw = show_cut.clone();
         let show_grid_draw = show_grid.clone();
@@ -1944,8 +1944,6 @@ impl GcodeVisualizer {
                 let vis = visualizer_stock.borrow();
 
                 if let Some(stock) = stock_material_stock.borrow().as_ref() {
-                    use std::sync::{Arc, Mutex};
-
                     // Run simulation in background thread
                     let stock_clone = stock.clone();
                     let tool_radius_value = *tool_diameter_stock.borrow() / 2.0;
@@ -2014,7 +2012,7 @@ impl GcodeVisualizer {
                     }
 
                     // Use Arc<Mutex<>> for thread-safe sharing
-                    let result_arc = Arc::new(Mutex::new(None));
+                    let result_arc = thread_safe_none();
                     let result_arc_clone = result_arc.clone();
 
                     let cancel_thread = sim_cancel_flag.clone();
@@ -2056,13 +2054,12 @@ impl GcodeVisualizer {
                         let result_sim = simulator;
 
                         // Store in Arc
-                        *result_arc_clone.lock().unwrap_or_else(|p| p.into_inner()) =
-                            Some(result_sim);
+                        *result_arc_clone.lock() = Some(result_sim);
                     });
 
                     // Poll for completion on main thread with timeout limit
                     let result_arc_poll = result_arc.clone();
-                    let poll_count = Rc::new(RefCell::new(0u32));
+                    let poll_count = shared(0u32);
                     let poll_count_clone = poll_count.clone();
                     let sim_running_poll = simulation_running_flag.clone();
 
@@ -2105,7 +2102,7 @@ impl GcodeVisualizer {
                             return glib::ControlFlow::Break;
                         }
 
-                        if let Ok(mut guard) = result_arc_poll.try_lock() {
+                        if let Some(mut guard) = result_arc_poll.try_lock() {
                             if let Some(result_simulator) = guard.take() {
                                 if sim_cancel_flag_poll.load(std::sync::atomic::Ordering::SeqCst) {
                                     *sim_running_poll.borrow_mut() = false;
@@ -2513,7 +2510,7 @@ impl GcodeVisualizer {
         let camera_drag = camera.clone();
         let gl_area_drag = gl_area.clone();
 
-        let last_drag_pos = Rc::new(RefCell::new((0.0f64, 0.0f64)));
+        let last_drag_pos = shared((0.0f64, 0.0f64));
         let last_drag_pos_begin = last_drag_pos.clone();
 
         gesture_drag.connect_drag_begin(move |_, _, _| {
@@ -2651,7 +2648,7 @@ impl GcodeVisualizer {
             visualizer,
             camera,
             _renderer_state: renderer_state,
-            render_cache: Rc::new(RefCell::new(RenderCache::default())),
+            render_cache: shared(RenderCache::default()),
             _show_rapid: show_rapid,
             _show_cut: show_cut,
             _show_grid: show_grid,
@@ -2661,7 +2658,7 @@ impl GcodeVisualizer {
             show_stock_removal,
             stock_material,
             simulation_result,
-            _simulation_visualization: Rc::new(RefCell::new(None)),
+            _simulation_visualization: shared_none(),
             _simulation_resolution: simulation_resolution,
             _simulation_running: simulation_running,
             _stock_simulator_3d: stock_simulator_3d,

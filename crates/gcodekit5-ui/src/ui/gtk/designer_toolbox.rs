@@ -1,6 +1,7 @@
 use crate::t;
 use crate::ui::gtk::fast_shape_gallery::FastShapeGallery;
 use gcodekit5_core::units::MeasurementSystem;
+use gcodekit5_core::{shared, thread_safe, Shared, SharedVec, ThreadSafe};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_settings::controller::SettingsController;
 use gtk4::prelude::*;
@@ -8,9 +9,8 @@ use gtk4::{
     Align, Box, Button, Dialog, Entry, Frame, Grid, Image, Label, Orientation, PolicyType,
     ResponseType, ScrolledWindow,
 };
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 // Dialog widgets should not be dropped; they are owned by closures attached to buttons.
 
@@ -86,22 +86,22 @@ impl DesignerTool {
 #[allow(clippy::type_complexity)]
 pub struct DesignerToolbox {
     pub widget: Box,
-    current_tool: Rc<RefCell<DesignerTool>>,
+    current_tool: Shared<DesignerTool>,
     active_tool_label: Label,
     buttons: Vec<Button>,
     tools: Vec<DesignerTool>,
     generate_btn: Button,
     fast_shape_gallery: Rc<FastShapeGallery>,
-    _state: Rc<RefCell<DesignerState>>,
+    _state: Shared<DesignerState>,
     _settings_controller: Rc<SettingsController>,
-    _current_units: Arc<Mutex<MeasurementSystem>>,
+    _current_units: ThreadSafe<MeasurementSystem>,
     /// Callbacks to refresh tool/stock setting UI widgets from state
-    refresh_callbacks: Rc<RefCell<Vec<Rc<dyn Fn()>>>>,
+    refresh_callbacks: SharedVec<Rc<dyn Fn()>>,
 }
 
 impl DesignerToolbox {
     pub fn new(
-        state: Rc<RefCell<DesignerState>>,
+        state: Shared<DesignerState>,
         settings_controller: Rc<SettingsController>,
     ) -> Rc<Self> {
         #[derive(Clone, Copy)]
@@ -129,7 +129,7 @@ impl DesignerToolbox {
 
         let content_box = Box::new(Orientation::Vertical, 2);
 
-        let current_tool = Rc::new(RefCell::new(DesignerTool::Select));
+        let current_tool = shared(DesignerTool::Select);
         let init_tool = DesignerTool::Select;
         let active_tool_label = Label::new(Some(&format!(
             "{} {}",
@@ -258,18 +258,18 @@ impl DesignerToolbox {
         let settings_grid = Grid::builder().row_spacing(8).column_spacing(8).build();
         settings_box.append(&settings_grid);
 
-        let current_units = Arc::new(Mutex::new(
+        let current_units = thread_safe(
             settings_controller
                 .persistence
                 .borrow()
                 .config()
                 .ui
                 .measurement_system,
-        ));
+        );
 
         // Collection of callbacks to refresh all settings UI widgets from state
         #[allow(clippy::type_complexity)]
-        let refresh_callbacks: Rc<RefCell<Vec<Rc<dyn Fn()>>>> = Rc::new(RefCell::new(Vec::new()));
+        let refresh_callbacks: SharedVec<Rc<dyn Fn()>> = shared(Vec::new());
 
         let tool_row = Rc::new(Cell::new(0));
 
@@ -313,7 +313,7 @@ impl DesignerToolbox {
 
                     Rc::new(move || {
                         let val_mm = getter();
-                        let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
+                        let units = *current_units.lock();
 
                         let (val_display, unit_str) = match units_kind {
                             UnitsKind::Length => match units {
@@ -344,7 +344,7 @@ impl DesignerToolbox {
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f64>() {
                             e.remove_css_class("entry-invalid");
-                            let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
+                            let units = *current_units.lock();
                             let val_mm = match units_kind {
                                 UnitsKind::Length | UnitsKind::FeedRate => match units {
                                     MeasurementSystem::Metric => val,
@@ -368,13 +368,11 @@ impl DesignerToolbox {
                             if let Ok(system) =
                                 serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
                             {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) = system;
+                                *current_units.lock() = system;
                             } else if value == "Metric" {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
-                                    MeasurementSystem::Metric;
+                                *current_units.lock() = MeasurementSystem::Metric;
                             } else if value == "Imperial" {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
-                                    MeasurementSystem::Imperial;
+                                *current_units.lock() = MeasurementSystem::Imperial;
                             }
                             update_display();
                         }
@@ -565,7 +563,7 @@ impl DesignerToolbox {
 
                     Rc::new(move || {
                         let val_mm = getter();
-                        let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
+                        let units = *current_units.lock();
 
                         let (val_display, unit_str) = match units {
                             MeasurementSystem::Metric => (val_mm, "mm"),
@@ -589,7 +587,7 @@ impl DesignerToolbox {
                     entry.connect_changed(move |e| {
                         if let Ok(val) = e.text().parse::<f32>() {
                             e.remove_css_class("entry-invalid");
-                            let units = *current_units.lock().unwrap_or_else(|p| p.into_inner());
+                            let units = *current_units.lock();
                             let val_mm = match units {
                                 MeasurementSystem::Metric => val,
                                 MeasurementSystem::Imperial => val * 25.4,
@@ -610,13 +608,11 @@ impl DesignerToolbox {
                             if let Ok(system) =
                                 serde_json::from_str::<MeasurementSystem>(&format!("\"{}\"", value))
                             {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) = system;
+                                *current_units.lock() = system;
                             } else if value == "Metric" {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
-                                    MeasurementSystem::Metric;
+                                *current_units.lock() = MeasurementSystem::Metric;
                             } else if value == "Imperial" {
-                                *current_units.lock().unwrap_or_else(|p| p.into_inner()) =
-                                    MeasurementSystem::Imperial;
+                                *current_units.lock() = MeasurementSystem::Imperial;
                             }
                             update_display();
                         }

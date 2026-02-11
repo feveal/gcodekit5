@@ -4,6 +4,7 @@
 
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use gcodekit5_core::{thread_safe_vec, ThreadSafeVec};
 
 /// Notification severity level
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,14 +79,14 @@ impl Notification {
 /// Notification manager
 #[derive(Clone)]
 pub struct NotificationManager {
-    notifications: Arc<Mutex<Vec<Notification>>>,
+    notifications: ThreadSafeVec<Notification>,
 }
 
 impl NotificationManager {
     /// Create new notification manager
     pub fn new() -> Self {
         Self {
-            notifications: Arc::new(Mutex::new(Vec::new())),
+            notifications: thread_safe_vec(),
         }
     }
 
@@ -115,65 +116,52 @@ impl NotificationManager {
 
     /// Add notification manually
     pub fn add(&self, notification: Notification) {
-        if let Ok(mut notifs) = self.notifications.lock() {
-            notifs.push(notification);
-            // Keep only last 10 notifications
-            if notifs.len() > 10 {
-                notifs.remove(0);
-            }
+        let mut notifs = self.notifications.lock();
+        notifs.push(notification);
+        // Keep only last 10 notifications
+        if notifs.len() > 10 {
+            notifs.remove(0);
         }
     }
 
     /// Get all active notifications
     pub fn get_all(&self) -> Vec<Notification> {
-        if let Ok(notifs) = self.notifications.lock() {
-            notifs.clone()
-        } else {
-            Vec::new()
-        }
+        let notifs = self.notifications.lock();
+        notifs.clone()
     }
 
     /// Remove notification by ID
     pub fn dismiss(&self, id: &str) {
-        if let Ok(mut notifs) = self.notifications.lock() {
-            notifs.retain(|n| n.id != id);
-        }
+        let mut notifs = self.notifications.lock();
+        notifs.retain(|n| n.id != id);
     }
 
     /// Clear all notifications
     pub fn clear_all(&self) {
-        if let Ok(mut notifs) = self.notifications.lock() {
-            notifs.clear();
-        }
+        let mut notifs = self.notifications.lock();
+        notifs.clear();
     }
 
     /// Remove expired auto-dismiss notifications
     pub fn cleanup_expired(&self) {
-        if let Ok(mut notifs) = self.notifications.lock() {
-            notifs.retain(|n| !n.should_dismiss());
-        }
+        let mut notifs = self.notifications.lock();
+        notifs.retain(|n| !n.should_dismiss());
     }
 
     /// Get count of active notifications
     pub fn count(&self) -> usize {
-        if let Ok(notifs) = self.notifications.lock() {
-            notifs.len()
-        } else {
-            0
-        }
+        let notifs = self.notifications.lock();
+        notifs.len()
     }
 
     /// Get notifications by level
     pub fn by_level(&self, level: NotificationLevel) -> Vec<Notification> {
-        if let Ok(notifs) = self.notifications.lock() {
-            notifs
-                .iter()
-                .filter(|n| n.level == level)
-                .cloned()
-                .collect()
-        } else {
-            Vec::new()
-        }
+        let notifs = self.notifications.lock();
+        notifs
+            .iter()
+            .filter(|n| n.level == level)
+            .cloned()
+            .collect()
     }
 }
 

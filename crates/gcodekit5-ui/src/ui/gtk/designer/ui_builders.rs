@@ -1,11 +1,12 @@
 //! UI builder methods for DesignerView
 
 use super::*;
+use gcodekit5_core::Shared;
 
 impl DesignerView {
     /// Creates the view controls expander for the left sidebar
     pub(crate) fn create_view_controls_expander(
-        state: &Rc<RefCell<DesignerState>>,
+        state: &Shared<DesignerState>,
         canvas: &Rc<DesignerCanvas>,
         settings_controller: &Rc<SettingsController>,
     ) -> gtk4::Expander {

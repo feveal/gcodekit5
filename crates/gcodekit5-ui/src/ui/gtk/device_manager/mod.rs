@@ -7,7 +7,6 @@ use gtk4::{
     MessageDialog, MessageType, Orientation, Paned, PolicyType, ResponseType, ScrolledWindow,
     SearchEntry, Stack, StackSwitcher,
 };
-use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::error;
 
@@ -20,6 +19,7 @@ use gcodekit5_core::units::{
     format_feed_rate, format_length, get_unit_label, parse_feed_rate, parse_length, FeedRateUnits,
     MeasurementSystem,
 };
+use gcodekit5_core::{shared, shared_none, Shared, SharedOption};
 use gcodekit5_settings::controller::SettingsController;
 use gcodekit5_settings::manager::SettingsManager;
 
@@ -27,8 +27,8 @@ use gcodekit5_settings::manager::SettingsManager;
 pub struct DeviceManagerWindow {
     pub widget: Paned,
     pub(crate) controller: Rc<DeviceUiController>,
-    pub(crate) current_units: Rc<RefCell<MeasurementSystem>>,
-    pub(crate) current_feed_units: Rc<RefCell<FeedRateUnits>>,
+    pub(crate) current_units: Shared<MeasurementSystem>,
+    pub(crate) current_feed_units: Shared<FeedRateUnits>,
     pub(crate) devices_list: ListBox,
     pub(crate) search_entry: SearchEntry,
 
@@ -67,7 +67,7 @@ pub struct DeviceManagerWindow {
     pub(crate) edit_laser_watts: Entry,
 
     // State
-    pub(crate) selected_device: Rc<RefCell<Option<DeviceProfileUiModel>>>,
+    pub(crate) selected_device: SharedOption<DeviceProfileUiModel>,
 
     // Action buttons
     pub(crate) save_btn: Button,
@@ -105,8 +105,8 @@ impl DeviceManagerWindow {
                 (MeasurementSystem::Metric, FeedRateUnits::default())
             };
 
-        let current_units = Rc::new(RefCell::new(initial_units));
-        let current_feed_units = Rc::new(RefCell::new(initial_feed_units));
+        let current_units = shared(initial_units);
+        let current_feed_units = shared(initial_feed_units);
 
         // LEFT SIDEBAR - Devices List
         let sidebar = Box::new(Orientation::Vertical, 10);
@@ -321,7 +321,7 @@ impl DeviceManagerWindow {
             edit_spindle_watts,
             edit_max_spindle_speed_rpm,
             edit_laser_watts,
-            selected_device: Rc::new(RefCell::new(None)),
+            selected_device: shared_none(),
             save_btn,
             cancel_btn,
             delete_btn,

@@ -1,19 +1,19 @@
 //! Gear and sprocket property handlers.
 
+use gcodekit5_core::{Shared, SharedOption};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::model::Shape;
 use gtk4::prelude::*;
 use gtk4::Entry;
-use std::cell::RefCell;
 use std::rc::Rc;
 
 /// Setup gear module entry handler
 #[allow(clippy::type_complexity)]
 pub fn setup_gear_module_handler(
     gear_module_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     gear_module_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -66,9 +66,9 @@ pub fn setup_gear_module_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_gear_teeth_handler(
     gear_teeth_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     gear_teeth_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -121,9 +121,9 @@ pub fn setup_gear_teeth_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_gear_pressure_angle_handler(
     gear_pressure_angle_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     gear_pressure_angle_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -172,9 +172,9 @@ pub fn setup_gear_pressure_angle_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_sprocket_pitch_handler(
     sprocket_pitch_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     sprocket_pitch_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -227,9 +227,9 @@ pub fn setup_sprocket_pitch_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_sprocket_teeth_handler(
     sprocket_teeth_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     sprocket_teeth_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -282,9 +282,9 @@ pub fn setup_sprocket_teeth_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_sprocket_roller_diameter_handler(
     sprocket_roller_diameter_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     sprocket_roller_diameter_entry.connect_changed(move |entry| {
         if *updating.borrow() {

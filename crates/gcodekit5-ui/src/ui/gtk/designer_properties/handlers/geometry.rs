@@ -1,6 +1,7 @@
 //! Geometry property handlers (rotation, corner radius, slot, polygon sides).
 
 use gcodekit5_core::units;
+use gcodekit5_core::{Shared, SharedOption};
 use gcodekit5_designer::canvas::DrawingObject;
 use gcodekit5_designer::commands::{ChangeProperty, DesignerCommand};
 use gcodekit5_designer::designer_state::DesignerState;
@@ -8,7 +9,6 @@ use gcodekit5_designer::model::Shape;
 use gcodekit5_settings::SettingsPersistence;
 use gtk4::prelude::*;
 use gtk4::{CheckButton, Entry};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 fn modify_selected_shape_with_undo<F>(designer_state: &mut DesignerState, modifier: F)
@@ -38,9 +38,9 @@ where
 #[allow(clippy::type_complexity)]
 pub fn setup_rotation_handler(
     rotation_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     rotation_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -64,10 +64,10 @@ pub fn setup_rotation_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_corner_radius_handler(
     corner_radius_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     corner_radius_entry.connect_changed(move |entry| {
         if *updating.borrow() {
@@ -92,9 +92,9 @@ pub fn setup_corner_radius_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_is_slot_handler(
     is_slot_check: &CheckButton,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     is_slot_check.connect_toggled(move |check| {
         if *updating.borrow() {
@@ -113,9 +113,9 @@ pub fn setup_is_slot_handler(
 #[allow(clippy::type_complexity)]
 pub fn setup_sides_handler(
     sides_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     sides_entry.connect_changed(move |entry| {
         if *updating.borrow() {

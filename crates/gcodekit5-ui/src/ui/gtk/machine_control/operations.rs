@@ -24,11 +24,11 @@ impl MachineControlView {
     }
 
     pub fn get_step_size(&self) -> f64 {
-        *self.jog_step_mm.lock().unwrap_or_else(|p| p.into_inner()) as f64
+        *self.jog_step_mm.lock() as f64
     }
 
     pub fn start_job(&self, content: &str) {
-        if *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) {
+        if *self.is_streaming.lock() {
             return;
         }
 
@@ -85,60 +85,44 @@ impl MachineControlView {
         }
 
         {
-            let mut queue = self.send_queue.lock().unwrap_or_else(|p| p.into_inner());
+            let mut queue = self.send_queue.lock();
             queue.clear();
             for line in lines.iter() {
                 queue.push_back(line.clone());
             }
-            *self.total_lines.lock().unwrap_or_else(|p| p.into_inner()) = queue.len();
+            *self.total_lines.lock() = queue.len();
         }
 
-        *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = true;
-        *self.is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
-        *self
-            .waiting_for_ack
-            .lock()
-            .unwrap_or_else(|p| p.into_inner()) = false;
-        *self
-            .job_start_time
-            .lock()
-            .unwrap_or_else(|p| p.into_inner()) = Some(std::time::Instant::now());
+        *self.is_streaming.lock() = true;
+        *self.is_paused.lock() = false;
+        *self.waiting_for_ack.lock() = false;
+        *self.job_start_time.lock() = Some(std::time::Instant::now());
 
         // Kickstart
-        if let Ok(mut comm) = self.communicator.lock() {
-            let mut queue = self.send_queue.lock().unwrap_or_else(|p| p.into_inner());
+        {
+            let mut comm = self.communicator.lock();
+            let mut queue = self.send_queue.lock();
             if let Some(cmd) = queue.pop_front() {
                 if let Some(c) = self.device_console.as_ref() {
                     c.append_log(&format!("> {}\n", cmd));
                 }
                 let _ = comm.send_command(&cmd);
-                *self
-                    .waiting_for_ack
-                    .lock()
-                    .unwrap_or_else(|p| p.into_inner()) = true;
+                *self.waiting_for_ack.lock() = true;
             }
         }
     }
 
     pub fn emergency_stop(&self) {
-        if let Ok(mut comm) = self.communicator.lock() {
+        {
+            let mut comm = self.communicator.lock();
             let _ = comm.send(&[0x18]);
         }
 
-        *self.is_streaming.lock().unwrap_or_else(|p| p.into_inner()) = false;
-        *self.is_paused.lock().unwrap_or_else(|p| p.into_inner()) = false;
-        *self
-            .waiting_for_ack
-            .lock()
-            .unwrap_or_else(|p| p.into_inner()) = false;
-        *self
-            .job_start_time
-            .lock()
-            .unwrap_or_else(|p| p.into_inner()) = None;
-        self.send_queue
-            .lock()
-            .unwrap_or_else(|p| p.into_inner())
-            .clear();
+        *self.is_streaming.lock() = false;
+        *self.is_paused.lock() = false;
+        *self.waiting_for_ack.lock() = false;
+        *self.job_start_time.lock() = None;
+        self.send_queue.lock().clear();
 
         // Reset progress
         if let Some(sb) = self.status_bar.as_ref() {

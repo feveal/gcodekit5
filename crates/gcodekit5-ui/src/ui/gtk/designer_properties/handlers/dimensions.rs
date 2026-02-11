@@ -1,11 +1,11 @@
 //! Dimension property handlers (position, size, aspect ratio).
 
 use gcodekit5_core::units;
+use gcodekit5_core::{Shared, SharedOption};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_settings::SettingsPersistence;
 use gtk4::prelude::*;
 use gtk4::{CheckButton, Entry};
-use std::cell::RefCell;
 use std::rc::Rc;
 
 /// Setup position X entry handler
@@ -15,10 +15,10 @@ pub fn setup_position_x_handler(
     pos_y_entry: &Entry,
     width_entry: &Entry,
     height_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let pos_y = pos_y_entry.clone();
     let width = width_entry.clone();
@@ -59,10 +59,10 @@ pub fn setup_position_y_handler(
     pos_x_entry: &Entry,
     width_entry: &Entry,
     height_entry: &Entry,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let pos_x = pos_x_entry.clone();
     let width = width_entry.clone();
@@ -104,11 +104,11 @@ pub fn setup_width_activate_handler(
     pos_x_entry: &Entry,
     pos_y_entry: &Entry,
     lock_aspect_ratio: &CheckButton,
-    aspect_ratio: Rc<RefCell<f64>>,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    aspect_ratio: Shared<f64>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let height = height_entry.clone();
     let pos_x = pos_x_entry.clone();
@@ -163,11 +163,11 @@ pub fn setup_height_activate_handler(
     pos_x_entry: &Entry,
     pos_y_entry: &Entry,
     lock_aspect_ratio: &CheckButton,
-    aspect_ratio: Rc<RefCell<f64>>,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    aspect_ratio: Shared<f64>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     let width = width_entry.clone();
     let pos_x = pos_x_entry.clone();
@@ -219,9 +219,9 @@ pub fn setup_lock_aspect_handler(
     lock_aspect_ratio: &CheckButton,
     width_entry: &Entry,
     height_entry: &Entry,
-    aspect_ratio: Rc<RefCell<f64>>,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
+    aspect_ratio: Shared<f64>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
 ) {
     let width = width_entry.clone();
     let height = height_entry.clone();
@@ -267,11 +267,11 @@ pub fn setup_width_focus_out_handler(
     pos_x_entry: &Entry,
     pos_y_entry: &Entry,
     lock_aspect_ratio: &CheckButton,
-    aspect_ratio: Rc<RefCell<f64>>,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    aspect_ratio: Shared<f64>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     use gtk4::EventControllerFocus;
 
@@ -336,11 +336,11 @@ pub fn setup_height_focus_out_handler(
     pos_x_entry: &Entry,
     pos_y_entry: &Entry,
     lock_aspect_ratio: &CheckButton,
-    aspect_ratio: Rc<RefCell<f64>>,
-    state: Rc<RefCell<DesignerState>>,
-    settings: Rc<RefCell<SettingsPersistence>>,
-    redraw_callback: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
-    updating: Rc<RefCell<bool>>,
+    aspect_ratio: Shared<f64>,
+    state: Shared<DesignerState>,
+    settings: Shared<SettingsPersistence>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+    updating: Shared<bool>,
 ) {
     use gtk4::EventControllerFocus;
 

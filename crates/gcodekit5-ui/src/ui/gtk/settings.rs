@@ -5,10 +5,10 @@ use gtk4::{
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, ComboRow, PreferencesGroup, PreferencesPage, PreferencesRow};
-use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::error;
 
+use gcodekit5_core::{shared, SharedOption};
 use gcodekit5_settings::controller::{SettingUiModel, SettingsController};
 use gcodekit5_settings::view_model::SettingsCategory;
 
@@ -18,7 +18,7 @@ pub struct SettingsWindow {
     notebook: Notebook,
     controller: Rc<SettingsController>,
     #[allow(dead_code)]
-    on_save: Rc<RefCell<Option<Box<dyn Fn()>>>>,
+    on_save: SharedOption<Box<dyn Fn()>>,
 }
 
 impl SettingsWindow {
@@ -46,7 +46,7 @@ impl SettingsWindow {
 
         dialog.content_area().append(&notebook);
 
-        let on_save_cell = Rc::new(RefCell::new(on_save));
+        let on_save_cell = shared(on_save);
 
         let settings_window = Self {
             dialog: dialog.clone(),
