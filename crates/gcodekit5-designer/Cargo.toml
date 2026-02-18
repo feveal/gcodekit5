@@ -30,3 +30,4 @@ nalgebra = "0.33"
 
 [dev-dependencies]
 tempfile = "3.10"
+proptest = "1.4"

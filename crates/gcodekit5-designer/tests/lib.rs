@@ -20,3 +20,6 @@ mod designer_vcarve_integration;
 // New tests for rotation system fixes
 mod rotation_system_tests;
 // mod toolpath_rotation_tests; // Disabled due to API changes
+
+// Phase 1 core coverage: designer operations integration tests
+mod designer_operations_integration;

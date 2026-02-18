@@ -14,5 +14,7 @@ mod pocket_operations;
 mod templates;
 #[path = "features/tool_library.rs"]
 mod tool_library;
+#[path = "features/toolpath_shape_combos.rs"]
+mod toolpath_shape_combos;
 #[path = "features/vcarve.rs"]
 mod vcarve;
