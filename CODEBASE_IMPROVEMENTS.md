@@ -369,15 +369,20 @@ gcodekit5-devicedb:        18 tests (improved from 4  — +14 new)
 
 ---
 
-### 4.3 Implement Mutation Testing
-**Current State**: No mutation testing in place  
+### 4.3 Implement Mutation Testing ✅ DONE
+**Current State**: ~~No mutation testing in place~~ Mutation testing configured and automated  
 **Impact**: Medium - Validates test effectiveness  
 **Effort**: Low
 
 **Approach**:
-- Use `cargo-mutants` to identify weak tests
-- Run periodically (not in every CI run)
-- Target: 85%+ mutation kill rate in core crates
+- Use `cargo-mutants` to identify weak tests ✅
+- Run periodically (not in every CI run) ✅ Weekly schedule + manual dispatch
+- Target: 85%+ mutation kill rate in core crates ✅ CI enforces threshold
+
+**Implementation**:
+- `.cargo/mutants.toml`: Configuration with skip rules and exclusions
+- `.github/workflows/mutation-testing.yml`: Weekly CI with kill rate reporting
+- Targets: gcodekit5-core, gcodekit5-designer, gcodekit5-visualizer, gcodekit5-communication
 
 ---
 
