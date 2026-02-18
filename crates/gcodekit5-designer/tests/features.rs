@@ -4,10 +4,14 @@ mod adaptive;
 mod arrays;
 #[path = "features/drilling_patterns.rs"]
 mod drilling_patterns;
+#[path = "features/gcode_snapshots.rs"]
+mod gcode_snapshots;
 #[path = "features/multipass.rs"]
 mod multipass;
 #[path = "features/parametric.rs"]
 mod parametric;
+#[path = "features/parser_fuzz.rs"]
+mod parser_fuzz;
 #[path = "features/pocket_operations.rs"]
 mod pocket_operations;
 #[path = "features/templates.rs"]
