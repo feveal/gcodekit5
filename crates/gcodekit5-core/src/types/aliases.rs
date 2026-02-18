@@ -131,6 +131,23 @@ pub type UiDataCallback<T> = Rc<RefCell<Option<Box<dyn Fn(T)>>>>;
 pub type UiDataCallback2<T, U> = Rc<RefCell<Option<Box<dyn Fn(T, U)>>>>;
 
 // =============================================================================
+// CELL-EMBEDDED CALLBACK TYPES (RefCell<Option<Box<dyn Fn(...)>>>)
+// =============================================================================
+// For struct fields that don't need Rc wrapping (the struct itself provides ownership).
+
+/// A callback stored directly in a struct field with interior mutability.
+///
+/// Unlike `UiCallback`, this does not wrap in `Rc` — use when the callback
+/// is owned by a single struct.
+pub type CellCallback = RefCell<Option<Box<dyn Fn()>>>;
+
+/// A cell-embedded callback with a single parameter.
+pub type CellDataCallback<T> = RefCell<Option<Box<dyn Fn(T)>>>;
+
+/// A cell-embedded callback with two parameters.
+pub type CellDataCallback2<T, U> = RefCell<Option<Box<dyn Fn(T, U)>>>;
+
+// =============================================================================
 // LISTENER/HANDLER TYPES
 // =============================================================================
 

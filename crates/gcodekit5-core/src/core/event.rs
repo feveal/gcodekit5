@@ -8,7 +8,19 @@
 use crate::data::{ControllerState, ControllerStatus};
 use tokio::sync::broadcast;
 
-/// Controller event types
+/// Controller event types.
+///
+/// Events published by controllers when state, position, or operating
+/// parameters change. Subscribe via [`EventDispatcher`] to receive these.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::event::{ControllerEvent, EventDispatcher};
+///
+/// let dispatcher = EventDispatcher::default_with_buffer();
+/// let mut rx = dispatcher.subscribe();
+/// dispatcher.publish(ControllerEvent::Connected("GRBL".into())).ok();
+/// ```
 #[derive(Debug, Clone)]
 pub enum ControllerEvent {
     /// Connection state changed
@@ -64,7 +76,20 @@ impl std::fmt::Display for ControllerEvent {
     }
 }
 
-/// Event dispatcher for publishing events to subscribers
+/// Event dispatcher for publishing events to subscribers.
+///
+/// Uses a tokio broadcast channel for fan-out delivery. Each subscriber
+/// receives its own copy of every event. Subscribers that fall behind
+/// will receive a `Lagged` error and miss events.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::event::{ControllerEvent, EventDispatcher};
+///
+/// let dispatcher = EventDispatcher::new(64);
+/// let mut rx = dispatcher.subscribe();
+/// assert_eq!(dispatcher.subscriber_count(), 1);
+/// ```
 #[derive(Clone)]
 pub struct EventDispatcher {
     /// Broadcast sender channel for controller events.

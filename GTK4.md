@@ -504,3 +504,9 @@ When extracting a struct to a separate module:
 
 ### Test Code Caveat
 - Test code using `tokio::sync::Mutex` (async mutex with `.lock().await`) must NOT be converted to `ThreadSafe<T>` aliases — parking_lot Mutex is not async-compatible
+
+### GTK Box Name Collision
+- GTK files that `use gtk4::Box` shadow `std::boxed::Box` — any `Box<dyn Fn()>` in these files resolves to `gtk4::Box<dyn Fn()>` which fails
+- Use `std::boxed::Box<dyn Fn()>` for callback types in GTK files, or use type aliases defined outside the GTK module (aliases resolve at definition site for concrete types, but type aliases are transparent in Rust)
+- The `CellCallback`/`CellDataCallback<T>` aliases can only be used in files that do NOT import `gtk4::Box`
+- `SharedOption<std::boxed::Box<dyn Fn(...)>>` is the correct pattern for GTK callback fields

@@ -7,6 +7,7 @@ use gcodekit5_core::data::gtc_import::{GtcImportResult, GtcImporter};
 use gcodekit5_core::data::tools::{
     ShankType, Tool, ToolCoating, ToolCuttingParams, ToolId, ToolLibrary, ToolMaterial, ToolType,
 };
+use gcodekit5_core::types::aliases::BoxedError;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -122,13 +123,13 @@ impl ToolsManagerBackend {
         path
     }
 
-    fn load_from_file(path: &PathBuf) -> Result<Vec<Tool>, Box<dyn std::error::Error>> {
+    fn load_from_file(path: &PathBuf) -> Result<Vec<Tool>, BoxedError> {
         let contents = std::fs::read_to_string(path)?;
         let tools: Vec<PersistedTool> = serde_json::from_str(&contents)?;
         Ok(tools.into_iter().map(Into::into).collect())
     }
 
-    fn save_to_file(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn save_to_file(&self) -> Result<(), BoxedError> {
         // Only save custom tools (tool numbers are intentionally not persisted)
         let custom_tools: Vec<PersistedTool> = self
             .library
@@ -193,10 +194,7 @@ impl ToolsManagerBackend {
         self.library.get_all_tools()
     }
 
-    pub fn export_custom_tools<P: AsRef<Path>>(
-        &self,
-        path: P,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn export_custom_tools<P: AsRef<Path>>(&self, path: P) -> Result<(), BoxedError> {
         let custom_tools: Vec<PersistedTool> = self
             .library
             .get_all_tools()
@@ -210,7 +208,7 @@ impl ToolsManagerBackend {
         Ok(())
     }
 
-    pub fn reset_custom_tools(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn reset_custom_tools(&mut self) -> Result<(), BoxedError> {
         // Remove custom tools from library
         let ids: Vec<ToolId> = self
             .library
@@ -236,7 +234,7 @@ impl ToolsManagerBackend {
     pub fn import_gtc_package<P: AsRef<Path>>(
         &mut self,
         zip_path: P,
-    ) -> Result<GtcImportResult, Box<dyn std::error::Error>> {
+    ) -> Result<GtcImportResult, BoxedError> {
         // Determine next tool number
         let next_number = self
             .library
@@ -267,7 +265,7 @@ impl ToolsManagerBackend {
     pub fn import_gtc_json<P: AsRef<Path>>(
         &mut self,
         json_path: P,
-    ) -> Result<GtcImportResult, Box<dyn std::error::Error>> {
+    ) -> Result<GtcImportResult, BoxedError> {
         // Determine next tool number
         let next_number = self
             .library

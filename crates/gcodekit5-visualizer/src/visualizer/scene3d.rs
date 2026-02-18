@@ -7,6 +7,7 @@ use crate::visualizer::{
     Camera3D, LightingParams, MeshCollection, MeshRenderError, MeshRenderer, RenderableMesh,
     Visualizer,
 };
+use gcodekit5_core::types::aliases::BoxedError;
 use gcodekit5_designer::model::{DesignerShape, Shape};
 use gcodekit5_designer::model3d::Mesh3D;
 use gcodekit5_designer::shadow_projection::ShadowProjector;
@@ -364,7 +365,7 @@ pub mod stl_integration {
         renderer: &mut Renderer3D,
         file_path: P,
         name: String,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+    ) -> Result<(), BoxedError> {
         let importer = gcodekit5_designer::import::StlImporter::new();
         let design = importer.import_file(file_path.as_ref().to_str().unwrap_or(""))?;
 
@@ -380,7 +381,7 @@ pub mod stl_integration {
         renderer: &Renderer3D,
         mesh_name: &str,
         _cutting_params: &gcodekit5_designer::slice_toolpath::SliceToolpathParams,
-    ) -> Result<Vec<lyon::path::Path>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<lyon::path::Path>, BoxedError> {
         if let Some(projections) = renderer.scene().get_shadow_projection(mesh_name) {
             // TODO(#19): Convert lyon paths to actual toolpaths using slice_toolpath module
             Ok(projections.clone())
