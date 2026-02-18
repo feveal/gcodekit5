@@ -1,5 +1,6 @@
 use gcodekit5_designer::pocket_operations::PocketStrategy;
 use gcodekit5_designer::serialization::{DesignFile, ShapeData};
+use tempfile::TempDir;
 
 #[test]
 fn test_create_new_design() {
@@ -11,8 +12,8 @@ fn test_create_new_design() {
 
 #[test]
 fn test_save_and_load() {
-    let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("test_design.gck4");
+    let tmp = TempDir::new().expect("create temp dir");
+    let file_path = tmp.path().join("test_design.gck4");
 
     let mut design = DesignFile::new("Test");
     design.shapes.push(ShapeData {
@@ -65,14 +66,12 @@ fn test_save_and_load() {
     assert_eq!(loaded.shapes.len(), 1);
     assert_eq!(loaded.shapes[0].width, 100.0);
     assert_eq!(loaded.shapes[0].name, "My Rect");
-
-    std::fs::remove_file(&file_path).ok();
 }
 
 #[test]
 fn test_round_trip_all_shape_types() {
-    let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("test_all_shapes.gck4");
+    let tmp = TempDir::new().expect("create temp dir");
+    let file_path = tmp.path().join("test_all_shapes.gck4");
 
     let mut design = DesignFile::new("All Shapes Test");
 
@@ -100,14 +99,12 @@ fn test_round_trip_all_shape_types() {
     assert_eq!(loaded.shapes[3].shape_type, "line");
     assert_eq!(loaded.shapes[4].shape_type, "triangle");
     assert_eq!(loaded.shapes[5].shape_type, "polygon");
-
-    std::fs::remove_file(&file_path).ok();
 }
 
 #[test]
 fn test_round_trip_toolpath_params() {
-    let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("test_toolpath_params.gck4");
+    let tmp = TempDir::new().expect("create temp dir");
+    let file_path = tmp.path().join("test_toolpath_params.gck4");
 
     let mut design = DesignFile::new("Toolpath Test");
     design.toolpath_params.feed_rate = 2000.0;
@@ -130,14 +127,12 @@ fn test_round_trip_toolpath_params() {
     assert!((loaded.toolpath_params.stock_height - 200.0).abs() < 0.001);
     assert!((loaded.toolpath_params.stock_thickness - 20.0).abs() < 0.001);
     assert!((loaded.toolpath_params.safe_z_height - 15.0).abs() < 0.001);
-
-    std::fs::remove_file(&file_path).ok();
 }
 
 #[test]
 fn test_round_trip_viewport() {
-    let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("test_viewport.gck4");
+    let tmp = TempDir::new().expect("create temp dir");
+    let file_path = tmp.path().join("test_viewport.gck4");
 
     let mut design = DesignFile::new("Viewport Test");
     design.viewport.zoom = 2.5;
@@ -150,8 +145,6 @@ fn test_round_trip_viewport() {
     assert!((loaded.viewport.zoom - 2.5).abs() < 0.001);
     assert!((loaded.viewport.pan_x - 150.0).abs() < 0.001);
     assert!((loaded.viewport.pan_y - (-75.0)).abs() < 0.001);
-
-    std::fs::remove_file(&file_path).ok();
 }
 
 #[test]
@@ -162,15 +155,13 @@ fn test_load_nonexistent_file() {
 
 #[test]
 fn test_load_invalid_json() {
-    let temp_dir = std::env::temp_dir();
-    let file_path = temp_dir.join("test_invalid.gck4");
+    let tmp = TempDir::new().expect("create temp dir");
+    let file_path = tmp.path().join("test_invalid.gck4");
 
     std::fs::write(&file_path, "{ invalid json }").expect("write failed");
 
     let result = DesignFile::load_from_file(&file_path);
     assert!(result.is_err());
-
-    std::fs::remove_file(&file_path).ok();
 }
 
 fn create_test_shape(id: i32, shape_type: &str) -> ShapeData {
