@@ -81,10 +81,6 @@ serde = { version = "1.0", features = ["derive"] }
 [build-dependencies]
 chrono = "0.4"
 
-# Testing utilities
-[dev-dependencies]
-tempfile = "3.8"
-
 [package.metadata.deb]
 maintainer = "GCodeKit Contributors"
 copyright = "2025, GCodeKit Contributors"

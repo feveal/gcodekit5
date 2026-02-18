@@ -544,16 +544,24 @@ copy_button.connect_clicked({
 
 ## 7. Dependency Management & Maintenance (LOW-MEDIUM PRIORITY)
 
-### 7.1 Audit and Minimize Dependencies
-**Current State**: Cargo.lock likely has 100+ total dependencies  
+### 7.1 Audit and Minimize Dependencies ✅ DONE
+**Current State**: ~~Cargo.lock likely has 100+ total dependencies~~ Audited and cleaned  
 **Impact**: Low - But important for security and build times  
 **Effort**: Low
 
 **Actions**:
-- Run `cargo tree` and review dependencies
-- Check for duplicate versions of same crate
-- Identify unused dependencies: `cargo udeps`
-- Consider replacing multi-purpose crates with focused ones
+- Run `cargo tree` and review dependencies ✅
+- Check for duplicate versions of same crate ✅ (27 transitive duplicates, all from upstream)
+- Identify unused dependencies: `cargo udeps` ✅
+- Consider replacing multi-purpose crates with focused ones ✅
+
+**Results**:
+- Removed unused `sys-locale` from gcodekit5-ui
+- Removed unused `tempfile` dev-dep from root crate
+- Fixed 2 security vulnerabilities: `bytes` (CVE integer overflow), `time` (DoS stack exhaustion)
+- Added `deny.toml` for ongoing dependency auditing (advisories, licenses, bans, sources)
+- Added dependency audit job to code-quality CI workflow
+- 2 unmaintained transitive deps noted (paste, rusttype) — no replacements available
 
 ---
 
