@@ -565,16 +565,23 @@ copy_button.connect_clicked({
 
 ---
 
-### 7.2 Keep Dependencies Updated
-**Current State**: Likely several months behind on some deps  
+### 7.2 Keep Dependencies Updated ✅ DONE
+**Current State**: ~~Likely several months behind on some deps~~ All patch-level deps updated  
 **Impact**: Medium - Security and feature updates  
 **Effort**: Low-Medium
 
 **Strategy**:
-- Automated: `dependabot` on GitHub
-- Monthly manual audit: `cargo outdated`
-- Test new versions in CI before merging
-- Document breaking changes in CHANGELOG
+- Automated: `dependabot` on GitHub ✅ Already configured (weekly, grouped patches)
+- Monthly manual audit: `cargo outdated` ✅ Verified, all patch updates applied
+- Test new versions in CI before merging ✅ CI runs full test suite
+- Document breaking changes in CHANGELOG ✅
+
+**Updates applied**:
+- anyhow 1.0.100→1.0.101, chrono 0.4.42→0.4.43, serde_json 1.0.148→1.0.149
+- thiserror 2.0.17→2.0.18, tokio 1.48.0→1.49.0, uuid 1.19.0→1.21.0
+- regex 1.12.2→1.12.3, bytemuck 1.24.0→1.25.0, tempfile 3.24.0→3.25.0
+- serialport 4.7.3→4.8.1
+- Major version updates deferred (glam, glow, gtk4, nalgebra, fontdb, etc.) — require API migration
 
 ---
 
