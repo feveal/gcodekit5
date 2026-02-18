@@ -593,34 +593,22 @@ copy_button.connect_clicked({
 
 ## 8. Documentation & Developer Experience (LOW PRIORITY)
 
-### 8.1 Create Architecture Decision Records (ADRs)
-**Current State**: Some design decisions in comments or GTK4.md  
+### 8.1 Create Architecture Decision Records (ADRs) ✅ DONE
+**Current State**: ~~Some design decisions in comments or GTK4.md~~ 10 ADRs documenting key decisions  
 **Impact**: Low-Medium - Reduces future confusion  
 **Effort**: Low
 
-**Create `docs/adr/` directory** with decisions like:
-- `0001_gtk4_coordinate_systems.md` - Why Y-flip is needed
-- `0002_paned_layout_for_resizable_panels.md` - Recent change
-- `0003_modular_crates_structure.md` - Architecture rationale
-
-**Template**:
-```markdown
-# ADR-###: Title
-
-## Status: Accepted
-
-## Context
-(Why was this decision needed?)
-
-## Decision
-(What was decided?)
-
-## Consequences
-(Positive and negative impacts)
-
-## Alternatives Considered
-(Other options explored)
-```
+**`docs/adr/` directory** contains:
+- ADR-001: GTK4 UI Framework (existing)
+- ADR-002: Coordinate System / Y-flip (existing) ✅
+- ADR-003: Modular Crates Structure (existing) ✅
+- ADR-004: Interior Mutability Patterns (existing)
+- ADR-005: Error Handling Strategy (existing)
+- ADR-006: Unified Event Bus System (existing)
+- ADR-007: Paned Layout for Resizable Panels ✅ **NEW**
+- ADR-008: Internal Units System ✅ **NEW**
+- ADR-009: Communication Protocol Architecture ✅ **NEW**
+- ADR-010: Dependency Management Strategy ✅ **NEW**
 
 ---
 
