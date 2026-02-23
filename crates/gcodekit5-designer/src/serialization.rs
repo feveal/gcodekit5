@@ -267,6 +267,7 @@ impl DesignFile {
             ShapeType::Polygon => "polygon",
             ShapeType::Gear => "gear",
             ShapeType::Sprocket => "sprocket",
+//            ShapeType::Polyline => "polyline",
         };
 
         let (text_content, font_size, font_family, font_bold, font_italic) =
@@ -403,6 +404,7 @@ impl DesignFile {
                 let radius = data.width.min(data.height) / 2.0;
                 Shape::Polygon(Polygon::new(center, radius, data.sides))
             }
+
             "polyline" => {
                 let center = Point::new(data.x + data.width / 2.0, data.y + data.height / 2.0);
                 let radius = data.width.min(data.height) / 2.0;
@@ -416,6 +418,7 @@ impl DesignFile {
                 }
                 Shape::Path(PathShape::from_points(&vertices, true))
             }
+
             "text" => {
                 let mut s =
                     TextShape::new(data.text_content.clone(), data.x, data.y, data.font_size);
@@ -465,6 +468,7 @@ impl DesignFile {
             Shape::Polygon(s) => s.rotation = data.rotation,
             Shape::Gear(s) => s.rotation = data.rotation,
             Shape::Sprocket(s) => s.rotation = data.rotation,
+//            Shape::Polyline(s) => s.rotation = data.rotation,
         }
 
         let operation_type = match data.operation_type.as_str() {
@@ -483,6 +487,7 @@ impl DesignFile {
             crate::model::ShapeType::Polygon => "Polygon",
             crate::model::ShapeType::Gear => "Gear",
             crate::model::ShapeType::Sprocket => "Sprocket",
+//            crate::model::ShapeType::Polyline => "Polyline",
         };
 
         Ok(DrawingObject {

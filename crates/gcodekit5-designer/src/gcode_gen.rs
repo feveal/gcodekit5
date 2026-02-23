@@ -11,6 +11,8 @@ pub struct ToolpathToGcode {
     line_numbers_enabled: bool,
     /// Number of axes on the target device (default 3).
     pub num_axes: u8,
+    /// Modo láser 2D (sin eje Z)
+    pub is_laser_2d: bool,
 }
 
 impl ToolpathToGcode {
@@ -21,6 +23,7 @@ impl ToolpathToGcode {
             safe_z,
             line_numbers_enabled: false,
             num_axes: 3,
+            is_laser_2d: false,
         }
     }
 
@@ -31,7 +34,14 @@ impl ToolpathToGcode {
             safe_z,
             line_numbers_enabled: enabled,
             num_axes: 3,
+            is_laser_2d: false,
         }
+    }
+
+    /// Activa el modo láser 2D
+    pub fn with_laser_2d(mut self) -> Self {
+        self.is_laser_2d = true;
+        self
     }
 
     /// Generates G-code from a toolpath.
@@ -85,10 +95,7 @@ impl ToolpathToGcode {
         gcode.push_str("G90         ; Absolute positioning\n");
         gcode.push_str("G21         ; Millimeter units\n");
         gcode.push_str("G17         ; XY plane\n");
-        gcode.push_str(&format!(
-            "M3 S{}      ; Spindle on at {} RPM\n",
-            spindle_speed, spindle_speed
-        ));
+        // NO poner M3 aquí para láser 2D
         gcode.push('\n');
         gcode
     }
@@ -110,40 +117,32 @@ impl ToolpathToGcode {
         let mut gcode = String::new();
         let mut line_number = start_line_number;
         let mut current_z = initial_z;
-        let has_z = self.num_axes >= 3;
+        let has_z = self.num_axes >= 3 && !self.is_laser_2d;
+        let mut first_cut_move = true;
 
         for segment in &toolpath.segments {
             match segment.segment_type {
-                ToolpathSegmentType::RapidMove => {
-                    // Retract to safe Z before changing XY to avoid diagonal plunges
-                    if has_z && (current_z - self.safe_z).abs() > 0.001 {
-                        let line_prefix = if self.line_numbers_enabled {
-                            format!("N{} ", line_number)
-                        } else {
-                            String::new()
-                        };
-                        gcode.push_str(&format!("{}G00 Z{:.3}\n", line_prefix, self.safe_z));
-                        line_number += 10;
-                    }
+// Genera gcode
+ToolpathSegmentType::RapidMove => {
+    let line_prefix = if self.line_numbers_enabled {
+        format!("N{} ", line_number)
+    } else {
+        String::new()
+    };
 
-                    let line_prefix = if self.line_numbers_enabled {
-                        format!("N{} ", line_number)
-                    } else {
-                        String::new()
-                    };
-                    if has_z {
-                        gcode.push_str(&format!(
-                            "{}G00 X{:.3} Y{:.3} Z{:.3}\n",
-                            line_prefix, segment.end.x, segment.end.y, self.safe_z
-                        ));
-                    } else {
-                        gcode.push_str(&format!(
-                            "{}G00 X{:.3} Y{:.3}\n",
-                            line_prefix, segment.end.x, segment.end.y
-                        ));
-                    }
-                    current_z = self.safe_z;
-                }
+    // GENERAR EL MOVIMIENTO RÁPIDO (sin láser)
+    if self.is_laser_2d {
+        gcode.push_str(&format!(
+            "{}G00 X{:.3} Y{:.3}   ; Posicionar\n",
+            line_prefix, segment.end.x, segment.end.y
+        ));
+    }
+
+    current_z = self.safe_z;
+    line_number += 10;
+}
+
+
                 ToolpathSegmentType::LinearMove => {
                     // Handle start Z plunge if needed
                     if has_z {
@@ -185,12 +184,20 @@ impl ToolpathToGcode {
                         toolpath.depth
                     });
 
-                    // Linear move (G01)
                     let line_prefix = if self.line_numbers_enabled {
                         format!("N{} ", line_number)
                     } else {
                         String::new()
                     };
+
+                    // En modo láser, encender justo antes del primer movimiento de corte
+                    if self.is_laser_2d && first_cut_move {
+                        gcode.push_str(&format!(
+                            "{}M3 S{}      ; Laser ON\n",
+                            line_prefix, segment.spindle_speed
+                        ));
+                        first_cut_move = false;
+                    }
 
                     if has_z && (target_z - current_z).abs() > 0.001 {
                         gcode.push_str(&format!(
@@ -252,12 +259,21 @@ impl ToolpathToGcode {
                         String::new()
                     };
 
+                    // En modo láser, encender justo antes del primer movimiento de corte
+                    if self.is_laser_2d && first_cut_move {
+                        gcode.push_str(&format!(
+                            "{}M3 S{}      ; Laser ON\n",
+                            line_prefix, segment.spindle_speed
+                        ));
+                        first_cut_move = false;
+                    }
+
                     let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW {
                         "G02"
                     } else {
                         "G03"
                     };
-
+// er si este if let Some afecta al GOO
                     if let Some(center) = segment.center {
                         let i = center.x - segment.start.x;
                         let j = center.y - segment.start.y;
@@ -310,7 +326,19 @@ impl ToolpathToGcode {
             }
 
             line_number += 10;
+        } // for segment in &toolpath.segments
+
+        // Al final del toolpath, si es modo láser, apagar
+        if self.is_laser_2d {
+            let line_prefix = if self.line_numbers_enabled {
+                format!("N{} ", line_number)
+            } else {
+                String::new()
+            };
+            gcode.push_str(&format!("{}M5          ; Laser off\n", line_prefix));
+
         }
+
         (gcode, current_z)
     }
 
@@ -318,13 +346,14 @@ impl ToolpathToGcode {
     pub fn generate_footer(&self) -> String {
         let mut gcode = String::new();
         gcode.push('\n');
-        gcode.push_str("M5          ; Spindle off\n");
-        if self.num_axes >= 3 {
+        gcode.push_str("M5          ; Laser off\n");
+        if self.num_axes >= 3 && !self.is_laser_2d {
             gcode.push_str(&format!(
                 "G00 Z{:.3}   ; Raise tool to safe height\n",
                 self.safe_z
             ));
         }
+
         gcode.push_str("G00 X0 Y0   ; Return to origin\n");
         gcode.push_str("M30         ; End program\n");
         gcode
@@ -336,3 +365,4 @@ impl Default for ToolpathToGcode {
         Self::new(Units::MM, 10.0)
     }
 }
+

@@ -18,6 +18,8 @@ pub struct DesignPath {
     )]
     pub sketch: Sketch<()>,
     pub rotation: f64,
+    #[serde(skip)]
+    pub original_path: Option<Path>,  // Nuevo campo
 }
 
 impl DesignPath {
@@ -25,6 +27,7 @@ impl DesignPath {
         Self {
             sketch,
             rotation: 0.0,
+            original_path: None,
         }
     }
 
@@ -37,6 +40,7 @@ impl DesignPath {
             return Some(Self {
                 sketch,
                 rotation: 0.0,
+                original_path: None,
             });
         }
 
@@ -50,6 +54,7 @@ impl DesignPath {
         Self {
             sketch,
             rotation: 0.0,
+            original_path: None,
         }
     }
 
@@ -90,6 +95,7 @@ impl DesignPath {
         Self {
             sketch,
             rotation: 0.0,
+            original_path: Some(path.clone()),
         }
     }
 
@@ -690,6 +696,9 @@ where
 impl DesignerShape for DesignPath {
     fn render(&self) -> Path {
         let mut builder = Path::builder();
+    if let Some(path) = &self.original_path {
+        return path.clone();
+    }
 
         let mp = self.sketch.to_multipolygon();
         for poly in mp.0 {

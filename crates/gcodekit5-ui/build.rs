@@ -42,6 +42,26 @@ fn main() {
         }
     }
 
+
+    // ---
+
+ glib_build_tools::compile_resources(
+        &["resources"],
+        "resources/gresources.xml",
+        "gcodekit5.gresource",
+    );
+
+    // OPCIONAL: Solo para el icono del .exe en Windows
+    #[cfg(windows)]
+    {
+        let mut res = winres::WindowsResource::new();
+        res.set_icon("../../gcodekit5.ico");
+        res.compile().unwrap();
+    }
+
+    // ---
+
+
     // Expose the locale directory to the code
     println!("cargo:rustc-env=LOCALE_DIR={}", locale_dir.display());
 

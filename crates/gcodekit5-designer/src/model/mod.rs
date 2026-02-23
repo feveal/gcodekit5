@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use csgrs::sketch::Sketch;
 
+// use crate::model::polyline::DesignPolyline;
+
 mod circle;
 mod ellipse;
 mod gear;
@@ -14,6 +16,7 @@ mod rectangle;
 mod sprocket;
 mod text;
 mod triangle;
+//mod polyline;
 
 pub use circle::DesignCircle;
 pub use ellipse::DesignEllipse;
@@ -25,6 +28,7 @@ pub use rectangle::DesignRectangle;
 pub use sprocket::DesignSprocket;
 pub use text::DesignText;
 pub use triangle::DesignTriangle;
+//pub use polyline::DesignPolyline;
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Point {
@@ -41,6 +45,13 @@ impl Point {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         (dx * dx + dy * dy).sqrt()
+    }
+    /// Returns the midpoint between this point and another point
+    pub fn midpoint(&self, other: &Point) -> Point {
+        Point::new(
+            (self.x + other.x) / 2.0,
+            (self.y + other.y) / 2.0,
+        )
     }
 }
 
@@ -100,6 +111,7 @@ pub enum ShapeType {
     Polygon,
     Gear,
     Sprocket,
+//    Polyline,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -114,6 +126,7 @@ pub enum Shape {
     Polygon(DesignPolygon),
     Gear(DesignGear),
     Sprocket(DesignSprocket),
+//    Polyline(DesignPolyline),
 }
 
 impl DesignerShape for Shape {
@@ -129,6 +142,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.render(),
             Shape::Gear(s) => s.render(),
             Shape::Sprocket(s) => s.render(),
+//            Shape::Polyline(s) => s.render(),
         }
     }
 
@@ -144,6 +158,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.as_csg(),
             Shape::Gear(s) => s.as_csg(),
             Shape::Sprocket(s) => s.as_csg(),
+//            Shape::Polyline(s) => s.as_csg(),
         }
     }
 
@@ -159,6 +174,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.bounds(),
             Shape::Gear(s) => s.bounds(),
             Shape::Sprocket(s) => s.bounds(),
+//            Shape::Polyline(s) => s.bounds(),
         }
     }
 
@@ -174,6 +190,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.transform(t),
             Shape::Gear(s) => s.transform(t),
             Shape::Sprocket(s) => s.transform(t),
+//            Shape::Polyline(s) => s.transform(t),
         }
     }
 
@@ -189,6 +206,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.properties(),
             Shape::Gear(s) => s.properties(),
             Shape::Sprocket(s) => s.properties(),
+//            Shape::Polyline(s) => s.properties(),
         }
     }
 
@@ -204,6 +222,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.contains_point(p, tolerance),
             Shape::Gear(s) => s.contains_point(p, tolerance),
             Shape::Sprocket(s) => s.contains_point(p, tolerance),
+//            Shape::Polyline(s) => s.contains_point(p, tolerance),
         }
     }
 
@@ -219,6 +238,7 @@ impl DesignerShape for Shape {
             Shape::Polygon(s) => s.resize(handle, dx, dy),
             Shape::Gear(s) => s.resize(handle, dx, dy),
             Shape::Sprocket(s) => s.resize(handle, dx, dy),
+//            Shape::Polyline(s) => s.resize(handle, dx, dy),
         }
     }
 }
@@ -236,6 +256,7 @@ impl Shape {
             Shape::Polygon(_) => ShapeType::Polygon,
             Shape::Gear(_) => ShapeType::Gear,
             Shape::Sprocket(_) => ShapeType::Sprocket,
+//            Shape::Polyline(_) => ShapeType::Polyline,
         }
     }
 
@@ -252,6 +273,7 @@ impl Shape {
             Shape::Polygon(s) => s.rotation,
             Shape::Gear(s) => s.rotation,
             Shape::Sprocket(s) => s.rotation,
+//            Shape::Polyline(s) => s.rotation,
         }
     }
 
@@ -267,6 +289,7 @@ impl Shape {
             Shape::Polygon(s) => s,
             Shape::Gear(s) => s,
             Shape::Sprocket(s) => s,
+//            Shape::Polyline(s) => s,
         }
     }
 
@@ -284,9 +307,14 @@ impl Shape {
                 Shape::Polygon(s) => s.rotation,
                 Shape::Gear(s) => s.rotation,
                 Shape::Sprocket(s) => s.rotation,
+//                Shape::Polyline(s) => s.rotation,
             },
+            original_path: None,
         }
     }
+
+
+
 }
 
 pub fn rotate_point(p: Point, center: Point, angle_deg: f64) -> Point {
@@ -300,3 +328,5 @@ pub fn rotate_point(p: Point, center: Point, angle_deg: f64) -> Point {
         y: center.y + dx * s + dy * c,
     }
 }
+
+

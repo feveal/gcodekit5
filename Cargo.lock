@@ -1305,6 +1305,7 @@ dependencies = [
  "gcodekit5-designer",
  "gcodekit5-ui",
  "gcodekit5-visualizer",
+ "gettext-rs",
  "rfd",
  "serde",
  "tempfile",

@@ -19,7 +19,7 @@ use gcodekit5_settings::controller::SettingsController;
 use gtk4::gdk::{Key, ModifierType};
 use gtk4::prelude::*;
 use gtk4::{
-    Adjustment, Box, EventControllerKey, FileChooserAction, FileChooserNative, GestureClick, Grid,
+    Adjustment, Box, EventControllerKey, GestureClick, Grid,
     Label, Orientation, Overlay, Paned, Popover, ResponseType, Scrollbar,
 };
 use std::cell::Cell;

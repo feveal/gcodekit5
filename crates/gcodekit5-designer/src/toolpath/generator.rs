@@ -2,7 +2,7 @@
 
 use super::*;
 
-use lyon::path::iterator::PathIterator;
+// use lyon::path::iterator::PathIterator;
 use rusttype::{GlyphId, OutlineBuilder, Scale};
 
 /// Generates toolpaths from design shapes.
@@ -49,7 +49,7 @@ impl ToolpathGenerator {
     pub fn set_feed_rate(&mut self, feed_rate: f64) {
         debug_assert!(
             feed_rate.is_finite() && feed_rate > 0.0,
-            "feed_rate must be positive and finite, got {feed_rate}"
+                      "feed_rate must be positive and finite, got {feed_rate}"
         );
         self.feed_rate = feed_rate;
     }
@@ -63,7 +63,7 @@ impl ToolpathGenerator {
     pub fn set_tool_diameter(&mut self, diameter: f64) {
         debug_assert!(
             diameter.is_finite() && diameter > 0.0,
-            "tool_diameter must be positive and finite, got {diameter}"
+                      "tool_diameter must be positive and finite, got {diameter}"
         );
         self.tool_diameter = diameter;
     }
@@ -143,9 +143,9 @@ impl ToolpathGenerator {
             segments.push(ToolpathSegment::new(
                 ToolpathSegmentType::RapidMove,
                 Point::new(0.0, 0.0),
-                t_corners[0],
-                self.feed_rate,
-                self.spindle_speed,
+                                               t_corners[0],
+                                               self.feed_rate,
+                                               self.spindle_speed,
             ));
 
             // Move around the rectangle
@@ -159,15 +159,16 @@ impl ToolpathGenerator {
                     self.spindle_speed,
                 ));
             }
-
-            // Return to origin with rapid move
-            segments.push(ToolpathSegment::new(
-                ToolpathSegmentType::RapidMove,
-                t_corners[0],
-                Point::new(0.0, 0.0),
-                self.feed_rate,
-                self.spindle_speed,
-            ));
+            /*
+             *            // Return to origin with rapid move
+             *            segments.push(ToolpathSegment::new(
+             *                ToolpathSegmentType::RapidMove,
+             *                t_corners[0],
+             * //                Point::new(0.0, 0.0),
+             *                self.feed_rate,
+             *                self.spindle_speed,
+             *            ));
+             */
         } else {
             // Rounded corners
             // Start point: (x + r, y)
@@ -178,9 +179,9 @@ impl ToolpathGenerator {
             segments.push(ToolpathSegment::new(
                 ToolpathSegmentType::RapidMove,
                 Point::new(0.0, 0.0),
-                start_pt,
-                self.feed_rate,
-                self.spindle_speed,
+                                               start_pt,
+                                               self.feed_rate,
+                                               self.spindle_speed,
             ));
 
             let mut current_pt = start_pt;
@@ -307,16 +308,17 @@ impl ToolpathGenerator {
                 self.feed_rate,
                 self.spindle_speed,
             ));
-            current_pt = p_bl_end;
-
-            // Return to origin
-            segments.push(ToolpathSegment::new(
-                ToolpathSegmentType::RapidMove,
-                current_pt,
-                Point::new(0.0, 0.0),
-                self.feed_rate,
-                self.spindle_speed,
-            ));
+            //            current_pt = p_bl_end;
+            /*
+             *            // Return to origin
+             *            segments.push(ToolpathSegment::new(
+             *                ToolpathSegmentType::RapidMove,
+             *                current_pt,
+             * //                Point::new(0.0, 0.0),
+             *                self.feed_rate,
+             *                self.spindle_speed,
+             *            ));
+             */
         }
 
         self.create_multipass_toolpaths(segments, step_down)
@@ -324,10 +326,12 @@ impl ToolpathGenerator {
 
     /// Helper to create multiple toolpaths from segments based on depth settings
     fn create_multipass_toolpaths(
+
         &self,
         segments: Vec<ToolpathSegment>,
         step_down: f64,
     ) -> Vec<Toolpath> {
+
         let mut toolpaths = Vec::new();
         let start_z = self.start_depth;
         // Treat cut_depth as magnitude (positive distance downwards)
@@ -337,18 +341,18 @@ impl ToolpathGenerator {
         if self.ramp_angle > 0.001 && !segments.is_empty() {
             // Ramping logic
             let contour_length: f64 = segments
-                .iter()
-                .map(|s| {
-                    match s.segment_type {
-                        ToolpathSegmentType::LinearMove | ToolpathSegmentType::RapidMove => {
-                            s.start.distance_to(&s.end)
-                        }
-                        ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
-                            s.start.distance_to(&s.end) // Approximation using chord length
-                        }
+            .iter()
+            .map(|s| {
+                match s.segment_type {
+                    ToolpathSegmentType::LinearMove | ToolpathSegmentType::RapidMove => {
+                        s.start.distance_to(&s.end)
                     }
-                })
-                .sum();
+                    ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
+                        s.start.distance_to(&s.end) // Approximation using chord length
+                    }
+                }
+            })
+            .sum();
 
             if contour_length > 0.001 {
                 let mut current_z = start_z;
@@ -367,14 +371,14 @@ impl ToolpathGenerator {
                         // Add a final pass at target_z and break
                         let mut final_pass = Toolpath::new(self.tool_diameter, target_z);
                         final_pass.segments = segments
-                            .iter()
-                            .map(|s| {
-                                let mut ns = s.clone();
-                                ns.start_z = Some(target_z);
-                                ns.z_depth = Some(target_z);
-                                ns
-                            })
-                            .collect();
+                        .iter()
+                        .map(|s| {
+                            let mut ns = s.clone();
+                            ns.start_z = Some(target_z);
+                            ns.z_depth = Some(target_z);
+                            ns
+                        })
+                        .collect();
                         toolpaths.push(final_pass);
                         return toolpaths;
                     }
@@ -437,14 +441,14 @@ impl ToolpathGenerator {
                 // Add a final flat pass at the bottom
                 let mut final_pass = Toolpath::new(self.tool_diameter, target_z);
                 final_pass.segments = segments
-                    .iter()
-                    .map(|s| {
-                        let mut ns = s.clone();
-                        ns.start_z = Some(target_z);
-                        ns.z_depth = Some(target_z);
-                        ns
-                    })
-                    .collect();
+                .iter()
+                .map(|s| {
+                    let mut ns = s.clone();
+                    ns.start_z = Some(target_z);
+                    ns.z_depth = Some(target_z);
+                    ns
+                })
+                .collect();
                 toolpaths.push(final_pass);
 
                 return toolpaths;
@@ -492,9 +496,9 @@ impl ToolpathGenerator {
         segments.push(ToolpathSegment::new(
             ToolpathSegmentType::RapidMove,
             Point::new(0.0, 0.0),
-            start_point,
-            self.feed_rate,
-            self.spindle_speed,
+                                           start_point,
+                                           self.feed_rate,
+                                           self.spindle_speed,
         ));
 
         // Generate 4 arc segments (90 degrees each) for full circle
@@ -519,16 +523,16 @@ impl ToolpathGenerator {
             ));
             current = p;
         }
-
-        // Return to origin with rapid move
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            start_point,
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
+        /*
+         *        // Return to origin with rapid move
+         *        segments.push(ToolpathSegment::new(
+         *            ToolpathSegmentType::RapidMove,
+         *            start_point,
+         * //            Point::new(0.0, 0.0),
+         *            self.feed_rate,
+         *            self.spindle_speed,
+         *        ));
+         */
         self.create_multipass_toolpaths(segments, step_down)
     }
 
@@ -539,9 +543,9 @@ impl ToolpathGenerator {
             ToolpathSegment::new(
                 ToolpathSegmentType::RapidMove,
                 Point::new(0.0, 0.0),
-                line.start,
-                self.feed_rate,
-                self.spindle_speed,
+                                 line.start,
+                                 self.feed_rate,
+                                 self.spindle_speed,
             ),
             // Linear move along the line
             ToolpathSegment::new(
@@ -551,906 +555,983 @@ impl ToolpathGenerator {
                 self.feed_rate,
                 self.spindle_speed,
             ),
-            // Return to origin
-            ToolpathSegment::new(
-                ToolpathSegmentType::RapidMove,
-                line.end,
-                Point::new(0.0, 0.0),
-                self.feed_rate,
-                self.spindle_speed,
-            ),
+            /*
+             *            // Return to origin
+             *            ToolpathSegment::new(
+             *                ToolpathSegmentType::RapidMove,
+             *                line.end,
+             * //                Point::new(0.0, 0.0),
+             *                self.feed_rate,
+             *                self.spindle_speed,
+             *            ),
+             */
         ];
 
         self.create_multipass_toolpaths(segments, step_down)
     }
 
-    /// Generates a contour toolpath for a polyline.
-    pub fn generate_polyline_contour(&self, vertices: &[Point], step_down: f64) -> Vec<Toolpath> {
-        let mut segments = Vec::new();
+/// Generates a contour toolpath for a polyline (with bulges for arcs)
+pub fn generate_polyline_contour(
+    &self,
+    vertices: &[Point],
+    bulges: &[f64],  // ← AÑADE ESTE PARÁMETRO
+    step_down: f64
+) -> Vec<Toolpath> {
+    let mut segments = Vec::new();
 
-        if vertices.is_empty() {
-            return Vec::new();
+    if vertices.is_empty() {
+        return Vec::new();
+    }
+
+    // Start at first vertex with rapid move
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::RapidMove,
+        Point::new(0.0, 0.0),
+                                       vertices[0],
+                                       self.feed_rate,
+                                       self.spindle_speed,
+    ));
+
+    // Move along the polyline, processing each segment
+    let mut current = vertices[0];
+
+    for i in 0..vertices.len() - 1 {
+        let next = vertices[i + 1];
+
+        // Get bulge for this segment (if available)
+        let bulge = if i < bulges.len() { bulges[i] } else { 0.0 };
+
+        if bulge.abs() < 0.001 {
+            // Straight line
+            segments.push(ToolpathSegment::new(
+                ToolpathSegmentType::LinearMove,
+                current,
+                next,
+                self.feed_rate,
+                self.spindle_speed,
+            ));
+        } else {
+            // Arc: convert bulge to arc parameters
+            let (center, is_ccw) = self.bulge_to_arc(current, next, bulge);
+
+            segments.push(ToolpathSegment::new_arc(
+                if is_ccw { ToolpathSegmentType::ArcCCW } else { ToolpathSegmentType::ArcCW },
+                    current,
+                    next,
+                    center,
+                    self.feed_rate,
+                    self.spindle_speed,
+            ));
         }
 
-        // Start at first vertex with rapid move
+        current = next;
+    }
+
+    // If closed, add final segment from last vertex back to first
+    if let Some(&last_bulge) = bulges.last() {
+        if vertices.len() > 1 {
+            let last = vertices.last().unwrap();
+            let first = vertices.first().unwrap();
+
+            if last_bulge.abs() < 0.001 {
+                segments.push(ToolpathSegment::new(
+                    ToolpathSegmentType::LinearMove,
+                    *last,
+                    *first,
+                    self.feed_rate,
+                    self.spindle_speed,
+                ));
+            } else {
+                let (center, is_ccw) = self.bulge_to_arc(*last, *first, last_bulge);
+                segments.push(ToolpathSegment::new_arc(
+                    if is_ccw { ToolpathSegmentType::ArcCCW } else { ToolpathSegmentType::ArcCW },
+                        *last,
+                        *first,
+                        center,
+                        self.feed_rate,
+                        self.spindle_speed,
+                ));
+            }
+        }
+    }
+
+    self.create_multipass_toolpaths(segments, step_down)
+}
+
+/// Convierte un bulge DXF a centro de arco y dirección
+fn bulge_to_arc(&self, p1: Point, p2: Point, bulge: f64) -> (Point, bool) {
+    let chord = p1.distance_to(&p2);
+    let angle = 4.0 * bulge.atan();  // Ángulo incluido del arco
+
+    // Radio = (chord/2) / sin(angle/2)
+    let radius = (chord / 2.0) / (angle / 2.0).sin();
+
+    // Altura del arco (sagitta)
+    let sagitta = radius - (radius.powi(2) - (chord / 2.0).powi(2)).sqrt();
+    if !sagitta.is_finite() {
+        return (p1.midpoint(&p2), bulge > 0.0);
+    }
+
+    // Vector perpendicular a la cuerda
+    let dx = p2.x - p1.x;
+    let dy = p2.y - p1.y;
+    let perp_x = -dy / chord;
+    let perp_y = dx / chord;
+
+    // Dirección del centro (positivo = izquierda, negativo = derecha)
+    let dir = if bulge > 0.0 { 1.0 } else { -1.0 };
+
+    // Punto medio de la cuerda
+    let mid = p1.midpoint(&p2);
+
+    // Centro del arco
+    let center = Point::new(
+        mid.x + perp_x * sagitta * dir,
+        mid.y + perp_y * sagitta * dir
+    );
+
+    (center, bulge > 0.0)
+}
+
+
+/// Generates a pocket toolpath for a rectangle.
+pub fn generate_rectangle_pocket(
+    &self,
+    rect: &Rectangle,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let r = rect
+    .effective_corner_radius()
+    .min(rect.width.abs() / 2.0)
+    .min(rect.height.abs() / 2.0);
+
+    if r > 0.001 || rect.rotation.abs() > 1e-6 {
+        // Convert rounded or rotated rectangle to polygon for pocketing
+        let mut vertices = Vec::new();
+        let x = rect.center.x - rect.width / 2.0;
+        let y = rect.center.y - rect.height / 2.0;
+        let w = rect.width;
+        let h = rect.height;
+
+        if r > 0.001 {
+            // Use more segments for better approximation (32 instead of 8)
+            let segments = 32;
+
+            // Helper to add arc points (excluding start point to avoid duplicates)
+            let mut add_arc_points =
+            |center: Point, start_angle: f64, end_angle: f64, include_start: bool| {
+                let start_rad = start_angle.to_radians();
+                let end_rad = end_angle.to_radians();
+                let step = (end_rad - start_rad) / segments as f64;
+
+                let start_i = if include_start { 0 } else { 1 };
+                for i in start_i..=segments {
+                    let angle = start_rad + step * i as f64;
+                    vertices.push(Point::new(
+                        center.x + r * angle.cos(),
+                                             center.y + r * angle.sin(),
+                    ));
+                }
+            };
+
+            // Generate rounded rectangle corners (clockwise from bottom-right)
+            // BR Corner (270 -> 360) - include start point
+            add_arc_points(Point::new(x + w - r, y + r), 270.0, 360.0, true);
+
+            // TR Corner (0 -> 90) - exclude start point (overlaps with BR end)
+            add_arc_points(Point::new(x + w - r, y + h - r), 0.0, 90.0, false);
+
+            // TL Corner (90 -> 180) - exclude start point (overlaps with TR end)
+            add_arc_points(Point::new(x + r, y + h - r), 90.0, 180.0, false);
+
+            // BL Corner (180 -> 270) - exclude start point (overlaps with TL end)
+            add_arc_points(Point::new(x + r, y + r), 180.0, 270.0, false);
+        } else {
+            vertices.push(Point::new(x, y));
+            vertices.push(Point::new(x + w, y));
+            vertices.push(Point::new(x + w, y + h));
+            vertices.push(Point::new(x, y + h));
+        }
+
+        // Apply rotation
+        if rect.rotation.abs() > 1e-6 {
+            let center = rect.center;
+            let rotation_deg = rect.rotation;
+            for p in &mut vertices {
+                *p = crate::model::rotate_point(*p, center, rotation_deg);
+            }
+        }
+
+        return self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in);
+    }
+
+    let op = PocketOperation::new("rect_pocket".to_string(), pocket_depth, self.tool_diameter);
+    let mut gen = PocketGenerator::new(op);
+    gen.operation.set_start_depth(self.start_depth);
+    gen.operation.set_ramp_angle(self.ramp_angle);
+    gen.operation.raster_fill_ratio = self.raster_fill_ratio;
+    let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
+    gen.operation
+    .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
+    gen.generate_rectangular_pocket(rect, step_down)
+}
+
+/// Generates a pocket toolpath for a circle.
+pub fn generate_circle_pocket(
+    &self,
+    circle: &Circle,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let op = PocketOperation::new(
+        "circle_pocket".to_string(),
+                                  pocket_depth,
+                                  self.tool_diameter,
+    );
+    let mut gen = PocketGenerator::new(op);
+    gen.operation.set_start_depth(self.start_depth);
+    gen.operation.set_ramp_angle(self.ramp_angle);
+    gen.operation.raster_fill_ratio = self.raster_fill_ratio;
+    let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
+    gen.operation
+    .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
+    gen.generate_circular_pocket(circle, step_down)
+}
+
+/// Generates a pocket toolpath for a polyline.
+pub fn generate_polyline_pocket(
+    &self,
+    vertices: &[Point],
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let op = PocketOperation::new(
+        "polyline_pocket".to_string(),
+                                  pocket_depth,
+                                  self.tool_diameter,
+    );
+    let mut gen = PocketGenerator::new(op);
+    gen.operation.set_start_depth(self.start_depth);
+    gen.operation.set_ramp_angle(self.ramp_angle);
+    let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
+    gen.operation
+    .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
+    gen.operation.set_strategy(self.pocket_strategy);
+    gen.operation.raster_fill_ratio = self.raster_fill_ratio;
+    gen.generate_polygon_pocket(vertices, step_down)
+}
+
+/// Generates a contour toolpath for a triangle.
+pub fn generate_triangle_contour(&self, triangle: &Triangle, step_down: f64) -> Vec<Toolpath> {
+    let mut segments = Vec::new();
+    let half_w = triangle.width / 2.0;
+    let half_h = triangle.height / 2.0;
+
+    // Local points
+    let p1_local = Point::new(-half_w, -half_h);
+    let p2_local = Point::new(half_w, -half_h);
+    let p3_local = Point::new(-half_w, half_h);
+
+    let rotation = triangle.rotation;
+    let center = triangle.center;
+
+    let transform_point = |p: Point| -> Point {
+        let mut pt = p;
+        if rotation.abs() > 1e-6 {
+            pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
+        }
+        Point::new(pt.x + center.x, pt.y + center.y)
+    };
+
+    let p1 = transform_point(p1_local);
+    let p2 = transform_point(p2_local);
+    let p3 = transform_point(p3_local);
+
+    // Rapid to start
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::RapidMove,
+        Point::new(0.0, 0.0),
+                                       p1,
+                                       self.feed_rate,
+                                       self.spindle_speed,
+    ));
+
+    // p1 -> p2
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::LinearMove,
+        p1,
+        p2,
+        self.feed_rate,
+        self.spindle_speed,
+    ));
+
+    // p2 -> p3
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::LinearMove,
+        p2,
+        p3,
+        self.feed_rate,
+        self.spindle_speed,
+    ));
+
+    // p3 -> p1
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::LinearMove,
+        p3,
+        p1,
+        self.feed_rate,
+        self.spindle_speed,
+    ));
+
+    self.create_multipass_toolpaths(segments, step_down)
+}
+
+/// Generates a contour toolpath for a polygon.
+pub fn generate_polygon_contour(&self, polygon: &Polygon, step_down: f64) -> Vec<Toolpath> {
+    let mut segments = Vec::new();
+    let sides = polygon.sides.max(3);
+    let rotation = polygon.rotation;
+    let center = polygon.center;
+    let radius = polygon.radius;
+
+    let transform_point = |p: Point| -> Point {
+        let mut pt = p;
+        if rotation.abs() > 1e-6 {
+            pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
+        }
+        Point::new(pt.x + center.x, pt.y + center.y)
+    };
+
+    let mut points = Vec::with_capacity(sides as usize);
+    for i in 0..sides {
+        let theta = 2.0 * std::f64::consts::PI * (i as f64) / (sides as f64);
+        let x = radius * theta.cos();
+        let y = radius * theta.sin();
+        points.push(transform_point(Point::new(x, y)));
+    }
+
+    if points.is_empty() {
+        return Vec::new();
+    }
+
+    // Rapid to start
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::RapidMove,
+        Point::new(0.0, 0.0),
+                                       points[0],
+                                       self.feed_rate,
+                                       self.spindle_speed,
+    ));
+
+    for i in 0..sides as usize {
+        let next_i = (i + 1) % (sides as usize);
         segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            Point::new(0.0, 0.0),
-            vertices[0],
+            ToolpathSegmentType::LinearMove,
+            points[i],
+            points[next_i],
             self.feed_rate,
             self.spindle_speed,
         ));
+    }
 
-        // Move along the polyline
-        for i in 0..vertices.len() {
-            let next_i = (i + 1) % vertices.len();
+    self.create_multipass_toolpaths(segments, step_down)
+}
+
+/// Generates a pocket toolpath for a triangle.
+pub fn generate_triangle_pocket(
+    &self,
+    triangle: &Triangle,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let half_w = triangle.width / 2.0;
+    let half_h = triangle.height / 2.0;
+
+    // Local points
+    let p1_local = Point::new(-half_w, -half_h);
+    let p2_local = Point::new(half_w, -half_h);
+    let p3_local = Point::new(-half_w, half_h);
+
+    let rotation = triangle.rotation;
+    let center = triangle.center;
+
+    let transform_point = |p: Point| -> Point {
+        let mut pt = p;
+        if rotation.abs() > 1e-6 {
+            pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
+        }
+        Point::new(pt.x + center.x, pt.y + center.y)
+    };
+
+    let vertices = vec![
+        transform_point(p1_local),
+        transform_point(p2_local),
+        transform_point(p3_local),
+    ];
+
+    self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in)
+}
+
+/// Generates a pocket toolpath for a polygon.
+pub fn generate_polygon_pocket(
+    &self,
+    polygon: &Polygon,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let sides = polygon.sides.max(3);
+    let rotation = polygon.rotation;
+    let center = polygon.center;
+    let radius = polygon.radius;
+
+    let transform_point = |p: Point| -> Point {
+        let mut pt = p;
+        if rotation.abs() > 1e-6 {
+            pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
+        }
+        Point::new(pt.x + center.x, pt.y + center.y)
+    };
+
+    let mut vertices = Vec::with_capacity(sides as usize);
+    for i in 0..sides {
+        let theta = 2.0 * std::f64::consts::PI * (i as f64) / (sides as f64);
+        let x = radius * theta.cos();
+        let y = radius * theta.sin();
+        vertices.push(transform_point(Point::new(x, y)));
+    }
+
+    self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in)
+}
+
+pub fn generate_path_contour(&self, path_shape: &PathShape, step_down: f64) -> Vec<Toolpath> {
+    let mut segments = Vec::new();
+
+    // Calculate center for rotation
+    let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
+    let center = Point::new(
+        (rect.min.x + rect.max.x) as f64 / 2.0,
+                            (rect.min.y + rect.max.y) as f64 / 2.0,
+    );
+    let rotation = path_shape.rotation;
+
+    // Function to transform a point (rotate if necessary)
+    let transform_point = |p: lyon::math::Point| -> Point {
+        let mut pt = Point::new(p.x as f64, p.y as f64);
+        if rotation.abs() > 1e-6 {
+            pt = crate::model::rotate_point(pt, center, rotation);
+        }
+        pt
+    };
+
+    // Collect points from the flattened path
+    let mut points = Vec::new();
+    let mut close_flag = false;
+
+    let events: Vec<_> = path_shape.render().iter().collect();
+
+    for event in events {
+        match event {
+            lyon::path::Event::Begin { at } => {
+                points.push(transform_point(at));
+            }
+            lyon::path::Event::Line { to, .. } => {
+                points.push(transform_point(to));
+            }
+            lyon::path::Event::Cubic { to, .. } => {
+                points.push(transform_point(to));
+            }
+            lyon::path::Event::End { close, .. } => {
+                close_flag = close;
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if points.is_empty() {
+        return Vec::new();
+    }
+
+    // Move to the first point (rapid)
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::RapidMove,
+        Point::new(0.0, 0.0),
+                                       points[0],
+                                       self.feed_rate,
+                                       self.spindle_speed,
+    ));
+
+    // Generate segments between consecutive points
+    let mut current = points[0];
+    for i in 1..points.len() {
+        segments.push(ToolpathSegment::new(
+            ToolpathSegmentType::LinearMove,
+            current,
+            points[i],
+            self.feed_rate,
+            self.spindle_speed,
+        ));
+        current = points[i];
+    }
+
+    // If the path must be closed AND the last point is not the first, close
+    if close_flag && points.len() > 1 {
+        let last = points.last().unwrap();
+        let first = points.first().unwrap();
+        if last.distance_to(first) > 0.001 {
             segments.push(ToolpathSegment::new(
                 ToolpathSegmentType::LinearMove,
-                vertices[i],
-                vertices[next_i],
+                *last,
+                *first,
                 self.feed_rate,
                 self.spindle_speed,
             ));
         }
-
-        // Return to origin with rapid move
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            vertices[0],
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        self.create_multipass_toolpaths(segments, step_down)
     }
 
-    /// Generates a pocket toolpath for a rectangle.
-    pub fn generate_rectangle_pocket(
-        &self,
-        rect: &Rectangle,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let r = rect
-            .effective_corner_radius()
-            .min(rect.width.abs() / 2.0)
-            .min(rect.height.abs() / 2.0);
+    self.create_multipass_toolpaths(segments, step_down)
+}
 
-        if r > 0.001 || rect.rotation.abs() > 1e-6 {
-            // Convert rounded or rotated rectangle to polygon for pocketing
-            let mut vertices = Vec::new();
-            let x = rect.center.x - rect.width / 2.0;
-            let y = rect.center.y - rect.height / 2.0;
-            let w = rect.width;
-            let h = rect.height;
+/// Generates a pocket toolpath for a PathShape.
+pub fn generate_path_pocket(
+    &self,
+    path_shape: &PathShape,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    // Flatten path to polyline and use polyline pocket generation
+    //        let tolerance = 0.1; // mm
+    let mut vertices = Vec::new();
 
-            if r > 0.001 {
-                // Use more segments for better approximation (32 instead of 8)
-                let segments = 32;
+    // Calculate center for rotation
+    let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
+    let center = Point::new(
+        (rect.min.x + rect.max.x) as f64 / 2.0,
+                            (rect.min.y + rect.max.y) as f64 / 2.0,
+    );
+    let rotation = path_shape.rotation;
 
-                // Helper to add arc points (excluding start point to avoid duplicates)
-                let mut add_arc_points =
-                    |center: Point, start_angle: f64, end_angle: f64, include_start: bool| {
-                        let start_rad = start_angle.to_radians();
-                        let end_rad = end_angle.to_radians();
-                        let step = (end_rad - start_rad) / segments as f64;
-
-                        let start_i = if include_start { 0 } else { 1 };
-                        for i in start_i..=segments {
-                            let angle = start_rad + step * i as f64;
-                            vertices.push(Point::new(
-                                center.x + r * angle.cos(),
-                                center.y + r * angle.sin(),
-                            ));
-                        }
-                    };
-
-                // Generate rounded rectangle corners (clockwise from bottom-right)
-                // BR Corner (270 -> 360) - include start point
-                add_arc_points(Point::new(x + w - r, y + r), 270.0, 360.0, true);
-
-                // TR Corner (0 -> 90) - exclude start point (overlaps with BR end)
-                add_arc_points(Point::new(x + w - r, y + h - r), 0.0, 90.0, false);
-
-                // TL Corner (90 -> 180) - exclude start point (overlaps with TR end)
-                add_arc_points(Point::new(x + r, y + h - r), 90.0, 180.0, false);
-
-                // BL Corner (180 -> 270) - exclude start point (overlaps with TL end)
-                add_arc_points(Point::new(x + r, y + r), 180.0, 270.0, false);
-            } else {
-                vertices.push(Point::new(x, y));
-                vertices.push(Point::new(x + w, y));
-                vertices.push(Point::new(x + w, y + h));
-                vertices.push(Point::new(x, y + h));
+    for event in path_shape.render().iter() {
+        match event {
+            lyon::path::Event::Begin { at } => {
+                let mut p = Point::new(at.x as f64, at.y as f64);
+                if rotation.abs() > 1e-6 {
+                    p = crate::model::rotate_point(p, center, rotation);
+                }
+                vertices.push(p);
             }
+            lyon::path::Event::Line { from: _, to } => {
+                let mut p = Point::new(to.x as f64, to.y as f64);
+                if rotation.abs() > 1e-6 {
+                    p = crate::model::rotate_point(p, center, rotation);
+                }
+                vertices.push(p);
+            }
+            _ => {}
+        }
+    }
 
-            // Apply rotation
-            if rect.rotation.abs() > 1e-6 {
-                let center = rect.center;
-                let rotation_deg = rect.rotation;
-                for p in &mut vertices {
-                    *p = crate::model::rotate_point(*p, center, rotation_deg);
+    let polyline_vertices = vertices;
+    self.generate_polyline_pocket(&polyline_vertices, pocket_depth, step_down, step_in)
+}
+
+fn build_text_outline_segments(&self, text_shape: &TextShape) -> Vec<ToolpathSegment> {
+    let mut segments = Vec::new();
+
+    let font =
+    font_manager::get_font_for(&text_shape.font_family, text_shape.bold, text_shape.italic);
+    let scale = Scale::uniform(text_shape.font_size as f32);
+    let v_metrics = font.v_metrics(scale);
+    let line_height = v_metrics.ascent - v_metrics.descent + v_metrics.line_gap;
+
+    // Match the designer's text rotation behaviour: rotate around the *unrotated* text bounds center.
+    let (min_x, min_y, max_x, max_y) = text_shape.bounds();
+    let baseline_y0 = (text_shape.y as f32) + v_metrics.ascent;
+    let rotation_center_raw = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
+    let rotation_center = Point::new(
+        rotation_center_raw.x,
+        2.0 * baseline_y0 as f64 - rotation_center_raw.y,
+    );
+
+    let mut caret_x = text_shape.x as f32;
+    let mut baseline_y = baseline_y0;
+    let mut prev: Option<GlyphId> = None;
+
+    let mut pen = Point::new(0.0, 0.0);
+
+    for ch in text_shape.text.chars() {
+        if ch == '\n' {
+            caret_x = text_shape.x as f32;
+            baseline_y -= line_height;
+            prev = None;
+            continue;
+        }
+
+        let base = font.glyph(ch);
+        let base_id = base.id();
+
+        if let Some(prev_id) = prev {
+            caret_x += font.pair_kerning(scale, prev_id, base_id);
+        }
+
+        let scaled = base.scaled(scale);
+        let advance = scaled.h_metrics().advance_width;
+
+        // Build outline in glyph-local coordinates and apply baseline offset + rotation in the builder.
+        let mut builder = ToolpathBuilder::new(
+            self.feed_rate,
+            self.spindle_speed,
+            pen,
+            Point::new(caret_x as f64, baseline_y as f64),
+                                               rotation_center,
+                                               text_shape.rotation,
+        );
+        scaled.build_outline(&mut builder);
+        pen = builder.current_point;
+        segments.extend(builder.segments);
+
+        caret_x += advance;
+        prev = Some(base_id);
+    }
+
+    segments
+}
+
+/// Generates a pocket (area clearing) toolpath for text.
+pub fn generate_text_pocket_toolpath(
+    &self,
+    text_shape: &TextShape,
+    step_down: f64,
+) -> Vec<Toolpath> {
+    let outline_segments = self.build_text_outline_segments(text_shape);
+    let contours = contours_from_outline_segments(&outline_segments);
+    if contours.is_empty() {
+        return Vec::new();
+    }
+
+    let stepover = if self.step_in > 1e-6 {
+        self.step_in
+    } else {
+        (self.tool_diameter * 0.4).max(0.1)
+    };
+
+    fn centroid(poly: &[Point]) -> Point {
+        if poly.is_empty() {
+            return Point::new(0.0, 0.0);
+        }
+        let (mut sx, mut sy) = (0.0, 0.0);
+        for p in poly {
+            sx += p.x;
+            sy += p.y;
+        }
+        let n = poly.len() as f64;
+        Point::new(sx / n, sy / n)
+    }
+
+    fn clean_contour(contour: &[Point], tol: f64) -> Vec<Point> {
+        let mut out: Vec<Point> = Vec::new();
+        for &p in contour {
+            let should_push = match out.last() {
+                None => true,
+                Some(last) => last.distance_to(&p) > tol,
+            };
+            if should_push {
+                out.push(p);
+            }
+        }
+
+        if out.len() > 2 {
+            let first = out[0];
+            if let Some(&last) = out.last() {
+                if last.distance_to(&first) <= tol {
+                    out.pop();
+                }
+            }
+        }
+
+        out
+    }
+
+    fn point_in_polygon(p: Point, poly: &[Point]) -> bool {
+        if poly.len() < 3 {
+            return false;
+        }
+        let mut inside = false;
+        let mut j = poly.len() - 1;
+        for i in 0..poly.len() {
+            let pi = poly[i];
+            let pj = poly[j];
+            let intersect = ((pi.y > p.y) != (pj.y > p.y))
+            && (p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y + 1e-12) + pi.x);
+            if intersect {
+                inside = !inside;
+            }
+            j = i;
+        }
+        inside
+    }
+
+    // Classify contours by nesting depth (even=solid, odd=hole)
+    let mut holes: Vec<Vec<Point>> = Vec::new();
+    let mut solids: Vec<Vec<Point>> = Vec::new();
+    for (idx, c) in contours.iter().enumerate() {
+        let clean = clean_contour(c, 0.01);
+        if clean.len() < 3 {
+            continue;
+        }
+        // Use a boundary-adjacent point for nesting tests; centroids can fall in holes (e.g. 'O').
+        let test_pt = Point::new(clean[0].x + 1e-6, clean[0].y);
+        let mut depth = 0usize;
+        for (j, other) in contours.iter().enumerate() {
+            if idx == j {
+                continue;
+            }
+            let other_clean = clean_contour(other, 0.01);
+            if other_clean.len() < 3 {
+                continue;
+            }
+            if point_in_polygon(test_pt, &other_clean) {
+                depth += 1;
+            }
+        }
+        if depth % 2 == 1 {
+            holes.push(clean);
+        } else {
+            solids.push(clean);
+        }
+    }
+
+    let mut segments = Vec::new();
+    let mut current = Point::new(0.0, 0.0);
+
+    fn intersections_at_y(poly: &[Point], y: f64) -> Vec<f64> {
+        let mut xs = Vec::new();
+        if poly.len() < 3 {
+            return xs;
+        }
+
+        for i in 0..poly.len() {
+            let p1 = poly[i];
+            let p2 = poly[(i + 1) % poly.len()];
+
+            if (p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y) {
+                let dy = p2.y - p1.y;
+                if dy.abs() > 1e-12 {
+                    let t = (y - p1.y) / dy;
+                    xs.push(p1.x + t * (p2.x - p1.x));
+                }
+            }
+        }
+
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        xs
+    }
+
+    fn pair_intervals(mut xs: Vec<f64>) -> Vec<(f64, f64)> {
+        xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+        let mut out = Vec::new();
+        for i in (0..xs.len()).step_by(2) {
+            if i + 1 < xs.len() {
+                out.push((xs[i], xs[i + 1]));
+            }
+        }
+        out
+    }
+
+    fn merge_intervals(mut ivals: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
+        ivals.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+        let mut out: Vec<(f64, f64)> = Vec::new();
+        for (a, b) in ivals {
+            if let Some(last) = out.last_mut() {
+                if a <= last.1 {
+                    last.1 = last.1.max(b);
+                    continue;
+                }
+            }
+            out.push((a, b));
+        }
+        out
+    }
+
+    fn subtract_intervals(
+        mut allowed: Vec<(f64, f64)>,
+                          forbidden: &[(f64, f64)],
+    ) -> Vec<(f64, f64)> {
+        if forbidden.is_empty() {
+            return allowed;
+        }
+
+        allowed.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
+
+        let mut out = Vec::new();
+        for (mut a0, a1) in allowed {
+            for (f0, f1) in forbidden {
+                if *f1 <= a0 || *f0 >= a1 {
+                    continue;
+                }
+                if *f0 > a0 {
+                    out.push((a0, (*f0).min(a1)));
+                }
+                a0 = a0.max(*f1);
+                if a0 >= a1 {
+                    break;
+                }
+            }
+            if a0 < a1 {
+                out.push((a0, a1));
+            }
+        }
+        out
+    }
+
+    for solid in solids {
+        if solid.len() < 3 {
+            continue;
+        }
+
+        let (mut min_x, mut max_x) = (f64::INFINITY, f64::NEG_INFINITY);
+        let (mut min_y, mut max_y) = (f64::INFINITY, f64::NEG_INFINITY);
+        for p in &solid {
+            min_x = min_x.min(p.x);
+            max_x = max_x.max(p.x);
+            min_y = min_y.min(p.y);
+            max_y = max_y.max(p.y);
+        }
+
+        let mut y = min_y;
+        let y_limit = max_y;
+        let mut forward = true;
+
+        while y <= y_limit {
+            let solid_xs = intersections_at_y(&solid, y);
+            let mut allowed = Vec::new();
+            for (x0, x1) in pair_intervals(solid_xs) {
+                let a0 = x0;
+                let a1 = x1;
+                if a0 < a1 {
+                    allowed.push((a0, a1));
                 }
             }
 
-            return self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in);
-        }
-
-        let op = PocketOperation::new("rect_pocket".to_string(), pocket_depth, self.tool_diameter);
-        let mut gen = PocketGenerator::new(op);
-        gen.operation.set_start_depth(self.start_depth);
-        gen.operation.set_ramp_angle(self.ramp_angle);
-        gen.operation.raster_fill_ratio = self.raster_fill_ratio;
-        let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
-        gen.operation
-            .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
-        gen.generate_rectangular_pocket(rect, step_down)
-    }
-
-    /// Generates a pocket toolpath for a circle.
-    pub fn generate_circle_pocket(
-        &self,
-        circle: &Circle,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let op = PocketOperation::new(
-            "circle_pocket".to_string(),
-            pocket_depth,
-            self.tool_diameter,
-        );
-        let mut gen = PocketGenerator::new(op);
-        gen.operation.set_start_depth(self.start_depth);
-        gen.operation.set_ramp_angle(self.ramp_angle);
-        gen.operation.raster_fill_ratio = self.raster_fill_ratio;
-        let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
-        gen.operation
-            .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
-        gen.generate_circular_pocket(circle, step_down)
-    }
-
-    /// Generates a pocket toolpath for a polyline.
-    pub fn generate_polyline_pocket(
-        &self,
-        vertices: &[Point],
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let op = PocketOperation::new(
-            "polyline_pocket".to_string(),
-            pocket_depth,
-            self.tool_diameter,
-        );
-        let mut gen = PocketGenerator::new(op);
-        gen.operation.set_start_depth(self.start_depth);
-        gen.operation.set_ramp_angle(self.ramp_angle);
-        let effective_step_in = if step_in > 0.0 { step_in } else { self.step_in };
-        gen.operation
-            .set_parameters(effective_step_in, self.feed_rate, self.spindle_speed);
-        gen.operation.set_strategy(self.pocket_strategy);
-        gen.operation.raster_fill_ratio = self.raster_fill_ratio;
-        gen.generate_polygon_pocket(vertices, step_down)
-    }
-
-    /// Generates a contour toolpath for a triangle.
-    pub fn generate_triangle_contour(&self, triangle: &Triangle, step_down: f64) -> Vec<Toolpath> {
-        let mut segments = Vec::new();
-        let half_w = triangle.width / 2.0;
-        let half_h = triangle.height / 2.0;
-
-        // Local points
-        let p1_local = Point::new(-half_w, -half_h);
-        let p2_local = Point::new(half_w, -half_h);
-        let p3_local = Point::new(-half_w, half_h);
-
-        let rotation = triangle.rotation;
-        let center = triangle.center;
-
-        let transform_point = |p: Point| -> Point {
-            let mut pt = p;
-            if rotation.abs() > 1e-6 {
-                pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
-            }
-            Point::new(pt.x + center.x, pt.y + center.y)
-        };
-
-        let p1 = transform_point(p1_local);
-        let p2 = transform_point(p2_local);
-        let p3 = transform_point(p3_local);
-
-        // Rapid to start
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            Point::new(0.0, 0.0),
-            p1,
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        // p1 -> p2
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::LinearMove,
-            p1,
-            p2,
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        // p2 -> p3
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::LinearMove,
-            p2,
-            p3,
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        // p3 -> p1
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::LinearMove,
-            p3,
-            p1,
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        // Return to origin
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            p1,
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        self.create_multipass_toolpaths(segments, step_down)
-    }
-
-    /// Generates a contour toolpath for a polygon.
-    pub fn generate_polygon_contour(&self, polygon: &Polygon, step_down: f64) -> Vec<Toolpath> {
-        let mut segments = Vec::new();
-        let sides = polygon.sides.max(3);
-        let rotation = polygon.rotation;
-        let center = polygon.center;
-        let radius = polygon.radius;
-
-        let transform_point = |p: Point| -> Point {
-            let mut pt = p;
-            if rotation.abs() > 1e-6 {
-                pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
-            }
-            Point::new(pt.x + center.x, pt.y + center.y)
-        };
-
-        let mut points = Vec::with_capacity(sides as usize);
-        for i in 0..sides {
-            let theta = 2.0 * std::f64::consts::PI * (i as f64) / (sides as f64);
-            let x = radius * theta.cos();
-            let y = radius * theta.sin();
-            points.push(transform_point(Point::new(x, y)));
-        }
-
-        if points.is_empty() {
-            return Vec::new();
-        }
-
-        // Rapid to start
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            Point::new(0.0, 0.0),
-            points[0],
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        for i in 0..sides as usize {
-            let next_i = (i + 1) % (sides as usize);
-            segments.push(ToolpathSegment::new(
-                ToolpathSegmentType::LinearMove,
-                points[i],
-                points[next_i],
-                self.feed_rate,
-                self.spindle_speed,
-            ));
-        }
-
-        // Return to origin
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            points[0],
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        self.create_multipass_toolpaths(segments, step_down)
-    }
-
-    /// Generates a pocket toolpath for a triangle.
-    pub fn generate_triangle_pocket(
-        &self,
-        triangle: &Triangle,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let half_w = triangle.width / 2.0;
-        let half_h = triangle.height / 2.0;
-
-        // Local points
-        let p1_local = Point::new(-half_w, -half_h);
-        let p2_local = Point::new(half_w, -half_h);
-        let p3_local = Point::new(-half_w, half_h);
-
-        let rotation = triangle.rotation;
-        let center = triangle.center;
-
-        let transform_point = |p: Point| -> Point {
-            let mut pt = p;
-            if rotation.abs() > 1e-6 {
-                pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
-            }
-            Point::new(pt.x + center.x, pt.y + center.y)
-        };
-
-        let vertices = vec![
-            transform_point(p1_local),
-            transform_point(p2_local),
-            transform_point(p3_local),
-        ];
-
-        self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in)
-    }
-
-    /// Generates a pocket toolpath for a polygon.
-    pub fn generate_polygon_pocket(
-        &self,
-        polygon: &Polygon,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let sides = polygon.sides.max(3);
-        let rotation = polygon.rotation;
-        let center = polygon.center;
-        let radius = polygon.radius;
-
-        let transform_point = |p: Point| -> Point {
-            let mut pt = p;
-            if rotation.abs() > 1e-6 {
-                pt = rotate_point(pt, Point::new(0.0, 0.0), rotation);
-            }
-            Point::new(pt.x + center.x, pt.y + center.y)
-        };
-
-        let mut vertices = Vec::with_capacity(sides as usize);
-        for i in 0..sides {
-            let theta = 2.0 * std::f64::consts::PI * (i as f64) / (sides as f64);
-            let x = radius * theta.cos();
-            let y = radius * theta.sin();
-            vertices.push(transform_point(Point::new(x, y)));
-        }
-
-        self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in)
-    }
-
-    /// Generates a contour toolpath for a PathShape.
-    pub fn generate_path_contour(&self, path_shape: &PathShape, step_down: f64) -> Vec<Toolpath> {
-        let mut segments = Vec::new();
-        let tolerance = 0.05; // mm
-
-        let mut current_point = Point::new(0.0, 0.0);
-        let mut start_point = Point::new(0.0, 0.0);
-
-        // Calculate center for rotation (unrotated bounding box)
-        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
-        let center = Point::new(
-            (rect.min.x + rect.max.x) as f64 / 2.0,
-            (rect.min.y + rect.max.y) as f64 / 2.0,
-        );
-        let rotation = path_shape.rotation;
-
-        for event in path_shape.render().iter().flattened(tolerance) {
-            match event {
-                lyon::path::Event::Begin { at } => {
-                    let mut p = Point::new(at.x as f64, at.y as f64);
-                    if rotation.abs() > 1e-6 {
-                        p = crate::model::rotate_point(p, center, rotation);
+            if !allowed.is_empty() {
+                let mut forbidden = Vec::new();
+                for h in &holes {
+                    if h.len() < 3 {
+                        continue;
                     }
+                    // Only subtract holes that are inside this solid.
+                    if !point_in_polygon(centroid(h), &solid) {
+                        continue;
+                    }
+                    let hole_xs = intersections_at_y(h, y);
+                    for (hx0, hx1) in pair_intervals(hole_xs) {
+                        forbidden.push((hx0, hx1));
+                    }
+                }
+                let forbidden = merge_intervals(forbidden);
+                allowed = subtract_intervals(allowed, &forbidden);
+            }
+
+            if !allowed.is_empty() {
+                if !forward {
+                    allowed.reverse();
+                }
+
+                for (a0, a1) in allowed {
+                    let (start_x, end_x) = if forward { (a0, a1) } else { (a1, a0) };
+                    let start = Point::new(start_x, y);
+                    let end = Point::new(end_x, y);
+
                     segments.push(ToolpathSegment::new(
                         ToolpathSegmentType::RapidMove,
-                        current_point,
-                        p,
+                        current,
+                        start,
                         self.feed_rate,
                         self.spindle_speed,
                     ));
-                    current_point = p;
-                    start_point = p;
-                }
-                lyon::path::Event::Line { from: _, to } => {
-                    let mut p = Point::new(to.x as f64, to.y as f64);
-                    if rotation.abs() > 1e-6 {
-                        p = crate::model::rotate_point(p, center, rotation);
-                    }
                     segments.push(ToolpathSegment::new(
                         ToolpathSegmentType::LinearMove,
-                        current_point,
-                        p,
+                        start,
+                        end,
                         self.feed_rate,
                         self.spindle_speed,
                     ));
-                    current_point = p;
+                    current = end;
                 }
-                lyon::path::Event::End {
-                    last: _,
-                    first: _,
-                    close,
-                } => {
-                    if close {
-                        segments.push(ToolpathSegment::new(
-                            ToolpathSegmentType::LinearMove,
-                            current_point,
-                            start_point,
-                            self.feed_rate,
-                            self.spindle_speed,
-                        ));
-                        current_point = start_point;
-                    }
-                }
-                _ => {}
             }
+
+            forward = !forward;
+            y += stepover.max(0.05);
         }
-
-        // Return to origin
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            current_point,
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        self.create_multipass_toolpaths(segments, step_down)
     }
+    /*
+     *        segments.push(ToolpathSegment::new(
+     *            ToolpathSegmentType::RapidMove,
+     *            current,
+     * //            Point::new(0.0, 0.0),
+     *            self.feed_rate,
+     *            self.spindle_speed,
+     *        ));
+     */
+    self.create_multipass_toolpaths(segments, step_down)
+}
 
-    /// Generates a pocket toolpath for a PathShape.
-    pub fn generate_path_pocket(
-        &self,
-        path_shape: &PathShape,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        // Flatten path to polyline and use polyline pocket generation
-        let tolerance = 0.1; // mm
-        let mut vertices = Vec::new();
+/// Generates a contour (profile) toolpath for text.
+pub fn generate_text_toolpath(&self, text_shape: &TextShape, step_down: f64) -> Vec<Toolpath> {
+    let segments = self.build_text_outline_segments(text_shape);
+    self.create_multipass_toolpaths(segments, step_down)
+}
 
-        // Calculate center for rotation
-        let rect = lyon::algorithms::aabb::bounding_box(&path_shape.render());
-        let center = Point::new(
-            (rect.min.x + rect.max.x) as f64 / 2.0,
-            (rect.min.y + rect.max.y) as f64 / 2.0,
-        );
-        let rotation = path_shape.rotation;
+/// Generates a contour toolpath for a gear.
+pub fn generate_gear_contour(&self, gear: &DesignGear, step_down: f64) -> Vec<Toolpath> {
+    let path = gear.render();
+    let path_shape = PathShape::from_lyon_path(&path);
+    self.generate_path_contour(&path_shape, step_down)
+}
 
-        for event in path_shape.render().iter().flattened(tolerance) {
-            match event {
-                lyon::path::Event::Begin { at } => {
-                    let mut p = Point::new(at.x as f64, at.y as f64);
-                    if rotation.abs() > 1e-6 {
-                        p = crate::model::rotate_point(p, center, rotation);
-                    }
-                    vertices.push(p);
-                }
-                lyon::path::Event::Line { from: _, to } => {
-                    let mut p = Point::new(to.x as f64, to.y as f64);
-                    if rotation.abs() > 1e-6 {
-                        p = crate::model::rotate_point(p, center, rotation);
-                    }
-                    vertices.push(p);
-                }
-                _ => {}
-            }
-        }
+/// Generates a pocket toolpath for a gear.
+pub fn generate_gear_pocket(
+    &self,
+    gear: &DesignGear,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let path = gear.render();
+    let path_shape = PathShape::from_lyon_path(&path);
+    self.generate_path_pocket(&path_shape, pocket_depth, step_down, step_in)
+}
 
-        let polyline_vertices = vertices;
-        self.generate_polyline_pocket(&polyline_vertices, pocket_depth, step_down, step_in)
-    }
+/// Generates a contour toolpath for a sprocket.
+pub fn generate_sprocket_contour(
+    &self,
+    sprocket: &DesignSprocket,
+    step_down: f64,
+) -> Vec<Toolpath> {
+    let path = sprocket.render();
+    let path_shape = PathShape::from_lyon_path(&path);
+    self.generate_path_contour(&path_shape, step_down)
+}
 
-    fn build_text_outline_segments(&self, text_shape: &TextShape) -> Vec<ToolpathSegment> {
-        let mut segments = Vec::new();
-
-        let font =
-            font_manager::get_font_for(&text_shape.font_family, text_shape.bold, text_shape.italic);
-        let scale = Scale::uniform(text_shape.font_size as f32);
-        let v_metrics = font.v_metrics(scale);
-        let line_height = v_metrics.ascent - v_metrics.descent + v_metrics.line_gap;
-
-        // Match the designer's text rotation behaviour: rotate around the *unrotated* text bounds center.
-        let (min_x, min_y, max_x, max_y) = text_shape.bounds();
-        let baseline_y0 = (text_shape.y as f32) + v_metrics.ascent;
-        let rotation_center_raw = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
-        let rotation_center = Point::new(
-            rotation_center_raw.x,
-            2.0 * baseline_y0 as f64 - rotation_center_raw.y,
-        );
-
-        let mut caret_x = text_shape.x as f32;
-        let mut baseline_y = baseline_y0;
-        let mut prev: Option<GlyphId> = None;
-
-        let mut pen = Point::new(0.0, 0.0);
-
-        for ch in text_shape.text.chars() {
-            if ch == '\n' {
-                caret_x = text_shape.x as f32;
-                baseline_y -= line_height;
-                prev = None;
-                continue;
-            }
-
-            let base = font.glyph(ch);
-            let base_id = base.id();
-
-            if let Some(prev_id) = prev {
-                caret_x += font.pair_kerning(scale, prev_id, base_id);
-            }
-
-            let scaled = base.scaled(scale);
-            let advance = scaled.h_metrics().advance_width;
-
-            // Build outline in glyph-local coordinates and apply baseline offset + rotation in the builder.
-            let mut builder = ToolpathBuilder::new(
-                self.feed_rate,
-                self.spindle_speed,
-                pen,
-                Point::new(caret_x as f64, baseline_y as f64),
-                rotation_center,
-                text_shape.rotation,
-            );
-            scaled.build_outline(&mut builder);
-            pen = builder.current_point;
-            segments.extend(builder.segments);
-
-            caret_x += advance;
-            prev = Some(base_id);
-        }
-
-        segments
-    }
-
-    /// Generates a pocket (area clearing) toolpath for text.
-    pub fn generate_text_pocket_toolpath(
-        &self,
-        text_shape: &TextShape,
-        step_down: f64,
-    ) -> Vec<Toolpath> {
-        let outline_segments = self.build_text_outline_segments(text_shape);
-        let contours = contours_from_outline_segments(&outline_segments);
-        if contours.is_empty() {
-            return Vec::new();
-        }
-
-        let stepover = if self.step_in > 1e-6 {
-            self.step_in
-        } else {
-            (self.tool_diameter * 0.4).max(0.1)
-        };
-
-        fn centroid(poly: &[Point]) -> Point {
-            if poly.is_empty() {
-                return Point::new(0.0, 0.0);
-            }
-            let (mut sx, mut sy) = (0.0, 0.0);
-            for p in poly {
-                sx += p.x;
-                sy += p.y;
-            }
-            let n = poly.len() as f64;
-            Point::new(sx / n, sy / n)
-        }
-
-        fn clean_contour(contour: &[Point], tol: f64) -> Vec<Point> {
-            let mut out: Vec<Point> = Vec::new();
-            for &p in contour {
-                let should_push = match out.last() {
-                    None => true,
-                    Some(last) => last.distance_to(&p) > tol,
-                };
-                if should_push {
-                    out.push(p);
-                }
-            }
-
-            if out.len() > 2 {
-                let first = out[0];
-                if let Some(&last) = out.last() {
-                    if last.distance_to(&first) <= tol {
-                        out.pop();
-                    }
-                }
-            }
-
-            out
-        }
-
-        fn point_in_polygon(p: Point, poly: &[Point]) -> bool {
-            if poly.len() < 3 {
-                return false;
-            }
-            let mut inside = false;
-            let mut j = poly.len() - 1;
-            for i in 0..poly.len() {
-                let pi = poly[i];
-                let pj = poly[j];
-                let intersect = ((pi.y > p.y) != (pj.y > p.y))
-                    && (p.x < (pj.x - pi.x) * (p.y - pi.y) / (pj.y - pi.y + 1e-12) + pi.x);
-                if intersect {
-                    inside = !inside;
-                }
-                j = i;
-            }
-            inside
-        }
-
-        // Classify contours by nesting depth (even=solid, odd=hole)
-        let mut holes: Vec<Vec<Point>> = Vec::new();
-        let mut solids: Vec<Vec<Point>> = Vec::new();
-        for (idx, c) in contours.iter().enumerate() {
-            let clean = clean_contour(c, 0.01);
-            if clean.len() < 3 {
-                continue;
-            }
-            // Use a boundary-adjacent point for nesting tests; centroids can fall in holes (e.g. 'O').
-            let test_pt = Point::new(clean[0].x + 1e-6, clean[0].y);
-            let mut depth = 0usize;
-            for (j, other) in contours.iter().enumerate() {
-                if idx == j {
-                    continue;
-                }
-                let other_clean = clean_contour(other, 0.01);
-                if other_clean.len() < 3 {
-                    continue;
-                }
-                if point_in_polygon(test_pt, &other_clean) {
-                    depth += 1;
-                }
-            }
-            if depth % 2 == 1 {
-                holes.push(clean);
-            } else {
-                solids.push(clean);
-            }
-        }
-
-        let mut segments = Vec::new();
-        let mut current = Point::new(0.0, 0.0);
-
-        fn intersections_at_y(poly: &[Point], y: f64) -> Vec<f64> {
-            let mut xs = Vec::new();
-            if poly.len() < 3 {
-                return xs;
-            }
-
-            for i in 0..poly.len() {
-                let p1 = poly[i];
-                let p2 = poly[(i + 1) % poly.len()];
-
-                if (p1.y <= y && p2.y > y) || (p2.y <= y && p1.y > y) {
-                    let dy = p2.y - p1.y;
-                    if dy.abs() > 1e-12 {
-                        let t = (y - p1.y) / dy;
-                        xs.push(p1.x + t * (p2.x - p1.x));
-                    }
-                }
-            }
-
-            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            xs
-        }
-
-        fn pair_intervals(mut xs: Vec<f64>) -> Vec<(f64, f64)> {
-            xs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-            let mut out = Vec::new();
-            for i in (0..xs.len()).step_by(2) {
-                if i + 1 < xs.len() {
-                    out.push((xs[i], xs[i + 1]));
-                }
-            }
-            out
-        }
-
-        fn merge_intervals(mut ivals: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
-            ivals.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-            let mut out: Vec<(f64, f64)> = Vec::new();
-            for (a, b) in ivals {
-                if let Some(last) = out.last_mut() {
-                    if a <= last.1 {
-                        last.1 = last.1.max(b);
-                        continue;
-                    }
-                }
-                out.push((a, b));
-            }
-            out
-        }
-
-        fn subtract_intervals(
-            mut allowed: Vec<(f64, f64)>,
-            forbidden: &[(f64, f64)],
-        ) -> Vec<(f64, f64)> {
-            if forbidden.is_empty() {
-                return allowed;
-            }
-
-            allowed.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
-
-            let mut out = Vec::new();
-            for (mut a0, a1) in allowed {
-                for (f0, f1) in forbidden {
-                    if *f1 <= a0 || *f0 >= a1 {
-                        continue;
-                    }
-                    if *f0 > a0 {
-                        out.push((a0, (*f0).min(a1)));
-                    }
-                    a0 = a0.max(*f1);
-                    if a0 >= a1 {
-                        break;
-                    }
-                }
-                if a0 < a1 {
-                    out.push((a0, a1));
-                }
-            }
-            out
-        }
-
-        for solid in solids {
-            if solid.len() < 3 {
-                continue;
-            }
-
-            let (mut min_x, mut max_x) = (f64::INFINITY, f64::NEG_INFINITY);
-            let (mut min_y, mut max_y) = (f64::INFINITY, f64::NEG_INFINITY);
-            for p in &solid {
-                min_x = min_x.min(p.x);
-                max_x = max_x.max(p.x);
-                min_y = min_y.min(p.y);
-                max_y = max_y.max(p.y);
-            }
-
-            let mut y = min_y;
-            let y_limit = max_y;
-            let mut forward = true;
-
-            while y <= y_limit {
-                let solid_xs = intersections_at_y(&solid, y);
-                let mut allowed = Vec::new();
-                for (x0, x1) in pair_intervals(solid_xs) {
-                    let a0 = x0;
-                    let a1 = x1;
-                    if a0 < a1 {
-                        allowed.push((a0, a1));
-                    }
-                }
-
-                if !allowed.is_empty() {
-                    let mut forbidden = Vec::new();
-                    for h in &holes {
-                        if h.len() < 3 {
-                            continue;
-                        }
-                        // Only subtract holes that are inside this solid.
-                        if !point_in_polygon(centroid(h), &solid) {
-                            continue;
-                        }
-                        let hole_xs = intersections_at_y(h, y);
-                        for (hx0, hx1) in pair_intervals(hole_xs) {
-                            forbidden.push((hx0, hx1));
-                        }
-                    }
-                    let forbidden = merge_intervals(forbidden);
-                    allowed = subtract_intervals(allowed, &forbidden);
-                }
-
-                if !allowed.is_empty() {
-                    if !forward {
-                        allowed.reverse();
-                    }
-
-                    for (a0, a1) in allowed {
-                        let (start_x, end_x) = if forward { (a0, a1) } else { (a1, a0) };
-                        let start = Point::new(start_x, y);
-                        let end = Point::new(end_x, y);
-
-                        segments.push(ToolpathSegment::new(
-                            ToolpathSegmentType::RapidMove,
-                            current,
-                            start,
-                            self.feed_rate,
-                            self.spindle_speed,
-                        ));
-                        segments.push(ToolpathSegment::new(
-                            ToolpathSegmentType::LinearMove,
-                            start,
-                            end,
-                            self.feed_rate,
-                            self.spindle_speed,
-                        ));
-                        current = end;
-                    }
-                }
-
-                forward = !forward;
-                y += stepover.max(0.05);
-            }
-        }
-
-        segments.push(ToolpathSegment::new(
-            ToolpathSegmentType::RapidMove,
-            current,
-            Point::new(0.0, 0.0),
-            self.feed_rate,
-            self.spindle_speed,
-        ));
-
-        self.create_multipass_toolpaths(segments, step_down)
-    }
-
-    /// Generates a contour (profile) toolpath for text.
-    pub fn generate_text_toolpath(&self, text_shape: &TextShape, step_down: f64) -> Vec<Toolpath> {
-        let segments = self.build_text_outline_segments(text_shape);
-        self.create_multipass_toolpaths(segments, step_down)
-    }
-
-    /// Generates a contour toolpath for a gear.
-    pub fn generate_gear_contour(&self, gear: &DesignGear, step_down: f64) -> Vec<Toolpath> {
-        let path = gear.render();
-        let path_shape = PathShape::from_lyon_path(&path);
-        self.generate_path_contour(&path_shape, step_down)
-    }
-
-    /// Generates a pocket toolpath for a gear.
-    pub fn generate_gear_pocket(
-        &self,
-        gear: &DesignGear,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let path = gear.render();
-        let path_shape = PathShape::from_lyon_path(&path);
-        self.generate_path_pocket(&path_shape, pocket_depth, step_down, step_in)
-    }
-
-    /// Generates a contour toolpath for a sprocket.
-    pub fn generate_sprocket_contour(
-        &self,
-        sprocket: &DesignSprocket,
-        step_down: f64,
-    ) -> Vec<Toolpath> {
-        let path = sprocket.render();
-        let path_shape = PathShape::from_lyon_path(&path);
-        self.generate_path_contour(&path_shape, step_down)
-    }
-
-    /// Generates a pocket toolpath for a sprocket.
-    pub fn generate_sprocket_pocket(
-        &self,
-        sprocket: &DesignSprocket,
-        pocket_depth: f64,
-        step_down: f64,
-        step_in: f64,
-    ) -> Vec<Toolpath> {
-        let path = sprocket.render();
-        let path_shape = PathShape::from_lyon_path(&path);
-        self.generate_path_pocket(&path_shape, pocket_depth, step_down, step_in)
-    }
+/// Generates a pocket toolpath for a sprocket.
+pub fn generate_sprocket_pocket(
+    &self,
+    sprocket: &DesignSprocket,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    let path = sprocket.render();
+    let path_shape = PathShape::from_lyon_path(&path);
+    self.generate_path_pocket(&path_shape, pocket_depth, step_down, step_in)
+}
 }
 
 fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point>> {
@@ -1605,8 +1686,8 @@ impl OutlineBuilder for ToolpathBuilder {
         let p3 = self.map_point(x, y);
 
         let approx_len = (p0.x - p1.x).hypot(p0.y - p1.y)
-            + (p1.x - p2.x).hypot(p1.y - p2.y)
-            + (p2.x - p3.x).hypot(p2.y - p3.y);
+        + (p1.x - p2.x).hypot(p1.y - p2.y)
+        + (p2.x - p3.x).hypot(p2.y - p3.y);
         let max_seg_len = 0.5_f64;
         let steps = ((approx_len / max_seg_len).ceil() as usize).clamp(8, 128);
 
@@ -1614,13 +1695,13 @@ impl OutlineBuilder for ToolpathBuilder {
             let t = (i as f64) / (steps as f64);
             let mt = 1.0 - t;
             let px = mt * mt * mt * p0.x
-                + 3.0 * mt * mt * t * p1.x
-                + 3.0 * mt * t * t * p2.x
-                + t * t * t * p3.x;
+            + 3.0 * mt * mt * t * p1.x
+            + 3.0 * mt * t * t * p2.x
+            + t * t * t * p3.x;
             let py = mt * mt * mt * p0.y
-                + 3.0 * mt * mt * t * p1.y
-                + 3.0 * mt * t * t * p2.y
-                + t * t * t * p3.y;
+            + 3.0 * mt * mt * t * p1.y
+            + 3.0 * mt * t * t * p2.y
+            + t * t * t * p3.y;
             let p = Point::new(px, py);
             self.segments.push(ToolpathSegment::new(
                 ToolpathSegmentType::LinearMove,

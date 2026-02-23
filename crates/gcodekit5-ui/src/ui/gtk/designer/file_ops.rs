@@ -16,17 +16,18 @@ impl DesignerView {
     }
 
     pub fn open_file(&self) {
-        let dialog = FileChooserNative::builder()
-            .title(t!("Open Design File"))
-            .action(FileChooserAction::Open)
-            .modal(true)
-            .build();
+        let open_label = t!("Open");
+        let cancel_label = t!("Cancel");
 
-        if let Some(root) = self.widget.root() {
-            if let Some(window) = root.downcast_ref::<gtk4::Window>() {
-                dialog.set_transient_for(Some(window));
-            }
-        }
+        let dialog = gtk4::FileChooserDialog::new(
+            Some(&t!("Open Design File")),
+            None::<&gtk4::Window>,
+            gtk4::FileChooserAction::Open,
+            &[
+                (&*open_label, gtk4::ResponseType::Accept),
+                (&*cancel_label, gtk4::ResponseType::Cancel),
+            ]
+        );
 
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
@@ -85,25 +86,15 @@ impl DesignerView {
 
                                 // Restore tool settings from design file
                                 state.tool_settings.feed_rate = design.toolpath_params.feed_rate;
-                                state.tool_settings.spindle_speed =
-                                    design.toolpath_params.spindle_speed as u32;
-                                state.tool_settings.tool_diameter =
-                                    design.toolpath_params.tool_diameter;
+                                state.tool_settings.spindle_speed = design.toolpath_params.spindle_speed as u32;
+                                state.tool_settings.tool_diameter = design.toolpath_params.tool_diameter;
                                 state.tool_settings.cut_depth = design.toolpath_params.cut_depth;
 
                                 // Also update the toolpath generator to match
-                                state
-                                    .toolpath_generator
-                                    .set_feed_rate(design.toolpath_params.feed_rate);
-                                state
-                                    .toolpath_generator
-                                    .set_spindle_speed(design.toolpath_params.spindle_speed as u32);
-                                state
-                                    .toolpath_generator
-                                    .set_tool_diameter(design.toolpath_params.tool_diameter);
-                                state
-                                    .toolpath_generator
-                                    .set_cut_depth(design.toolpath_params.cut_depth);
+                                state.toolpath_generator.set_feed_rate(design.toolpath_params.feed_rate);
+                                state.toolpath_generator.set_spindle_speed(design.toolpath_params.spindle_speed as u32);
+                                state.toolpath_generator.set_tool_diameter(design.toolpath_params.tool_diameter);
+                                state.toolpath_generator.set_cut_depth(design.toolpath_params.cut_depth);
 
                                 // Restore stock parameters from design file (create if needed)
                                 state.stock_material = Some(StockMaterial {
@@ -170,12 +161,18 @@ impl DesignerView {
             Some("stl") => t!("Import STL File (3D Shadow)"),
             _ => t!("Import Design File"),
         };
+       	let open_label = t!("Open");
+        let cancel_label = t!("Cancel");
 
-        let dialog = FileChooserNative::builder()
-            .title(title)
-            .action(FileChooserAction::Open)
-            .modal(true)
-            .build();
+              let dialog = gtk4::FileChooserDialog::new(
+            Some(title),
+            None::<&gtk4::Window>,
+            gtk4::FileChooserAction::Open,
+            &[
+                (&*open_label, gtk4::ResponseType::Accept),
+                (&*cancel_label, gtk4::ResponseType::Cancel),
+            ]
+        );
 
         if let Some(root) = self.widget.root() {
             if let Some(window) = root.downcast_ref::<gtk4::Window>() {
@@ -395,17 +392,19 @@ impl DesignerView {
     }
 
     pub fn save_as_file(&self) {
-        let dialog = FileChooserNative::builder()
-            .title("Save Design File")
-            .action(FileChooserAction::Save)
-            .modal(true)
-            .build();
+         let save_label = t!("Save");
+         let cancel_label = t!("Cancel");
 
-        if let Some(root) = self.widget.root() {
-            if let Some(window) = root.downcast_ref::<gtk4::Window>() {
-                dialog.set_transient_for(Some(window));
-            }
-        }
+         let dialog = gtk4::FileChooserDialog::new(
+            Some(t!("Save Design File")),
+            None::<&gtk4::Window>,  // ← NO establecer parent
+            gtk4::FileChooserAction::Save,
+            &[
+                (&*save_label, gtk4::ResponseType::Accept),
+                (&*cancel_label, gtk4::ResponseType::Cancel),
+            ]
+        );
+        dialog.set_current_name("design.gckd");
 
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
@@ -534,18 +533,20 @@ impl DesignerView {
     }
 
     pub fn export_gcode(&self) {
-        let window = self
-            .widget
-            .root()
-            .and_then(|w| w.downcast::<gtk4::Window>().ok());
-        let dialog = FileChooserNative::new(
-            Some("Export G-Code"),
-            window.as_ref(),
-            FileChooserAction::Save,
-            Some("Export"),
-            Some("Cancel"),
-        );
 
+        let export_label = t!("Export");
+        let cancel_label = t!("Cancel");
+
+        let dialog = gtk4::FileChooserDialog::new(
+            Some(t!("Export G-Code")),
+            None::<&gtk4::Window>,
+            gtk4::FileChooserAction::Save,
+            &[
+                (&*export_label, gtk4::ResponseType::Accept),
+                (&*cancel_label, gtk4::ResponseType::Cancel),
+            ]
+        );
+         dialog.set_current_name("design.gcode");
         let filter = gtk4::FileFilter::new();
         filter.set_name(Some("G-Code Files"));
         filter.add_pattern("*.nc");
@@ -611,16 +612,17 @@ impl DesignerView {
     }
 
     pub fn export_svg(&self) {
-        let window = self
-            .widget
-            .root()
-            .and_then(|w| w.downcast::<gtk4::Window>().ok());
-        let dialog = FileChooserNative::new(
-            Some("Export SVG"),
-            window.as_ref(),
-            FileChooserAction::Save,
-            Some("Export"),
-            Some("Cancel"),
+        let export_label = t!("Export");
+        let cancel_label = t!("Cancel");
+
+        let dialog = gtk4::FileChooserDialog::new(
+            Some(t!("Export SVG")),
+            None::<&gtk4::Window>,  // ← NO establecer parent
+            gtk4::FileChooserAction::Save,
+            &[
+                (&*export_label, gtk4::ResponseType::Accept),
+                (&*cancel_label, gtk4::ResponseType::Cancel),
+            ]
         );
 
         let filter = gtk4::FileFilter::new();
@@ -754,6 +756,7 @@ impl DesignerView {
                                     let d = gcodekit5_designer::model::DesignPath::from_lyon_path(&path).to_svg_path();
                                     svg.push_str(&format!(r#"<path d="{}" style="{}" />"#, d, style));
                                 }
+
                             }
                             svg.push('\n');
                         }

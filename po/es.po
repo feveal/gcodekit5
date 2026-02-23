@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: GCodeKit5\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-12-12 09:36+0700\n"
-"PO-Revision-Date: 2026-02-10 01:41+0100\n"
+"PO-Revision-Date: 2026-02-10 18:47+0100\n"
 "Last-Translator: \n"
 "Language-Team: Spanish\n"
 "Language: es_ES\n"
@@ -179,11 +179,11 @@ msgstr "Formas rapidas"
 msgid "Shape Gallery…"
 msgstr "Galería de formas…"
 
-msgid "Feed (Speed Laser)"
-msgstr "Alimentación o Velocidad del Laser"
+msgid "Feed"
+msgstr "Velocidad"
 
-msgid "Feed Rate or Speed Laser"
-msgstr "Velocidad de alimentación o del Laser"
+msgid "Feed Rate"
+msgstr "Velocidad de desplazamienro"
 
 msgid "Speed (Power Laser)"
 msgstr "Velocidad o Potencia del Laser"
@@ -601,7 +601,7 @@ msgid "Zero all work axes?"
 msgstr "¿Poner a cero todos los ejes?"
 
 msgid "Go to Work Zero"
-msgstr "Llevar trabajo a Cero"
+msgstr "Ir a Origen"
 
 msgid "This sets the active work coordinate system so the current X/Y/Z becomes 0."
 msgstr "Esto establece el sistema de coordenadas de trabajo activo para que el X/Y/Z actual pase a ser 0."
@@ -641,3 +641,9 @@ msgstr "Error al conectar"
 
 msgid "No valid G-Code lines found."
 msgstr "No se encontraron líneas de G-Code válidas."
+
+msgid "Send"
+msgstr "Enviar"
+
+msgid "Bounds"
+msgstr "Límites"

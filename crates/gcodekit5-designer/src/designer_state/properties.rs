@@ -293,6 +293,7 @@ impl DesignerState {
                         crate::model::Shape::Polygon(s) => s.rotation += angle_delta,
                         crate::model::Shape::Gear(s) => s.rotation += angle_delta,
                         crate::model::Shape::Sprocket(s) => s.rotation += angle_delta,
+//                        crate::model::Shape::Polyline(s) => s.rotation += angle_delta,
                     }
 
                     commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
@@ -334,6 +335,7 @@ impl DesignerState {
                         crate::model::Shape::Polygon(s) => s.rotation = rotation,
                         crate::model::Shape::Gear(s) => s.rotation = rotation,
                         crate::model::Shape::Sprocket(s) => s.rotation = rotation,
+//                        crate::model::Shape::Polyline(s) => s.rotation = rotation,
                     }
 
                     if (obj.shape.rotation() - rotation).abs() > f64::EPSILON {
@@ -784,6 +786,7 @@ impl DesignerState {
             crate::model::Shape::Polygon(s) => s.rotation += angle_delta,
             crate::model::Shape::Gear(s) => s.rotation += angle_delta,
             crate::model::Shape::Sprocket(s) => s.rotation += angle_delta,
+//            crate::model::Shape::Polyline(s) => s.rotation += angle_delta,
         }
     }
 }
