@@ -25,23 +25,23 @@ pub fn register_callbacks(
                 let settings = controller.get_settings_for_ui(category);
 
                 let slint_settings: Vec<SettingItem> = settings
-                    .iter()
-                    .map(|s| SettingItem {
-                        id: s.id.clone().into(),
-                        name: s.name.clone().into(),
-                        value: s.value.clone().into(),
-                        value_type: s.value_type.clone().into(),
-                        category: s.category.clone().into(),
-                        description: s.description.clone().into(),
-                        options: slint::ModelRc::new(VecModel::from(
-                            s.options
-                                .iter()
-                                .map(|o| o.clone().into())
-                                .collect::<Vec<slint::SharedString>>(),
-                        )),
-                        current_index: s.current_index,
-                    })
-                    .collect();
+                .iter()
+                .map(|s| SettingItem {
+                    id: s.id.clone().into(),
+                     name: s.name.clone().into(),
+                     value: s.value.clone().into(),
+                     value_type: s.value_type.clone().into(),
+                     category: s.category.clone().into(),
+                     description: s.description.clone().into(),
+                     options: slint::ModelRc::new(VecModel::from(
+                         s.options
+                         .iter()
+                         .map(|o| o.clone().into())
+                         .collect::<Vec<slint::SharedString>>(),
+                     )),
+                     current_index: s.current_index,
+                })
+                .collect();
 
                 window.set_current_settings(slint::ModelRc::new(VecModel::from(slint_settings)));
             }
@@ -111,13 +111,13 @@ pub fn register_callbacks(
 
             settings_items.push(slint_generatedMainWindow::SettingItem {
                 id: item.id.into(),
-                name: item.name.into(),
-                value: item.value.into(),
-                value_type: item.value_type.into(),
-                category: item.category.into(),
-                description: item.description.into(),
-                options: slint::ModelRc::from(Rc::new(slint::VecModel::from(options))),
-                current_index: item.current_index,
+                                name: item.name.into(),
+                                value: item.value.into(),
+                                value_type: item.value_type.into(),
+                                category: item.category.into(),
+                                description: item.description.into(),
+                                options: slint::ModelRc::from(Rc::new(slint::VecModel::from(options))),
+                                current_index: item.current_index,
             });
         }
 
@@ -154,13 +154,13 @@ pub fn register_callbacks(
 
             settings_items.push(slint_generatedMainWindow::SettingItem {
                 id: item.id.into(),
-                name: item.name.into(),
-                value: item.value.into(),
-                value_type: item.value_type.into(),
-                category: item.category.into(),
-                description: item.description.into(),
-                options: slint::ModelRc::from(Rc::new(slint::VecModel::from(options))),
-                current_index: item.current_index,
+                                name: item.name.into(),
+                                value: item.value.into(),
+                                value_type: item.value_type.into(),
+                                category: item.category.into(),
+                                description: item.description.into(),
+                                options: slint::ModelRc::from(Rc::new(slint::VecModel::from(options))),
+                                current_index: item.current_index,
             });
         }
 
@@ -219,20 +219,34 @@ pub fn register_callbacks(
         if let Some(window) = window_weak.upgrade() {
             window.invoke_config_retrieve_settings();
             window
-                .set_connection_status(slint::SharedString::from("Settings restored to defaults"));
+            .set_connection_status(slint::SharedString::from("Settings restored to defaults"));
         }
     });
 
     // Set up browse-path callback
     let window_weak = main_window.as_weak();
     let controller_clone = settings_controller.clone();
+
     main_window.on_browse_path(move |id| {
         use rfd::FileDialog;
         if let Some(window) = window_weak.upgrade() {
-            if let Some(path) = crate::platform::pick_folder_with_parent(FileDialog::new(), window.window()) {
+            let mut dialog = FileDialog::new();
+            if let Some(current_val) = controller_clone.get_setting(&id) {
+                if !current_val.is_empty() {
+                    let p = std::path::Path::new(&current_val);
+
+                    let dir = if p.is_file() { p.parent() } else { Some(p) };
+                    if let Some(d) = dir {
+                        dialog = dialog.set_directory(d);
+                    }
+                }
+            }
+
+            if let Some(path) = crate::platform::pick_folder_with_parent(dialog, window.window()) {
                 let path_str = path.to_string_lossy().to_string();
+
                 controller_clone.update_setting(&id, &path_str);
-                
+
                 // Refresh UI
                 window.invoke_config_retrieve_settings();
             }

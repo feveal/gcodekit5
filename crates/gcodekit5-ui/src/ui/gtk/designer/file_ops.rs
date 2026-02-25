@@ -9,7 +9,6 @@ impl DesignerView {
         *self.current_file.borrow_mut() = None;
         drop(state);
 
-        // Refresh layers
         self.layers.refresh(&self.canvas.state);
         self.canvas.widget.queue_draw();
         self.set_status(&t!("New design created"));
@@ -21,20 +20,24 @@ impl DesignerView {
 
         let dialog = gtk4::FileChooserDialog::new(
             Some(&t!("Open Design File")),
-            None::<&gtk4::Window>,
-            gtk4::FileChooserAction::Open,
-            &[
-                (&*open_label, gtk4::ResponseType::Accept),
-                (&*cancel_label, gtk4::ResponseType::Cancel),
-            ]
+                                                  None::<&gtk4::Window>,
+                                                  gtk4::FileChooserAction::Open,
+                                                  &[
+                                                      (&*open_label, gtk4::ResponseType::Accept),
+                                                  (&*cancel_label, gtk4::ResponseType::Cancel),
+                                                  ]
         );
 
-        // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
             if let Ok(settings_ref) = settings.try_borrow() {
-                let default_dir = &settings_ref.config().file_processing.output_directory;
-                if default_dir.exists() {
-                    let file = gtk4::gio::File::for_path(default_dir);
+                let last_path = &settings_ref.config().file_processing.output_directory;
+                if last_path.exists() {
+                    let folder_path = if last_path.is_file() {
+                        last_path.parent().unwrap_or(last_path).to_path_buf()
+                    } else {
+                        last_path.clone()
+                    };
+                    let file = gtk4::gio::File::for_path(folder_path);
                     let _ = dialog.set_current_folder(Some(&file));
                 }
             }
@@ -51,6 +54,7 @@ impl DesignerView {
         all_filter.add_pattern("*");
         dialog.add_filter(&all_filter);
 
+        let settings_persistence_clone = self.settings_persistence.clone();
         let canvas = self.canvas.clone();
         let current_file = self.current_file.clone();
         let layers = self.layers.clone();
@@ -58,7 +62,7 @@ impl DesignerView {
         let toolbox = self.toolbox.clone();
 
         dialog.connect_response(move |dialog, response| {
-            if response == ResponseType::Accept {
+            if response == gtk4::ResponseType::Accept {
                 if let Some(file) = dialog.file() {
                     if let Some(path) = file.path() {
                         match DesignFile::load_from_file(&path) {
@@ -67,16 +71,11 @@ impl DesignerView {
                                 state.canvas.clear();
 
                                 let mut max_id = 0;
-                                let mut restored_shapes: usize = 0;
+                                let mut restored_shapes = 0;
                                 for shape_data in design.shapes {
                                     let id = shape_data.id as u64;
-                                    if id > max_id {
-                                        max_id = id;
-                                    }
-
-                                    if let Ok(obj) =
-                                        DesignFile::to_drawing_object(&shape_data, id as i32)
-                                    {
+                                    if id > max_id { max_id = id; }
+                                    if let Ok(obj) = DesignFile::to_drawing_object(&shape_data, id as i32) {
                                         state.canvas.restore_shape(obj);
                                         restored_shapes += 1;
                                     }
@@ -84,65 +83,54 @@ impl DesignerView {
 
                                 state.canvas.set_next_id(max_id + 1);
 
-                                // Restore tool settings from design file
                                 state.tool_settings.feed_rate = design.toolpath_params.feed_rate;
                                 state.tool_settings.spindle_speed = design.toolpath_params.spindle_speed as u32;
                                 state.tool_settings.tool_diameter = design.toolpath_params.tool_diameter;
                                 state.tool_settings.cut_depth = design.toolpath_params.cut_depth;
 
-                                // Also update the toolpath generator to match
-                                state.toolpath_generator.set_feed_rate(design.toolpath_params.feed_rate);
-                                state.toolpath_generator.set_spindle_speed(design.toolpath_params.spindle_speed as u32);
-                                state.toolpath_generator.set_tool_diameter(design.toolpath_params.tool_diameter);
-                                state.toolpath_generator.set_cut_depth(design.toolpath_params.cut_depth);
-
-                                // Restore stock parameters from design file (create if needed)
                                 state.stock_material = Some(StockMaterial {
                                     width: design.toolpath_params.stock_width,
                                     height: design.toolpath_params.stock_height,
                                     thickness: design.toolpath_params.stock_thickness,
                                     origin: (0.0, 0.0, 0.0),
-                                    safe_z: design.toolpath_params.safe_z_height,
+                                                            safe_z: design.toolpath_params.safe_z_height,
                                 });
 
-                                // Update viewport (fallback to fit if invalid)
-                                let zoom = design.viewport.zoom;
-                                let pan_x = design.viewport.pan_x;
-                                let pan_y = design.viewport.pan_y;
-                                let viewport_ok = zoom.is_finite()
-                                    && zoom > 0.0001
-                                    && pan_x.is_finite()
-                                    && pan_y.is_finite();
+                                let viewport_ok = design.viewport.zoom.is_finite() && design.viewport.zoom > 0.0001;
                                 if viewport_ok {
-                                    state.canvas.set_zoom(zoom);
-                                    state.canvas.set_pan(pan_x, pan_y);
+                                    state.canvas.set_zoom(design.viewport.zoom);
+                                    state.canvas.set_pan(design.viewport.pan_x, design.viewport.pan_y);
                                 }
 
                                 *current_file.borrow_mut() = Some(path.clone());
+
+                                // --- SAVE PATH ---
+                                if let Some(ref settings) = settings_persistence_clone {
+                                    if let Ok(mut settings_ref_mut) = settings.try_borrow_mut() {
+
+                                        settings_ref_mut.config_mut().file_processing.output_directory = path.clone();
+
+                                        // (Windows/Linux/macOS)
+                                        let config_path = gcodekit5_settings::SettingsManager::config_file_path()
+                                        .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+
+                                        let _ = settings_ref_mut.save_to_file(&config_path);
+                                    }
+                                }                     // ---------------------------
+
                                 drop(state);
 
-                                // If the saved viewport is missing/degenerate, frame the loaded geometry.
                                 if restored_shapes > 0 && !viewport_ok {
                                     canvas.zoom_fit();
                                 }
 
                                 layers.refresh(&canvas.state);
-                                // Refresh tool/stock settings UI to show loaded values
                                 toolbox.refresh_settings();
                                 canvas.widget.queue_draw();
-                                status_label.set_text(&format!(
-                                    "{} {}",
-                                    t!("Loaded:"),
-                                    path.display()
-                                ));
+                                status_label.set_text(&format!("{} {}", t!("Loaded:"), path.display()));
                             }
                             Err(e) => {
-                                error!("Error loading file: {}", e);
-                                status_label.set_text(&format!(
-                                    "{} {}",
-                                    t!("Error loading file:"),
-                                    e
-                                ));
+                                status_label.set_text(&format!("Error: {}", e));
                             }
                         }
                     }
@@ -151,8 +139,25 @@ impl DesignerView {
             dialog.destroy();
         });
 
+        // --- SUGGEST FILE NAME BASED ON CURRENT DESIGN ---
+        let current_file_borrow = self.current_file.borrow();
+        let default_name = if let Some(path) = current_file_borrow.as_ref() {
+
+            path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.gckd", s))
+            .unwrap_or_else(|| "output.gckd".to_string())
+        } else {
+            // If the design has never been saved before
+            "untitled_design.gckd".to_string()
+        };
+
+        dialog.set_current_name(&default_name);
+        // ------------------------------------------------------------
+
         dialog.show();
     }
+
 
     pub(crate) fn import_file_internal(&self, kind: Option<&'static str>) {
         let title = match kind {
@@ -161,17 +166,17 @@ impl DesignerView {
             Some("stl") => t!("Import STL File (3D Shadow)"),
             _ => t!("Import Design File"),
         };
-       	let open_label = t!("Open");
+        let open_label = t!("Open");
         let cancel_label = t!("Cancel");
 
-              let dialog = gtk4::FileChooserDialog::new(
+        let dialog = gtk4::FileChooserDialog::new(
             Some(title),
-            None::<&gtk4::Window>,
-            gtk4::FileChooserAction::Open,
-            &[
-                (&*open_label, gtk4::ResponseType::Accept),
-                (&*cancel_label, gtk4::ResponseType::Cancel),
-            ]
+                                                  None::<&gtk4::Window>,
+                                                  gtk4::FileChooserAction::Open,
+                                                  &[
+                                                      (&*open_label, gtk4::ResponseType::Accept),
+                                                  (&*cancel_label, gtk4::ResponseType::Cancel),
+                                                  ]
         );
 
         if let Some(root) = self.widget.root() {
@@ -183,9 +188,15 @@ impl DesignerView {
         // Set initial directory from settings
         if let Some(ref settings) = self.settings_persistence {
             if let Ok(settings_ref) = settings.try_borrow() {
-                let default_dir = &settings_ref.config().file_processing.output_directory;
-                if default_dir.exists() {
-                    let file = gtk4::gio::File::for_path(default_dir);
+
+                let last_path = &settings_ref.config().file_processing.output_directory;
+                if last_path.exists() {
+                    let folder_path = if last_path.is_file() {
+                        last_path.parent().unwrap_or(last_path).to_path_buf()
+                    } else {
+                        last_path.clone()
+                    };
+                    let file = gtk4::gio::File::for_path(folder_path);
                     let _ = dialog.set_current_folder(Some(&file));
                 }
             }
@@ -261,14 +272,31 @@ impl DesignerView {
         let canvas = self.canvas.clone();
         let layers = self.layers.clone();
         let status_label = self.status_label.clone();
-        let settings_persistence = self.settings_persistence.clone();
+        let settings_persistence_clone = self.settings_persistence.clone();
 
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
                     if let Some(path) = file.path() {
-                        // Check STL import setting for STL processing
-                        let enable_stl_import = if let Some(ref settings) = settings_persistence {
+
+
+
+
+                        // --- SAVE THE PATH ON IMPORT ---
+                        if let Some(ref settings) = settings_persistence_clone {
+                            if let Ok(mut settings_ref_mut) = settings.try_borrow_mut() {
+
+                                settings_ref_mut.config_mut().file_processing.output_directory = path.clone();
+
+                                let config_path = gcodekit5_settings::SettingsManager::config_file_path()
+                                .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+
+                                let _ = settings_ref_mut.save_to_file(&config_path);
+                            }
+                        }
+
+                        // --- CHECK STL IMPORT ---
+                        let enable_stl_import = if let Some(ref settings) = settings_persistence_clone {
                             if let Ok(settings_ref) = settings.try_borrow() {
                                 settings_ref.config().ui.enable_stl_import
                             } else {
@@ -291,16 +319,16 @@ impl DesignerView {
                                 },
                                 "dxf" => {
                                     let importer =
-                                        gcodekit5_designer::import::DxfImporter::new(1.0, 0.0, 0.0);
+                                    gcodekit5_designer::import::DxfImporter::new(1.0, 0.0, 0.0);
                                     importer.import_file(path.to_str().unwrap_or(""))
                                 }
                                 "stl" => {
                                     // Only allow STL import if STL import is enabled
                                     if enable_stl_import {
                                         let importer =
-                                            gcodekit5_designer::import::StlImporter::new()
-                                                .with_scale(1.0)
-                                                .with_centering(true);
+                                        gcodekit5_designer::import::StlImporter::new()
+                                        .with_scale(1.0)
+                                        .with_centering(true);
 
                                         // Import STL and create shadow projection
                                         let result = importer.import_file(path.to_str().unwrap_or(""));
@@ -344,7 +372,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Imported:"),
-                                    path.display()
+                                                               path.display()
                                 ));
                             }
                             Err(e) => {
@@ -352,7 +380,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Error importing file:"),
-                                    e
+                                                               e
                                 ));
                             }
                         }
@@ -361,7 +389,21 @@ impl DesignerView {
             }
             dialog.destroy();
         });
+        // --- SUGGEST FILE NAME BASED ON CURRENT DESIGN ---
+        let current_file_borrow = self.current_file.borrow();
+        let default_name = if let Some(path) = current_file_borrow.as_ref() {
 
+            path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.gckd", s))
+            .unwrap_or_else(|| "output.gckd".to_string())
+        } else {
+            // If the design has never been saved before
+            "untitled_design.gckd".to_string()
+        };
+
+        dialog.set_current_name(&default_name);
+        // ------------------------------------------------------------
         dialog.show();
     }
 
@@ -392,17 +434,17 @@ impl DesignerView {
     }
 
     pub fn save_as_file(&self) {
-         let save_label = t!("Save");
-         let cancel_label = t!("Cancel");
+        let save_label = t!("Save");
+        let cancel_label = t!("Cancel");
 
-         let dialog = gtk4::FileChooserDialog::new(
+        let dialog = gtk4::FileChooserDialog::new(
             Some(t!("Save Design File")),
-            None::<&gtk4::Window>,  // ← NO establecer parent
-            gtk4::FileChooserAction::Save,
-            &[
-                (&*save_label, gtk4::ResponseType::Accept),
-                (&*cancel_label, gtk4::ResponseType::Cancel),
-            ]
+                                                  None::<&gtk4::Window>,
+                                                  gtk4::FileChooserAction::Save,
+                                                  &[
+                                                      (&*save_label, gtk4::ResponseType::Accept),
+                                                  (&*cancel_label, gtk4::ResponseType::Cancel),
+                                                  ]
         );
         dialog.set_current_name("design.gckd");
 
@@ -425,6 +467,7 @@ impl DesignerView {
         let canvas = self.canvas.clone();
         let current_file = self.current_file.clone();
         let status_label = self.status_label.clone();
+        let settings_persistence_clone = self.settings_persistence.clone();
 
         dialog.connect_response(move |dialog, response| {
             if response == ResponseType::Accept {
@@ -434,10 +477,20 @@ impl DesignerView {
                             path.set_extension("gckd");
                         }
 
+                        if let Some(ref settings) = settings_persistence_clone {
+                            if let Ok(mut settings_ref_mut) = settings.try_borrow_mut() {
+                                settings_ref_mut.config_mut().file_processing.output_directory = path.clone();
+
+                                let config_path = gcodekit5_settings::SettingsManager::config_file_path()
+                                .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+                                let _ = settings_ref_mut.save_to_file(&config_path);
+                            }
+                        }
+
                         // Save logic
                         let state = canvas.state.borrow();
                         let mut design =
-                            DesignFile::new(path.file_stem().unwrap_or_default().to_string_lossy());
+                        DesignFile::new(path.file_stem().unwrap_or_default().to_string_lossy());
 
                         // Viewport
                         design.viewport.zoom = state.canvas.zoom();
@@ -447,7 +500,7 @@ impl DesignerView {
                         // Tool settings
                         design.toolpath_params.feed_rate = state.tool_settings.feed_rate;
                         design.toolpath_params.spindle_speed =
-                            state.tool_settings.spindle_speed as f64;
+                        state.tool_settings.spindle_speed as f64;
                         design.toolpath_params.tool_diameter = state.tool_settings.tool_diameter;
                         design.toolpath_params.cut_depth = state.tool_settings.cut_depth;
 
@@ -471,7 +524,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Saved:"),
-                                    path.display()
+                                                               path.display()
                                 ));
                             }
                             Err(e) => {
@@ -479,7 +532,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Error saving file:"),
-                                    e
+                                                               e
                                 ));
                             }
                         }
@@ -488,7 +541,18 @@ impl DesignerView {
             }
             dialog.destroy();
         });
-
+        // --- SUGGEST FILE NAME BASED ON CURRENT DESIGN ---
+        let current_file_borrow = self.current_file.borrow();
+        let default_name = if let Some(path) = current_file_borrow.as_ref() {
+            path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.gckd", s))
+            .unwrap_or_else(|| "design.gckd".to_string())
+        } else {
+            "untitled_design.gckd".to_string()
+        };
+        dialog.set_current_name(&default_name);
+        // ------------------------------------------------------------
         dialog.show();
     }
 
@@ -539,20 +603,40 @@ impl DesignerView {
 
         let dialog = gtk4::FileChooserDialog::new(
             Some(t!("Export G-Code")),
-            None::<&gtk4::Window>,
-            gtk4::FileChooserAction::Save,
-            &[
-                (&*export_label, gtk4::ResponseType::Accept),
-                (&*cancel_label, gtk4::ResponseType::Cancel),
-            ]
+                                                  None::<&gtk4::Window>,
+                                                  gtk4::FileChooserAction::Save,
+                                                  &[
+                                                      (&*export_label, gtk4::ResponseType::Accept),
+                                                  (&*cancel_label, gtk4::ResponseType::Cancel),
+                                                  ]
         );
-         dialog.set_current_name("design.gcode");
+
+        if let Some(ref settings) = self.settings_persistence {
+            if let Ok(settings_ref) = settings.try_borrow() {
+
+                let last_path = &settings_ref.config().file_processing.output_directory;
+                if last_path.exists() {
+                    let folder_path = if last_path.is_file() {
+                        last_path.parent().unwrap_or(last_path).to_path_buf()
+                    } else {
+                        last_path.clone()
+                    };
+                    let file = gtk4::gio::File::for_path(folder_path);
+                    let _ = dialog.set_current_folder(Some(&file));
+                }
+            }
+        }
+
+
+        dialog.set_current_name("design.gcode");
         let filter = gtk4::FileFilter::new();
         filter.set_name(Some("G-Code Files"));
         filter.add_pattern("*.nc");
         filter.add_pattern("*.gcode");
         filter.add_pattern("*.gc");
         dialog.add_filter(&filter);
+
+        let settings_persistence_clone = self.settings_persistence.clone();
 
         let canvas = self.canvas.clone();
         let status_label = self.status_label.clone();
@@ -561,6 +645,25 @@ impl DesignerView {
             if response == ResponseType::Accept {
                 if let Some(file) = dialog.file() {
                     if let Some(mut path) = file.path() {
+
+                        let folder_to_save = if path.is_file() {
+                            path.parent().unwrap_or(&path).to_path_buf()
+                        } else {
+                            path.clone()
+                        };
+
+                        if let Some(ref settings) = settings_persistence_clone {
+                            if let Ok(mut settings_ref_mut) = settings.try_borrow_mut() {
+                                settings_ref_mut.config_mut().file_processing.output_directory = folder_to_save;
+
+                                let config_path = gcodekit5_settings::SettingsManager::config_file_path()
+                                .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+                                let _ = settings_ref_mut.save_to_file(&config_path);
+                            }
+                        }
+
+
+
                         if path.extension().is_none() {
                             path.set_extension("nc");
                         }
@@ -590,7 +693,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Exported G-Code:"),
-                                    path.display()
+                                                               path.display()
                                 ));
                             }
                             Err(e) => {
@@ -598,7 +701,7 @@ impl DesignerView {
                                 status_label.set_text(&format!(
                                     "{} {}",
                                     t!("Error exporting G-Code:"),
-                                    e
+                                                               e
                                 ));
                             }
                         }
@@ -607,7 +710,21 @@ impl DesignerView {
             }
             dialog.destroy();
         });
+        // --- SUGGEST FILE NAME BASED ON CURRENT DESIGN ---
+        let current_file_borrow = self.current_file.borrow();
+        let default_name = if let Some(path) = current_file_borrow.as_ref() {
+            // We extract the name without the extension and add .nc to it.
+            path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.gckd", s))
+            .unwrap_or_else(|| "output.gckd".to_string())
+        } else {
+            // If the design has never been saved before
+            "untitled_design.gckd".to_string()
+        };
 
+        dialog.set_current_name(&default_name);
+        // ------------------------------------------------------------
         dialog.show();
     }
 
@@ -617,12 +734,12 @@ impl DesignerView {
 
         let dialog = gtk4::FileChooserDialog::new(
             Some(t!("Export SVG")),
-            None::<&gtk4::Window>,  // ← NO establecer parent
-            gtk4::FileChooserAction::Save,
-            &[
-                (&*export_label, gtk4::ResponseType::Accept),
-                (&*cancel_label, gtk4::ResponseType::Cancel),
-            ]
+                                                  None::<&gtk4::Window>,
+                                                  gtk4::FileChooserAction::Save,
+                                                  &[
+                                                      (&*export_label, gtk4::ResponseType::Accept),
+                                                  (&*cancel_label, gtk4::ResponseType::Cancel),
+                                                  ]
         );
 
         let filter = gtk4::FileFilter::new();
@@ -676,8 +793,8 @@ impl DesignerView {
 
                         let mut svg = String::new();
                         svg.push_str(&format!(r#"<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<svg width="{:.2}mm" height="{:.2}mm" viewBox="{:.2} {:.2} {:.2} {:.2}" xmlns="http://www.w3.org/2000/svg">
-"#, width, height, min_x, min_y, width, height));
+                        <svg width="{:.2}mm" height="{:.2}mm" viewBox="{:.2} {:.2} {:.2} {:.2}" xmlns="http://www.w3.org/2000/svg">
+                        "#, width, height, min_x, min_y, width, height));
 
                         for obj in &shapes {
                             let style = "fill:none;stroke:black;stroke-width:0.5";
@@ -688,19 +805,19 @@ impl DesignerView {
                                     let y = r.center.y - r.height / 2.0;
                                     let effective_radius = r.effective_corner_radius();
                                     svg.push_str(&format!(r#"<rect x="{:.2}" y="{:.2}" width="{:.2}" height="{:.2}" rx="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
-                                        x, y, r.width, r.height, effective_radius, style,
-                                        r.rotation, r.center.x, r.center.y
+                                                          x, y, r.width, r.height, effective_radius, style,
+                                                          r.rotation, r.center.x, r.center.y
                                     ));
                                 }
                                 Shape::Circle(c) => {
                                     svg.push_str(&format!(r#"<circle cx="{:.2}" cy="{:.2}" r="{:.2}" style="{}" />"#,
-                                        c.center.x, c.center.y, c.radius, style
+                                                          c.center.x, c.center.y, c.radius, style
                                     ));
                                 }
                                 Shape::Line(l) => {
                                     svg.push_str(&format!(r#"<line x1="{:.2}" y1="{:.2}" x2="{:.2}" y2="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
-                                        l.start.x, l.start.y, l.end.x, l.end.y, style,
-                                        l.rotation, (l.start.x+l.end.x)/2.0, (l.start.y+l.end.y)/2.0
+                                                          l.start.x, l.start.y, l.end.x, l.end.y, style,
+                                                          l.rotation, (l.start.x+l.end.x)/2.0, (l.start.y+l.end.y)/2.0
                                     ));
                                 }
                                 Shape::Triangle(t) => {
@@ -715,8 +832,8 @@ impl DesignerView {
                                 }
                                 Shape::Ellipse(e) => {
                                     svg.push_str(&format!(r#"<ellipse cx="{:.2}" cy="{:.2}" rx="{:.2}" ry="{:.2}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
-                                        e.center.x, e.center.y, e.rx, e.ry, style,
-                                        e.rotation, e.center.x, e.center.y
+                                                          e.center.x, e.center.y, e.rx, e.ry, style,
+                                                          e.rotation, e.center.x, e.center.y
                                     ));
                                 }
                                 Shape::Path(p) => {
@@ -725,10 +842,10 @@ impl DesignerView {
                                     for event in path.iter() {
                                         match event {
                                             lyon::path::Event::Begin { at } => d.push_str(&format!("M {:.2} {:.2} ", at.x, at.y)),
-                                            lyon::path::Event::Line { from: _, to } => d.push_str(&format!("L {:.2} {:.2} ", to.x, to.y)),
-                                            lyon::path::Event::Quadratic { from: _, ctrl, to } => d.push_str(&format!("Q {:.2} {:.2} {:.2} {:.2} ", ctrl.x, ctrl.y, to.x, to.y)),
-                                            lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => d.push_str(&format!("C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} ", ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, to.x, to.y)),
-                                            lyon::path::Event::End { last: _, first: _, close } => if close { d.push_str("Z "); },
+                                lyon::path::Event::Line { from: _, to } => d.push_str(&format!("L {:.2} {:.2} ", to.x, to.y)),
+                                lyon::path::Event::Quadratic { from: _, ctrl, to } => d.push_str(&format!("Q {:.2} {:.2} {:.2} {:.2} ", ctrl.x, ctrl.y, to.x, to.y)),
+                                lyon::path::Event::Cubic { from: _, ctrl1, ctrl2, to } => d.push_str(&format!("C {:.2} {:.2} {:.2} {:.2} {:.2} {:.2} ", ctrl1.x, ctrl1.y, ctrl2.x, ctrl2.y, to.x, to.y)),
+                                lyon::path::Event::End { last: _, first: _, close } => if close { d.push_str("Z "); },
                                         }
                                     }
                                     let rect = lyon::algorithms::aabb::bounding_box(&path);
@@ -736,14 +853,14 @@ impl DesignerView {
                                     let cy = (rect.min.y + rect.max.y) / 2.0;
 
                                     svg.push_str(&format!(r#"<path d="{}" style="{}" transform="rotate({:.2} {:.2} {:.2})" />"#,
-                                        d, style, p.rotation, cx, cy
+                                                          d, style, p.rotation, cx, cy
                                     ));
                                 }
                                 Shape::Text(t) => {
                                     svg.push_str(&format!(r#"<text x="{:.2}" y="{:.2}" font-size="{:.2}" style="fill:black;stroke:none" transform="rotate({:.2} {:.2} {:.2})">{}</text>"#,
-                                        t.x, t.y, t.font_size,
-                                        t.rotation, t.x, t.y,
-                                        t.text
+                                                          t.x, t.y, t.font_size,
+                                                          t.rotation, t.x, t.y,
+                                                          t.text
                                     ));
                                 }
                                 Shape::Gear(g) => {
@@ -777,7 +894,21 @@ impl DesignerView {
             }
             dialog.destroy();
         });
+        // --- SUGGEST FILE NAME BASED ON CURRENT DESIGN ---
+        let current_file_borrow = self.current_file.borrow();
+        let default_name = if let Some(path) = current_file_borrow.as_ref() {
+            // We extract the name without the extension and add .nc to it.
+            path.file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| format!("{}.gckd", s))
+            .unwrap_or_else(|| "output.gckd".to_string())
+        } else {
+            // If the design has never been saved before
+            "untitled_design.gckd".to_string()
+        };
 
+        dialog.set_current_name(&default_name);
+        // ------------------------------------------------------------
         dialog.show();
     }
 
