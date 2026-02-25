@@ -1306,6 +1306,7 @@ dependencies = [
  "gcodekit5-ui",
  "gcodekit5-visualizer",
  "gettext-rs",
+ "gtk4",
  "rfd",
  "serde",
  "tempfile",
@@ -1473,6 +1474,7 @@ version = "0.51.0-alpha.0"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "cairo-rs",
  "chrono",
  "gcodekit5-core",
  "gcodekit5-designer",

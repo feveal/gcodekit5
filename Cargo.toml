@@ -65,6 +65,8 @@ gcodekit5-designer = { path = "crates/gcodekit5-designer" }
 gcodekit5-visualizer = { path = "crates/gcodekit5-visualizer" }
 gcodekit5-ui = { path = "crates/gcodekit5-ui" }
 
+gtk4 = { version = "0.9", features = ["v4_14"] }
+
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 
 tracing = "0.1"

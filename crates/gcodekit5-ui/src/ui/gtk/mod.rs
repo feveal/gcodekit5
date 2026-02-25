@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 pub mod cam_tools;
 pub mod command_history;
 pub mod designer;

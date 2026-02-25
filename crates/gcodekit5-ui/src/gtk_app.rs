@@ -924,7 +924,7 @@ fn load_resources() {
 
 fn load_css() {
     let provider = CssProvider::new();
-    provider.load_from_data(include_str!("ui/gtk/style.css"));
+    provider.load_from_string(include_str!("ui/gtk/style.css"));
 
     let Some(display) = gtk4::gdk::Display::default() else {
         tracing::error!("Could not connect to a display");

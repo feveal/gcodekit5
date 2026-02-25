@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use gcodekit5_communication::firmware::grbl::status_parser::{
     FeedSpindleState, OverrideState, StatusParser,
 };
