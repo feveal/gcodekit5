@@ -390,7 +390,7 @@ impl DesignerToolbox {
                         let (val_display, unit_str) = match (units_kind, machine_mode) {
                             (UnitsKind::Rpm, MachineMode::Laser2D) => {
 
-                                let percent = (val_mm / 100.0).clamp(0.0, 100.0);
+                                let percent = (val_mm / 10.0).clamp(0.0, 100.0);
                                 (percent, "%")
                             }
                             (UnitsKind::Rpm, MachineMode::Cnc3D) => (val_mm, "RPM"),

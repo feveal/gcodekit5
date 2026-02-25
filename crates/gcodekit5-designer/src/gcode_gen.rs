@@ -11,7 +11,7 @@ pub struct ToolpathToGcode {
     line_numbers_enabled: bool,
     /// Number of axes on the target device (default 3).
     pub num_axes: u8,
-    /// Modo láser 2D (sin eje Z)
+    /// Laser Mode 2D (without Z axis)
     pub is_laser_2d: bool,
 }
 
@@ -38,7 +38,7 @@ impl ToolpathToGcode {
         }
     }
 
-    /// Activa el modo láser 2D
+    /// Activate 2D laser mode
     pub fn with_laser_2d(mut self) -> Self {
         self.is_laser_2d = true;
         self
@@ -50,15 +50,15 @@ impl ToolpathToGcode {
 
         // Get spindle speed and feed rate from first segment (all should have same parameters)
         let spindle_speed = toolpath
-            .segments
-            .first()
-            .map(|s| s.spindle_speed)
-            .unwrap_or(1000);
+        .segments
+        .first()
+        .map(|s| s.spindle_speed)
+        .unwrap_or(1000);
         let feed_rate = toolpath
-            .segments
-            .first()
-            .map(|s| s.feed_rate)
-            .unwrap_or(100.0);
+        .segments
+        .first()
+        .map(|s| s.feed_rate)
+        .unwrap_or(100.0);
 
         gcode.push_str(&self.generate_header(
             spindle_speed,
@@ -95,7 +95,6 @@ impl ToolpathToGcode {
         gcode.push_str("G90         ; Absolute positioning\n");
         gcode.push_str("G21         ; Millimeter units\n");
         gcode.push_str("G17         ; XY plane\n");
-        // NO poner M3 aquí para láser 2D
         gcode.push('\n');
         gcode
     }
@@ -103,7 +102,7 @@ impl ToolpathToGcode {
     /// Generates the G-code body (moves) for a toolpath.
     pub fn generate_body(&self, toolpath: &Toolpath, start_line_number: u32) -> String {
         self.generate_body_continuing(toolpath, start_line_number, self.safe_z)
-            .0
+        .0
     }
 
     /// Generates the G-code body continuing from a given Z position.
@@ -122,26 +121,24 @@ impl ToolpathToGcode {
 
         for segment in &toolpath.segments {
             match segment.segment_type {
-// Genera gcode
-ToolpathSegmentType::RapidMove => {
-    let line_prefix = if self.line_numbers_enabled {
-        format!("N{} ", line_number)
-    } else {
-        String::new()
-    };
+                ToolpathSegmentType::RapidMove => {
+                    let line_prefix = if self.line_numbers_enabled {
+                        format!("N{} ", line_number)
+                    } else {
+                        String::new()
+                    };
 
-    // GENERAR EL MOVIMIENTO RÁPIDO (sin láser)
-    if self.is_laser_2d {
-        gcode.push_str(&format!(
-            "{}G00 X{:.3} Y{:.3}   ; Posicionar\n",
-            line_prefix, segment.end.x, segment.end.y
-        ));
-    }
+                    // GENERATE RAPID MOVEMENT (without laser)
+                    if self.is_laser_2d {
+                        gcode.push_str(&format!(
+                            "{}G00 X{:.3} Y{:.3}   ; Posicionar\n",
+                            line_prefix, segment.end.x, segment.end.y
+                        ));
+                    }
 
-    current_z = self.safe_z;
-    line_number += 10;
-}
-
+                    current_z = self.safe_z;
+                    line_number += 10;
+                }
 
                 ToolpathSegmentType::LinearMove => {
                     // Handle start Z plunge if needed
@@ -190,11 +187,17 @@ ToolpathSegmentType::RapidMove => {
                         String::new()
                     };
 
-                    // En modo láser, encender justo antes del primer movimiento de corte
+                    // In laser mode, turn on just before the first cutting movement
                     if self.is_laser_2d && first_cut_move {
+                        let speed_value = if self.is_laser_2d {
+                            (segment.spindle_speed as f64) as u32
+                        } else {
+                            segment.spindle_speed
+                        };
+
                         gcode.push_str(&format!(
                             "{}M3 S{}      ; Laser ON\n",
-                            line_prefix, segment.spindle_speed
+                            line_prefix, speed_value
                         ));
                         first_cut_move = false;
                     }
@@ -212,6 +215,7 @@ ToolpathSegmentType::RapidMove => {
                         ));
                     }
                 }
+
                 ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
                     // Handle start Z plunge if needed
                     if has_z {
@@ -259,11 +263,18 @@ ToolpathSegmentType::RapidMove => {
                         String::new()
                     };
 
-                    // En modo láser, encender justo antes del primer movimiento de corte
+                    // In laser mode, turn on just before the first cutting movement
                     if self.is_laser_2d && first_cut_move {
+                        // Apply factor ×10 only for laser
+                        let speed_value = if self.is_laser_2d {
+                            (segment.spindle_speed as f64 * 10.0) as u32
+                        } else {
+                            segment.spindle_speed
+                        };
+
                         gcode.push_str(&format!(
                             "{}M3 S{}      ; Laser ON\n",
-                            line_prefix, segment.spindle_speed
+                            line_prefix, speed_value
                         ));
                         first_cut_move = false;
                     }
@@ -273,7 +284,7 @@ ToolpathSegmentType::RapidMove => {
                     } else {
                         "G03"
                     };
-// er si este if let Some afecta al GOO
+
                     if let Some(center) = segment.center {
                         let i = center.x - segment.start.x;
                         let j = center.y - segment.start.y;
@@ -326,9 +337,9 @@ ToolpathSegmentType::RapidMove => {
             }
 
             line_number += 10;
-        } // for segment in &toolpath.segments
+        } // End for segment in &toolpath.segments
 
-        // Al final del toolpath, si es modo láser, apagar
+        // At the end of the toolpath, if it's laser mode, turn off
         if self.is_laser_2d {
             let line_prefix = if self.line_numbers_enabled {
                 format!("N{} ", line_number)
