@@ -2,6 +2,9 @@
 //!
 //! Core application window with menu bar, toolbar, and status bar
 
+use gcodekit5_core::types::aliases::{CellCallback, CellDataCallback, CellDataCallback2};
+use std::cell::RefCell;
+
 /// Menu item definition
 #[derive(Debug, Clone)]
 pub struct MenuItem {
@@ -344,45 +347,44 @@ pub struct MainWindow {
     /// Is maximized
     pub maximized: bool,
     // Store optional callbacks registered by the application (no-op if not used)
-    // Using Box<dyn Fn(...)> for simplicity; real UI will wire these to event handlers
     #[allow(dead_code)]
-    on_refresh_ports_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_refresh_ports_cb: CellCallback,
     #[allow(dead_code)]
-    on_connect_cb: std::cell::RefCell<Option<Box<dyn Fn(String, i32)>>>,
+    on_connect_cb: CellDataCallback2<String, i32>,
     #[allow(dead_code)]
-    on_disconnect_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_disconnect_cb: CellCallback,
     #[allow(dead_code)]
-    on_menu_view_machine_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_menu_view_machine_cb: CellCallback,
     #[allow(dead_code)]
-    on_machine_zero_all_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_machine_zero_all_cb: CellCallback,
     #[allow(dead_code)]
-    on_machine_emergency_stop_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_machine_emergency_stop_cb: CellCallback,
     #[allow(dead_code)]
-    on_machine_jog_home_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_machine_jog_home_cb: CellCallback,
     #[allow(dead_code)]
-    on_machine_jog_x_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_x_positive_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_machine_jog_x_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_x_negative_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_machine_jog_y_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_y_positive_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_machine_jog_y_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_y_negative_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_machine_jog_z_positive_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_z_positive_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_machine_jog_z_negative_cb: std::cell::RefCell<Option<Box<dyn Fn(f32)>>>,
+    on_machine_jog_z_negative_cb: CellDataCallback<f32>,
     #[allow(dead_code)]
-    on_generate_tabbed_box_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_tabbed_box_cb: CellCallback,
     #[allow(dead_code)]
-    on_generate_jigsaw_puzzle_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_jigsaw_puzzle_cb: CellCallback,
     #[allow(dead_code)]
-    on_generate_spoilboard_surfacing_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_spoilboard_surfacing_cb: CellCallback,
     #[allow(dead_code)]
-    on_generate_spoilboard_grid_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_spoilboard_grid_cb: CellCallback,
     #[allow(dead_code)]
-    on_generate_laser_engraving_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_laser_engraving_cb: CellCallback,
     #[allow(dead_code)]
-    on_generate_vector_engraving_cb: std::cell::RefCell<Option<Box<dyn Fn()>>>,
+    on_generate_vector_engraving_cb: CellCallback,
 }
 
 impl MainWindow {
@@ -397,25 +399,25 @@ impl MainWindow {
             status_bar: StatusBar::new(),
             fullscreen: false,
             maximized: false,
-            on_refresh_ports_cb: std::cell::RefCell::new(None),
-            on_connect_cb: std::cell::RefCell::new(None),
-            on_disconnect_cb: std::cell::RefCell::new(None),
-            on_menu_view_machine_cb: std::cell::RefCell::new(None),
-            on_machine_zero_all_cb: std::cell::RefCell::new(None),
-            on_machine_emergency_stop_cb: std::cell::RefCell::new(None),
-            on_machine_jog_home_cb: std::cell::RefCell::new(None),
-            on_machine_jog_x_positive_cb: std::cell::RefCell::new(None),
-            on_machine_jog_x_negative_cb: std::cell::RefCell::new(None),
-            on_machine_jog_y_positive_cb: std::cell::RefCell::new(None),
-            on_machine_jog_y_negative_cb: std::cell::RefCell::new(None),
-            on_machine_jog_z_positive_cb: std::cell::RefCell::new(None),
-            on_machine_jog_z_negative_cb: std::cell::RefCell::new(None),
-            on_generate_tabbed_box_cb: std::cell::RefCell::new(None),
-            on_generate_jigsaw_puzzle_cb: std::cell::RefCell::new(None),
-            on_generate_spoilboard_surfacing_cb: std::cell::RefCell::new(None),
-            on_generate_spoilboard_grid_cb: std::cell::RefCell::new(None),
-            on_generate_laser_engraving_cb: std::cell::RefCell::new(None),
-            on_generate_vector_engraving_cb: std::cell::RefCell::new(None),
+            on_refresh_ports_cb: RefCell::new(None),
+            on_connect_cb: RefCell::new(None),
+            on_disconnect_cb: RefCell::new(None),
+            on_menu_view_machine_cb: RefCell::new(None),
+            on_machine_zero_all_cb: RefCell::new(None),
+            on_machine_emergency_stop_cb: RefCell::new(None),
+            on_machine_jog_home_cb: RefCell::new(None),
+            on_machine_jog_x_positive_cb: RefCell::new(None),
+            on_machine_jog_x_negative_cb: RefCell::new(None),
+            on_machine_jog_y_positive_cb: RefCell::new(None),
+            on_machine_jog_y_negative_cb: RefCell::new(None),
+            on_machine_jog_z_positive_cb: RefCell::new(None),
+            on_machine_jog_z_negative_cb: RefCell::new(None),
+            on_generate_tabbed_box_cb: RefCell::new(None),
+            on_generate_jigsaw_puzzle_cb: RefCell::new(None),
+            on_generate_spoilboard_surfacing_cb: RefCell::new(None),
+            on_generate_spoilboard_grid_cb: RefCell::new(None),
+            on_generate_laser_engraving_cb: RefCell::new(None),
+            on_generate_vector_engraving_cb: RefCell::new(None),
         }
     }
 

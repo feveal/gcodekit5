@@ -18,7 +18,19 @@ pub mod tools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-/// Machine coordinate units (millimeters or inches)
+/// Machine coordinate units (millimeters or inches).
+///
+/// Used throughout the application to track and convert between metric and
+/// imperial measurement systems. All internal calculations use millimeters.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::Units;
+///
+/// let mm_value = 25.4;
+/// let inch_value = Units::convert(mm_value, Units::MM, Units::INCH);
+/// assert!((inch_value - 1.0).abs() < f64::EPSILON);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Units {
     /// Millimeters (metric)
@@ -62,7 +74,22 @@ impl fmt::Display for Units {
     }
 }
 
-/// Base CNC point structure representing a 6-axis coordinate
+/// Base CNC point structure representing a 6-axis coordinate.
+///
+/// Stores full-precision (f64) positions for all six axes (X, Y, Z, A, B, C)
+/// along with the coordinate unit. Used for precise machine coordinate tracking.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::{CNCPoint, Units};
+///
+/// let origin = CNCPoint::new(Units::MM);
+/// assert_eq!(origin.x, 0.0);
+///
+/// let point = CNCPoint::with_axes(10.0, 20.0, -5.0, 0.0, 0.0, 0.0, Units::MM);
+/// let in_inches = point.convert_to(Units::INCH);
+/// assert!((in_inches.x - 0.3937).abs() < 0.001);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct CNCPoint {
     /// X-axis position
@@ -177,7 +204,25 @@ impl fmt::Display for CNCPoint {
     }
 }
 
-/// Position in 3D space with optional fourth axis (simplified for backward compatibility)
+/// Position in 3D space with optional fourth axis.
+///
+/// A simplified position type using f32 precision for the three linear axes
+/// (X, Y, Z) and an optional A-axis. Used for work coordinates, offsets,
+/// and UI display. All values are in millimeters internally.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::Position;
+///
+/// let pos = Position::new(10.0, 20.0, -5.0);
+/// let origin = Position::default();
+/// let dist = pos.distance_to(&origin);
+/// assert!((dist - 22.91).abs() < 0.01);
+///
+/// // Partial operations
+/// let moved = pos.add(&Position::new(5.0, 0.0, 0.0));
+/// assert_eq!(moved.x, 15.0);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Position {
     /// X-axis position
@@ -295,10 +340,23 @@ impl std::fmt::Display for Position {
     }
 }
 
-/// Partial position for updating only specific axes
+/// Partial position for updating only specific axes.
 ///
-/// Used when only some axes need to be updated. Each axis is represented as an `Option`
-/// where `None` means "don't change this axis" and `Some(value)` means "set to value".
+/// Used when only some axes need to be updated (e.g., a G-code move that only
+/// specifies X and Y). Each axis is `Option` where `None` means "keep current
+/// value" and `Some(value)` means "set to this value".
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::{PartialPosition, Position};
+///
+/// let current = Position::new(10.0, 20.0, -5.0);
+/// let update = PartialPosition::xy(15.0, 25.0);
+/// let result = update.apply_to(&current);
+/// assert_eq!(result.x, 15.0);
+/// assert_eq!(result.y, 25.0);
+/// assert_eq!(result.z, -5.0); // unchanged
+/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 pub struct PartialPosition {
     /// X-axis position (if Some, update this axis)
@@ -406,11 +464,27 @@ impl PartialPosition {
     }
 }
 
-/// Machine/Controller state machine states
+/// Machine/Controller state machine states.
 ///
-/// Represents the operational state of the CNC controller.
-/// This enum tracks the full lifecycle of controller operation from
-/// initial connection through execution and error states.
+/// Represents the operational state of the CNC controller. Tracks the full
+/// lifecycle from initial connection through execution and error states.
+/// State transitions are validated via [`can_transition_to`](Self::can_transition_to).
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::ControllerState;
+///
+/// let state = ControllerState::Idle;
+/// assert!(state.is_connected());
+/// assert!(state.is_ready());
+/// assert!(!state.is_moving());
+///
+/// // Valid transitions
+/// assert!(state.can_transition_to(ControllerState::Run));
+/// assert!(state.can_transition_to(ControllerState::Home));
+/// // Invalid: can't go from Alarm to Run
+/// assert!(!ControllerState::Alarm.can_transition_to(ControllerState::Run));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ControllerState {
     /// Not connected to any controller
@@ -615,11 +689,26 @@ impl std::fmt::Display for ControllerStatus {
     }
 }
 
-/// Complete machine state snapshot
+/// Complete machine state snapshot.
 ///
 /// Comprehensive representation of the machine's current operational state,
-/// including positions, status, feed/spindle information, and work coordinate system.
-/// Supports builder pattern for flexible construction.
+/// including positions, status, feed/spindle information, and work coordinate
+/// system. Supports builder pattern for flexible construction.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::{ControllerState, ControllerStatus, MachineStatusSnapshot, Position};
+///
+/// let status = MachineStatusSnapshot::new()
+///     .with_position(Position::new(100.0, 50.0, -10.0))
+///     .with_controller_state(ControllerState::Run)
+///     .with_feed_rate(1000.0)
+///     .with_spindle_speed(12000.0);
+///
+/// assert_eq!(status.controller_state, ControllerState::Run);
+/// assert_eq!(status.feed_rate, 1000.0);
+/// assert!(!status.is_buffer_full());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MachineStatusSnapshot {
     /// Current position (machine coordinates)

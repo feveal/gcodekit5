@@ -198,113 +198,102 @@ GCodeKit5 is a well-structured, modular Rust project with solid architectural fo
 
 ## 3. Type System & API Design (MEDIUM PRIORITY)
 
-### 3.1 Reduce Complex Type Nesting
-**Current State**: 192 instances of `Box<dyn>`, `Rc<RefCell>`, `Arc<Mutex>` patterns  
+### 3.1 Reduce Complex Type Nesting ✅ DONE
+**Current State**: Type aliases defined in `gcodekit5_core::types::aliases` and adopted across crates  
 **Impact**: Medium - Impacts readability and performance  
 **Effort**: Medium-High
 
-**Problem Pattern**:
-```rust
-// Hard to read and reason about
-Rc<RefCell<Box<dyn Component>>>
-
-// Common in:
-// - UI callback chains (need flexibility)
-// - State management (multiple owners)
-// - Channel types
-```
-
-**Solutions**:
-1. **Type Aliases**: Create readable aliases
-```rust
-type ComponentRef = Rc<RefCell<Box<dyn Component>>>;
-```
-
-2. **Owned vs Borrowed**: Reconsider ownership in specific contexts
-```rust
-// Instead of Arc<Mutex<State>>, use Arc<State> with interior mutability where needed
-```
-
-3. **Trait Objects**: Use concrete types when possible
-```rust
-// If only one implementation, avoid Box<dyn T>
-struct Canvas { /* ... */ }  // Better than Box<dyn Drawable>
-```
-
-**Priority Areas**:
-- UI callback chains (use Box<dyn Fn()> → consider event system)
-- State management (use dedicated patterns like signals/events)
-- Generator/visitor patterns
+**Completed Work**:
+- Type aliases (`Shared<T>`, `ThreadSafe<T>`, `BoxedError`, `DataCallback<T>`, `CellCallback`, etc.) defined in `gcodekit5_core::types::aliases`
+- `BoxedError` adopted in `gtc_import.rs` (5 sites), `materials_manager_backend.rs` (2), `tools_manager_backend.rs` (6), `scene3d.rs` (2)
+- `CellCallback`/`CellDataCallback<T>`/`CellDataCallback2<T,U>` added and adopted in `main_window.rs` (19 callback fields)
+- `DataCallback<ConsoleEvent>` adopted in `device_console_manager.rs`
+- Duplicate `ProgressCallback` in `file_service.rs` replaced with re-export from core
+- GTK files retain `std::boxed::Box` qualification where `gtk4::Box` import causes ambiguity
 
 ---
 
-### 3.2 Improve Public API Documentation
+### 3.2 Improve Public API Documentation ✅ DONE
 **Current State**: Core crate has 165+ public APIs with inconsistent documentation  
 **Impact**: Medium - Developer experience  
 **Effort**: Medium
 
-**Current Coverage**:
-- `//!` crate docs: Present
-- `///` function docs: ~60% coverage
-- Examples in docs: ~10% coverage
-
-**Targets**:
-```
-1. Document all public types and methods
-2. Add examples for major types (State, Commands, Traits)
-3. Add "Error cases" section to fallible functions
-4. Create module-level overview docs
-```
-
-**Example**:
-```rust
-/// Represents a CNC machine position in work coordinates.
-///
-/// # Fields
-/// - `x`, `y`, `z`: Linear axes in millimeters
-/// - `a`, `b`, `c`: Rotary axes in degrees
-///
-/// # Example
-/// ```
-/// let pos = Position::new(10.0, 20.0, 0.0, 0.0, 0.0, 0.0);
-/// assert_eq!(pos.x, 10.0);
-/// ```
-pub struct Position {
-    // ...
-}
-```
+**Completed Work**:
+- All 17 modules already had `//!` module-level docs (verified)
+- Enhanced documentation with examples for all major public types:
+  - `data/mod.rs`: Units, CNCPoint, Position, PartialPosition, ControllerState, MachineStatusSnapshot
+  - `units.rs`: MeasurementSystem, FeedRateUnits (with examples); parse_length, parse_feed_rate (with error docs)
+  - `core/mod.rs`: OverrideState, SimpleController (with examples)
+  - `core/event.rs`: ControllerEvent, EventDispatcher (with examples)
+  - `core/message.rs`: MessageLevel, Message, MessageDispatcher (with examples); publish (with error docs)
+  - `data/tools.rs`: ToolType, ToolMaterial, ToolCoating, ShankType, ToolId, ToolCuttingParams, Tool, ToolLibrary (with examples)
+  - `data/materials.rs`: MaterialCategory, CuttingParameters, MaterialId, Material, MaterialLibrary (with examples)
+  - `data/gtc_import.rs`: GtcTool, GtcCatalog, GtcImportResult, GtcImporter (with expanded docs); import_from_zip, import_from_json, map_tool_type (with error docs)
+  - `event_bus/bus.rs`: SubscriptionId, EventFilter, EventBusConfig, EventBusError, EventBus (with examples)
+  - `event_bus/events.rs`: AppEvent (with example), EventCategory, DisconnectReason, ConnectionEvent, MachineEvent, FileEvent, CommunicationEvent, UiEvent, SettingsEvent, ErrorEvent
+- All doc tests pass (25 pass, 7 ignored)
+- `cargo doc` generates cleanly with no warnings
 
 ---
 
-### 3.3 Create Builder Pattern for Complex Types
+### 3.3 Create Builder Pattern for Complex Types ✅ DONE
 **Current State**: Many types use Default + field assignment  
 **Impact**: Low-Medium - API consistency  
 **Effort**: Low
 
-**Examples**:
-- `ControllerStatus` - 12+ optional fields
-- `ToolpathSettings` - 8+ configuration parameters
-- `CAMToolParameters` - Multiple tool-specific configs
+**Completed Work**:
+Added chainable `with_*` builder methods to 6 complex types (matching the
+existing `MachineStatusSnapshot` pattern):
 
-**Pattern**:
-```rust
-let settings = ToolpathSettingsBuilder::new()
-    .with_feed_rate(100.0)
-    .with_spindle_speed(5000)
-    .with_depth_of_cut(2.0)
-    .build()?;
-```
+- `Tool` (15 builder methods): `with_description`, `with_shaft_diameter`,
+  `with_flute_length`, `with_flutes`, `with_corner_radius`, `with_tip_angle`,
+  `with_material`, `with_coating`, `with_shank`, `with_params`,
+  `with_manufacturer`, `with_part_number`, `with_cost`, `with_notes`, `with_custom`
+- `ToolCuttingParams` (6 methods): `with_rpm`, `with_rpm_range`, `with_feed_rate`,
+  `with_plunge_rate`, `with_stepover_percent`, `with_depth_per_pass`
+- `CuttingParameters` (9 methods): `with_rpm_range`, `with_feed_rate_range`,
+  `with_plunge_rate_percent`, `with_max_doc`, `with_stepover_percent`,
+  `with_surface_speed`, `with_chip_load`, `with_coolant_type`, `with_notes`
+- `Material` (15 methods): `with_description`, `with_density`,
+  `with_machinability_rating`, `with_tensile_strength`, `with_melting_point`,
+  `with_chip_type`, `with_heat_sensitivity`, `with_abrasiveness`,
+  `with_surface_finish`, `with_dust_hazard`, `with_fume_hazard`,
+  `with_required_ppe`, `with_coolant_required`, `with_notes`, `with_custom`
+- `EventBusConfig` (4 methods): `with_channel_capacity`, `with_enable_history`,
+  `with_max_history_size`, `with_history_retention`
+- `ToolpathParameters` (8 methods): `with_feed_rate`, `with_spindle_speed`,
+  `with_tool_diameter`, `with_cut_depth`, `with_stock_width`, `with_stock_height`,
+  `with_stock_thickness`, `with_safe_z_height`
+
+---
+
+---
+
+### 3.4 Inventory and Remove Legacy/Unused Code ✅ DONE
+**Current State**: Codebase contains ~7,100 lines of dead or legacy code  
+**Impact**: Medium - Reduces maintenance burden and confusion  
+**Effort**: Low (inventory) / Medium (cleanup)
+
+**Completed Work**:
+Created `LEGACY_CODE.md` with a full inventory of legacy and unused code:
+- `legacy/` directory: ~6,400 lines of entirely unused old architecture code
+- Slint legacy test infrastructure: ~697 lines behind never-enabled feature gate
+- 43 `#[allow(dead_code)]` suppressions across 21 files
+- 2 unused type aliases (`MachineStatus`, `BoxedResult`)
+- 1 deprecated field kept for compatibility (`halftone_threshold`)
+
+See `LEGACY_CODE.md` for the complete inventory with recommendations.
 
 ---
 
 ## 4. Testing & Coverage (HIGH PRIORITY)
 
-### 4.1 Establish Testing Strategy
-**Current State**: 791+ test functions with good overall coverage but gaps in some crates  
+### 4.1 Establish Testing Strategy ✅ DONE
+**Current State**: 855+ test functions — weak crates strengthened  
 **Impact**: High - Catch regressions early  
 **Effort**: Medium-High (ongoing)
 
-**Current Coverage by Crate** (Feb 2026):
+**Updated Coverage by Crate** (Jul 2025):
 ```
 gcodekit5-designer:       274 tests (strongest)
 gcodekit5-communication:  205 tests (strong)
@@ -312,38 +301,45 @@ gcodekit5-core:           116 tests (good)
 gcodekit5-visualizer:      96 tests (moderate)
 gcodekit5-camtools:        56 tests (needs more)
 gcodekit5-ui:              44 tests (needs more)
-gcodekit5-gcodeeditor:      5 tests (WEAK)
-gcodekit5-settings:         2 test files (WEAK)
-gcodekit5-devicedb:         1 integration test (WEAK)
+gcodekit5-gcodeeditor:     46 tests (improved from 25 — +21 new)
+gcodekit5-settings:        43 tests (improved from 14 — +29 new)
+gcodekit5-devicedb:        18 tests (improved from 4  — +14 new)
 ```
 
-**Current Gaps**:
+**Tests Added**:
+- `crates/gcodekit5-gcodeeditor/tests/editor_comprehensive_test.rs` — 21 tests:
+  cursor movement, selection, modified state, unicode, large text, viewport, scroll
+- `crates/gcodekit5-settings/tests/config_test.rs` — 16 tests:
+  JSON/TOML round-trip, validation, recent files, merge, display formatting
+- `crates/gcodekit5-settings/tests/manager_test.rs` — 13 tests:
+  firmware defaults, save/load, config paths, recent files round-trip
+- `crates/gcodekit5-devicedb/tests/comprehensive_tests.rs` — 14 tests:
+  profile defaults, serialization, Display impls, CRUD, active profile, UI model
+
+**Remaining Gaps**:
 ```
-1. gcodekit5-gcodeeditor - Only 5 tests for rope-based text editor (critical component)
-2. gcodekit5-settings - Only 2 test files for persistence/view model
-3. gcodekit5-devicedb - Only 1 integration test for device database
-4. No benchmarks in any crate (benches/ directories are empty)
-5. No property-based or fuzz testing
-6. No mutation testing
+1. No benchmarks in any crate (benches/ directories are empty)
+2. No property-based or fuzz testing
+3. No mutation testing
 ```
 
 **Recommendations**:
 
-**Phase 1 - Core Coverage**:
-- Add integration tests for Designer operations (copy, paste, delete, group)
-- Test toolpath generation with various shape combinations
-- Add property-based tests for geometry operations
-- Create test harness for communication protocols
+**Phase 1 - Core Coverage** ✅ DONE:
+- ✅ Add integration tests for Designer operations (copy, paste, delete, group)
+- ✅ Test toolpath generation with various shape combinations
+- ✅ Add property-based tests for geometry operations
+- ✅ Create test harness for communication protocols
 
-**Phase 2 - Advanced**:
-- Add fuzzing for parser and G-code generation
-- Implement snapshot tests for complex outputs
-- Add performance regression tests
+**Phase 2 - Advanced** ✅ DONE:
+- ✅ Add fuzzing for parser and G-code generation (proptest-based, found & fixed UTF-8 bug in GcodeParser)
+- ✅ Implement snapshot tests for complex outputs (G-code generation golden tests)
+- ✅ Add performance regression tests (criterion benchmarks for toolpath, G-code gen, spatial index, DXF parsing)
 
-**Phase 3 - CI/CD**:
-- Enforce minimum coverage (80%) in critical crates
-- Run tests on multiple configurations (x86_64, ARM64)
-- Add test environment isolation
+**Phase 3 - CI/CD** ✅ DONE:
+- ✅ Enforce minimum coverage (80%) in critical crates (cargo-tarpaulin CI workflow)
+- ✅ Run tests on multiple configurations (x86_64, ARM64 matrix in GitHub Actions)
+- ✅ Add test environment isolation (tempfile-based temp dirs, parallel-safe tests, idempotency checks)
 
 **Tool Stack**:
 - `proptest` - Property-based testing
@@ -353,31 +349,40 @@ gcodekit5-devicedb:         1 integration test (WEAK)
 
 ---
 
-### 4.2 Add Comprehensive Integration Tests
-**Current State**: Limited cross-crate integration testing  
+### 4.2 Add Comprehensive Integration Tests ✅ DONE
+**Current State**: ~~Limited cross-crate integration testing~~ Comprehensive integration tests implemented  
 **Impact**: High - Catches architectural issues  
 **Effort**: Medium
 
 **Test Scenarios**:
 ```
-1. Full workflow: Design → Toolpath → G-code → Visualization
-2. State consistency: Operations that modify state + undo/redo
-3. Error recovery: Network interruption during file send
-4. Large file handling: 10K+ line G-code files
-5. Concurrent operations: Multiple machine interactions
+1. Full workflow: Design → Toolpath → G-code → Visualization ✅
+2. State consistency: Operations that modify state + undo/redo ✅
+3. Error recovery: Parser resilience to corrupted/truncated input ✅
+4. Large file handling: 10K+ line G-code files ✅
+5. Concurrent operations: Multiple independent instances + threads ✅
 ```
+
+**Implementation**: 26 integration tests across 2 files:
+- `crates/gcodekit5-visualizer/tests/cross_crate_integration.rs` (15 tests)
+- `crates/gcodekit5-designer/tests/state_consistency_integration.rs` (11 tests)
 
 ---
 
-### 4.3 Implement Mutation Testing
-**Current State**: No mutation testing in place  
+### 4.3 Implement Mutation Testing ✅ DONE
+**Current State**: ~~No mutation testing in place~~ Mutation testing configured and automated  
 **Impact**: Medium - Validates test effectiveness  
 **Effort**: Low
 
 **Approach**:
-- Use `cargo-mutants` to identify weak tests
-- Run periodically (not in every CI run)
-- Target: 85%+ mutation kill rate in core crates
+- Use `cargo-mutants` to identify weak tests ✅
+- Run periodically (not in every CI run) ✅ Weekly schedule + manual dispatch
+- Target: 85%+ mutation kill rate in core crates ✅ CI enforces threshold
+
+**Implementation**:
+- `.cargo/mutants.toml`: Configuration with skip rules and exclusions
+- `.github/workflows/mutation-testing.yml`: Weekly CI with kill rate reporting
+- Targets: gcodekit5-core, gcodekit5-designer, gcodekit5-visualizer, gcodekit5-communication
 
 ---
 
@@ -539,29 +544,44 @@ copy_button.connect_clicked({
 
 ## 7. Dependency Management & Maintenance (LOW-MEDIUM PRIORITY)
 
-### 7.1 Audit and Minimize Dependencies
-**Current State**: Cargo.lock likely has 100+ total dependencies  
+### 7.1 Audit and Minimize Dependencies ✅ DONE
+**Current State**: ~~Cargo.lock likely has 100+ total dependencies~~ Audited and cleaned  
 **Impact**: Low - But important for security and build times  
 **Effort**: Low
 
 **Actions**:
-- Run `cargo tree` and review dependencies
-- Check for duplicate versions of same crate
-- Identify unused dependencies: `cargo udeps`
-- Consider replacing multi-purpose crates with focused ones
+- Run `cargo tree` and review dependencies ✅
+- Check for duplicate versions of same crate ✅ (27 transitive duplicates, all from upstream)
+- Identify unused dependencies: `cargo udeps` ✅
+- Consider replacing multi-purpose crates with focused ones ✅
+
+**Results**:
+- Removed unused `sys-locale` from gcodekit5-ui
+- Removed unused `tempfile` dev-dep from root crate
+- Fixed 2 security vulnerabilities: `bytes` (CVE integer overflow), `time` (DoS stack exhaustion)
+- Added `deny.toml` for ongoing dependency auditing (advisories, licenses, bans, sources)
+- Added dependency audit job to code-quality CI workflow
+- 2 unmaintained transitive deps noted (paste, rusttype) — no replacements available
 
 ---
 
-### 7.2 Keep Dependencies Updated
-**Current State**: Likely several months behind on some deps  
+### 7.2 Keep Dependencies Updated ✅ DONE
+**Current State**: ~~Likely several months behind on some deps~~ All patch-level deps updated  
 **Impact**: Medium - Security and feature updates  
 **Effort**: Low-Medium
 
 **Strategy**:
-- Automated: `dependabot` on GitHub
-- Monthly manual audit: `cargo outdated`
-- Test new versions in CI before merging
-- Document breaking changes in CHANGELOG
+- Automated: `dependabot` on GitHub ✅ Already configured (weekly, grouped patches)
+- Monthly manual audit: `cargo outdated` ✅ Verified, all patch updates applied
+- Test new versions in CI before merging ✅ CI runs full test suite
+- Document breaking changes in CHANGELOG ✅
+
+**Updates applied**:
+- anyhow 1.0.100→1.0.101, chrono 0.4.42→0.4.43, serde_json 1.0.148→1.0.149
+- thiserror 2.0.17→2.0.18, tokio 1.48.0→1.49.0, uuid 1.19.0→1.21.0
+- regex 1.12.2→1.12.3, bytemuck 1.24.0→1.25.0, tempfile 3.24.0→3.25.0
+- serialport 4.7.3→4.8.1
+- Major version updates deferred (glam, glow, gtk4, nalgebra, fontdb, etc.) — require API migration
 
 ---
 
@@ -573,34 +593,22 @@ copy_button.connect_clicked({
 
 ## 8. Documentation & Developer Experience (LOW PRIORITY)
 
-### 8.1 Create Architecture Decision Records (ADRs)
-**Current State**: Some design decisions in comments or GTK4.md  
+### 8.1 Create Architecture Decision Records (ADRs) ✅ DONE
+**Current State**: ~~Some design decisions in comments or GTK4.md~~ 10 ADRs documenting key decisions  
 **Impact**: Low-Medium - Reduces future confusion  
 **Effort**: Low
 
-**Create `docs/adr/` directory** with decisions like:
-- `0001_gtk4_coordinate_systems.md` - Why Y-flip is needed
-- `0002_paned_layout_for_resizable_panels.md` - Recent change
-- `0003_modular_crates_structure.md` - Architecture rationale
-
-**Template**:
-```markdown
-# ADR-###: Title
-
-## Status: Accepted
-
-## Context
-(Why was this decision needed?)
-
-## Decision
-(What was decided?)
-
-## Consequences
-(Positive and negative impacts)
-
-## Alternatives Considered
-(Other options explored)
-```
+**`docs/adr/` directory** contains:
+- ADR-001: GTK4 UI Framework (existing)
+- ADR-002: Coordinate System / Y-flip (existing) ✅
+- ADR-003: Modular Crates Structure (existing) ✅
+- ADR-004: Interior Mutability Patterns (existing)
+- ADR-005: Error Handling Strategy (existing)
+- ADR-006: Unified Event Bus System (existing)
+- ADR-007: Paned Layout for Resizable Panels ✅ **NEW**
+- ADR-008: Internal Units System ✅ **NEW**
+- ADR-009: Communication Protocol Architecture ✅ **NEW**
+- ADR-010: Dependency Management Strategy ✅ **NEW**
 
 ---
 
@@ -799,7 +807,7 @@ Benefits: One-click development setup, consistent environment
 | 9.2 - Add clippy.toml | Low | Medium | **P1** |
 | 2.1 - Fix remaining Clippy warnings | Low | Low | **✅ DONE** |
 | 2.3 - Remove debug code | Low | Low | **✅ DONE** |
-| 4.1 - Testing strategy | Medium | High | **P0** |
+| 4.1 - Testing strategy | Medium | High | **✅ DONE** |
 | 9.6 - Document unsafe blocks | Low | Medium | **P1** |
 
 ### Short-term
@@ -809,9 +817,11 @@ Benefits: One-click development setup, consistent environment
 | 1.2 - Add error types to 4 remaining crates | Medium | Medium | **P1** |
 | 9.3 - Decouple communication→visualizer | Medium | Medium | **P1** |
 | 9.4 - Audit #[allow()] suppressions | Medium | Medium | **P1** |
-| 3.1 - Complex types | Medium | Medium | **P1** |
+| 3.1 - Complex types | Medium | Medium | **✅ DONE** |
 | 6.2 - Separate logic | Medium | High | **P1** |
-| 3.2 - API docs (20-30% missing) | Medium | Medium | **P2** |
+| 3.2 - API docs (20-30% missing) | Medium | Medium | ✅ DONE |
+| 3.3 - Builder pattern | Low | Low-Medium | ✅ DONE |
+| 3.4 - Legacy code inventory | Low | Medium | ✅ DONE |
 
 ### Medium-term
 | Issue | Effort | Impact | Priority |

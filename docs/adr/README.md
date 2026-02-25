@@ -12,6 +12,10 @@ This directory contains Architecture Decision Records (ADRs) for GCodeKit5. ADRs
 | [ADR-004](ADR-004-interior-mutability.md) | Interior Mutability Patterns | Accepted | 2026-01-26 |
 | [ADR-005](ADR-005-error-handling.md) | Error Handling Strategy | Accepted | 2026-01-26 |
 | [ADR-006](ADR-006-event-bus-system.md) | Unified Event Bus System | Proposed | 2026-01-30 |
+| [ADR-007](ADR-007-paned-layout.md) | Paned Layout for Resizable Panels | Accepted | 2026-02-18 |
+| [ADR-008](ADR-008-units-system.md) | Internal Units System | Accepted | 2026-02-18 |
+| [ADR-009](ADR-009-communication-protocol.md) | Communication Protocol Architecture | Accepted | 2026-02-18 |
+| [ADR-010](ADR-010-dependency-management.md) | Dependency Management Strategy | Accepted | 2026-02-18 |
 
 ## ADR Template
 

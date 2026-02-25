@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 use super::events::{AppEvent, EventCategory};
 
-/// Subscription handle for unsubscribing from events
+/// Subscription handle for unsubscribing from events.
+///
+/// Returned by [`EventBus::subscribe`] and used with [`EventBus::unsubscribe`]
+/// to remove a handler.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SubscriptionId(Uuid);
 
@@ -29,7 +32,20 @@ impl std::fmt::Display for SubscriptionId {
     }
 }
 
-/// Filter to receive only specific event types
+/// Filter to receive only specific event types.
+///
+/// Used when subscribing to the event bus to limit which events
+/// the handler receives.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::event_bus::{EventFilter, EventCategory};
+///
+/// let filter = EventFilter::Categories(vec![
+///     EventCategory::Machine,
+///     EventCategory::Connection,
+/// ]);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub enum EventFilter {
     /// Receive all events.
@@ -52,7 +68,9 @@ impl EventFilter {
 /// Type alias for event handler functions
 type EventHandler = Box<dyn Fn(AppEvent) + Send + Sync>;
 
-/// Configuration for the event bus
+/// Configuration for the event bus.
+///
+/// Controls channel capacity, history retention, and buffering behaviour.
 #[derive(Debug, Clone)]
 pub struct EventBusConfig {
     /// Channel capacity for broadcast.
@@ -76,6 +94,32 @@ impl Default for EventBusConfig {
     }
 }
 
+impl EventBusConfig {
+    /// Builder method to set channel capacity.
+    pub fn with_channel_capacity(mut self, capacity: usize) -> Self {
+        self.channel_capacity = capacity;
+        self
+    }
+
+    /// Builder method to enable or disable event history.
+    pub fn with_enable_history(mut self, enable: bool) -> Self {
+        self.enable_history = enable;
+        self
+    }
+
+    /// Builder method to set maximum history size.
+    pub fn with_max_history_size(mut self, size: usize) -> Self {
+        self.max_history_size = size;
+        self
+    }
+
+    /// Builder method to set history retention duration.
+    pub fn with_history_retention(mut self, retention: Duration) -> Self {
+        self.history_retention = retention;
+        self
+    }
+}
+
 /// Event with timestamp for history
 #[derive(Debug, Clone)]
 struct TimestampedEvent {
@@ -83,7 +127,9 @@ struct TimestampedEvent {
     timestamp: Instant,
 }
 
-/// Error types for event bus operations
+/// Error types for event bus operations.
+///
+/// Returned by [`EventBus::publish`] when event delivery fails.
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum EventBusError {
     /// No subscribers are listening
@@ -97,7 +143,22 @@ pub enum EventBusError {
     ChannelFull(u64),
 }
 
-/// Central event bus for application-wide event distribution
+/// Central event bus for application-wide event distribution.
+///
+/// Uses a `tokio::broadcast` channel for async subscribers and an
+/// internal handler map for synchronous callbacks. Access the global
+/// instance via `global_event_bus()`.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::event_bus::{EventBus, EventFilter};
+///
+/// let bus = EventBus::new();
+/// let sub_id = bus.subscribe(EventFilter::All, |event| {
+///     // handle event
+/// });
+/// bus.unsubscribe(sub_id);
+/// ```
 pub struct EventBus {
     /// Broadcast channel sender
     sender: broadcast::Sender<AppEvent>,

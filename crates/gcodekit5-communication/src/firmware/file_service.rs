@@ -15,8 +15,8 @@ pub struct FileInfo {
     pub modified: Option<u64>,
 }
 
-/// File service progress callback
-pub type ProgressCallback = Box<dyn Fn(u64, u64) + Send + Sync>;
+/// File service progress callback - re-exported from core types.
+pub use gcodekit5_core::types::aliases::ProgressCallback;
 
 /// Trait for file system operations on controllers
 pub trait FileServiceTrait: Send + Sync {

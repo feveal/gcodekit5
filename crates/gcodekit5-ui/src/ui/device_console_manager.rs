@@ -7,7 +7,9 @@
 use crate::device_status;
 use crate::ui::console_panel::{ConsolePanel, MessageLevel};
 use gcodekit5_communication::CommunicatorListener;
-use gcodekit5_core::{thread_safe, thread_safe_vec, ThreadSafe, ThreadSafeOption, ThreadSafeVec};
+use gcodekit5_core::{
+    thread_safe, thread_safe_vec, DataCallback, ThreadSafe, ThreadSafeOption, ThreadSafeVec,
+};
 use std::sync::Arc;
 
 /// Message type for device communication
@@ -51,7 +53,7 @@ pub struct DeviceConsoleManager {
     /// Whether auto-scroll is enabled
     auto_scroll_enabled: ThreadSafe<bool>,
     /// Event callbacks (with interior mutability)
-    on_event: ThreadSafeVec<Box<dyn Fn(ConsoleEvent) + Send + Sync>>,
+    on_event: ThreadSafeVec<DataCallback<ConsoleEvent>>,
 }
 
 impl DeviceConsoleManager {

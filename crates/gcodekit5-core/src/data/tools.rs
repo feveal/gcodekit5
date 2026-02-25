@@ -10,7 +10,19 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Tool types for classification
+/// Tool types for classification.
+///
+/// Categorizes CNC cutting tools by their geometry and intended use.
+/// Each type has different cutting characteristics and suitable operations.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::tools::ToolType;
+///
+/// let tool_type = ToolType::EndMillFlat;
+/// let all_types = ToolType::all();
+/// assert!(all_types.contains(&tool_type));
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum ToolType {
     /// Flat end mill
@@ -66,7 +78,9 @@ impl std::fmt::Display for ToolType {
     }
 }
 
-/// Tool material composition
+/// Tool material composition.
+///
+/// Determines tool hardness, heat resistance, and suitable workpiece materials.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolMaterial {
     /// High Speed Steel
@@ -90,7 +104,9 @@ impl std::fmt::Display for ToolMaterial {
     }
 }
 
-/// Tool coating type
+/// Tool coating type.
+///
+/// Surface coatings that improve tool life, heat resistance, and cutting performance.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ToolCoating {
     /// Titanium Nitride coating
@@ -114,7 +130,9 @@ impl std::fmt::Display for ToolCoating {
     }
 }
 
-/// Shank type for tool holder compatibility
+/// Shank type for tool holder compatibility.
+///
+/// Determines which collet or holder the tool requires.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum ShankType {
     /// Straight shank with specified diameter in 1/10mm units (e.g., 60 = 6.0mm).
@@ -125,7 +143,19 @@ pub enum ShankType {
     Collet,
 }
 
-/// Tool identifier
+/// Tool identifier.
+///
+/// A string-based unique identifier for tools within a library.
+/// Convention: `"std_<type>_<diameter>"` for standard tools,
+/// `"gtc_<id>"` for imported tools.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::tools::ToolId;
+///
+/// let id = ToolId("std_endmill_6mm".to_string());
+/// assert_eq!(id.to_string(), "std_endmill_6mm");
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct ToolId(
     /// The unique string identifier for the tool.
@@ -138,7 +168,10 @@ impl std::fmt::Display for ToolId {
     }
 }
 
-/// Tool default cutting parameters
+/// Tool default cutting parameters.
+///
+/// Recommended operating parameters for the tool. Values are in mm and mm/min.
+/// These serve as starting points; actual values depend on workpiece material.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCuttingParams {
     /// Recommended RPM
@@ -168,7 +201,64 @@ impl Default for ToolCuttingParams {
     }
 }
 
-/// Complete tool definition
+impl ToolCuttingParams {
+    /// Builder method to set RPM.
+    pub fn with_rpm(mut self, rpm: u32) -> Self {
+        self.rpm = rpm;
+        self
+    }
+
+    /// Builder method to set RPM range.
+    pub fn with_rpm_range(mut self, min: u32, max: u32) -> Self {
+        self.rpm_range = (min, max);
+        self
+    }
+
+    /// Builder method to set feed rate in mm/min.
+    pub fn with_feed_rate(mut self, rate: f32) -> Self {
+        self.feed_rate = rate;
+        self
+    }
+
+    /// Builder method to set plunge rate in mm/min.
+    pub fn with_plunge_rate(mut self, rate: f32) -> Self {
+        self.plunge_rate = rate;
+        self
+    }
+
+    /// Builder method to set stepover as percentage of tool diameter.
+    pub fn with_stepover_percent(mut self, percent: f32) -> Self {
+        self.stepover_percent = percent;
+        self
+    }
+
+    /// Builder method to set depth per pass in mm.
+    pub fn with_depth_per_pass(mut self, depth: f32) -> Self {
+        self.depth_per_pass = depth;
+        self
+    }
+}
+
+/// Complete tool definition.
+///
+/// Stores all properties of a CNC cutting tool including geometry, material,
+/// cutting parameters, and metadata. All dimensions are in millimeters.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::tools::{Tool, ToolId, ToolType};
+///
+/// let tool = Tool::new(
+///     ToolId("endmill_6mm".to_string()),
+///     1,
+///     "6mm Flat End Mill".to_string(),
+///     ToolType::EndMillFlat,
+///     6.0,
+///     50.0,
+/// );
+/// assert_eq!(tool.diameter, 6.0);
+/// assert_eq!(tool.flutes, 2);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tool {
     /// Unique tool identifier
@@ -272,9 +362,116 @@ impl Tool {
         // This can be expanded with material compatibility rules
         !material_category.is_empty()
     }
+
+    /// Builder method to set description.
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = description.into();
+        self
+    }
+
+    /// Builder method to set shaft diameter.
+    pub fn with_shaft_diameter(mut self, diameter: f32) -> Self {
+        self.shaft_diameter = Some(diameter);
+        self
+    }
+
+    /// Builder method to set flute length.
+    pub fn with_flute_length(mut self, length: f32) -> Self {
+        self.flute_length = length;
+        self
+    }
+
+    /// Builder method to set number of flutes.
+    pub fn with_flutes(mut self, flutes: u32) -> Self {
+        self.flutes = flutes;
+        self
+    }
+
+    /// Builder method to set corner radius.
+    pub fn with_corner_radius(mut self, radius: f32) -> Self {
+        self.corner_radius = Some(radius);
+        self
+    }
+
+    /// Builder method to set tip angle in degrees.
+    pub fn with_tip_angle(mut self, angle: f32) -> Self {
+        self.tip_angle = Some(angle);
+        self
+    }
+
+    /// Builder method to set tool material.
+    pub fn with_material(mut self, material: ToolMaterial) -> Self {
+        self.material = material;
+        self
+    }
+
+    /// Builder method to set tool coating.
+    pub fn with_coating(mut self, coating: ToolCoating) -> Self {
+        self.coating = Some(coating);
+        self
+    }
+
+    /// Builder method to set shank type.
+    pub fn with_shank(mut self, shank: ShankType) -> Self {
+        self.shank = shank;
+        self
+    }
+
+    /// Builder method to set cutting parameters.
+    pub fn with_params(mut self, params: ToolCuttingParams) -> Self {
+        self.params = params;
+        self
+    }
+
+    /// Builder method to set manufacturer.
+    pub fn with_manufacturer(mut self, manufacturer: impl Into<String>) -> Self {
+        self.manufacturer = Some(manufacturer.into());
+        self
+    }
+
+    /// Builder method to set part number.
+    pub fn with_part_number(mut self, part_number: impl Into<String>) -> Self {
+        self.part_number = Some(part_number.into());
+        self
+    }
+
+    /// Builder method to set cost.
+    pub fn with_cost(mut self, cost: f32) -> Self {
+        self.cost = Some(cost);
+        self
+    }
+
+    /// Builder method to set notes.
+    pub fn with_notes(mut self, notes: impl Into<String>) -> Self {
+        self.notes = notes.into();
+        self
+    }
+
+    /// Builder method to mark as custom tool.
+    pub fn with_custom(mut self, custom: bool) -> Self {
+        self.custom = custom;
+        self
+    }
 }
 
-/// Tool library - manages collection of tools
+/// Tool library — manages a collection of tools.
+///
+/// Provides add, remove, search, and filter operations. Standard tools
+/// are loaded via [`init_standard_library`].
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::tools::{ToolLibrary, Tool, ToolId, ToolType};
+///
+/// let mut library = ToolLibrary::new();
+/// let tool = Tool::new(
+///     ToolId("t1".to_string()), 1,
+///     "Test".to_string(), ToolType::DrillBit, 3.0, 40.0,
+/// );
+/// library.add_tool(tool);
+/// assert_eq!(library.len(), 1);
+/// assert!(library.get_tool(&ToolId("t1".to_string())).is_some());
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolLibrary {
     /// Collection of tools by ID

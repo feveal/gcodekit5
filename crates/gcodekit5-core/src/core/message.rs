@@ -9,7 +9,18 @@
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-/// Message severity level
+/// Message severity level.
+///
+/// Ordered from least to most severe. Used to filter messages — setting a
+/// minimum level of `Warning` suppresses `Verbose` and `Info` messages.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::message::MessageLevel;
+///
+/// assert!(MessageLevel::Error > MessageLevel::Warning);
+/// assert!(MessageLevel::Warning > MessageLevel::Info);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MessageLevel {
     /// Verbose/Debug level
@@ -33,7 +44,19 @@ impl std::fmt::Display for MessageLevel {
     }
 }
 
-/// Message from controller or system
+/// Message from controller or system.
+///
+/// Timestamped, leveled message with source identification. Used for the
+/// console log, status display, and debugging output.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::message::Message;
+///
+/// let msg = Message::info("GRBL", "Homing cycle complete");
+/// println!("{}", msg.format_console());
+/// // Output: [HH:MM:SS.mmm] INFO | GRBL: Homing cycle complete
+/// ```
 #[derive(Debug, Clone)]
 pub struct Message {
     /// Timestamp of message
@@ -93,7 +116,19 @@ impl std::fmt::Display for Message {
     }
 }
 
-/// Message dispatcher for publishing messages to subscribers
+/// Message dispatcher for publishing messages to subscribers.
+///
+/// Broadcasts messages to all subscribers with minimum level filtering.
+/// Messages below the configured minimum level are silently dropped.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::message::{MessageDispatcher, MessageLevel, Message};
+///
+/// let dispatcher = MessageDispatcher::default_with_buffer();
+/// let mut rx = dispatcher.subscribe();
+/// dispatcher.info("system", "Application started");
+/// ```
 #[derive(Clone)]
 pub struct MessageDispatcher {
     tx: broadcast::Sender<Message>,
@@ -124,7 +159,12 @@ impl MessageDispatcher {
         self.tx.subscribe()
     }
 
-    /// Publish a message
+    /// Publish a message to all subscribers.
+    ///
+    /// Messages below the configured minimum level are silently dropped.
+    ///
+    /// # Errors
+    /// Returns `SendError` if there are no active subscribers.
     pub fn publish(&self, message: Message) -> Result<usize, broadcast::error::SendError<Message>> {
         let min_level = *self.min_level.read();
         if message.level >= min_level {

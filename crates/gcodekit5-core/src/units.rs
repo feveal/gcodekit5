@@ -7,7 +7,20 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-/// Measurement system
+/// Measurement system for dimensional values.
+///
+/// Determines how dimensions are displayed and parsed. Internal storage
+/// always uses metric (mm); this controls the UI presentation layer.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::units::{MeasurementSystem, format_length, get_unit_label};
+///
+/// let value_mm = 25.4;
+/// assert_eq!(format_length(value_mm, MeasurementSystem::Metric), "25.400");
+/// assert_eq!(format_length(value_mm, MeasurementSystem::Imperial), "1.000");
+/// assert_eq!(get_unit_label(MeasurementSystem::Metric), "mm");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum MeasurementSystem {
@@ -39,7 +52,19 @@ impl FromStr for MeasurementSystem {
     }
 }
 
-/// Feed rate units selection
+/// Feed rate units selection.
+///
+/// Controls how feed rates are displayed and parsed. Internal storage
+/// always uses mm/min; this controls the UI presentation layer.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::units::{FeedRateUnits, format_feed_rate};
+///
+/// let rate_mm_min = 1000.0;
+/// assert_eq!(format_feed_rate(rate_mm_min, FeedRateUnits::MmPerMin), "1000.000");
+/// assert_eq!(format_feed_rate(rate_mm_min, FeedRateUnits::MmPerSec), "16.667");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum FeedRateUnits {
@@ -97,10 +122,21 @@ pub fn format_feed_rate(value_mm_per_min: f32, units: FeedRateUnits) -> String {
     format!("{:.3}", value)
 }
 
-/// Parse length string to millimeters
+/// Parse length string to millimeters.
 ///
-/// * `input` - String to parse
-/// * `system` - Assumed measurement system
+/// Accepts decimal values and imperial fractions (e.g., `"1 1/2"` for 1.5 inches).
+/// Empty strings return `Ok(0.0)`.
+///
+/// # Arguments
+/// * `input` - String to parse (whitespace is trimmed)
+/// * `system` - Assumed measurement system for the input
+///
+/// # Errors
+/// Returns `Err` if:
+/// - The input is not a valid number
+/// - A fraction has an invalid numerator or denominator
+/// - A fraction has a zero denominator (division by zero)
+/// - A fraction has more than one `/` separator
 pub fn parse_length(input: &str, system: MeasurementSystem) -> Result<f32, String> {
     let input = input.trim();
     if input.is_empty() {
@@ -146,10 +182,17 @@ pub fn parse_length(input: &str, system: MeasurementSystem) -> Result<f32, Strin
     }
 }
 
-/// Parse feed rate string to mm/min
+/// Parse feed rate string to mm/min.
 ///
-/// * `input` - String to parse
-/// * `units` - Assumed feed rate units
+/// Converts a numeric string from the given units to mm/min.
+/// Empty strings return `Ok(0.0)`.
+///
+/// # Arguments
+/// * `input` - String to parse (whitespace is trimmed)
+/// * `units` - Assumed feed rate units of the input
+///
+/// # Errors
+/// Returns `Err` if the input is not a valid floating-point number.
 pub fn parse_feed_rate(input: &str, units: FeedRateUnits) -> Result<f32, String> {
     let input = input.trim();
     if input.is_empty() {

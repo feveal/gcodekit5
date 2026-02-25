@@ -7,6 +7,7 @@ use gcodekit5_core::data::materials::{
     Abrasiveness, ChipType, HazardLevel, HeatSensitivity, Material, MaterialCategory, MaterialId,
     MaterialLibrary, SurfaceFinishability,
 };
+use gcodekit5_core::types::aliases::BoxedError;
 use std::path::PathBuf;
 
 pub struct MaterialsManagerBackend {
@@ -42,13 +43,13 @@ impl MaterialsManagerBackend {
         path
     }
 
-    fn load_from_file(path: &PathBuf) -> Result<Vec<Material>, Box<dyn std::error::Error>> {
+    fn load_from_file(path: &PathBuf) -> Result<Vec<Material>, BoxedError> {
         let contents = std::fs::read_to_string(path)?;
         let materials: Vec<Material> = serde_json::from_str(&contents)?;
         Ok(materials)
     }
 
-    fn save_to_file(&self) -> Result<(), Box<dyn std::error::Error>> {
+    fn save_to_file(&self) -> Result<(), BoxedError> {
         // Only save custom materials
         let custom_materials: Vec<&Material> = self
             .library

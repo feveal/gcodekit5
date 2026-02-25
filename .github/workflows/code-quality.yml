@@ -103,3 +103,18 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt --all -- --check
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-deny
+        run: cargo install cargo-deny
+
+      - name: Run dependency checks
+        run: cargo deny check

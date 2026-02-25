@@ -33,8 +33,8 @@ pub use event_bus::{
 // Re-export type aliases for convenience
 pub use types::{
     shared, shared_none, shared_some, thread_safe, thread_safe_deque, thread_safe_map,
-    thread_safe_none, thread_safe_rw, thread_safe_some, thread_safe_vec, Callback, DataCallback,
-    ProgressCallback, ResultCallback, Shared, SharedHashMap, SharedOption, SharedVec, ThreadSafe,
-    ThreadSafeDeque, ThreadSafeMap, ThreadSafeOption, ThreadSafeRw, ThreadSafeRwMap, ThreadSafeVec,
-    UiCallback, UiDataCallback,
+    thread_safe_none, thread_safe_rw, thread_safe_some, thread_safe_vec, Callback, CellCallback,
+    CellDataCallback, CellDataCallback2, DataCallback, ProgressCallback, ResultCallback, Shared,
+    SharedHashMap, SharedOption, SharedVec, ThreadSafe, ThreadSafeDeque, ThreadSafeMap,
+    ThreadSafeOption, ThreadSafeRw, ThreadSafeRwMap, ThreadSafeVec, UiCallback, UiDataCallback,
 };

@@ -11,3 +11,8 @@ node_modules/
 
 # Local tooling
 .serena/
+
+# Mutation testing output
+mutants.out*/
+mutants-results/
+mutants-output.txt

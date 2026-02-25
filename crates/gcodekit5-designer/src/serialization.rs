@@ -203,6 +203,56 @@ impl Default for ToolpathParameters {
     }
 }
 
+impl ToolpathParameters {
+    /// Builder method to set feed rate in mm/min.
+    pub fn with_feed_rate(mut self, rate: f64) -> Self {
+        self.feed_rate = rate;
+        self
+    }
+
+    /// Builder method to set spindle speed in RPM.
+    pub fn with_spindle_speed(mut self, speed: f64) -> Self {
+        self.spindle_speed = speed;
+        self
+    }
+
+    /// Builder method to set tool diameter in mm.
+    pub fn with_tool_diameter(mut self, diameter: f64) -> Self {
+        self.tool_diameter = diameter;
+        self
+    }
+
+    /// Builder method to set cut depth in mm (negative value).
+    pub fn with_cut_depth(mut self, depth: f64) -> Self {
+        self.cut_depth = depth;
+        self
+    }
+
+    /// Builder method to set stock width in mm.
+    pub fn with_stock_width(mut self, width: f32) -> Self {
+        self.stock_width = width;
+        self
+    }
+
+    /// Builder method to set stock height in mm.
+    pub fn with_stock_height(mut self, height: f32) -> Self {
+        self.stock_height = height;
+        self
+    }
+
+    /// Builder method to set stock thickness in mm.
+    pub fn with_stock_thickness(mut self, thickness: f32) -> Self {
+        self.stock_thickness = thickness;
+        self
+    }
+
+    /// Builder method to set safe Z height in mm.
+    pub fn with_safe_z_height(mut self, height: f32) -> Self {
+        self.safe_z_height = height;
+        self
+    }
+}
+
 impl DesignFile {
     /// Create a new design file with default values
     pub fn new(name: impl Into<String>) -> Self {

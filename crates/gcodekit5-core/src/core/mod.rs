@@ -18,7 +18,21 @@ use std::sync::Arc;
 
 pub use listener::{ControllerListener, ControllerListenerHandle};
 
-/// Override state for controller operations
+/// Override state for controller operations.
+///
+/// Tracks real-time override percentages for feed rate, rapids, and spindle
+/// speed. These values are applied on top of programmed values by the
+/// controller firmware.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::OverrideState;
+///
+/// let overrides = OverrideState::default();
+/// assert_eq!(overrides.feed_override, 100);
+/// assert_eq!(overrides.rapid_override, 100);
+/// assert_eq!(overrides.spindle_override, 100);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OverrideState {
     /// Feed rate override percentage (0-200%)
@@ -229,7 +243,22 @@ pub trait ControllerTrait: Send + Sync {
     fn listener_count(&self) -> usize;
 }
 
-/// Simple controller implementation for testing
+/// Simple controller implementation for testing.
+///
+/// Provides a minimal in-memory controller that implements [`ControllerTrait`]
+/// without requiring actual hardware. Useful for unit tests and UI development.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::core::{SimpleController, ControllerTrait};
+/// use gcodekit5_core::data::ControllerState;
+///
+/// let ctrl = SimpleController::new("test");
+/// assert_eq!(ctrl.get_state(), ControllerState::Disconnected);
+///
+/// ctrl.set_state(ControllerState::Idle);
+/// assert_eq!(ctrl.get_state(), ControllerState::Idle);
+/// ```
 pub struct SimpleController {
     state: ThreadSafeRw<ControllerState>,
     status: ThreadSafeRw<ControllerStatus>,

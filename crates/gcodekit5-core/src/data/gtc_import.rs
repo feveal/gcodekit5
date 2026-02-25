@@ -7,13 +7,17 @@
 //! between CAM systems and tool suppliers.
 
 use crate::data::tools::{Tool, ToolCoating, ToolId, ToolMaterial, ToolType};
+use crate::types::aliases::BoxedError;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use zip::ZipArchive;
 
-/// GTC Tool definition from catalog
+/// GTC Tool definition from catalog.
+///
+/// Represents a single tool entry as serialized in a GTC JSON catalog.
+/// Field names use `#[serde(rename)]` to match the GTC format spec.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GtcTool {
     /// Unique identifier for this tool in the catalog.
@@ -89,7 +93,10 @@ pub struct GtcCuttingParams {
     pub material: Option<String>,
 }
 
-/// GTC Catalog structure
+/// GTC Catalog structure.
+///
+/// Top-level container for a GTC JSON catalog, typically found inside
+/// a `.zip` package as `catalog.json` or `tools.json`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GtcCatalog {
     /// Version string of the GTC catalog format.
@@ -105,7 +112,10 @@ pub struct GtcCatalog {
     pub tools: Vec<GtcTool>,
 }
 
-/// GTC Import result
+/// GTC Import result.
+///
+/// Summary of a GTC import operation, including the successfully converted
+/// tools and any errors encountered.
 #[derive(Debug)]
 pub struct GtcImportResult {
     /// Total number of tools found in the catalog.
@@ -118,7 +128,11 @@ pub struct GtcImportResult {
     pub errors: Vec<String>,
 }
 
-/// GTC Importer
+/// GTC Importer.
+///
+/// Converts GTC catalog entries into the application's [`Tool`] format.
+/// Each imported tool is assigned sequential tool numbers starting
+/// from the configured value.
 pub struct GtcImporter {
     /// Next tool number to assign during import.
     next_tool_number: u32,
@@ -134,11 +148,15 @@ impl GtcImporter {
         }
     }
 
-    /// Import tools from a GTC package (.zip file)
+    /// Import tools from a GTC package (.zip file).
+    ///
+    /// # Errors
+    /// Returns an error if the zip file cannot be opened, does not contain
+    /// a valid catalog JSON, or if the JSON fails to deserialize.
     pub fn import_from_zip<P: AsRef<Path>>(
         &mut self,
         zip_path: P,
-    ) -> Result<GtcImportResult, Box<dyn std::error::Error>> {
+    ) -> Result<GtcImportResult, BoxedError> {
         let file = File::open(zip_path.as_ref())?;
         let mut archive = ZipArchive::new(file)?;
 
@@ -168,11 +186,15 @@ impl GtcImporter {
         Ok(result)
     }
 
-    /// Import tools from a JSON file directly
+    /// Import tools from a JSON file directly.
+    ///
+    /// # Errors
+    /// Returns an error if the file cannot be read or if the JSON
+    /// fails to deserialize as a [`GtcCatalog`].
     pub fn import_from_json<P: AsRef<Path>>(
         &mut self,
         json_path: P,
-    ) -> Result<GtcImportResult, Box<dyn std::error::Error>> {
+    ) -> Result<GtcImportResult, BoxedError> {
         let contents = std::fs::read_to_string(json_path)?;
         let catalog: GtcCatalog = serde_json::from_str(&contents)?;
 
@@ -201,7 +223,7 @@ impl GtcImporter {
     fn find_and_parse_catalog(
         &self,
         archive: &mut ZipArchive<File>,
-    ) -> Result<GtcCatalog, Box<dyn std::error::Error>> {
+    ) -> Result<GtcCatalog, BoxedError> {
         // Try common catalog file names
         let catalog_names = vec![
             "catalog.json",
@@ -224,10 +246,7 @@ impl GtcImporter {
     /// Convert a GTC tool definition to an internal Tool type.
     ///
     /// Maps GTC-specific values to internal types and assigns a tool number.
-    pub fn convert_gtc_tool(
-        &mut self,
-        gtc_tool: GtcTool,
-    ) -> Result<Tool, Box<dyn std::error::Error>> {
+    pub fn convert_gtc_tool(&mut self, gtc_tool: GtcTool) -> Result<Tool, BoxedError> {
         // Map GTC tool type to our ToolType
         let tool_type = self.map_tool_type(&gtc_tool.tool_type)?;
 
@@ -289,10 +308,13 @@ impl GtcImporter {
         Ok(tool)
     }
 
-    /// Map a GTC tool type string to an internal ToolType.
+    /// Map a GTC tool type string to an internal [`ToolType`].
     ///
     /// Parses common GTC type names like "End Mill", "Drill", "V-Bit", etc.
-    pub fn map_tool_type(&self, gtc_type: &str) -> Result<ToolType, Box<dyn std::error::Error>> {
+    ///
+    /// # Errors
+    /// Returns an error if the type string does not match any known tool type.
+    pub fn map_tool_type(&self, gtc_type: &str) -> Result<ToolType, BoxedError> {
         let gtc_type_lower = gtc_type.to_lowercase();
 
         if gtc_type_lower.contains("end mill") || gtc_type_lower.contains("endmill") {

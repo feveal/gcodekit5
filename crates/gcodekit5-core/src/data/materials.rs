@@ -10,7 +10,18 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Material categories for organization
+/// Material categories for organization.
+///
+/// Top-level grouping for materials. Each category has different machining
+/// characteristics and safety considerations.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::materials::MaterialCategory;
+///
+/// let cat = MaterialCategory::Wood;
+/// assert_eq!(format!("{:?}", cat), "Wood");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum MaterialCategory {
     /// Natural wood (hardwoods, softwoods)
@@ -134,7 +145,11 @@ pub enum CoolantType {
     Synthetic,
 }
 
-/// Cutting parameters for a specific material and tool combination
+/// Cutting parameters for a specific material and tool combination.
+///
+/// Recommended operating ranges that vary by workpiece material. All linear
+/// values are in mm, rates in mm/min. These are starting points — adjust
+/// based on actual cutting conditions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CuttingParameters {
     /// RPM range (min, max)
@@ -175,7 +190,66 @@ impl Default for CuttingParameters {
     }
 }
 
-/// Material identifier
+impl CuttingParameters {
+    /// Builder method to set RPM range.
+    pub fn with_rpm_range(mut self, min: u32, max: u32) -> Self {
+        self.rpm_range = (min, max);
+        self
+    }
+
+    /// Builder method to set feed rate range in mm/min.
+    pub fn with_feed_rate_range(mut self, min: f32, max: f32) -> Self {
+        self.feed_rate_range = (min, max);
+        self
+    }
+
+    /// Builder method to set plunge rate as percentage of feed rate.
+    pub fn with_plunge_rate_percent(mut self, percent: f32) -> Self {
+        self.plunge_rate_percent = percent;
+        self
+    }
+
+    /// Builder method to set max depth of cut in mm.
+    pub fn with_max_doc(mut self, depth: f32) -> Self {
+        self.max_doc = depth;
+        self
+    }
+
+    /// Builder method to set stepover percentage range.
+    pub fn with_stepover_percent(mut self, min: f32, max: f32) -> Self {
+        self.stepover_percent = (min, max);
+        self
+    }
+
+    /// Builder method to set surface speed in m/min.
+    pub fn with_surface_speed(mut self, speed: f32) -> Self {
+        self.surface_speed_m_min = Some(speed);
+        self
+    }
+
+    /// Builder method to set chip load in mm/tooth.
+    pub fn with_chip_load(mut self, load: f32) -> Self {
+        self.chip_load_mm = Some(load);
+        self
+    }
+
+    /// Builder method to set coolant type.
+    pub fn with_coolant_type(mut self, coolant: CoolantType) -> Self {
+        self.coolant_type = coolant;
+        self
+    }
+
+    /// Builder method to set notes.
+    pub fn with_notes(mut self, notes: impl Into<String>) -> Self {
+        self.notes = notes.into();
+        self
+    }
+}
+
+/// Material identifier.
+///
+/// A string-based unique identifier for materials within a library.
+/// Convention: `"<category>_<name>"`, e.g. `"wood_red_oak"`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct MaterialId(
     /// The unique string identifier for the material.
@@ -188,7 +262,24 @@ impl std::fmt::Display for MaterialId {
     }
 }
 
-/// Complete material definition
+/// Complete material definition.
+///
+/// Stores physical properties, machining characteristics, safety information,
+/// and tool-specific cutting parameters. Used by CAM tools to recommend
+/// feeds and speeds.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::materials::{Material, MaterialCategory, MaterialId};
+///
+/// let material = Material::new(
+///     MaterialId("wood_pine".to_string()),
+///     "Pine".to_string(),
+///     MaterialCategory::Wood,
+///     "Softwood".to_string(),
+/// );
+/// assert_eq!(material.machinability_desc(), "Easy");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Material {
     /// Unique material identifier
@@ -296,9 +387,115 @@ impl Material {
             _ => "Unknown",
         }
     }
+
+    /// Builder method to set description.
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = description.into();
+        self
+    }
+
+    /// Builder method to set density in kg/m³.
+    pub fn with_density(mut self, density: f32) -> Self {
+        self.density = density;
+        self
+    }
+
+    /// Builder method to set machinability rating (1-10).
+    pub fn with_machinability_rating(mut self, rating: u8) -> Self {
+        self.machinability_rating = rating;
+        self
+    }
+
+    /// Builder method to set tensile strength in MPa.
+    pub fn with_tensile_strength(mut self, strength: f32) -> Self {
+        self.tensile_strength = Some(strength);
+        self
+    }
+
+    /// Builder method to set melting point in °C.
+    pub fn with_melting_point(mut self, temp: f32) -> Self {
+        self.melting_point = Some(temp);
+        self
+    }
+
+    /// Builder method to set chip type.
+    pub fn with_chip_type(mut self, chip_type: ChipType) -> Self {
+        self.chip_type = chip_type;
+        self
+    }
+
+    /// Builder method to set heat sensitivity.
+    pub fn with_heat_sensitivity(mut self, sensitivity: HeatSensitivity) -> Self {
+        self.heat_sensitivity = sensitivity;
+        self
+    }
+
+    /// Builder method to set abrasiveness.
+    pub fn with_abrasiveness(mut self, abrasiveness: Abrasiveness) -> Self {
+        self.abrasiveness = abrasiveness;
+        self
+    }
+
+    /// Builder method to set surface finishability.
+    pub fn with_surface_finish(mut self, finish: SurfaceFinishability) -> Self {
+        self.surface_finish = finish;
+        self
+    }
+
+    /// Builder method to set dust hazard level.
+    pub fn with_dust_hazard(mut self, level: HazardLevel) -> Self {
+        self.dust_hazard = level;
+        self
+    }
+
+    /// Builder method to set fume hazard level.
+    pub fn with_fume_hazard(mut self, level: HazardLevel) -> Self {
+        self.fume_hazard = level;
+        self
+    }
+
+    /// Builder method to set required PPE.
+    pub fn with_required_ppe(mut self, ppe: Vec<PPE>) -> Self {
+        self.required_ppe = ppe;
+        self
+    }
+
+    /// Builder method to set coolant requirement.
+    pub fn with_coolant_required(mut self, required: bool) -> Self {
+        self.coolant_required = required;
+        self
+    }
+
+    /// Builder method to set notes.
+    pub fn with_notes(mut self, notes: impl Into<String>) -> Self {
+        self.notes = notes.into();
+        self
+    }
+
+    /// Builder method to mark as custom material.
+    pub fn with_custom(mut self, custom: bool) -> Self {
+        self.custom = custom;
+        self
+    }
 }
 
-/// Materials library - manages collection of materials
+/// Materials library — manages a collection of materials.
+///
+/// Provides add, remove, and lookup operations for materials.
+/// Standard materials are loaded via [`init_standard_library`].
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::data::materials::{MaterialLibrary, Material, MaterialId, MaterialCategory};
+///
+/// let mut lib = MaterialLibrary::new();
+/// let mat = Material::new(
+///     MaterialId("wood_oak".to_string()), "Oak".to_string(),
+///     MaterialCategory::Wood, "Hardwood".to_string(),
+/// );
+/// lib.add_material(mat);
+/// assert_eq!(lib.len(), 1);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MaterialLibrary {
     /// Collection of materials by ID

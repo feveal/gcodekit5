@@ -2,6 +2,8 @@
 mod canvas;
 #[path = "core/designer_state.rs"]
 mod designer_state;
+#[path = "core/geometry_proptest.rs"]
+mod geometry_proptest;
 #[path = "core/history.rs"]
 mod history;
 #[path = "core/render_optimizer.rs"]

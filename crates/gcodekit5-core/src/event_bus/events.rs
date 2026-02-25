@@ -9,7 +9,21 @@ use std::time::Duration;
 
 use crate::data::{ControllerState, Position, Units};
 
-/// Root event enum for all application events
+/// Root event enum for all application events.
+///
+/// All events flow through the [`EventBus`](super::EventBus) and are
+/// categorised by [`EventCategory`] for subscriber filtering.
+///
+/// # Example
+/// ```
+/// use gcodekit5_core::event_bus::{AppEvent, ConnectionEvent, DisconnectReason, EventCategory};
+///
+/// let event = AppEvent::Connection(ConnectionEvent::Disconnected {
+///     port: "/dev/ttyUSB0".to_string(),
+///     reason: DisconnectReason::UserRequested,
+/// });
+/// assert_eq!(event.category(), EventCategory::Connection);
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AppEvent {
     /// Machine connection events
@@ -56,7 +70,10 @@ impl AppEvent {
     }
 }
 
-/// Event category for filtering
+/// Event category for filtering.
+///
+/// Used with [`EventFilter::Categories`](super::EventFilter::Categories)
+/// to subscribe to only a subset of events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum EventCategory {
     /// Machine connection events.
@@ -89,7 +106,9 @@ impl std::fmt::Display for EventCategory {
     }
 }
 
-/// Reason for disconnection
+/// Reason for disconnection.
+///
+/// Provides context about why a serial connection ended.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DisconnectReason {
     /// User requested disconnect
@@ -104,7 +123,10 @@ pub enum DisconnectReason {
     Error(String),
 }
 
-/// Connection-related events
+/// Connection-related events.
+///
+/// Tracks the lifecycle of serial port connections: connecting, connected,
+/// disconnected, and discovery of available ports.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ConnectionEvent {
     /// Starting connection attempt.
@@ -217,7 +239,10 @@ pub enum SpindleState {
     CounterClockwise,
 }
 
-/// Machine state and status events
+/// Machine state and status events.
+///
+/// Reports position changes, state transitions, job progress, overrides,
+/// alarms, probing results, and other machine-level events.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MachineEvent {
     /// Controller state changed.
@@ -336,7 +361,10 @@ impl MachineEvent {
     }
 }
 
-/// File operation events
+/// File operation events.
+///
+/// Covers G-code file loading, parsing, modification, streaming progress,
+/// and recent-file tracking.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FileEvent {
     /// File opened.
@@ -416,7 +444,10 @@ impl FileEvent {
     }
 }
 
-/// Communication layer events
+/// Communication layer events.
+///
+/// Raw serial I/O, buffer status, firmware identification, and
+/// protocol-level diagnostics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CommunicationEvent {
     /// Data sent to device.
@@ -500,7 +531,10 @@ pub enum Theme {
     System,
 }
 
-/// UI-related events
+/// UI-related events.
+///
+/// Theme changes, view switches, console output, toolbar state, dialog
+/// lifecycle, and notification events.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UiEvent {
     /// View changed.
@@ -573,7 +607,10 @@ pub enum SettingValue {
     String(String),
 }
 
-/// Settings-related events
+/// Settings-related events.
+///
+/// Configuration changes, measurement-system switches, backup and
+/// restore operations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SettingsEvent {
     /// Settings loaded.
@@ -620,7 +657,9 @@ pub enum ErrorSeverity {
     Critical,
 }
 
-/// Error and diagnostic events
+/// Error and diagnostic events.
+///
+/// Application errors, warnings, and recovery events with severity levels.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ErrorEvent {
     /// Warning (non-blocking).

@@ -433,7 +433,7 @@ impl GcodeParser {
 
         // Parse F value (feed rate)
         if let Some(f_pos) = cmd_upper.find('F') {
-            let remaining = &command.command[f_pos + 1..];
+            let remaining = &cmd_upper[f_pos + 1..];
             if let Some(f_value) = remaining.split_whitespace().next() {
                 if let Ok(rate) = f_value.parse::<f64>() {
                     self.current_state.set_feed_rate(rate)?;
@@ -443,7 +443,7 @@ impl GcodeParser {
 
         // Parse S value (spindle speed)
         if let Some(s_pos) = cmd_upper.find('S') {
-            let remaining = &command.command[s_pos + 1..];
+            let remaining = &cmd_upper[s_pos + 1..];
             if let Some(s_value) = remaining.split_whitespace().next() {
                 if let Ok(speed) = s_value.parse::<f64>() {
                     self.current_state.set_spindle_speed(speed)?;
@@ -453,7 +453,7 @@ impl GcodeParser {
 
         // Parse T value (tool number)
         if let Some(t_pos) = cmd_upper.find('T') {
-            let remaining = &command.command[t_pos + 1..];
+            let remaining = &cmd_upper[t_pos + 1..];
             if let Some(t_value) = remaining.split_whitespace().next() {
                 if let Ok(tool) = t_value.parse::<u16>() {
                     self.current_state.set_tool_number(tool);

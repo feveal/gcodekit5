@@ -533,6 +533,7 @@ impl Default for RecentFilesManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tempfile::TempDir;
 
     #[test]
     fn test_file_encoding_detection() {
@@ -555,35 +556,21 @@ mod tests {
 
     #[test]
     fn test_recent_file_entry() {
-        // Create temp file
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("test_recent.nc");
+        let tmp = TempDir::new().expect("create temp dir");
+        let test_file = tmp.path().join("test_recent.nc");
         let _ = fs::write(&test_file, "G0 X10");
 
         let entry = RecentFileEntry::new(&test_file, 1024).expect("test entry");
         assert_eq!(entry.name, "test_recent.nc");
         assert_eq!(entry.file_size, 1024);
         assert!(entry.formatted_size().contains("KB"));
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
     }
 
     #[test]
     fn test_recent_files_manager() {
         let manager = RecentFilesManager::new(5);
         assert_eq!(manager.count(), 0);
-
-        // Create temp files
-        let temp_dir = std::env::temp_dir();
-        let file1 = temp_dir.join("test1.nc");
-        let _ = fs::write(&file1, "G0 X10");
-
-        // Note: We can't test add() without valid files, but we can test structure
         assert_eq!(manager.max_files, 5);
-
-        // Cleanup
-        let _ = fs::remove_file(&file1);
     }
 
     #[test]
@@ -596,8 +583,8 @@ mod tests {
 
     #[test]
     fn test_recent_file_entry_size_formatting() {
-        let temp_dir = std::env::temp_dir();
-        let test_file = temp_dir.join("size_test.nc");
+        let tmp = TempDir::new().expect("create temp dir");
+        let test_file = tmp.path().join("size_test.nc");
         let _ = fs::write(&test_file, "G0 X10");
 
         let entry = RecentFileEntry::new(&test_file, 2048).expect("test entry");
@@ -605,9 +592,6 @@ mod tests {
 
         let entry2 = RecentFileEntry::new(&test_file, 1024 * 1024 * 2).expect("test entry");
         assert!(entry2.formatted_size().contains("MB"));
-
-        // Cleanup
-        let _ = fs::remove_file(&test_file);
     }
 
     #[test]
@@ -635,11 +619,10 @@ mod tests {
     fn test_recent_files_manager_trim() {
         let mut manager = RecentFilesManager::new(2);
 
-        // Manually add entries
-        let temp_dir = std::env::temp_dir();
-        let file1 = temp_dir.join("file1.nc");
-        let file2 = temp_dir.join("file2.nc");
-        let file3 = temp_dir.join("file3.nc");
+        let tmp = TempDir::new().expect("create temp dir");
+        let file1 = tmp.path().join("file1.nc");
+        let file2 = tmp.path().join("file2.nc");
+        let file3 = tmp.path().join("file3.nc");
 
         let _ = fs::write(&file1, "");
         let _ = fs::write(&file2, "");
@@ -658,10 +641,5 @@ mod tests {
 
         manager.trim_to_max();
         assert_eq!(manager.count(), 2);
-
-        // Cleanup
-        let _ = fs::remove_file(&file1);
-        let _ = fs::remove_file(&file2);
-        let _ = fs::remove_file(&file3);
     }
 }
