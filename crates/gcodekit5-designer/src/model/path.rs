@@ -59,7 +59,7 @@ impl DesignPath {
     }
 
     pub fn from_lyon_path(path: &Path) -> Self {
-        let tolerance = 0.1;
+        let tolerance = 0.1; // ---
         let flattened = path.iter().flattened(tolerance);
         let mut polygons: Vec<Vec<[f64; 2]>> = Vec::new();
         let mut current_poly: Vec<[f64; 2]> = Vec::new();

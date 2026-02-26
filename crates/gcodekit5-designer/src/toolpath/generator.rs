@@ -1191,7 +1191,7 @@ impl ToolpathGenerator {
 
         // Verify that all points are approximately the same distance apart
         let r_avg = (r_start + r_end + r_ctrl1 + r_ctrl2) / 4.0;
-        let tolerance = 0.1; // 0.1 mm de tolerancia
+        let tolerance = 0.1; // 0.1 mm Tolerance
 
         if (r_start - r_avg).abs() < tolerance &&
             (r_end - r_avg).abs() < tolerance &&
