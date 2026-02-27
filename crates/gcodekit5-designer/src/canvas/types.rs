@@ -102,12 +102,30 @@ impl DrawingObject {
         let (ex1, ey1, ex2, ey2) = self.get_effective_shape().bounds();
         (x1.min(ex1), y1.min(ey1), x2.max(ex2), y2.max(ey2))
     }
-
+/*
     pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
         self.shape.contains_point(*point, tolerance)
             || self.get_effective_shape().contains_point(*point, tolerance)
     }
-
+*/
+// ---
+pub fn contains_point(&self, point: &Point, tolerance: f64) -> bool {
+    match &self.shape {
+        Shape::Line(line) => {
+            line.distance_to_point(point) <= tolerance
+        },
+        Shape::Path(path) => {
+            path.distance_to_point(point) <= tolerance
+        },
+        // Para formas con área, puedes mantener el método actual
+        _ => {
+            let (x1, y1, x2, y2) = self.shape.bounds();
+            point.x >= x1 - tolerance && point.x <= x2 + tolerance &&
+            point.y >= y1 - tolerance && point.y <= y2 + tolerance
+        }
+    }
+}
+// ---
     /// Creates a new drawing object.
     pub fn new(id: u64, shape: Shape) -> Self {
         let name = match shape.shape_type() {

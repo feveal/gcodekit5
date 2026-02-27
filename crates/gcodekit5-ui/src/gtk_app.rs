@@ -28,18 +28,18 @@ use tracing::{debug, info};
 
 pub fn main() {
     let app = Application::builder()
-        .application_id("com.gcodekit5.app")
-        .build();
+    .application_id("com.gcodekit5.app")
+    .build();
 
     app.connect_startup(|_| {
         // Load settings early to get language preference
         let config_path = gcodekit5_settings::SettingsManager::config_file_path()
-            .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+        .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
 
         let language = if config_path.exists() {
             gcodekit5_settings::SettingsPersistence::load_from_file(&config_path)
-                .map(|p| p.config().ui.language.clone())
-                .unwrap_or_else(|_| "system".to_string())
+            .map(|p| p.config().ui.language.clone())
+            .unwrap_or_else(|_| "system".to_string())
         } else {
             "system".to_string()
         };
@@ -59,7 +59,7 @@ pub fn main() {
 
         // Load settings from file if it exists, otherwise use defaults
         let config_path = gcodekit5_settings::SettingsManager::config_file_path()
-            .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
+        .unwrap_or_else(|_| std::path::PathBuf::from("config.json"));
         let settings_persistence = if config_path.exists() {
             match gcodekit5_settings::SettingsPersistence::load_from_file(&config_path) {
                 Ok(persistence) => {
@@ -78,13 +78,13 @@ pub fn main() {
 
         let settings_controller = Rc::new(gcodekit5_settings::SettingsController::new(
             settings_dialog.clone(),
-            settings_persistence.clone(),
+                                                                                      settings_persistence.clone(),
         ));
 
         // Populate settings from persistence so the dialog isn't empty
         settings_persistence
-            .borrow()
-            .populate_dialog(&mut settings_dialog.borrow_mut());
+        .borrow()
+        .populate_dialog(&mut settings_dialog.borrow_mut());
 
         // Apply initial theme
         let current_theme = settings_persistence.borrow().config().ui.theme;
@@ -108,7 +108,7 @@ pub fn main() {
             let _ = std::fs::create_dir_all(parent);
         }
         let device_manager =
-            std::sync::Arc::new(gcodekit5_devicedb::DeviceManager::new(device_config_path));
+        std::sync::Arc::new(gcodekit5_devicedb::DeviceManager::new(device_config_path));
         device_manager.load().ok();
         // Sync active device num_axes to global state
         if let Some(profile) = device_manager.get_active_profile() {
@@ -120,11 +120,11 @@ pub fn main() {
         // Designer state is now managed internally by DesignerView
 
         let window = ApplicationWindow::builder()
-            .application(app)
-            .title(t!("GCodeKit5"))
-            .default_width(1200)
-            .default_height(800)
-            .build();
+        .application(app)
+        .title(t!("GCodeKit5"))
+        .default_width(1200)
+        .default_height(800)
+        .build();
 
         // Use HeaderBar as titlebar
         let header_bar = gtk4::HeaderBar::new();
@@ -194,23 +194,23 @@ pub fn main() {
         // 4. Visualizer (Created early for MachineControl dependency)
         let visualizer = Rc::new(GcodeVisualizer::new(
             Some(device_manager.clone()),
-            settings_controller.clone(),
-            Some(status_bar.clone()),
+                                                      settings_controller.clone(),
+                                                      Some(status_bar.clone()),
         ));
 
         // 2. Machine Control
         let machine_control = MachineControlView::new(
             Some(status_bar.clone()),
-            Some(device_console.clone()),
-            Some(editor.clone()),
-            Some(visualizer.clone()),
-            Some(settings_controller.clone()),
+                                                      Some(device_console.clone()),
+                                                      Some(editor.clone()),
+                                                      Some(visualizer.clone()),
+                                                      Some(settings_controller.clone()),
         );
 
         // Wire up ConsoleListener for command parsing and logging
         let console_manager = crate::ui::device_console_manager::get_console_manager();
         let console_listener =
-            crate::ui::device_console_manager::ConsoleListener::new(console_manager);
+        crate::ui::device_console_manager::ConsoleListener::new(console_manager);
 
         {
             let mut comm = machine_control.communicator.lock();
@@ -219,7 +219,7 @@ pub fn main() {
         stack.add_titled(
             &machine_control.widget,
             Some("machine"),
-            &t!("Machine Control"),
+                         &t!("Machine Control"),
         );
 
         // Machine Control event handlers are wired up internally in MachineControlView::new()
@@ -278,8 +278,8 @@ pub fn main() {
         // First create the designer view so we can pass it to CAM tools
         let designer = DesignerView::new(
             Some(device_manager.clone()),
-            settings_controller.clone(),
-            Some(status_bar.clone()),
+                                         settings_controller.clone(),
+                                         Some(status_bar.clone()),
         );
 
         let editor_clone = editor.clone();
@@ -289,12 +289,12 @@ pub fn main() {
         let cam_tools_view = CamToolsView::new_with_designer(
             settings_controller_cam,
             Some(machine_control_cam),
-            move |gcode| {
-                editor_clone.set_text(&gcode);
-                stack_clone_for_cam.set_visible_child_name("editor");
-                editor_clone.grab_focus();
-            },
-            Some(designer.clone()),
+                                                             move |gcode| {
+                                                                 editor_clone.set_text(&gcode);
+                                                                 stack_clone_for_cam.set_visible_child_name("editor");
+                                                                 editor_clone.grab_focus();
+                                                             },
+                                                             Some(designer.clone()),
         );
         stack.add_titled(cam_tools_view.widget(), Some("cam_tools"), &t!("CAM Tools"));
 
@@ -318,7 +318,7 @@ pub fn main() {
         stack.add_titled(
             &config_settings.container,
             Some("config"),
-            &t!("Device Config"),
+                         &t!("Device Config"),
         );
 
         // Connect device info and config to machine control connection state
@@ -336,9 +336,9 @@ pub fn main() {
                 let firmware_type = status.firmware_type.as_deref().unwrap_or("GRBL");
                 let firmware_version = status.firmware_version.as_deref().unwrap_or("Unknown");
                 let device_name = status
-                    .device_name
-                    .as_deref()
-                    .unwrap_or_else(|| status.port_name.as_deref().unwrap_or("CNC Device"));
+                .device_name
+                .as_deref()
+                .unwrap_or_else(|| status.port_name.as_deref().unwrap_or("CNC Device"));
 
                 config_settings_clone.set_connected(true);
                 config_settings_clone.set_device_info(
@@ -357,11 +357,11 @@ pub fn main() {
 
         // 9. Device Manager
         let device_manager_view =
-            DeviceManagerWindow::new(device_controller.clone(), settings_controller.clone());
+        DeviceManagerWindow::new(device_controller.clone(), settings_controller.clone());
         stack.add_titled(
             &device_manager_view.widget,
             Some("devices"),
-            &t!("Device Manager"),
+                         &t!("Device Manager"),
         );
 
         // 10. CNC Tools
@@ -373,7 +373,7 @@ pub fn main() {
         stack.add_titled(
             &materials_manager.widget,
             Some("materials"),
-            &t!("Materials"),
+                         &t!("Materials"),
         );
 
         main_box.append(&content_box);
@@ -443,7 +443,7 @@ pub fn main() {
                 designer_redraw.queue_draw();
             });
             let win =
-                SettingsWindow::new_with_callback(settings_controller_clone.clone(), Some(on_save));
+            SettingsWindow::new_with_callback(settings_controller_clone.clone(), Some(on_save));
             win.present();
         });
         app.add_action(&settings_action);
@@ -496,8 +496,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.new_file(),
-                    "editor" => editor_clone.new_file(),
-                    _ => {}
+                                    "editor" => editor_clone.new_file(),
+                                    _ => {}
                 }
             }
         });
@@ -511,8 +511,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.open_file(),
-                    "editor" => editor_clone.open_file(),
-                    _ => {}
+                                     "editor" => editor_clone.open_file(),
+                                     _ => {}
                 }
             }
         });
@@ -526,8 +526,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.save_file(),
-                    "editor" => editor_clone.save_file(),
-                    _ => {}
+                                     "editor" => editor_clone.save_file(),
+                                     _ => {}
                 }
             }
         });
@@ -541,8 +541,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.save_as_file(),
-                    "editor" => editor_clone.save_as_file(),
-                    _ => {}
+                                        "editor" => editor_clone.save_as_file(),
+                                        _ => {}
                 }
             }
         });
@@ -589,13 +589,13 @@ pub fn main() {
         let about_action = gio::SimpleAction::new("about", None);
         about_action.connect_activate(move |_, _| {
             let about_dialog = gtk4::AboutDialog::builder()
-                .program_name(t!("GCodeKit5"))
-                .version(env!("CARGO_PKG_VERSION"))
-                .comments(t!("GCode Toolkit for CNC/Laser Machines"))
-                .website("https://github.com/thawkins/gcodekit5")
-                .license_type(gtk4::License::MitX11)
-                .authors(vec![t!("Tim Hawkins and GCodeKit Contributors")])
-                .build();
+            .program_name(t!("GCodeKit5"))
+            .version(env!("CARGO_PKG_VERSION"))
+            .comments(t!("GCode Toolkit for CNC/Laser Machines"))
+            .website("https://github.com/thawkins/gcodekit5")
+            .license_type(gtk4::License::MitX11)
+            .authors(vec![t!("Tim Hawkins and GCodeKit Contributors")])
+            .build();
 
             about_dialog.set_logo_icon_name(None);
 
@@ -649,8 +649,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.undo(),
-                    "editor" => editor_clone.undo(),
-                    _ => {}
+                                     "editor" => editor_clone.undo(),
+                                     _ => {}
                 }
             }
         });
@@ -664,8 +664,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.redo(),
-                    "editor" => editor_clone.redo(),
-                    _ => {}
+                                     "editor" => editor_clone.redo(),
+                                     _ => {}
                 }
             }
         });
@@ -679,8 +679,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.cut(),
-                    "editor" => editor_clone.cut(),
-                    _ => {}
+                                    "editor" => editor_clone.cut(),
+                                    _ => {}
                 }
             }
         });
@@ -694,8 +694,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.copy(),
-                    "editor" => editor_clone.copy(),
-                    _ => {}
+                                     "editor" => editor_clone.copy(),
+                                     _ => {}
                 }
             }
         });
@@ -709,8 +709,8 @@ pub fn main() {
             if let Some(name) = stack_clone.visible_child_name() {
                 match name.as_str() {
                     "designer" => designer_clone.paste(),
-                    "editor" => editor_clone.paste(),
-                    _ => {}
+                                      "editor" => editor_clone.paste(),
+                                      _ => {}
                 }
             }
         });
@@ -836,14 +836,14 @@ pub fn main() {
             .config()
             .ui
             .show_about_on_startup
-        {
-            let window_weak = window.downgrade();
-            glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
-                let Some(window) = window_weak.upgrade() else {
-                    return glib::ControlFlow::Break;
-                };
+            {
+                let window_weak = window.downgrade();
+                glib::timeout_add_local(std::time::Duration::from_millis(100), move || {
+                    let Some(window) = window_weak.upgrade() else {
+                        return glib::ControlFlow::Break;
+                    };
 
-                let about_dialog = gtk4::AboutDialog::builder()
+                    let about_dialog = gtk4::AboutDialog::builder()
                     .program_name(t!("GCodeKit5"))
                     .version(env!("CARGO_PKG_VERSION"))
                     .comments(t!("GCode Toolkit for CNC/Laser Machines"))
@@ -852,59 +852,59 @@ pub fn main() {
                     .authors(vec![t!("Tim Hawkins and GCodeKit Contributors")])
                     .build();
 
-                about_dialog.set_logo_icon_name(None);
+                    about_dialog.set_logo_icon_name(None);
 
-                // Size: +30% and match background image aspect ratio (gcodekit5.png: 550x362).
-                about_dialog.set_default_size(780, 514);
-                about_dialog.set_resizable(false);
+                    // Size: +30% and match background image aspect ratio (gcodekit5.png: 550x362).
+                    about_dialog.set_default_size(780, 514);
+                    about_dialog.set_resizable(false);
 
-                fn right_align_labels(root: &gtk4::Widget) {
-                    if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
-                        label.set_xalign(1.0);
-                        label.set_justify(gtk4::Justification::Right);
-                    }
+                    fn right_align_labels(root: &gtk4::Widget) {
+                        if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                            label.set_xalign(1.0);
+                            label.set_justify(gtk4::Justification::Right);
+                        }
 
-                    let mut child = root.first_child();
-                    while let Some(w) = child {
-                        right_align_labels(&w);
-                        child = w.next_sibling();
-                    }
-                }
-
-                right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
-
-                fn mark_about_title(root: &gtk4::Widget) {
-                    if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
-                        if label.text() == "GCodeKit5" {
-                            label.add_css_class("gk-about-title");
+                        let mut child = root.first_child();
+                        while let Some(w) = child {
+                            right_align_labels(&w);
+                            child = w.next_sibling();
                         }
                     }
 
-                    let mut child = root.first_child();
-                    while let Some(w) = child {
-                        mark_about_title(&w);
-                        child = w.next_sibling();
+                    right_align_labels(about_dialog.upcast_ref::<gtk4::Widget>());
+
+                    fn mark_about_title(root: &gtk4::Widget) {
+                        if let Ok(label) = root.clone().downcast::<gtk4::Label>() {
+                            if label.text() == "GCodeKit5" {
+                                label.add_css_class("gk-about-title");
+                            }
+                        }
+
+                        let mut child = root.first_child();
+                        while let Some(w) = child {
+                            mark_about_title(&w);
+                            child = w.next_sibling();
+                        }
                     }
-                }
 
-                mark_about_title(about_dialog.upcast_ref::<gtk4::Widget>());
+                    mark_about_title(about_dialog.upcast_ref::<gtk4::Widget>());
 
-                about_dialog.add_css_class("gk-about-dialog");
-                about_dialog.set_transient_for(Some(&window));
-                about_dialog.set_modal(true);
-                about_dialog.present();
+                    about_dialog.add_css_class("gk-about-dialog");
+                    about_dialog.set_transient_for(Some(&window));
+                    about_dialog.set_modal(true);
+                    about_dialog.present();
 
-                let about_dialog_weak = about_dialog.downgrade();
-                glib::timeout_add_seconds_local(15, move || {
-                    if let Some(dlg) = about_dialog_weak.upgrade() {
-                        dlg.close();
-                    }
+                    let about_dialog_weak = about_dialog.downgrade();
+                    glib::timeout_add_seconds_local(15, move || {
+                        if let Some(dlg) = about_dialog_weak.upgrade() {
+                            dlg.close();
+                        }
+                        glib::ControlFlow::Break
+                    });
+
                     glib::ControlFlow::Break
                 });
-
-                glib::ControlFlow::Break
-            });
-        }
+            }
     });
 
     app.run();
