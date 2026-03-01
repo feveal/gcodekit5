@@ -174,33 +174,28 @@ impl BufferedCommunicatorWrapper {
         let used_space = self.sent_buffer_size + command_size + 1; // +1 for newline
         used_space <= self.config.buffer_size
     }
-/*
-    /// Stream commands from the queue to the communicator
+    // DXF modification
     pub fn stream_commands(&mut self) -> gcodekit5_core::Result<()> {
         if self.send_paused {
             return Ok(());
         }
 
         loop {
-            let mut queue = self.command_queue.lock();
-
-            if queue.is_empty() {
-                break;
-            }
-
-            if let Some(mut command) = queue.pop_front() {
-                let command_size = command.command.len();
-
-                if !self.has_room_in_buffer(command_size) {
-                    // Put it back and stop streaming
-                    queue.push_front(command);
-                    break;
+            let command_to_send = {
+                let mut queue = self.command_queue.lock();
+                if let Some(cmd) = queue.front() {
+                    let cmd_size = cmd.command.len() + 1;
+                    if self.has_room_in_buffer(cmd_size) {
+                        queue.pop_front()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
-
-                drop(queue); // Release lock before sending
-
+            };
+            if let Some(mut command) = command_to_send {
                 self.send_buffered_command(&mut command)?;
-
                 let mut active = self.active_commands.lock();
                 active.push(command);
             } else {
@@ -210,46 +205,6 @@ impl BufferedCommunicatorWrapper {
 
         Ok(())
     }
-*/
-
-pub fn stream_commands(&mut self) -> gcodekit5_core::Result<()> {
-    if self.send_paused {
-        return Ok(());
-    }
-
-    loop {
-        // Bloque 1: Decidimos si hay algo que enviar y si cabe.
-        // El MutexGuard se destruye al final de este bloque {}, liberando el "borrow".
-        let command_to_send = {
-            let mut queue = self.command_queue.lock();
-            if let Some(cmd) = queue.front() {
-                let cmd_size = cmd.command.len() + 1; // IMPORTANTE: Pon +2 si usas \r\n
-                if self.has_room_in_buffer(cmd_size) {
-                    queue.pop_front()
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        };
-
-        // Bloque 2: Si tenemos un comando, ahora "self" está libre para ser usado
-        if let Some(mut command) = command_to_send {
-            // Ahora sí podemos usar self.send_buffered_command sin conflictos
-            self.send_buffered_command(&mut command)?;
-
-            // Añadimos a la lista de activos
-            let mut active = self.active_commands.lock();
-            active.push(command);
-        } else {
-            // Si no hay comando o el búfer está lleno, salimos del bucle
-            break;
-        }
-    }
-
-    Ok(())
-}
 
 
     /// Send a command and track it in the buffer
@@ -258,11 +213,11 @@ pub fn stream_commands(&mut self) -> gcodekit5_core::Result<()> {
         command: &mut BufferedCommand,
     ) -> gcodekit5_core::Result<()> {
         self.communicator
-            .send_command(&command.command)
-            .map_err(|e| {
-                tracing::error!("Failed to send command: {}", e);
-                e
-            })?;
+        .send_command(&command.command)
+        .map_err(|e| {
+            tracing::error!("Failed to send command: {}", e);
+            e
+        })?;
 
         self.sent_buffer_size += command.command.len() + 1; // +1 for newline
         command.mark_sent();
@@ -297,8 +252,8 @@ pub fn stream_commands(&mut self) -> gcodekit5_core::Result<()> {
             if command.can_retry() {
                 tracing::warn!(
                     "Command failed, retrying ({}/{})",
-                    command.retry_count,
-                    command.max_retries
+                               command.retry_count,
+                               command.max_retries
                 );
 
                 // Move failed command back to queue for retry
