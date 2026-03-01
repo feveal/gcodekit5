@@ -75,36 +75,6 @@ impl ToolpathToGcode {
     }
 
     /// Generates the G-code header.
-     pub fn generate_header(
-        &self,
-        spindle_speed: u32,
-        feed_rate: f64,
-        tool_diameter: f64,
-        depth: f64,
-        total_length: f64,
-    ) -> String {
-        let mut gcode = String::new();
-        gcode.push_str("; Generated G-code from Designer tool\n");
-        gcode.push_str(&format!("; Tool diameter: {:.3}mm\n", tool_diameter));
-        gcode.push_str(&format!("; Cut depth: {:.3}mm\n", depth));
-        gcode.push_str(&format!("; Feed rate: {:.0} mm/min\n", feed_rate));
-        gcode.push_str(&format!("; Spindle speed: {} RPM\n", spindle_speed));
-        gcode.push_str(&format!("; Total path length: {:.3}mm\n", total_length));
-        gcode.push('\n');
-
-        // Setup
-        gcode.push_str("G90         ; Absolute positioning\n");
-        gcode.push_str("G21         ; Millimeter units\n");
-        gcode.push_str("G17         ; XY plane\n");
-
-        // CAMBIO CLAVE: Usar M4 para modo láser dinámico
-        // Esto elimina los puntos quemados en las curvas de 1-2mm
-        gcode.push_str(&format!("M4 S{}      ; Laser Dynamic Mode\n", spindle_speed));
-
-        gcode.push('\n');
-        gcode
-    }
-/*
     pub fn generate_header(
         &self,
         spindle_speed: u32,
@@ -126,10 +96,14 @@ impl ToolpathToGcode {
         gcode.push_str("G90         ; Absolute positioning\n");
         gcode.push_str("G21         ; Millimeter units\n");
         gcode.push_str("G17         ; XY plane\n");
+
+        // KEY CHANGE: Use M4 for dynamic laser mode
+        // To remove burn marks on 1-2mm curves
+        gcode.push_str(&format!("M4 S{}      ; Laser Dynamic Mode\n", spindle_speed));
+
         gcode.push('\n');
         gcode
     }
-*/
 
     /// Generates the G-code body (moves) for a toolpath.
     pub fn generate_body(&self, toolpath: &Toolpath, start_line_number: u32) -> String {
@@ -149,9 +123,9 @@ impl ToolpathToGcode {
         let mut line_number = start_line_number;
         let mut current_z = initial_z;
         // We save the last recorded position to calculate the distance
-//        let mut last_recorded_pos: Option<Point> = None;
+        //        let mut last_recorded_pos: Option<Point> = None;
         let mut last_x: Option<f64> = None;
-    let mut last_y: Option<f64> = None;
+        let mut last_y: Option<f64> = None;
 
         let has_z = self.num_axes >= 3 && !self.is_laser_2d;
         let mut first_cut_move = true;
@@ -159,24 +133,24 @@ impl ToolpathToGcode {
         for segment in &toolpath.segments {
 
             if self.is_laser_2d {
-            if segment.segment_type == ToolpathSegmentType::RapidMove {
-                // Si es un salto G0, reseteamos el filtro para no perder precisión
-                last_x = None;
-                last_y = None;
-            } else if segment.segment_type == ToolpathSegmentType::LinearMove {
-                if let (Some(lx), Some(ly)) = (last_x, last_y) {
-                    let dx = segment.end.x - lx;
-                    let dy = segment.end.y - ly;
-                    // Filtro de 0.25mm (0.25 * 0.25 = 0.0625)
-                    if (dx * dx + dy * dy) < 0.0625 {
-                        continue; // Saltamos este micro-punto
+                if segment.segment_type == ToolpathSegmentType::RapidMove {
+                    // Si es un salto G0, reseteamos el filtro para no perder precisión
+                    last_x = None;
+                    last_y = None;
+                } else if segment.segment_type == ToolpathSegmentType::LinearMove {
+                    if let (Some(lx), Some(ly)) = (last_x, last_y) {
+                        let dx = segment.end.x - lx;
+                        let dy = segment.end.y - ly;
+                        // Filtro de 0.25mm (0.25 * 0.25 = 0.0625)
+                        if (dx * dx + dy * dy) < 0.0625 {
+                            continue; // Saltamos este micro-punto
+                        }
                     }
+                    // Guardamos posición actual
+                    last_x = Some(segment.end.x);
+                    last_y = Some(segment.end.y);
                 }
-                // Guardamos posición actual
-                last_x = Some(segment.end.x);
-                last_y = Some(segment.end.y);
             }
-        }
 
 
             match segment.segment_type {
