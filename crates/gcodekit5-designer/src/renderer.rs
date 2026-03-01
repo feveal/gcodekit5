@@ -137,18 +137,30 @@ pub fn render_canvas(
                     pixmap.stroke_path(&path, &paint, &stroke, transform, None);
                 }
             }
+            // crate ellipse error in visualizer
             crate::model::Shape::Ellipse(ellipse) => {
-                // tiny-skia doesn't have direct ellipse primitive, use scale on circle
-                let path = PathBuilder::from_circle(0.0, 0.0, 1.0); // Unit circle
-                if let Some(p) = path {
-                    // Transform for ellipse: translate to center, scale by rx/ry
-                    let ellipse_transform = transform
-                    .pre_translate(ellipse.center.x as f32, ellipse.center.y as f32)
-                    .pre_scale(ellipse.rx as f32, ellipse.ry as f32);
+                // 1. Create the unity circle
+                if let Some(p) = PathBuilder::from_circle(0.0, 0.0, 1.0) {
+                    // 2. Create a specific transformation for this ellipse
+                    let mut ellipse_specific_transform = Transform::from_translate(
+                        ellipse.center.x as f32,
+                        ellipse.center.y as f32
+                    );
+                    ellipse_specific_transform = ellipse_specific_transform.pre_scale(
+                        ellipse.rx as f32,
+                        ellipse.ry as f32
+                    );
 
-                    pixmap.fill_path(&p, &paint, FillRule::Winding, ellipse_transform, None);
+                    // 3. Combine with the global transformation of the viewer (zoom/pan)
+                    let final_transform = transform.post_concat(ellipse_specific_transform);
+
+                    // 4. Draw
+                    pixmap.stroke_path(&p, &paint, &stroke, final_transform, None);
+                    // Or if it's stuffing:
+                    // pixmap.fill_path(&p, &paint, FillRule::Winding, final_transform, None);
                 }
             }
+
             crate::model::Shape::Path(path_shape) => {
                 // Convert lyon path to tiny-skia path
                 let mut pb = PathBuilder::new();
