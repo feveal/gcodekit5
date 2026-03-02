@@ -4,7 +4,8 @@ use super::DesignerState;
 use crate::canvas::DrawingObject;
 use crate::model::DesignerShape;
 use crate::shapes::OperationType;
-use crate::{Circle, Point, ToolpathToGcode};
+// use crate::{Circle, Point, ToolpathToGcode};
+use crate::{ToolpathToGcode};
 use gcodekit5_core::Units;
 use crate::designer_state::MachineMode;
 
@@ -105,11 +106,13 @@ impl DesignerState {
                         )
                     }
                 }
+
                 crate::model::Shape::Line(line) => (
                     self.toolpath_generator
                     .generate_line_contour(line, shape_obj.step_down as f64),
                                                     false,
                 ),
+/*
                 crate::model::Shape::Ellipse(ellipse) => {
                     let (x1, y1, x2, y2) = ellipse.bounds();
                     let cx = (x1 + x2) / 2.0;
@@ -122,6 +125,27 @@ impl DesignerState {
                      false,
                     )
                 }
+*/
+crate::model::Shape::Ellipse(ellipse) => {
+    if shape_obj.operation_type == OperationType::Pocket {
+        (
+            self.toolpath_generator.generate_ellipse_pocket(
+                ellipse,
+                shape_obj.pocket_depth,
+                shape_obj.step_down as f64,
+                shape_obj.step_in as f64,
+            ),
+            false,
+        )
+    } else {
+        (
+            self.toolpath_generator
+            .generate_ellipse_contour(ellipse, shape_obj.step_down as f64),
+            false,
+        )
+    }
+}
+// ---
                 crate::model::Shape::Path(path_shape) => {
                     if shape_obj.operation_type == OperationType::Pocket {
                         (

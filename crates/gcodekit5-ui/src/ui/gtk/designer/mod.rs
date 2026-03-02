@@ -32,8 +32,8 @@ use tracing::error;
 #[allow(clippy::type_complexity)]
 pub struct DesignerView {
     pub widget: Box,
-    pub(crate) canvas: Rc<DesignerCanvas>,
-    pub(crate) toolbox: Rc<DesignerToolbox>,
+    pub canvas: Rc<DesignerCanvas>,
+    pub toolbox: Rc<DesignerToolbox>,
     pub(crate) _properties: Rc<PropertiesPanel>,
     pub(crate) layers: Rc<LayersPanel>,
     pub(crate) status_label: Label,
@@ -104,10 +104,10 @@ impl DesignerView {
         // Create canvas
         let canvas = DesignerCanvas::new(
             state.clone(),
-            Some(toolbox.clone()),
-            device_manager.clone(),
-            status_bar.clone(),
-            Some(settings_controller.clone()),
+                                         Some(toolbox.clone()),
+                                         device_manager.clone(),
+                                         status_bar.clone(),
+                                         Some(settings_controller.clone()),
         );
 
         // Create Grid for Canvas + Scrollbars
@@ -125,22 +125,22 @@ impl DesignerView {
         // Floating Controls (Bottom Right)
         let (
             floating_box,
-            float_zoom_in,
-            float_zoom_out,
-            float_fit,
-            float_reset,
-            float_fit_device,
-            scrollbars_btn,
+             float_zoom_in,
+             float_zoom_out,
+             float_fit,
+             float_reset,
+             float_fit_device,
+             scrollbars_btn,
         ) = Self::create_floating_controls(device_manager.is_some());
 
         // Empty state (shown when no shapes)
         let (
             empty_box,
-            empty_new_btn,
-            empty_open_btn,
-            empty_import_svg_btn,
-            empty_import_dxf_btn,
-            empty_import_stl_btn,
+             empty_new_btn,
+             empty_open_btn,
+             empty_import_svg_btn,
+             empty_import_dxf_btn,
+             empty_import_stl_btn,
         ) = Self::create_empty_state(&settings_controller);
 
         overlay.add_overlay(&empty_box);
@@ -299,8 +299,8 @@ impl DesignerView {
         // Create properties panel
         let properties = PropertiesPanel::new(
             state.clone(),
-            settings_controller.persistence.clone(),
-            canvas.preview_shapes.clone(),
+                                              settings_controller.persistence.clone(),
+                                              canvas.preview_shapes.clone(),
         );
         properties.widget.set_vexpand(true);
         properties.widget.set_valign(gtk4::Align::Fill);
@@ -324,18 +324,18 @@ impl DesignerView {
         inspector_header.set_margin_top(6);
 
         let inspector_label = Label::builder()
-            .label(t!("Inspector"))
-            .css_classes(vec!["heading"])
-            .halign(gtk4::Align::Start)
-            .build();
+        .label(t!("Inspector"))
+        .css_classes(vec!["heading"])
+        .halign(gtk4::Align::Start)
+        .build();
         inspector_label.set_hexpand(true);
         inspector_header.append(&inspector_label);
 
         let props_hide_btn = gtk4::Button::builder()
-            .tooltip_text(t!("Hide Properties"))
-            .build();
+        .tooltip_text(t!("Hide Properties"))
+        .build();
         props_hide_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Hide Properties"))]);
+        .update_property(&[gtk4::accessible::Property::Label(&t!("Hide Properties"))]);
         {
             let child = Box::new(Orientation::Horizontal, 6);
             child.append(&gtk4::Image::from_icon_name("view-conceal-symbolic"));
@@ -366,10 +366,10 @@ impl DesignerView {
 
         // Floating unhide button (top-right of canvas)
         let props_show_btn = gtk4::Button::builder()
-            .tooltip_text(t!("Unhide Properties"))
-            .build();
+        .tooltip_text(t!("Unhide Properties"))
+        .build();
         props_show_btn
-            .update_property(&[gtk4::accessible::Property::Label(&t!("Unhide Properties"))]);
+        .update_property(&[gtk4::accessible::Property::Label(&t!("Unhide Properties"))]);
         {
             let child = Box::new(Orientation::Horizontal, 6);
             child.append(&gtk4::Image::from_icon_name("view-reveal-symbolic"));
@@ -471,7 +471,7 @@ impl DesignerView {
 
         // View controls (moved to helper function)
         let view_controls_expander =
-            Self::create_view_controls_expander(&state, &canvas, &settings_controller);
+        Self::create_view_controls_expander(&state, &canvas, &settings_controller);
         left_sidebar.append(&view_controls_expander);
 
         // Start status OSD update loop
@@ -479,8 +479,8 @@ impl DesignerView {
             status_label_osd,
             units_badge,
             empty_box.clone(),
-            canvas.clone(),
-            settings_controller.clone(),
+                                       canvas.clone(),
+                                       settings_controller.clone(),
         );
 
         let current_file = shared_none();
@@ -524,28 +524,28 @@ impl DesignerView {
         let canvas_shape = canvas.clone();
         let layers_shape = layers.clone();
         toolbox
-            .fast_shape_gallery()
-            .connect_shape_selected(move |shape| {
-                let mut state = canvas_shape.state.borrow_mut();
-                state.add_shape_with_undo(shape);
-                drop(state);
+        .fast_shape_gallery()
+        .connect_shape_selected(move |shape| {
+            let mut state = canvas_shape.state.borrow_mut();
+            state.add_shape_with_undo(shape);
+            drop(state);
 
-                // Refresh layers panel
-                layers_shape.refresh(&canvas_shape.state);
-                canvas_shape.widget.queue_draw();
-            });
+            // Refresh layers panel
+            layers_shape.refresh(&canvas_shape.state);
+            canvas_shape.widget.queue_draw();
+        });
 
         let view = Rc::new(Self {
             widget: container,
             canvas: canvas.clone(),
-            toolbox: toolbox.clone(),
-            _properties: properties.clone(),
-            layers: layers.clone(),
-            status_label,
-            _coord_label: coord_label,
-            current_file,
-            on_gcode_generated,
-            settings_persistence: Some(settings_controller.persistence.clone()),
+                           toolbox: toolbox.clone(),
+                           _properties: properties.clone(),
+                           layers: layers.clone(),
+                           status_label,
+                           _coord_label: coord_label,
+                           current_file,
+                           on_gcode_generated,
+                           settings_persistence: Some(settings_controller.persistence.clone()),
         });
 
         // Empty state actions
@@ -650,6 +650,34 @@ impl DesignerView {
     pub fn queue_draw(&self) {
         self.canvas.widget.queue_draw();
     }
+
+    pub fn get_bounds(&self) -> Option<(f64, f64, f64, f64)> {
+        let state = self.canvas.state.borrow();
+
+        if let Some(bounds) = state.canvas.selection_bounds() {
+            return Some(bounds);
+        }
+
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for obj in state.canvas.shape_store.iter() {
+            let (ox1, oy1, ox2, oy2) = obj.get_total_bounds();
+            min_x = min_x.min(ox1);
+            min_y = min_y.min(oy1);
+            max_x = max_x.max(ox2);
+            max_y = max_y.max(oy2);
+        }
+
+        if min_x.is_finite() {
+            Some((min_x, min_y, max_x, max_y))
+        } else {
+            None
+        }
+    }
+
 }
 
 mod file_ops;

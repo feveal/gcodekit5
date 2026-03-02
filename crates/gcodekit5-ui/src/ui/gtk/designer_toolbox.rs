@@ -91,6 +91,7 @@ pub struct DesignerToolbox {
     active_tool_label: Label,
     buttons: Vec<Button>,
     tools: Vec<DesignerTool>,
+    pub frame_btn: Button,
     generate_btn: Button,
     fast_shape_gallery: Rc<FastShapeGallery>,
     _state: Shared<DesignerState>,
@@ -290,10 +291,12 @@ impl DesignerToolbox {
             }
         });
 
+        // --- Select Laser/CNC ---
+        content_box.append(&mode_frame);
         mode_box.append(&laser_radio);
         mode_box.append(&cnc_radio);
         mode_frame.set_child(Some(&mode_box));
-        content_box.append(&mode_frame);
+
 
         // Add separator
         let separator = gtk4::Separator::new(Orientation::Horizontal);
@@ -350,9 +353,9 @@ impl DesignerToolbox {
                     ("Speed", MachineMode::Cnc3D) => t!("Spindle Speed"),
                     ("Step Down", MachineMode::Laser2D) => t!("Number of Passes"),
                     ("Step Down", MachineMode::Cnc3D) => t!("Step Down"),
-                    ("Tool Dia", MachineMode::Laser2D) => t!(""),  // ← Corregido
+                    ("Tool Dia", MachineMode::Laser2D) => t!(""),
                     ("Tool Dia", MachineMode::Cnc3D) => t!("Tool Dia"),
-                    ("Cut Depth", MachineMode::Laser2D) => t!(""), // ← Corregido
+                    ("Cut Depth", MachineMode::Laser2D) => t!(""),
                     ("Cut Depth", MachineMode::Cnc3D) => t!("Cut Depth"),
                     _ => label_text.clone(),
                 };
@@ -901,6 +904,52 @@ impl DesignerToolbox {
             });
         }
 
+        // ===== NEW BUTTON FRAME =====
+        let frame_btn = Button::with_label(&format!(" ⛶  {}", t!("Frame ")));
+        frame_btn.set_tooltip_text(Some(&t!("Generate low-power frame to position material")));
+//        frame_btn.add_css_class("suggested-action");
+//        frame_btn.remove_css_class("suggested-action");
+        frame_btn.add_css_class("flat");
+        frame_btn.set_halign(gtk4::Align::Center);
+
+        // Connect functionality
+        let state_clone = state.clone();
+        frame_btn.connect_clicked(move |_| {
+            let state = state_clone.borrow();
+
+            // Get bounds from selection or entire canvas
+            let (x1, y1, x2, y2) = if let Some(bounds) = state.canvas.selection_bounds() {
+                bounds
+            } else {
+                // If there is no selection, use all objects
+                let mut min_x = f64::INFINITY;
+                let mut min_y = f64::INFINITY;
+                let mut max_x = f64::NEG_INFINITY;
+                let mut max_y = f64::NEG_INFINITY;
+
+                for obj in state.canvas.shape_store.iter() {
+                    let (ox1, oy1, ox2, oy2) = obj.get_total_bounds();
+                    min_x = min_x.min(ox1);
+                    min_y = min_y.min(oy1);
+                    max_x = max_x.max(ox2);
+                    max_y = max_y.max(oy2);
+                }
+
+                if min_x.is_finite() {
+                    (min_x, min_y, max_x, max_y)
+                } else {
+                    // Empty canvas, use default values
+                    (0.0, 0.0, 100.0, 100.0)
+                }
+            };
+
+            // G-code frame Generate
+            let gcode = generate_frame_gcode(x1, y1, x2, y2);
+            println!("Frame G-code:\n{}", gcode);
+
+            // Add code to send to the editor or the machine
+        });
+
         content_box.append(&stock_settings_btn);
 
         // Generate G-Code Button
@@ -912,6 +961,14 @@ impl DesignerToolbox {
         generate_btn.set_margin_end(5);
         content_box.append(&generate_btn);
 
+        // Add separator
+        let separator = gtk4::Separator::new(Orientation::Horizontal);
+        separator.set_margin_top(10);
+        separator.set_margin_bottom(10);
+        content_box.append(&separator);
+        // Add Frame button
+        content_box.append(&frame_btn);
+
         scrolled.set_child(Some(&content_box));
         main_container.append(&scrolled);
 
@@ -921,6 +978,7 @@ impl DesignerToolbox {
             active_tool_label,
             buttons,
             tools,
+            frame_btn,
             generate_btn,
             fast_shape_gallery,
             _state: state,
@@ -928,6 +986,9 @@ impl DesignerToolbox {
             _current_units: current_units,
             refresh_callbacks,
         })
+
+
+
     }
 
     pub fn connect_generate_clicked<F: Fn() + 'static>(&self, f: F) {
@@ -968,4 +1029,26 @@ impl DesignerToolbox {
             callback();
         }
     }
+
+    pub fn connect_frame_clicked<F: Fn() + 'static>(&self, f: F) {
+        self.frame_btn.connect_clicked(move |_| f());
+    }
+}
+
+// Gcode Function Frame
+pub fn generate_frame_gcode(x1: f64, y1: f64, x2: f64, y2: f64) -> String {
+    format!(
+        "; --- Laser Frame Start ---\n\
+G90 ; Absolute coordinates\n\
+M3 S10 ; Laser ON low power\n\
+G0 X{x1:.3} Y{y1:.3} F3000 ; Go to corner\n\
+G1 X{x2:.3} Y{y1:.3} F1000 ; Bottom side\n\
+G1 X{x2:.3} Y{y2:.3} ; Right side\n\
+G1 X{x1:.3} Y{y2:.3} ; Top side\n\
+G1 X{x1:.3} Y{y1:.3} ; Left side\n\
+M5 ; Láser OFF\n\
+G0 X0 Y0 ; Volver a origen\n\
+; --- Laser Frame End ---",
+x1=x1, y1=y1, x2=x2, y2=y2
+    )
 }

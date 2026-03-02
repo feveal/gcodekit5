@@ -487,6 +487,27 @@ pub fn main() {
         });
         app.add_action(&run_action);
 
+        // Generate Frame
+        let editor_frame = editor.clone();
+        let designer_frame = designer.clone();
+        let stack_frame = stack.clone();
+
+        // We clone so that the "closure" owns the references
+        designer.toolbox.connect_frame_clicked(move || {
+            // 1. Obtain drawing limits
+            if let Some((x1, y1, x2, y2)) = designer_frame.get_bounds() {
+                // 2. Generate the G-Code string
+                let gcode = crate::ui::gtk::designer_toolbox::generate_frame_gcode(x1, y1, x2, y2);
+                // 3. Insert into the editor
+                editor_frame.set_text(&gcode);
+                // 4. Jump to the editor tab to view the code
+                stack_frame.set_visible_child_name("editor");
+            } else {
+                println!("Empty canvas, there is nothing to frame.");
+            }
+
+        });
+
         // File Actions
         let stack_clone = stack.clone();
         let designer_clone = designer.clone();

@@ -4,6 +4,7 @@ use super::*;
 
 // use lyon::path::iterator::PathIterator;
 use rusttype::{GlyphId, OutlineBuilder, Scale};
+use crate::Ellipse;
 
 /// Generates toolpaths from design shapes.
 #[derive(Debug, Clone)]
@@ -536,6 +537,107 @@ impl ToolpathGenerator {
         self.create_multipass_toolpaths(segments, step_down)
     }
 
+    // ---
+/// Generates a contour toolpath for an ellipse.
+pub fn generate_ellipse_contour(&self, ellipse: &Ellipse, step_down: f64) -> Vec<Toolpath> {
+    let mut segments = Vec::new();
+    let center = ellipse.center;
+    let rx = ellipse.rx;
+    let ry = ellipse.ry;
+    let rotation = ellipse.rotation;
+
+    // Número de puntos para una elipse suave (misma lógica que en importación)
+    let steps = 64;
+
+    // Función para transformar punto según rotación
+    let transform_point = |p: Point| -> Point {
+        if rotation.abs() > 1e-6 {
+            rotate_point(p, center, rotation)
+        } else {
+            p
+        }
+    };
+
+    // Punto inicial (ángulo 0)
+    let start_x = center.x + rx;
+    let start_y = center.y;
+    let start_point = transform_point(Point::new(start_x, start_y));
+
+    // Mover al punto inicial con láser apagado
+    segments.push(ToolpathSegment::new(
+        ToolpathSegmentType::RapidMove,
+        Point::new(0.0, 0.0),
+        start_point,
+        self.feed_rate,
+        self.spindle_speed,
+    ));
+
+    let mut current = start_point;
+
+    // Generate intermediate points (angle 0 to 2π)
+    for i in 1..=steps {
+        let t = 2.0 * std::f64::consts::PI * (i as f64 / steps as f64);
+        let x = center.x + rx * t.cos();
+        let y = center.y + ry * t.sin();
+        let p = transform_point(Point::new(x, y));
+
+        segments.push(ToolpathSegment::new(
+            ToolpathSegmentType::LinearMove,
+            current,
+            p,
+            self.feed_rate,
+            self.spindle_speed,
+        ));
+        current = p;
+    }
+
+    // Cerrar la elipse (volver al punto inicial)
+    if current.distance_to(&start_point) > 0.001 {
+        segments.push(ToolpathSegment::new(
+            ToolpathSegmentType::LinearMove,
+            current,
+            start_point,
+            self.feed_rate,
+            self.spindle_speed,
+        ));
+    }
+
+    self.create_multipass_toolpaths(segments, step_down)
+}
+
+/// Generates a pocket toolpath for an ellipse.
+pub fn generate_ellipse_pocket(
+    &self,
+    ellipse: &Ellipse,
+    pocket_depth: f64,
+    step_down: f64,
+    step_in: f64,
+) -> Vec<Toolpath> {
+    // Por ahora, convertimos la elipse a un path y usamos path pocket
+    // Esto es una solución temporal, idealmente habría un algoritmo específico para elipses
+    let steps = 64;
+    let mut vertices = Vec::with_capacity(steps + 1);
+    let center = ellipse.center;
+    let rx = ellipse.rx;
+    let ry = ellipse.ry;
+    let rotation = ellipse.rotation;
+
+    for i in 0..=steps {
+        let t = 2.0 * std::f64::consts::PI * (i as f64 / steps as f64);
+        let x = center.x + rx * t.cos();
+        let y = center.y + ry * t.sin();
+        let mut p = Point::new(x, y);
+
+        if rotation.abs() > 1e-6 {
+            p = rotate_point(p, center, rotation);
+        }
+        vertices.push(p);
+    }
+
+    self.generate_polyline_pocket(&vertices, pocket_depth, step_down, step_in)
+}
+// ---
+
     /// Generates a contour toolpath for a line.
     pub fn generate_line_contour(&self, line: &Line, step_down: f64) -> Vec<Toolpath> {
         let segments = vec![
@@ -658,33 +760,33 @@ impl ToolpathGenerator {
         self.create_multipass_toolpaths(segments, step_down)
     }
 
-    /// Convierte un bulge DXF a centro de arco y dirección
+    /// Converts a DXF bulge to an arc and steering center
     fn bulge_to_arc(&self, p1: Point, p2: Point, bulge: f64) -> (Point, bool) {
         let chord = p1.distance_to(&p2);
         let angle = 4.0 * bulge.atan();  // Ángulo incluido del arco
 
-        // Radio = (chord/2) / sin(angle/2)
+        // Radius = (chord/2) / sin(angle/2)
         let radius = (chord / 2.0) / (angle / 2.0).sin();
 
-        // Altura del arco (sagitta)
+        // Arch height (sagitta)
         let sagitta = radius - (radius.powi(2) - (chord / 2.0).powi(2)).sqrt();
         if !sagitta.is_finite() {
             return (p1.midpoint(&p2), bulge > 0.0);
         }
 
-        // Vector perpendicular a la cuerda
+        // Vector perpendicular to string
         let dx = p2.x - p1.x;
         let dy = p2.y - p1.y;
         let perp_x = -dy / chord;
         let perp_y = dx / chord;
 
-        // Dirección del centro (positivo = izquierda, negativo = derecha)
+        // Center direction (positive = left, negative = right)
         let dir = if bulge > 0.0 { 1.0 } else { -1.0 };
 
-        // Punto medio de la cuerda
+        // Midpoint of string
         let mid = p1.midpoint(&p2);
 
-        // Centro del arco
+        // Center arch
         let center = Point::new(
             mid.x + perp_x * sagitta * dir,
             mid.y + perp_y * sagitta * dir
