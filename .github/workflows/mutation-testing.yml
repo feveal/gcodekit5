@@ -51,11 +51,19 @@ jobs:
       - name: Install cargo-mutants
         run: cargo install cargo-mutants
 
-      - name: Run mutation testing (specific package)
-        if: ${{ inputs.package != '' }}
+      - name: Run mutation testing
         run: |
-          cargo mutants -p ${{ inputs.package }} --output mutants-results -- \
-            --release 2>&1 | tee mutants-output.txt
+          # If there's a package, we use it; if not, we test everything.
+          if [ "${{ inputs.package }}" != "" ]; then
+            PACKAGE_ARG="-p ${{ inputs.package }}"
+          else
+            PACKAGE_ARG=""
+          fi
+
+          mkdir -p mutants-results
+          # Run it with --json and redirect output to file the script is looking for.
+          cargo mutants $PACKAGE_ARG --output mutants-results --json > mutants-results/outcomes.json
+
 
       - name: Run mutation testing (core crates)
         if: ${{ inputs.package == '' }}
