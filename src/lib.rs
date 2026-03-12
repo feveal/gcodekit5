@@ -97,12 +97,17 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Build date (set at compile time)
 pub const BUILD_DATE: &str = env!("BUILD_DATE");
 
+/// Mutants
+#[cfg(test)]
+use mutants;
+
 /// Initialize logging with the default configuration
 ///
 /// Sets up structured logging with:
 /// - Console output with pretty formatting
 /// - RUST_LOG environment variable support
 /// - UTF timestamps
+
 #[cfg_attr(test, mutants::skip)]
 pub fn init_logging() -> anyhow::Result<()> {
     use tracing_subscriber::fmt;

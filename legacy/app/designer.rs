@@ -26,9 +26,9 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
 
     // Update viewport canvas size to match actual rendering size
     state
-        .canvas
-        .viewport_mut()
-        .set_canvas_size(canvas_width as f64, canvas_height as f64);
+    .canvas
+    .viewport_mut()
+    .set_canvas_size(canvas_width as f64, canvas_height as f64);
 
     // Render canvas using SVG paths
     let crosshair_data = gcodekit5::designer::svg_renderer::render_crosshair(
@@ -90,71 +90,86 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
 
     // Still update shapes array for metadata (could be used for debugging/info)
     let shapes: Vec<crate::DesignerShape> = state
-        .canvas
-        .shapes()
-        .map(|obj| {
-            let (x1, y1, x2, y2) = obj.shape.bounding_box();
-            let shape_type = match obj.shape.shape_type() {
-                gcodekit5::ShapeType::Rectangle => 0,
-                gcodekit5::ShapeType::Circle => 1,
-                gcodekit5::ShapeType::Line => 2,
-                gcodekit5::ShapeType::Ellipse => 3,
-                gcodekit5::ShapeType::Path => 4,
-                gcodekit5::ShapeType::Text => 6,
-            };
-            let (corner_radius, is_slot) = if let gcodekit5::Shape::Rectangle(r) = &obj.shape {
-                (r.corner_radius as f32, r.is_slot)
-            } else {
-                (0.0, false)
-            };
+    .canvas
+    .shapes()
+    .map(|obj| {
+        let (x1, y1, x2, y2) = obj.shape.bounding_box();
+        let shape_type = match obj.shape.shape_type() {
+            gcodekit5::ShapeType::Rectangle => 0,
+         gcodekit5::ShapeType::Circle => 1,
+         gcodekit5::ShapeType::Line => 2,
+         gcodekit5::ShapeType::Ellipse => 3,
+         gcodekit5::ShapeType::Path => 4,
+         gcodekit5::ShapeType::Triangle => 5,
+         gcodekit5::ShapeType::Text => 6,
+        };
+        let (corner_radius, is_slot) = if let gcodekit5::Shape::Rectangle(r) = &obj.shape {
+            (r.corner_radius as f32, r.is_slot)
+        } else {
+            (0.0, false)
+        };
 
-            crate::DesignerShape {
-                id: obj.id as i32,
-                group_id: obj.group_id.map(|id| id as i32).unwrap_or(0),
-                name: obj.name.clone(),
-                x: x1 as f32,
-                y: y1 as f32,
-                width: (x2 - x1).abs() as f32,
-                height: (y2 - y1).abs() as f32,
-                radius: (((x2 - x1).abs() / 2.0).max((y2 - y1).abs() / 2.0)) as f32,
-                corner_radius,
-                is_slot,
-                x2: x2 as f32,
-                y2: y2 as f32,
-                shape_type,
-                selected: obj.selected,
-                step_down: obj.step_down as f32,
-                step_in: obj.step_in as f32,
-                pocket_strategy: match obj.pocket_strategy {
-                    gcodekit5::designer::pocket_operations::PocketStrategy::Raster { .. } => 0,
-                    gcodekit5::designer::pocket_operations::PocketStrategy::ContourParallel => 1,
-                    gcodekit5::designer::pocket_operations::PocketStrategy::Adaptive => 2,
-                },
-                raster_angle:
-                    if let gcodekit5::designer::pocket_operations::PocketStrategy::Raster {
-                        angle,
-                        ..
-                    } = obj.pocket_strategy
-                    {
-                        angle as f32
-                    } else {
-                        0.0
-                    },
-                bidirectional:
-                    if let gcodekit5::designer::pocket_operations::PocketStrategy::Raster {
-                        bidirectional,
-                        ..
-                    } = obj.pocket_strategy
-                    {
-                        bidirectional
-                    } else {
-                        true
-                    },
-                use_custom_values: obj.use_custom_values,
-                rotation: 0.0,
-            }
-        })
-        .collect();
+        let (w, h, rot) = match &obj.shape {
+            gcodekit5::Shape::Triangle(t) => (t.width as f32, t.height as f32, t.rotation as f32),
+         _ => {
+             let (x1, y1, x2, y2) = obj.shape.bounding_box();
+             ((x2 - x1) as f32, (y2 - y1) as f32, 0.0)
+         }
+        };
+
+        crate::DesignerShape {
+            id: obj.id as i32,
+         group_id: obj.group_id.map(|id| id as i32).unwrap_or(0),
+         name: obj.name.clone(),
+         x: x1 as f32,
+         y: y1 as f32,
+         width: w,
+         height: h,
+         radius: (((x2 - x1).abs() / 2.0).max((y2 - y1).abs() / 2.0)) as f32,
+         corner_radius,
+         is_slot,
+         x2: x2 as f32,
+         y2: y2 as f32,
+         shape_type,
+         selected: obj.selected,
+         step_down: obj.step_down as f32,
+         step_in: obj.step_in as f32,
+         pocket_strategy: match obj.pocket_strategy {
+             gcodekit5::designer::pocket_operations::PocketStrategy::Raster { .. } => 0,
+         gcodekit5::designer::pocket_operations::PocketStrategy::ContourParallel => 1,
+         gcodekit5::designer::pocket_operations::PocketStrategy::Adaptive => 2,
+         },
+         raster_angle:
+         if let gcodekit5::designer::pocket_operations::PocketStrategy::Raster {
+             angle,
+         ..
+         } = obj.pocket_strategy
+         {
+             angle as f32
+         } else {
+             0.0
+         },
+         bidirectional:
+         if let gcodekit5::designer::pocket_operations::PocketStrategy::Raster {
+             bidirectional,
+         ..
+         } = obj.pocket_strategy
+         {
+             bidirectional
+         } else {
+             true
+         },
+         use_custom_values: obj.use_custom_values,
+
+         rotation: rot,
+         shape_type: match obj.shape.shape_type() {
+             gcodekit5::ShapeType::Triangle => 5,
+
+         },
+
+        }
+    })
+    .collect();
     for _ in &shapes {}
     // Force UI to recognize the change by clearing first
     window.set_designer_shapes(Vec::new());
@@ -184,6 +199,7 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
                 gcodekit5::ShapeType::Line => 2,
                 gcodekit5::ShapeType::Ellipse => 3,
                 gcodekit5::ShapeType::Path => 4,
+                gcodekit5::ShapeType::Triangle => 5,
                 gcodekit5::ShapeType::Text => 6,
             };
 
@@ -244,6 +260,7 @@ pub fn update_designer_ui(window: &MainWindow, state: &mut gcodekit5::DesignerSt
                 gcodekit5::ShapeType::Line => 2,
                 gcodekit5::ShapeType::Ellipse => 3,
                 gcodekit5::ShapeType::Path => 4,
+                gcodekit5::ShapeType::Triangle => 5,
                 gcodekit5::ShapeType::Text => 6,
             };
 

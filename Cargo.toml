@@ -103,3 +103,6 @@ assets = [
     { source = "assets/Pictures/com.github.thawkins.gcodekit5.png", dest = "/usr/share/icons/hicolor/128x128/apps/gcodekit5.png", mode = "644" },
     { source = "flatpak/com.github.thawkins.gcodekit5.desktop", dest = "/usr/share/applications/gcodekit5.desktop", mode = "644" },
 ]
+
+[dev-dependencies]
+mutants = "0.0.3"

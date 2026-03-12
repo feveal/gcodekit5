@@ -8,6 +8,7 @@ use crate::shapes::OperationType;
 use crate::{ToolpathToGcode};
 use gcodekit5_core::Units;
 use crate::designer_state::MachineMode;
+use csgrs::traits::CSG;
 
 impl DesignerState {
     /// Generates G-code from the current design.
@@ -112,45 +113,25 @@ impl DesignerState {
                     .generate_line_contour(line, shape_obj.step_down as f64),
                                                     false,
                 ),
-/*
+                /*
+                 *                crate::model::Shape::Ellipse(ellipse) => {
+                 *                    let (x1, y1, x2, y2) = ellipse.bounds();
+                 *                    let cx = (x1 + x2) / 2.0;
+                 *                    let cy = (y1 + y2) / 2.0;
+                 *                    let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
+                 *                    let circle = Circle::new(Point::new(cx, cy), radius);
+                 *                    (
+                 *                        self.toolpath_generator
+                 *                        .generate_circle_contour(&circle, shape_obj.step_down as f64),
+                 *                     false,
+                 *                    )
+            }
+            */
                 crate::model::Shape::Ellipse(ellipse) => {
-                    let (x1, y1, x2, y2) = ellipse.bounds();
-                    let cx = (x1 + x2) / 2.0;
-                    let cy = (y1 + y2) / 2.0;
-                    let radius = ((x2 - x1).abs().max((y2 - y1).abs())) / 2.0;
-                    let circle = Circle::new(Point::new(cx, cy), radius);
-                    (
-                        self.toolpath_generator
-                        .generate_circle_contour(&circle, shape_obj.step_down as f64),
-                     false,
-                    )
-                }
-*/
-crate::model::Shape::Ellipse(ellipse) => {
-    if shape_obj.operation_type == OperationType::Pocket {
-        (
-            self.toolpath_generator.generate_ellipse_pocket(
-                ellipse,
-                shape_obj.pocket_depth,
-                shape_obj.step_down as f64,
-                shape_obj.step_in as f64,
-            ),
-            false,
-        )
-    } else {
-        (
-            self.toolpath_generator
-            .generate_ellipse_contour(ellipse, shape_obj.step_down as f64),
-            false,
-        )
-    }
-}
-// ---
-                crate::model::Shape::Path(path_shape) => {
                     if shape_obj.operation_type == OperationType::Pocket {
                         (
-                            self.toolpath_generator.generate_path_pocket(
-                                path_shape,
+                            self.toolpath_generator.generate_ellipse_pocket(
+                                ellipse,
                                 shape_obj.pocket_depth,
                                 shape_obj.step_down as f64,
                                 shape_obj.step_in as f64,
@@ -160,11 +141,52 @@ crate::model::Shape::Ellipse(ellipse) => {
                     } else {
                         (
                             self.toolpath_generator
-                            .generate_path_contour(path_shape, shape_obj.step_down as f64),
+                            .generate_ellipse_contour(ellipse, shape_obj.step_down as f64),
                          false,
                         )
                     }
                 }
+
+                crate::model::Shape::Path(path_shape) => {
+                    // 1. We clone so as not to alter the original object on the canvas
+                    let mut rotated_path = path_shape.clone();
+
+                    // 2. We apply the rotation if it exists
+                    if rotated_path.rotation.abs() > f64::EPSILON {
+                        let (x1, y1, x2, y2) = rotated_path.bounds();
+                        let cx = (x1 + x2) / 2.0;
+                        let cy = (y1 + y2) / 2.0;
+                        let rad = rotated_path.rotation.to_radians();
+                        let translation_to_origin = nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(-cx, -cy, 0.0));
+                        let rotation_matrix = nalgebra::Matrix4::new_rotation(nalgebra::Vector3::z() * rad);
+                        let translation_back = nalgebra::Matrix4::new_translation(&nalgebra::Vector3::new(cx, cy, 0.0));
+
+                        let full_transform = translation_back * rotation_matrix * translation_to_origin;
+
+                        // Passing Matrix4
+                        rotated_path.sketch = rotated_path.sketch.transform(&full_transform);
+                    }
+
+                    // 3. We generate the G-code with the object already rotated
+                    if shape_obj.operation_type == OperationType::Pocket {
+                        (
+                            self.toolpath_generator.generate_path_pocket(
+                                &rotated_path,
+                                shape_obj.pocket_depth,
+                                shape_obj.step_down as f64,
+                                shape_obj.step_in as f64,
+                            ),
+                         false,
+                        )
+                    } else {
+                        (
+                            self.toolpath_generator
+                            .generate_path_contour(&rotated_path, shape_obj.step_down as f64),
+                         false,
+                        )
+                    }
+                }
+
                 crate::model::Shape::Text(text) => {
                     if shape_obj.operation_type == OperationType::Pocket {
                         let pocket = self
@@ -288,7 +310,6 @@ crate::model::Shape::Ellipse(ellipse) => {
         let mut line_number = 10;
 
         // ------ Bucle Shape --------
-
         for (shape, toolpaths, pocket_fallback_to_profile) in shape_toolpaths.iter() {
             // Add shape metadata as comments
             gcode.push_str(&format!(
@@ -343,7 +364,7 @@ crate::model::Shape::Ellipse(ellipse) => {
 
             for pass in 0..num_passes {
                 if pass > 0 {
-                    // Reposicionar al inicio para siguientes pasadas
+                    // Reposition to the start for subsequent passes
                     if let Some(first_tp) = toolpaths.first() {
                         if let Some(first_seg) = first_tp.segments.first() {
                             gcode.push_str(&format!(

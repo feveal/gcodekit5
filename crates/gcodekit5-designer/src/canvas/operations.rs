@@ -327,7 +327,7 @@ impl Canvas {
                 }
                 Shape::Line(_) => Shape::Line(Line::new(
                     Point::new(snapped_x1, snapped_y1),
-                                                        Point::new(snapped_x1 + snapped_width, snapped_y1 + snapped_height),
+                    Point::new(snapped_x1 + snapped_width, snapped_y1 + snapped_height),
                 )),
                 Shape::Ellipse(_) => {
                     let center = Point::new(

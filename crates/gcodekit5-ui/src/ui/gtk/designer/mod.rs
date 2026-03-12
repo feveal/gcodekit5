@@ -299,20 +299,33 @@ impl DesignerView {
         // Create properties panel
         let properties = PropertiesPanel::new(
             state.clone(),
-                                              settings_controller.persistence.clone(),
-                                              canvas.preview_shapes.clone(),
+            settings_controller.persistence.clone(),
+            canvas.preview_shapes.clone(),
         );
         properties.widget.set_vexpand(true);
         properties.widget.set_valign(gtk4::Align::Fill);
 
         // Set up redraw callback for properties
         let canvas_redraw = canvas.clone();
+        let properties_ui = properties.clone();
+
         properties.set_redraw_callback(move || {
-            let show_toolpaths = canvas_redraw.state.borrow().show_toolpaths;
+            let state = canvas_redraw.state.borrow();
+            let has_selection = state.canvas.selection_manager.selected_id().is_some();
+
+            let show_toolpaths = state.show_toolpaths;
+            drop(state);
             if show_toolpaths {
                 canvas_redraw.generate_preview_toolpaths();
             }
             canvas_redraw.widget.queue_draw();
+            properties_ui.update_from_selection();
+
+            if !has_selection {
+                properties_ui.update_from_selection();
+            } else {
+                properties_ui.update_from_selection();
+            }
         });
 
         // Inspector header + hide button (matches DeviceConsole / Visualizer sidebar UX)

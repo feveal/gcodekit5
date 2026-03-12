@@ -4,7 +4,7 @@
 //!
 //! Supports:
 //! - DXF R2000+ format parsing
-//! - Entity extraction (lines, circles, arcs, polylines, text)
+//! - Entity extraction (lines, circles, arcs, polylines, ellipse, text)
 //! - Layer and block handling
 //! - Coordinate system transformation
 //! - Unit conversion

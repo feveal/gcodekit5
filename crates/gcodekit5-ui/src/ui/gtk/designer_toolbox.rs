@@ -59,10 +59,10 @@ impl DesignerTool {
             DesignerTool::Polyline => "polyline.svg",
             DesignerTool::Text => "text.svg",
             DesignerTool::Pan => "grab.svg",
-            DesignerTool::Triangle => "media-playback-start-symbolic",
-            DesignerTool::Polygon => "emblem-shared-symbolic",
-            DesignerTool::Gear => "system-run-symbolic",
-            DesignerTool::Sprocket => "emblem-system-symbolic",
+            DesignerTool::Triangle => "triangle.svg",
+            DesignerTool::Polygon => "poligon.svg",
+            DesignerTool::Gear => "gear.svg",
+            DesignerTool::Sprocket => "sprocket.svg",
         }
     }
 

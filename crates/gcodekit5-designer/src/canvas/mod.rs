@@ -60,7 +60,6 @@ impl Canvas {
     }
 
     /// Returns the number of shapes on the canvas.
-    /// Returns the number of shapes on the canvas.
     pub fn shape_count(&self) -> usize {
         self.shape_store.len()
     }
