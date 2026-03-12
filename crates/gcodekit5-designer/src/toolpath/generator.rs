@@ -5,6 +5,7 @@ use super::*;
 // use lyon::path::iterator::PathIterator;
 use rusttype::{GlyphId, OutlineBuilder, Scale};
 use crate::Ellipse;
+use smallvec::SmallVec;
 
 /// Generates toolpaths from design shapes.
 #[derive(Debug, Clone)]
@@ -137,8 +138,9 @@ impl ToolpathGenerator {
                 Point::new(x, y + h),     // TL
             ];
 
-            // Transform corners
-            let t_corners: Vec<Point> = corners.iter().map(|&p| transform_point(p)).collect();
+            // Transform corners (stack-allocated, always 4 points)
+            let t_corners: SmallVec<[Point; 4]> =
+                corners.iter().map(|&p| transform_point(p)).collect();
 
             // Start at first corner with rapid move
             segments.push(ToolpathSegment::new(
@@ -1448,7 +1450,7 @@ pub fn generate_ellipse_pocket(
         }
 
         fn clean_contour(contour: &[Point], tol: f64) -> Vec<Point> {
-            let mut out: Vec<Point> = Vec::new();
+            let mut out: Vec<Point> = Vec::with_capacity(contour.len());
             for &p in contour {
                 let should_push = match out.last() {
                     None => true,
@@ -1748,7 +1750,7 @@ pub fn generate_ellipse_pocket(
 
 fn contours_from_outline_segments(segments: &[ToolpathSegment]) -> Vec<Vec<Point>> {
     let mut contours: Vec<Vec<Point>> = Vec::new();
-    let mut current: Vec<Point> = Vec::new();
+    let mut current: Vec<Point> = Vec::with_capacity(32);
 
     for seg in segments {
         match seg.segment_type {

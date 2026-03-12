@@ -1,3 +1,9 @@
+//! # Designer Commands (Undo/Redo)
+//!
+//! Implements the Command pattern for undoable canvas operations.
+//! Each command encapsulates a discrete change (add shape, move shape,
+//! delete shape, etc.) and can be executed and undone.
+
 use crate::canvas::{Canvas, DrawingObject};
 use crate::model::DesignerShape;
 use crate::model::Shape;
@@ -69,6 +75,7 @@ impl Command for AddShapeCommand {
 // Enum is usually better for performance and serialization.
 
 #[derive(Debug, Clone)]
+// Variant size disparity is acceptable — commands are short-lived and not stored in bulk.
 #[allow(clippy::large_enum_variant)]
 pub enum DesignerCommand {
     AddShape(AddShape),

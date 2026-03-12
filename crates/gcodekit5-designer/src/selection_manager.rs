@@ -1,3 +1,9 @@
+//! # Selection Manager
+//!
+//! Manages shape selection state and selection operations in the designer.
+//! Tracks primary and multi-selection, handles point-based and rectangle-based
+//! selection, and maintains selection highlight state.
+
 use crate::shape_store::ShapeStore;
 use crate::spatial_index::{Bounds, SpatialIndex};
 use crate::Point;
@@ -131,6 +137,16 @@ impl SelectionManager {
     ) -> Option<u64> {
         let mut found_id = None;
         let mut found_group_id = None;
+
+        // Query spatial index for candidates (used for single shapes)
+        // Use a bounding box with tolerance to ensure we catch shapes near the click
+        let query_bounds = Bounds::new(
+            point.x - tolerance,
+            point.y - tolerance,
+            point.x + tolerance,
+            point.y + tolerance,
+        );
+        let candidates: HashSet<u64> = spatial_index.query(&query_bounds).into_iter().collect();
 
         // Pre-calculate group bounding boxes
         let mut group_bounds: HashMap<u64, (f64, f64, f64, f64)> = HashMap::new();
@@ -273,8 +289,8 @@ impl SelectionManager {
         };
         let rect_bounds = Bounds::new(rx, ry, rx + rw, ry + rh);
 
-        // Query spatial index for candidates
-        let candidates = spatial_index.query(&rect_bounds);
+        // Query spatial index for candidates — use HashSet for O(1) lookups
+        let candidates: HashSet<u64> = spatial_index.query(&rect_bounds).into_iter().collect();
 
         let mut groups_to_select = Vec::new();
 

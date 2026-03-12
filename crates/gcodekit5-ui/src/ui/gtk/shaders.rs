@@ -1,4 +1,12 @@
-use glow::*;
+//! # GLSL Shader Sources
+//!
+//! Contains GLSL vertex and fragment shader source code used by
+//! the 3D renderer for toolpath visualization and grid rendering.
+
+use glow::{
+    Context, HasContext, NativeProgram, NativeShader, NativeUniformLocation, FRAGMENT_SHADER,
+    VERTEX_SHADER,
+};
 use std::rc::Rc;
 
 pub struct ShaderProgram {
@@ -31,6 +39,9 @@ impl ShaderProgram {
             }
         "#;
 
+        // SAFETY: All glow GL calls require unsafe. The GL context is valid
+        // because it was created from a valid loader in the GLArea render callback.
+        // Shaders are compiled, attached, linked, then detached and deleted.
         unsafe {
             let program = gl
                 .create_program()
@@ -57,24 +68,29 @@ impl ShaderProgram {
     }
 
     pub fn bind(&self) {
+        // SAFETY: GL context is valid; program was successfully linked in new().
         unsafe {
             self.gl.use_program(Some(self.program));
         }
     }
 
     pub fn unbind(&self) {
+        // SAFETY: GL context is valid; unbinding the current program is always safe.
         unsafe {
             self.gl.use_program(None);
         }
     }
 
     pub fn get_uniform_location(&self, name: &str) -> Option<NativeUniformLocation> {
+        // SAFETY: GL context is valid; querying uniform locations is a read-only GL operation.
         unsafe { self.gl.get_uniform_location(self.program, name) }
     }
 }
 
 impl Drop for ShaderProgram {
     fn drop(&mut self) {
+        // SAFETY: GL context is valid; program handle is owned by this struct
+        // and will not be used after deletion.
         unsafe {
             self.gl.delete_program(self.program);
         }
@@ -129,6 +145,9 @@ impl StockRemovalShaderProgram {
             }
         "#;
 
+        // SAFETY: All glow GL calls require unsafe. The GL context is valid
+        // because it was created from a valid loader in the GLArea render callback.
+        // Shaders are compiled, attached, linked, then detached and deleted.
         unsafe {
             let program = gl
                 .create_program()
@@ -155,30 +174,38 @@ impl StockRemovalShaderProgram {
     }
 
     pub fn bind(&self) {
+        // SAFETY: GL context is valid; program was successfully linked in new().
         unsafe {
             self.gl.use_program(Some(self.program));
         }
     }
 
     pub fn unbind(&self) {
+        // SAFETY: GL context is valid; unbinding the current program is always safe.
         unsafe {
             self.gl.use_program(None);
         }
     }
 
     pub fn get_uniform_location(&self, name: &str) -> Option<NativeUniformLocation> {
+        // SAFETY: GL context is valid; querying uniform locations is a read-only GL operation.
         unsafe { self.gl.get_uniform_location(self.program, name) }
     }
 }
 
 impl Drop for StockRemovalShaderProgram {
     fn drop(&mut self) {
+        // SAFETY: GL context is valid; program handle is owned by this struct
+        // and will not be used after deletion.
         unsafe {
             self.gl.delete_program(self.program);
         }
     }
 }
 
+// SAFETY: This function is unsafe because all glow GL calls require unsafe.
+// Caller must ensure the GL context is current. The shader is created, compiled,
+// and on failure cleaned up before returning an error.
 unsafe fn compile_shader(
     gl: &Context,
     source: &str,

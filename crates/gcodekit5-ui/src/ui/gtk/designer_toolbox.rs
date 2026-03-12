@@ -1,3 +1,8 @@
+//! # Designer Toolbox Panel
+//!
+//! Toolbar panel for the visual designer providing shape creation tools,
+//! selection tools, and design operation buttons.
+
 use crate::t;
 use crate::ui::gtk::fast_shape_gallery::FastShapeGallery;
 use gcodekit5_core::units::MeasurementSystem;
@@ -84,6 +89,7 @@ impl DesignerTool {
     }
 }
 
+// Complex type due to GTK widget and signal callback fields.
 #[allow(clippy::type_complexity)]
 pub struct DesignerToolbox {
     pub widget: Box,

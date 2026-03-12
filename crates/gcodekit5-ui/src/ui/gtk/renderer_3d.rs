@@ -1,5 +1,13 @@
+//! # 3D Renderer
+//!
+//! OpenGL-based 3D rendering pipeline for the G-code visualizer.
+//! Handles shader compilation, buffer management, and draw calls
+//! for toolpath, grid, axis, and stock visualization.
+
 use gcodekit5_visualizer::{GCodeCommand, Point3D, Visualizer};
-use glow::*;
+use glow::{
+    Context, HasContext, NativeBuffer, NativeVertexArray, ARRAY_BUFFER, FLOAT, STATIC_DRAW,
+};
 use std::rc::Rc;
 
 pub struct RenderBuffers {
@@ -12,6 +20,9 @@ pub struct RenderBuffers {
 
 impl RenderBuffers {
     pub fn new(gl: Rc<Context>, draw_mode: u32) -> Result<Self, String> {
+        // SAFETY: GL context is valid (Rc-shared from GLArea). Creating VAO/VBO
+        // are standard GL resource allocation calls that cannot cause UB if the
+        // context is current.
         unsafe {
             let vao = gl
                 .create_vertex_array()
@@ -31,6 +42,10 @@ impl RenderBuffers {
     }
 
     pub fn update(&mut self, vertices: &[f32]) {
+        // SAFETY: GL context is valid. The from_raw_parts reinterprets the f32
+        // slice as u8 for buffer upload; this is safe because the pointer and
+        // length are derived from a valid slice and f32 has no alignment issues
+        // when viewed as bytes.
         unsafe {
             self.gl.bind_vertex_array(Some(self.vao));
             self.gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
@@ -71,6 +86,8 @@ impl RenderBuffers {
     }
 
     pub fn update_volume(&mut self, vertices: &[f32]) {
+        // SAFETY: GL context is valid. The from_raw_parts reinterprets f32 as u8
+        // for GL buffer upload; pointer and length come from a valid slice.
         unsafe {
             self.gl.bind_vertex_array(Some(self.vao));
             self.gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
@@ -111,6 +128,8 @@ impl RenderBuffers {
     }
 
     pub fn update_mesh(&mut self, vertices: &[f32]) {
+        // SAFETY: GL context is valid. The from_raw_parts reinterprets f32 as u8
+        // for GL buffer upload; pointer and length come from a valid slice.
         unsafe {
             self.gl.bind_vertex_array(Some(self.vao));
             self.gl.bind_buffer(ARRAY_BUFFER, Some(self.vbo));
@@ -158,6 +177,8 @@ impl RenderBuffers {
 
     pub fn draw(&self) {
         if self.vertex_count > 0 {
+            // SAFETY: GL context is valid; VAO was successfully created in new()
+            // and configured in update(). draw_arrays reads from bound buffers.
             unsafe {
                 self.gl.bind_vertex_array(Some(self.vao));
                 self.gl.draw_arrays(self.draw_mode, 0, self.vertex_count);
@@ -169,6 +190,8 @@ impl RenderBuffers {
 
 impl Drop for RenderBuffers {
     fn drop(&mut self) {
+        // SAFETY: GL context is valid; VAO and VBO handles are owned by this
+        // struct and will not be used after deletion.
         unsafe {
             self.gl.delete_vertex_array(self.vao);
             self.gl.delete_buffer(self.vbo);

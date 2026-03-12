@@ -1,3 +1,9 @@
+//! # Device Information Panel
+//!
+//! Displays real-time information about the connected CNC device
+//! including firmware version, machine status, position coordinates,
+//! and connection state.
+
 use gtk4::prelude::*;
 use gtk4::{
     accessible::Property as AccessibleProperty, Align, Box, Button, CheckButton, Expander, Image,
@@ -17,6 +23,7 @@ pub struct CapabilityItem {
     pub notes: String,
 }
 
+// Complex type due to GTK widget and real-time data fields.
 #[allow(clippy::type_complexity)]
 pub struct DeviceInfoView {
     pub container: Box,

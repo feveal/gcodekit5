@@ -1,3 +1,9 @@
+//! # Command History Panel
+//!
+//! Displays a scrollable list of previously sent G-code commands
+//! with timestamps and status indicators. Supports command re-send
+//! and history search.
+
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs;
@@ -77,6 +83,7 @@ impl CommandHistory {
         }
     }
 
+    // Custom `new()` does not match Default semantics (requires controller ref).
     #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<String> {
         match self.current_index {

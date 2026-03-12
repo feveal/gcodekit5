@@ -1,3 +1,13 @@
+//! # G-code Visualizer Widget
+//!
+//! GTK4 GLArea-based widget for 3D visualization of G-code toolpaths.
+//! Handles OpenGL context setup, camera control, and rendering pipeline
+//! coordination.
+//!
+//! ## Thread Safety
+//! The visualizer uses `Rc<RefCell<>>` for state and must be accessed
+//! from the GTK main thread only.
+
 mod gl_loader;
 mod interaction;
 mod rendering;
@@ -138,6 +148,7 @@ pub struct GcodeVisualizer {
     pub(crate) _status_label: Label,
     pub(crate) device_manager: Option<Arc<DeviceManager>>,
     pub(crate) settings_controller: Rc<SettingsController>,
+    // Optional status bar reference for future OSD integration.
     #[allow(dead_code)]
     pub(crate) status_bar: Option<StatusBar>,
     pub(crate) current_pos: Shared<(f32, f32, f32)>,
@@ -2247,6 +2258,8 @@ impl GcodeVisualizer {
             let mut state_ref = renderer_state_clone.borrow_mut();
 
             if state_ref.is_none() {
+                // SAFETY: GL context is current within GLArea render callback.
+                // load_gl_func resolves GL function pointers via epoxy/libGL.
                 let gl = unsafe { glow::Context::from_loader_function(load_gl_func) };
                 let gl = Rc::new(gl);
 
@@ -2322,6 +2335,8 @@ impl GcodeVisualizer {
             if let Some(state) = state_ref.as_mut() {
                 let gl = &state.shader.gl;
 
+                // SAFETY: GL context is current; clearing and enabling depth test
+                // are standard GL state operations.
                 unsafe {
                     gl.clear_color(0.15, 0.15, 0.15, 1.0);
                     gl.clear(glow::COLOR_BUFFER_BIT | glow::DEPTH_BUFFER_BIT);
@@ -2363,6 +2378,8 @@ impl GcodeVisualizer {
                 state.shader.bind();
 
                 if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
+                    // SAFETY: GL context is current; uploading a uniform matrix
+                    // to a valid location on the bound shader program.
                     unsafe {
                         gl.uniform_matrix_4_f32_slice(Some(&loc), false, &mvp.to_cols_array());
                     }
@@ -2396,6 +2413,7 @@ impl GcodeVisualizer {
                     let mvp_tool = proj * view * model;
 
                     if let Some(loc) = state.shader.get_uniform_location("uModelViewProjection") {
+                        // SAFETY: GL context is current; uploading uniform to valid location.
                         unsafe {
                             gl.uniform_matrix_4_f32_slice(
                                 Some(&loc),
@@ -2405,11 +2423,14 @@ impl GcodeVisualizer {
                         }
                     }
 
+                    // SAFETY: GL context is current; enabling alpha blending for
+                    // transparent tool marker rendering.
                     unsafe {
                         gl.enable(glow::BLEND);
                         gl.blend_func(glow::SRC_ALPHA, glow::ONE_MINUS_SRC_ALPHA);
                     }
                     state.tool_buffers.draw();
+                    // SAFETY: GL context is current; restoring blend state.
                     unsafe {
                         gl.disable(glow::BLEND);
                     }
@@ -2451,6 +2472,7 @@ impl GcodeVisualizer {
                             shader.bind();
 
                             if let Some(loc) = shader.get_uniform_location("uModelViewProjection") {
+                                // SAFETY: GL context is current; uploading uniform to valid location.
                                 unsafe {
                                     gl.uniform_matrix_4_f32_slice(
                                         Some(&loc),
@@ -2463,6 +2485,7 @@ impl GcodeVisualizer {
                             if let Some(loc) = shader.get_uniform_location("uNormalMatrix") {
                                 let normal_matrix =
                                     glam::Mat3::from_mat4(view).inverse().transpose();
+                                // SAFETY: GL context is current; uploading uniform to valid location.
                                 unsafe {
                                     gl.uniform_matrix_3_f32_slice(
                                         Some(&loc),
@@ -2473,16 +2496,20 @@ impl GcodeVisualizer {
                             }
 
                             if let Some(loc) = shader.get_uniform_location("uLightDir") {
+                                // SAFETY: GL context is current; uploading uniform to valid location.
                                 unsafe {
                                     gl.uniform_3_f32(Some(&loc), 0.35, 0.35, 1.0);
                                 }
                             }
 
+                            // SAFETY: GL context is current; enabling face culling
+                            // for correct solid mesh rendering.
                             unsafe {
                                 gl.enable(glow::CULL_FACE);
                                 gl.cull_face(glow::BACK);
                             }
                             buffers.draw();
+                            // SAFETY: GL context is current; restoring cull state.
                             unsafe {
                                 gl.disable(glow::CULL_FACE);
                             }

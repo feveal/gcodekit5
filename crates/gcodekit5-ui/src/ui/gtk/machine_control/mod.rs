@@ -1,4 +1,8 @@
-#![allow(deprecated)]
+//! # Machine Control Panel
+//!
+//! UI panel for real-time CNC machine control including jogging,
+//! homing, work coordinate setting, spindle/laser control,
+//! and job execution (start/pause/stop).
 
 use gcodekit5_communication::firmware::grbl::status_parser::{
     FeedSpindleState, OverrideState, StatusParser,

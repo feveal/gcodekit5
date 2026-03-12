@@ -1,5 +1,14 @@
+//! # Stock Material Texture
+//!
+//! Generates and manages textures for rendering the CNC stock
+//! material block in the 3D visualizer.
+
 use gcodekit5_visualizer::visualizer::stock_removal_3d::VoxelGrid;
-use glow::*;
+use glow::{
+    Context, HasContext, NativeTexture, CLAMP_TO_EDGE, LINEAR, R8, RED, TEXTURE_3D,
+    TEXTURE_MAG_FILTER, TEXTURE_MIN_FILTER, TEXTURE_WRAP_R, TEXTURE_WRAP_S, TEXTURE_WRAP_T,
+    UNSIGNED_BYTE,
+};
 use std::rc::Rc;
 
 pub struct StockTexture3D {
@@ -14,6 +23,9 @@ impl StockTexture3D {
     pub fn from_voxel_grid(gl: Rc<Context>, voxel_grid: &VoxelGrid) -> Result<Self, String> {
         let (width, height, depth) = voxel_grid.dimensions();
 
+        // SAFETY: GL context is valid. Creates a 3D texture, configures
+        // filtering/wrapping parameters, and uploads voxel data. The data
+        // pointer and dimensions come from a valid VoxelGrid.
         unsafe {
             let texture = gl
                 .create_texture()
@@ -56,12 +68,14 @@ impl StockTexture3D {
     }
 
     pub fn bind(&self) {
+        // SAFETY: GL context is valid; binding a texture for sampling is safe.
         unsafe {
             self.gl.bind_texture(TEXTURE_3D, Some(self.texture));
         }
     }
 
     pub fn unbind(&self) {
+        // SAFETY: GL context is valid; unbinding the current texture is always safe.
         unsafe {
             self.gl.bind_texture(TEXTURE_3D, None);
         }
@@ -78,6 +92,8 @@ impl StockTexture3D {
 
 impl Drop for StockTexture3D {
     fn drop(&mut self) {
+        // SAFETY: GL context is valid; texture handle is owned by this struct
+        // and will not be used after deletion.
         unsafe {
             self.gl.delete_texture(self.texture);
         }

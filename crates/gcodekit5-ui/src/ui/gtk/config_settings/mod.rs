@@ -1,3 +1,9 @@
+//! # Configuration Settings Panel
+//!
+//! Provides the settings UI for configuring machine parameters,
+//! GRBL settings, and operational preferences. Organized into
+//! sub-modules for different setting categories.
+
 mod grbl_settings;
 mod operations;
 
@@ -69,6 +75,7 @@ use gcodekit5_core::{shared, shared_none, Shared, SharedOption, ThreadSafe};
 pub struct ConfigSettingsView {
     pub container: Box,
     pub device_info_view: Rc<DeviceInfoView>,
+    // Fields used internally for settings sync and persistence tracking.
     #[allow(dead_code)]
     pub(crate) settings_controller: Rc<SettingsController>,
     pub(crate) settings_manager: Shared<SettingsManager>,

@@ -1,3 +1,8 @@
+//! # Tools Manager Event Handlers
+//!
+//! Signal handlers and callbacks for the tools manager panel,
+//! including tool selection, editing, and deletion events.
+
 use super::*;
 
 impl ToolsManagerView {
@@ -177,6 +182,8 @@ impl ToolsManagerView {
                     return;
                 };
                 let tool_id = unsafe {
+                    // SAFETY: row.data() retrieves a String previously stored
+                    // via set_data() with the same key. Type and key match.
                     row.data::<String>(ROW_TOOL_ID_KEY)
                         .map(|p| p.as_ref().clone())
                 };
