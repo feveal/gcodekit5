@@ -880,6 +880,7 @@ impl DesignFile {
             lock_aspect_ratio: data.lock_aspect_ratio,
             use_global_laser: data.use_global_laser,
             laser_params,
+            tool_offset_mode: crate::model::ToolOffsetMode::default(),
         })
     }
 }

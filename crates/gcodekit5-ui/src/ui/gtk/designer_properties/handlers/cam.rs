@@ -6,6 +6,7 @@ use gcodekit5_core::units;
 use gcodekit5_core::{Shared, SharedOption};
 use gcodekit5_designer::designer_state::DesignerState;
 use gcodekit5_designer::pocket_operations::PocketStrategy;
+use gcodekit5_designer::model::ToolOffsetMode;
 use gtk4::prelude::*;
 use gtk4::{CheckButton, DropDown, Entry};
 use std::rc::Rc;
@@ -202,4 +203,40 @@ pub fn setup_strategy_handler(
         };
         designer_state.set_selected_pocket_strategy(strategy);
     });
+}
+
+
+
+/// Setup Center/Internal/External radio buttons.
+///
+/// Solo reaccionamos al botón que se activa (los otros dos se desactivan
+/// al cambiar de grupo). El estado se actualiza vía
+/// `set_selected_tool_offset_mode`, que ya registra un undo step.
+pub fn setup_tool_offset_mode_handlers(
+    center: &CheckButton,
+    internal: &CheckButton,
+    external: &CheckButton,
+    state: Shared<DesignerState>,
+    updating: Shared<bool>,
+    redraw_callback: SharedOption<Rc<dyn Fn()>>,
+) {
+    for (btn, mode) in [
+        (center.clone(), ToolOffsetMode::Center),
+        (internal.clone(), ToolOffsetMode::Internal),
+        (external.clone(), ToolOffsetMode::External),
+    ] {
+        let state = state.clone();
+        let updating = updating.clone();
+        let redraw_callback = redraw_callback.clone();
+        btn.connect_toggled(move |b| {
+            if *updating.borrow() || !b.is_active() {
+                return;
+            }
+            state.borrow_mut().set_selected_tool_offset_mode(mode);
+            // Redraw: actualiza el preview del offset de herramienta.
+            if let Some(cb) = redraw_callback.borrow().as_ref() {
+                cb();
+            }
+        });
+    }
 }

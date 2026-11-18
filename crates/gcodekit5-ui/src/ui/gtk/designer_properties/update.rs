@@ -2,7 +2,8 @@
 
 use super::*;
 use gcodekit5_designer::designer_state::MachineMode;
-use gcodekit5_designer::model::ParametricPathSource;
+use gcodekit5_designer::model::{ParametricPathSource, ToolOffsetMode};
+
 /// Resumen de los parámetros láser de N shapes seleccionados.
 /// Cada campo es `Some(v)` si todos coinciden en `v`, `None` si difieren.
 #[derive(Clone, Copy, Debug)]
@@ -197,6 +198,7 @@ impl PropertiesPanel {
                     Some(obj.shape.clone()),
                     obj.use_custom_values,
                     obj.operation_type,
+                    obj.tool_offset_mode,
                     obj.start_depth,
                     obj.step_down,
                     obj.step_in,
@@ -248,6 +250,7 @@ impl PropertiesPanel {
                     None,
                     obj.use_custom_values,
                     obj.operation_type,
+                    obj.tool_offset_mode,
                     obj.start_depth,
                     obj.step_down,
                     obj.step_in,
@@ -269,6 +272,7 @@ impl PropertiesPanel {
             shape_opt,
             use_custom_values,
             op_type,
+            tool_offset_mode,
             start_depth,
             step_down,
             step_in,
@@ -403,6 +407,15 @@ impl PropertiesPanel {
             self.raster_fill_entry
                 .set_sensitive(cam_entries_enabled && is_pocket);
 
+            // Synchronizes the Center/Internal/External radii with the object's state.
+            // This is performed with `updating = true` (which is already active at this point), so it does not trigger the radii's handlers.
+            self.cam_center_check
+                .set_active(tool_offset_mode == ToolOffsetMode::Center);
+            self.cam_internal_check
+                .set_active(tool_offset_mode == ToolOffsetMode::Internal);
+            self.cam_external_check
+                .set_active(tool_offset_mode == ToolOffsetMode::External);
+
             // Refresh the locked aspect ratio from the newly displayed size; the
             // checkbox handler only captures it when toggled, so it would otherwise
             // keep the ratio of a previously selected shape.
@@ -460,6 +473,10 @@ impl PropertiesPanel {
             self.raster_fill_entry.set_text("");
             self.lock_aspect_ratio.set_active(false);
             *self.updating.borrow_mut() = false;
+
+            self.cam_center_check.set_active(true);  // Default center
+            self.cam_internal_check.set_active(false);
+            self.cam_external_check.set_active(false);
         }
     }
 
@@ -1093,5 +1110,67 @@ impl PropertiesPanel {
             self.rotation_warning_label.set_visible(false);
             self.lock_aspect_ratio.set_sensitive(true);
         }
+    }
+
+    /// Recalculates the sensitivity of the CAM widgets based on the current state
+    /// of the selected shape. It does not modify any values;
+    /// it only enables or disables them.
+    ///
+    /// This is called from `refresh_from_selection` and from the "Use global values"
+    /// toggle, allowing the panel to respond without requiring the object to be
+    /// reselected.
+    pub(crate) fn refresh_cam_sensitivity(&self) {
+        let (cam_enabled, use_custom_values, is_pocket) = {
+            let designer_state = self.state.borrow();
+            let selected: Vec<_> = designer_state
+                .canvas
+                .shapes()
+                .filter(|s| s.selected)
+                .collect();
+
+            if selected.is_empty() {
+                // Sin selección: todo deshabilitado.
+                self.op_type_combo.set_sensitive(false);
+                self.cam_use_global_check.set_sensitive(false);
+                self.step_down_entry.set_sensitive(false);
+                self.ramp_angle_entry.set_sensitive(false);
+                self.strategy_combo.set_sensitive(false);
+                self.step_in_entry.set_sensitive(false);
+                self.step_in_label.set_sensitive(false);
+                self.step_in_unit_label.set_sensitive(false);
+                self.raster_fill_entry.set_sensitive(false);
+                self.cam_center_check.set_sensitive(false);
+                self.cam_internal_check.set_sensitive(false);
+                self.cam_external_check.set_sensitive(false);
+                return;
+            }
+
+            let obj = &selected[0];
+            let is_raster = matches!(obj.shape, Shape::RasterImage(_));
+            let is_laser = designer_state.machine_mode() == MachineMode::Laser2D;
+            let cam_enabled = !is_laser && !is_raster;
+            let is_pocket = obj.operation_type == OperationType::Pocket;
+            (cam_enabled, obj.use_custom_values, is_pocket)
+        };
+
+        let cam_entries_enabled = cam_enabled && use_custom_values;
+        self.cam_use_global_check.set_sensitive(cam_enabled);
+        self.op_type_combo.set_sensitive(cam_entries_enabled);
+        self.step_down_entry.set_sensitive(cam_entries_enabled);
+        self.ramp_angle_entry.set_sensitive(cam_entries_enabled);
+
+        // Machining mode: applies to both Profile and Pocket,
+        // so it depends solely on cam_entries_enabled.
+        self.cam_center_check.set_sensitive(cam_entries_enabled);
+        self.cam_internal_check.set_sensitive(cam_entries_enabled);
+        self.cam_external_check.set_sensitive(cam_entries_enabled);
+
+
+        let pocket_enabled = cam_entries_enabled && is_pocket;
+        self.strategy_combo.set_sensitive(pocket_enabled);
+        self.step_in_entry.set_sensitive(pocket_enabled);
+        self.step_in_label.set_sensitive(pocket_enabled);
+        self.step_in_unit_label.set_sensitive(pocket_enabled);
+        self.raster_fill_entry.set_sensitive(pocket_enabled);
     }
 }

@@ -190,6 +190,7 @@ impl Canvas {
                 lock_aspect_ratio: obj.lock_aspect_ratio,
                 use_global_laser: obj.use_global_laser,
                 laser_params: LaserParams::default(),
+                tool_offset_mode: crate::model::ToolOffsetMode::default(),
             };
 
             self.shape_store.insert(id, new_obj);

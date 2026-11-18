@@ -70,6 +70,12 @@ Pulsando el botón "Configuración de Herramienta" se abre la ventana para la co
 - El resto es igual que en el Modo 2D
 - **IMPORTANTE:** Los objetos que no tengan cota Z o tengan cota Z=0 se trazan en la cota superior del material ya que la cota Z siempre se considera en modo 3D hacia abajo.
 
+- En la propiedades particulares del objeto hay tres check para definir por donde se quiere llevar la herramienta respecto del objeto, puede ser centrada, por el Interior o por el Exterior. Al marcar Interior o Exterior, se traza un offset del objeto a una distancia que es el radio de la herramienta definida en la configuración de herramienta. Esta línea se ve a puntos y será la que se usará para la generación del G-code
+
+<img src="../../help_images/cam1" width="400"><img src="../../help_images/cam3" width="300">
+
+<img src="../../help_images/cam2" width="600">
+
 ---
 ## Relacionado
 [Visualizador](help:visualizer)

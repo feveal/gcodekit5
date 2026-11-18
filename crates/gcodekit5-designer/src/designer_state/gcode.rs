@@ -253,6 +253,7 @@ impl DesignerState {
             } else {
                 shape_obj.clone()
             };
+
             // ============================================================
             // 1. Obtener parámetros láser EFECTIVOS (respetando use_global_laser)
             // ============================================================
@@ -317,7 +318,18 @@ impl DesignerState {
             self.toolpath_generator
                 .set_raster_fill_ratio(effective_shape_obj.raster_fill_ratio);
 
-            let mut effective_shape = effective_shape_obj.get_effective_shape();
+            // 1. Shape with the geometry offset (entry) already applied.
+            let base_shape = effective_shape_obj.get_effective_shape();
+
+            // 2. Shape with tool offset (Center/Internal/External)
+            let mut effective_shape = {
+                let tool_radius = self.tool_settings.tool_diameter / 2.0;
+                let mode = effective_shape_obj.tool_offset_mode;
+                match crate::ops::tool_offset_distance(mode, tool_radius) {
+                    Some(d) => crate::ops::perform_offset(&base_shape, d),
+                    None => base_shape,
+                }
+            };
 
             // Keep shape-embedded laser params in sync with the effective
             // per-object/global choice so 2D toolpath generation cannot drift.

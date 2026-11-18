@@ -144,6 +144,9 @@ pub struct DesignerCanvas {
     pub(crate) device_manager: Option<Arc<DeviceManager>>,
     pub(crate) status_bar: Option<crate::ui::gtk::status_bar::StatusBar>,
     pub(crate) settings_controller: Option<Rc<SettingsController>>,
+    /// Contornos offseteados por herramienta (Internal/External), para el preview
+    /// visual en CNC 3D. Se dibujan siempre con punteado azul.
+    pub preview_tool_offset_shapes: SharedVec<Shape>,
 }
 
 impl DesignerCanvas {
@@ -177,6 +180,8 @@ impl DesignerCanvas {
         let creation_current_clone = creation_current.clone();
         let polyline_points_clone = polyline_points.clone();
         let preview_shapes_clone = preview_shapes.clone();
+        let preview_tool_offset_shapes = shared(Vec::new());
+        let preview_tool_offset_shapes_clone = preview_tool_offset_shapes.clone();
         let pending_fast_shape_clone = pending_fast_shape.clone();
         let preview_toolpaths_clone = preview_toolpaths.clone();
         let device_manager_draw = device_manager.clone();
@@ -211,6 +216,7 @@ impl DesignerCanvas {
             };
 
             let fg_color = drawing_area.color();
+            let preview_tool_offset_shapes = preview_tool_offset_shapes_clone.borrow();
 
             Self::draw(
                 cr,
@@ -222,6 +228,7 @@ impl DesignerCanvas {
                 preview_current,
                 &poly_points,
                 &preview_shapes,
+                &preview_tool_offset_shapes,
                 &toolpaths,
                 pending_fast_shape,
                 bounds,
@@ -229,44 +236,45 @@ impl DesignerCanvas {
                 grid_major_width,
                 grid_minor_width,
             );
-        });
+            });
 
-        let canvas = Rc::new(Self {
-            widget: widget.clone(),
-            state: state.clone(),
-            mouse_pos: mouse_pos.clone(),
-            toolbox: toolbox.clone(),
-            properties: shared_none(),
-            layers: shared_none(),
-            creation_start: creation_start.clone(),
-            creation_current: creation_current.clone(),
-            last_drag_offset: last_drag_offset.clone(),
-            drag_applied_move: shared((0.0, 0.0)),
-            did_drag: did_drag.clone(),
-            active_resize_handle: shared_none(),
-            resize_original_bounds: shared_none(),
-            resize_original_shapes: shared_none(),
-            hadjustment: shared_none(),
-            vadjustment: shared_none(),
-            shift_pressed: shared(false),
-            ctrl_pressed: shared(false),
-            polyline_points: polyline_points.clone(),
-            preview_shapes: preview_shapes.clone(),
-            pending_fast_shape: pending_fast_shape.clone(),
-            preview_toolpaths: preview_toolpaths.clone(),
-            preview_generating: Rc::new(std::cell::Cell::new(false)),
-            preview_pending: Rc::new(std::cell::Cell::new(false)),
-            preview_cancel: Arc::new(AtomicBool::new(false)),
-            text_tool_dialog: shared_none(),
-            text_tool_last_font_family: shared("Sans".to_string()),
-            text_tool_last_bold: shared(false),
-            text_tool_last_italic: shared(false),
-            text_tool_last_size_mm: shared(pt_to_mm(20.0)),
-            text_tool_pending_pos: shared_none(),
-            device_manager: device_manager.clone(),
-            status_bar,
-            settings_controller: settings_controller.clone(),
-        });
+            let canvas = Rc::new(Self {
+                widget: widget.clone(),
+                state: state.clone(),
+                mouse_pos: mouse_pos.clone(),
+                toolbox: toolbox.clone(),
+                properties: shared_none(),
+                layers: shared_none(),
+                creation_start: creation_start.clone(),
+                creation_current: creation_current.clone(),
+                last_drag_offset: last_drag_offset.clone(),
+                drag_applied_move: shared((0.0, 0.0)),
+                did_drag: did_drag.clone(),
+                active_resize_handle: shared_none(),
+                resize_original_bounds: shared_none(),
+                resize_original_shapes: shared_none(),
+                hadjustment: shared_none(),
+                vadjustment: shared_none(),
+                shift_pressed: shared(false),
+                ctrl_pressed: shared(false),
+                polyline_points: polyline_points.clone(),
+                preview_shapes: preview_shapes.clone(),
+                preview_tool_offset_shapes: preview_tool_offset_shapes.clone(),
+                pending_fast_shape: pending_fast_shape.clone(),
+                preview_toolpaths: preview_toolpaths.clone(),
+                preview_generating: Rc::new(std::cell::Cell::new(false)),
+                preview_pending: Rc::new(std::cell::Cell::new(false)),
+                preview_cancel: Arc::new(AtomicBool::new(false)),
+                text_tool_dialog: shared_none(),
+                text_tool_last_font_family: shared("Sans".to_string()),
+                text_tool_last_bold: shared(false),
+                text_tool_last_italic: shared(false),
+                text_tool_last_size_mm: shared(pt_to_mm(20.0)),
+                text_tool_pending_pos: shared_none(),
+                device_manager: device_manager.clone(),
+                status_bar,
+                settings_controller: settings_controller.clone(),
+            });
 
         // Mouse motion tracking
         let motion_ctrl = EventControllerMotion::new();
@@ -762,5 +770,44 @@ impl DesignerCanvas {
                 }
             }
         });
+    }
+
+    /// Recalcula los contornos offseteados por herramienta para el preview visual.
+    ///
+    /// Solo aplica en CNC 3D (en láser no hay radio de herramienta) y solo a los
+    /// shapes seleccionados con `tool_offset_mode != Center`.
+    pub fn refresh_tool_offset_preview(&self) {
+        let (is_cnc, tool_radius, shapes_with_offset): (bool, f64, Vec<(Shape, gcodekit5_designer::model::ToolOffsetMode)>) = {
+            let state = self.state.borrow();
+            (
+                state.machine_mode() == MachineMode::Cnc3D,
+                state.tool_settings.tool_diameter / 2.0,
+                state
+                    .canvas
+                    .shapes()
+                    .filter(|s| {
+                        s.tool_offset_mode != gcodekit5_designer::model::ToolOffsetMode::Center
+                    })
+                    .map(|s| (s.get_effective_shape(), s.tool_offset_mode))
+                    .collect(),
+            )
+        };
+
+        if !is_cnc || shapes_with_offset.is_empty() {
+            self.preview_tool_offset_shapes.borrow_mut().clear();
+            self.widget.queue_draw();
+            return;
+        }
+
+        let preview: Vec<Shape> = shapes_with_offset
+            .iter()
+            .filter_map(|(shape, mode)| {
+                gcodekit5_designer::ops::tool_offset_distance(*mode, tool_radius)
+                    .map(|d| gcodekit5_designer::ops::perform_offset(shape, d))
+            })
+            .collect();
+
+        *self.preview_tool_offset_shapes.borrow_mut() = preview;
+        self.widget.queue_draw();
     }
 }

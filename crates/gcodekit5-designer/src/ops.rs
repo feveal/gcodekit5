@@ -4,7 +4,7 @@
 //! on designer shapes using the `csgrs` and `cavalier_contours` libraries.
 //! Includes polyline cleaning utilities for robust boolean results.
 
-use crate::model::{DesignPath, DesignerShape, Point, Shape};
+use crate::model::{DesignPath, DesignerShape, Point, Shape,ToolOffsetMode};
 use cavalier_contours::polyline::{PlineSource, PlineSourceMut, PlineVertex, Polyline};
 use csgrs::traits::CSG;
 use lyon::path::iterator::PathIterator;
@@ -522,66 +522,49 @@ pub fn perform_boolean(a: &Shape, b: &Shape, op: BooleanOp) -> Shape {
     Shape::Path(DesignPath::from_csg(result_csg))
 }
 
-// ---
-// FUNCIÓN AUXILIAR: Ajustada al sistema de Cavalier
-fn interpolate_polyline_arcs(pline: &Polyline, tolerance: f64) -> Vec<[f64; 2]> {
-    if pline.vertex_count() == 0 {
+fn interpolate_polyline_arcs(pline: &Polyline, _tolerance: f64) -> Vec<[f64; 2]> {
+    let n = pline.vertex_count();
+    if n < 3 {
         return Vec::new();
     }
 
-    let mut points = Vec::new();
-    let count = pline.vertex_count();
-
-    // Iteramos explícitamente por los índices para controlar el inicio y el fin del bucle cerrado
-    for i in 0..count {
-        // Si está cerrado, el siguiente del último es el primero (0)
-        let (Some(v_start), Some(v_end)) = (pline.get(i), pline.get((i + 1) % count)) else {
-            continue;
-        };
-
-        // Añadimos siempre el inicio del segmento actual
-        points.push([v_start.x, v_start.y]);
-
-        // Si el segmento actual es un arco (bulge)
-        if v_start.bulge.abs() > 1e-6 {
-            let (radius, center) =
-                cavalier_contours::polyline::seg_arc_radius_and_center(v_start, v_end);
-
-            let start_angle = (v_start.y - center.y).atan2(v_start.x - center.x);
-            let mut end_angle = (v_end.y - center.y).atan2(v_end.x - center.x);
-
-            let is_clockwise = v_start.bulge < 0.0;
-
-            if is_clockwise && end_angle > start_angle {
-                end_angle -= 2.0 * std::f64::consts::PI;
-            } else if !is_clockwise && end_angle < start_angle {
-                end_angle += 2.0 * std::f64::consts::PI;
-            }
-
-            let angle_diff = (end_angle - start_angle).abs();
-
-            let steps = if radius > tolerance {
-                let arc_cos = 1.0 - (tolerance / radius);
-                let step_angle = (2.0 * arc_cos.acos()).max(0.01);
-                (angle_diff / step_angle).ceil() as usize
-            } else {
-                5
-            };
-
-            for step in 1..steps {
-                let t = step as f64 / steps as f64;
-                let angle = start_angle + (end_angle - start_angle) * t;
-                let x = center.x + radius * angle.cos();
-                let y = center.y + radius * angle.sin();
-                points.push([x, y]);
-            }
+    // Paso 1: extraer segmentos rectos como (inicio, fin)
+    let mut straight_segments: Vec<((f64, f64), (f64, f64))> = Vec::new();
+    for i in 0..n {
+        let v = match pline.get(i) { Some(v) => v, None => continue };
+        let v_next = match pline.get((i + 1) % n) { Some(v) => v, None => continue };
+        if v.bulge.abs() < 1e-6 {
+            straight_segments.push(((v.x, v.y), (v_next.x, v_next.y)));
         }
     }
 
-    // CORRECCIÓN DEDUP
-    points.dedup_by(|a, b| (a[0] - b[0]).abs() < 1e-5 && (a[1] - b[1]).abs() < 1e-5);
+    if straight_segments.is_empty() {
+        return Vec::new();
+    }
 
-    points
+    // Paso 2: calcular intersecciones de segmentos consecutivos
+    let mut corners = Vec::new();
+    let m = straight_segments.len();
+    for i in 0..m {
+        let ((x1, y1), (x2, y2)) = straight_segments[i];
+        let ((x3, y3), (x4, y4)) = straight_segments[(i + 1) % m];
+
+        let dx1 = x2 - x1;
+        let dy1 = y2 - y1;
+        let dx2 = x4 - x3;
+        let dy2 = y4 - y3;
+
+        let denom = dx1 * dy2 - dy1 * dx2;
+        if denom.abs() > 1e-9 {
+            let t = ((x3 - x1) * dy2 - (y3 - y1) * dx2) / denom;
+            corners.push([x1 + t * dx1, y1 + t * dy1]);
+        } else {
+            // Paralelas: usar el punto final del primer segmento
+            corners.push([x2, y2]);
+        }
+    }
+
+    corners
 }
 
 pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
@@ -635,8 +618,10 @@ pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
         }))
         .unwrap_or_default();
 
+
+
         for offset in offsets {
-            // Muestreamos con una tolerancia estricta de 0.01mm para máxima fidelidad en el piñón
+
             let pts = interpolate_polyline_arcs(&offset, 0.01);
             if pts.len() >= 3 {
                 poly_sketch = poly_sketch.union(&csgrs::sketch::Sketch::polygon(&pts, None));
@@ -677,7 +662,6 @@ pub fn perform_offset(shape: &Shape, distance: f64) -> Shape {
     result_path.rotation = rotation;
     Shape::Path(result_path)
 }
-// ---
 
 pub fn perform_fillet(shape: &Shape, radius: f64) -> Shape {
     if let Shape::Path(path) = shape {
@@ -823,4 +807,21 @@ pub fn perform_chamfer(shape: &Shape, distance: f64) -> Shape {
     }
 
     Shape::Path(DesignPath::from_csg(result_sketch))
+}
+
+/// Distancia de offset para que la fresa pase por Center / Internal / External.
+///
+/// Convención (la misma que el entry `offset` de Geometry Ops):
+///   positivo = hacia dentro, negativo = hacia fuera.
+///
+/// Devuelve `None` cuando no hay offset que aplicar (Center o radio <= 0).
+pub fn tool_offset_distance(mode: ToolOffsetMode, tool_radius: f64) -> Option<f64> {
+    if !tool_radius.is_finite() || tool_radius <= 0.0 {
+        return None;
+    }
+    match mode {
+        ToolOffsetMode::Center => None,
+        ToolOffsetMode::Internal => Some(tool_radius),
+        ToolOffsetMode::External => Some(-tool_radius),
+    }
 }

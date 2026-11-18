@@ -79,6 +79,12 @@ The object panel displays the list of objects with:
 
 - **IMPORTANT:** Objects that do not have a Z dimension or have a Z dimension of 0 are drawn at the upper material dimension, since the Z dimension is always considered downwards in 3D mode.
 
+- In the object's specific properties, there are three checkboxes to define the tool's path relative to the object: Centered, Internal, or External. When "Internal" or "External" is selected, an offset from the object is created at a distance equal to the tool radius (as defined in the tool configuration). This line appears as a series of dots and is the path that will be used to generate the G-code.
+
+<img src="../../help_images/cam1" width="400"><img src="../../help_images/cam3" width="300">
+
+<img src="../../help_images/cam2" width="600">
+
 ## Related
 [Visualizer](help:visualizer)
 [Machine Control](help:machine_control)

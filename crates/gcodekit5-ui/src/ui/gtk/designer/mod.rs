@@ -372,6 +372,7 @@ impl DesignerView {
                 if show_toolpaths {
                     canvas.generate_preview_toolpaths();
                 }
+                canvas.refresh_tool_offset_preview();
                 canvas.widget.queue_draw();
             }
             if let Some(properties) = properties_ui.upgrade() {

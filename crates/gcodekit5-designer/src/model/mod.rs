@@ -259,6 +259,20 @@ impl RasterImage {
     }
 } // impl RasterImage
 
+/// Where the milling cutter travels in relation to the shape's contour.
+///
+/// Used for tool offsetting (Center/Internal/External):
+/// - `Center`: the cutter follows the contour exactly.
+/// - `Internal`: the cutter travels along the inside (inward offset).
+/// - `External`: the cutter travels along the outside (outward offset).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ToolOffsetMode {
+    #[default]
+    Center,
+    Internal,
+    External,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct LaserParams {
     pub feed_rate: f64,     // mm/min
@@ -606,8 +620,6 @@ pub(crate) fn parametric_render_transform(
             .then_translate(lyon::math::vector(center.x as f32, center.y as f32)),
     )
 }
-
-// ---
 
 /// Angle in degrees between consecutive items of a circular array.
 ///

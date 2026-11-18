@@ -113,6 +113,10 @@ pub struct PropertiesPanel {
     pub(crate) ramp_angle_entry: Entry,
     pub(crate) strategy_combo: DropDown,
     pub(crate) raster_fill_entry: Entry,
+    // Machining mode based on tool diameter
+    pub(crate) cam_center_check: CheckButton,
+    pub(crate) cam_internal_check: CheckButton,
+    pub(crate) cam_external_check: CheckButton,
 
     // Geometry Ops widgets
     pub(crate) offset_entry: Entry,
@@ -292,6 +296,9 @@ impl PropertiesPanel {
             step_down_unit_label,
             step_in_unit_label,
             step_in_label,
+            cam_center_check,
+            cam_internal_check,
+            cam_external_check,
         ) = Self::build_cam_section();
         content.append(&cam_frame);
 
@@ -379,6 +386,11 @@ impl PropertiesPanel {
             ramp_angle_entry,
             strategy_combo,
             raster_fill_entry,
+
+            cam_center_check,
+            cam_internal_check,
+            cam_external_check,
+
             offset_entry,
             chamfer_entry,
 
@@ -425,6 +437,22 @@ impl PropertiesPanel {
         panel.setup_handlers();
         // Setup focus tracking for all spin buttons
         panel.setup_focus_tracking();
+
+        // Refreshes CAM sensitivity when toggling "Use global values".
+        // It connects AFTER setup_handlers so that the handler which updates
+        // the state runs first; here, we only recalculate set_sensitive.
+        {
+            let panel_weak = Rc::downgrade(&panel);
+            let updating = panel.updating.clone();
+            panel.cam_use_global_check.connect_toggled(move |_| {
+                if *updating.borrow() {
+                    return;
+                }
+                if let Some(panel) = panel_weak.upgrade() {
+                    panel.refresh_cam_sensitivity();
+                }
+            });
+        }
 
         panel
     }
@@ -773,5 +801,16 @@ impl PropertiesPanel {
         );
         // Laser override handlers
         handlers::laser_override::setup_laser_override_handlers(self);
+
+        // Tool Offset mode hadlers
+        handlers::cam::setup_tool_offset_mode_handlers(
+            &self.cam_center_check,
+            &self.cam_internal_check,
+            &self.cam_external_check,
+            self.state.clone(),
+            self.updating.clone(),
+            self.redraw_callback.clone(),
+        );
+
     }
 }

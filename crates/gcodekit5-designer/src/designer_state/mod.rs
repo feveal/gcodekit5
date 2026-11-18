@@ -181,16 +181,14 @@ impl DesignerState {
         self.gcode_generated = false;
     }
 
-    /// Sets the tool diameter for toolpath generation.
+    /// Set tool diameter
     pub fn set_tool_diameter(&mut self, diameter: f64) {
-        let valid_diameter = if diameter.is_finite() && diameter > 0.0 {
-            diameter
-        } else {
-            0.001
-        };
+        if !diameter.is_finite() || diameter <= 0.0 {
+            return; // Revisar, admite negativos aunque les quita el signo
+        }
 
-        self.tool_settings.tool_diameter = valid_diameter;
-        self.toolpath_generator.set_tool_diameter(valid_diameter);
+        self.tool_settings.tool_diameter = diameter;
+        self.toolpath_generator.set_tool_diameter(diameter);
         self.gcode_generated = false;
     }
 

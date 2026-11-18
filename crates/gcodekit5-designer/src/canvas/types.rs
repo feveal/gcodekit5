@@ -80,6 +80,8 @@ pub struct DrawingObject {
     pub lock_aspect_ratio: bool,
     pub use_global_laser: bool,
     pub laser_params: LaserParams,
+    /// Dónde pasa la fresa respecto al contorno (Center/Internal/External).
+    pub tool_offset_mode: crate::model::ToolOffsetMode,
 }
 
 impl DrawingObject {
@@ -174,6 +176,7 @@ impl DrawingObject {
             lock_aspect_ratio: true, // lock default aspect ratio
             use_global_laser: true,
             laser_params: LaserParams::default(),
+            tool_offset_mode: crate::model::ToolOffsetMode::default(),
         }
     }
 }

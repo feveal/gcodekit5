@@ -21,6 +21,7 @@ impl DesignerCanvas {
         preview_current: Option<(f64, f64)>,
         polyline_points: &[Point],
         preview_shapes: &[Shape],
+        preview_tool_offset_shapes: &[Shape],
         toolpaths: &[Toolpath],
         pending_fast_shape: Option<Shape>,
         device_bounds: (f64, f64, f64, f64),
@@ -262,6 +263,17 @@ impl DesignerCanvas {
                 1.0,
             );
             cr.set_line_width(2.0 / zoom);
+            Self::draw_shape_geometry(cr, shape);
+            let _ = cr.restore();
+        }
+
+        // Draw tool-offset preview shapes in dashed blue.
+        // Only populated in CNC 3D for shapes with Internal/External mode.
+        for shape in preview_tool_offset_shapes {
+            let _ = cr.save();
+            cr.set_source_rgba(0.4, 0.7, 1.0, 0.95); // tool offset in blue
+            cr.set_line_width(2.0 / zoom);
+            cr.set_dash(&[6.0 / zoom, 4.0 / zoom], 0.0);
             Self::draw_shape_geometry(cr, shape);
             let _ = cr.restore();
         }

@@ -85,5 +85,8 @@
     <file compressed="true" alias="help_images/visualizer3d.png">help_images/visualizer3d.png</file>
     <file compressed="true" alias="help_images/visualizer3d1.png">help_images/visualizer3d1.png</file>
     <file compressed="true" alias="help_images/warning_limits.png">help_images/warning_limits.png</file>
+    <file compressed="true" alias="help_images/cam1.png">help_images/cam1.png</file>
+    <file compressed="true" alias="help_images/cam2.png">help_images/cam2.png</file>
+    <file compressed="true" alias="help_images/cam3.png">help_images/cam3.png</file>
   </gresource>
 </gresources>

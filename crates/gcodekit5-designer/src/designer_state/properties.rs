@@ -845,4 +845,29 @@ impl DesignerState {
             }
         });
     }
+
+    /// Sets the tool offset mode (Center/Internal/External) for selected shapes.
+    ///
+    /// Recorded as a single undo step.
+    pub fn set_selected_tool_offset_mode(&mut self, mode: crate::model::ToolOffsetMode) {
+        let mut commands = Vec::new();
+        for obj in self.canvas.shapes().filter(|s| s.selected) {
+            if obj.tool_offset_mode != mode {
+                let mut new_obj = obj.clone();
+                new_obj.tool_offset_mode = mode;
+                commands.push(DesignerCommand::ChangeProperty(ChangeProperty {
+                    id: obj.id,
+                    old_state: obj.clone(),
+                    new_state: new_obj,
+                }));
+            }
+        }
+        if !commands.is_empty() {
+            let cmd = DesignerCommand::CompositeCommand(CompositeCommand {
+                commands,
+                name: "Change Tool Offset Mode".to_string(),
+            });
+            self.push_command(cmd);
+        }
+    }
 }

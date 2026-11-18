@@ -1,3 +1,14 @@
+## [Unreleased] (2026-11-18) Offset for CNC machining in Designer
+- Geometry offset with sharp corners (the fix for `interpolate_polyline_arcs`).
+
+- Center/Internal/External radii in the UI, with state management, undo support, and synchronization.
+
+- Tool offset in G-code (`build_shape_toolpaths` applies `perform_offset` using ±`tool_radius`).
+
+- Blue dashed visual preview on the canvas, always visible in the 3D CNC view for objects with Internal/External settings.
+
+- Validation ensuring diameter > 0 within the state.
+
 ## [Unreleased] - 2026-11-17 (stale TODO removed)
 
 ### Changed
