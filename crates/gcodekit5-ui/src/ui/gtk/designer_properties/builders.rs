@@ -620,7 +620,6 @@ impl PropertiesPanel {
         grid.attach(&cam_machining_hint, 0, 10, 1, 1);
         grid.attach(&side_box, 0, 11, 3, 1);
 
-
         frame.set_child(Some(&grid));
         (
             frame,

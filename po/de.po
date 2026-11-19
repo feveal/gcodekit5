@@ -3002,3 +3002,9 @@ msgstr "die Steuerung antwortete"
 
 msgid "no reply from the controller"
 msgstr "keine Antwort von der Steuerung"
+
+msgid "Internal"
+msgstr "Innen"
+
+msgid "External"
+msgstr "Außen"

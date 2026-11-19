@@ -2926,3 +2926,9 @@ msgstr ""
 
 msgid "no reply from the controller"
 msgstr ""
+
+msgid "Internal"
+msgstr ""
+
+msgid "External"
+msgstr ""
