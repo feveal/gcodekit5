@@ -3006,6 +3006,9 @@ msgstr "el controlador respondió"
 msgid "no reply from the controller"
 msgstr "sin respuesta del controlador"
 
+msgid "Machining:"
+msgstr "Mecanizado:"
+
 msgid "Internal"
 msgstr "Interno"
 

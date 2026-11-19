@@ -2927,6 +2927,9 @@ msgstr ""
 msgid "no reply from the controller"
 msgstr ""
 
+msgid "Machining:"
+msgstr ""
+
 msgid "Internal"
 msgstr ""
 
