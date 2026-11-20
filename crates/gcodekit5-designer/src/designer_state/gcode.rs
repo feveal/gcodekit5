@@ -21,6 +21,17 @@ const LIMIT_WARNING: &str = ";
 ;
 ";
 
+/// Comment block added when Arc centers outside work area
+const ARC_WARNING: &str = ";
+; ******************************************************************
+; ************* NOTICE: ARC CENTERS OUTSIDE WORK AREA **************
+; ** Some arcs have centers outside machine limits, which may    **
+; ** cause controller stalls on tight curves. If the machine      **
+; ** pauses, increase 'Arc Segment Length' in Preferences.        **
+; ******************************************************************
+;
+";
+
 impl DesignerState {
     fn shape_embedded_laser_use_global(shape: &DrawingObject) -> bool {
         match &shape.shape {
@@ -177,45 +188,33 @@ impl DesignerState {
     /// Phase 1 of G-code generation: the G-code writer set up for the
     /// stock (safe Z, Z floor), the machine limits and the machine mode.
     fn configured_gcode_generator(&self, machine_limits: Option<MachineLimits>) -> ToolpathToGcode {
-        // Get safe_z from stock_material, default to 10.0 if not set
         let safe_z = self
             .stock_material
             .as_ref()
             .map(|s| s.safe_z as f64)
             .unwrap_or(10.0);
         let mut gcode_gen = ToolpathToGcode::new(Units::MM, safe_z)
-            .with_continuous_z_between_passes(self.tool_settings.continuous_z_between_passes);
+            .with_continuous_z_between_passes(self.tool_settings.continuous_z_between_passes)
+            .with_arc_segment_length(self.arc_segment_length);
 
         if let Some(limits) = machine_limits {
             gcode_gen = gcode_gen.with_machine_limits(limits);
         }
 
-        // In CNC mode machine Z is absolute with the table at 0 and the stock top
-        // at the stock thickness, so a configured stock bounds Z from below at 0.
         if self.machine_mode() == MachineMode::Cnc3D && self.stock_material.is_some() {
             gcode_gen = gcode_gen.with_z_min_limit(0.0);
         }
 
-        // Use state mode:
+        gcode_gen.num_axes = self.num_axes;
+
         match self.machine_mode() {
             MachineMode::Laser2D => {
-                gcode_gen = gcode_gen.with_laser_2d();
+                gcode_gen = gcode_gen
+                    .with_laser_2d()
+                    .with_curve_tolerance(0.05)
+                    .with_min_point_distance(0.15);
             }
             MachineMode::Cnc3D => {}
-        }
-
-        gcode_gen.num_axes = self.num_axes;
-        if self.num_axes < 3 {
-            // Use state mode:
-            match self.machine_mode() {
-                MachineMode::Laser2D => {
-                    gcode_gen = gcode_gen
-                        .with_laser_2d()
-                        .with_curve_tolerance(0.05) // Adjust as needed (0.03 ~ 0.15)
-                        .with_min_point_distance(0.15);
-                }
-                MachineMode::Cnc3D => {}
-            }
         }
         gcode_gen
     }
@@ -790,7 +789,7 @@ impl DesignerState {
     pub fn generate_gcode_with_warning_info(
         &mut self,
         machine_limits: Option<MachineLimits>,
-    ) -> (String, bool) {
+    ) -> (String, bool, bool) {
         let mut gcode = String::new();
         let gcode_gen = self.configured_gcode_generator(machine_limits);
         let shape_toolpaths = self.build_shape_toolpaths(&gcode_gen);
@@ -838,13 +837,21 @@ impl DesignerState {
             gcode.push_str(LIMIT_WARNING);
         }
 
+        let has_arc_notice = shape_toolpaths
+            .iter()
+            .flat_map(|(_, tps, _)| tps.iter())
+            .any(|tp| gcode_gen.has_arc_center_outside_limits(tp));
+        if has_arc_notice {
+            gcode.push_str(ARC_WARNING);
+        }
+
         self.emit_shapes_gcode(&mut gcode, &gcode_gen, &shape_toolpaths, header_speed);
 
         gcode.push_str(&gcode_gen.generate_footer());
 
         self.generated_gcode = gcode.clone();
         self.gcode_generated = self.canvas.shape_count() > 0;
-        (gcode, has_violation)
+        (gcode, has_violation, has_arc_notice)
     }
 
     /// Generates G-code from the current design.

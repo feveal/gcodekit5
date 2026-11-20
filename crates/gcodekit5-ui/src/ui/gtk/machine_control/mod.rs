@@ -53,6 +53,8 @@ mod state;
 mod status_report;
 mod ui_builders;
 
+use gcodekit5_communication::firmware::grbl::error_decoder;
+
 /// Quick Z probe: signed distance (mm) along Z.
 const PROBE_Z_MOVE: (char, f32) = ('Z', -20.0);
 /// Quick edge-find probe distance (mm).
@@ -247,6 +249,11 @@ pub struct MachineControlView {
     /// Device profiles; the active profile chooses serial vs. network connection.
     pub(crate) device_manager:
         Rc<std::cell::RefCell<Option<std::sync::Arc<gcodekit5_devicedb::DeviceManager>>>>,
+    /// Línea que el `DirectSender` tenía en vuelo cuando el firmware rechazó
+    /// el job. Compartida con el worker del sender (Arc<Mutex<...>>) y entre
+    /// los clones del panel (Rc<RefCell<...>>).
+    pub(crate) last_sender_line:
+        Rc<RefCell<Option<std::sync::Arc<std::sync::Mutex<Option<(usize, String)>>>>>>,
 }
 
 impl MachineControlView {
@@ -1484,6 +1491,7 @@ impl MachineControlView {
             active_wcs: Rc::new(Cell::new(0)),
             wcs_reverting: Rc::new(Cell::new(false)),
             device_manager: Rc::new(std::cell::RefCell::new(None)),
+            last_sender_line: Rc::new(RefCell::new(None)),
         };
 
         Self::update_probe_tooltips(
@@ -2189,8 +2197,16 @@ impl MachineControlView {
                     return;
                 }
 
-                let (sender, receiver) =
-                    DirectSender::new(communicator_clone.clone(), view_clone.is_streaming.clone());
+                let (sender, receiver) = DirectSender::new(
+                    communicator_clone.clone(),
+                    view_clone.is_streaming.clone(),
+                );
+
+                // Compartir la línea en vuelo del sender con el panel ANTES de
+                // clonar view_timeout: el clon hereda el valor actualizado.
+                *view_clone.last_sender_line.borrow_mut() =
+                    Some(sender.last_sent.clone());
+
                 // Keep the sender for pause/stop/E-stop.
                 *view_clone.active_sender.borrow_mut() = Some(Rc::new(sender.clone()));
 
@@ -2987,18 +3003,45 @@ impl MachineControlView {
                 *self.job_start_time.lock() = None;
                 self.log(&format!("{} {}", t!("Job stopped:"), t!("stopped by user")));
             }
+
             JobOutcome::Stopped(reason) => {
-                // After an `error:` the controller keeps executing the moves it already
-                // buffered, so keep the job active until it reports Idle.
+                self.log(&format!("[debug] Stopped reason crudo: {reason:?}"));
                 if !reason.starts_with("error:") {
                     *self.job_start_time.lock() = None;
                 }
                 tracing::warn!(reason = %reason, "Job stopped");
-                let text = format!(
+                let mut text = format!(
                     "{} {}",
                     t!("Job stopped:"),
                     Self::decode_response_line(reason)
                 );
+
+                if let Some(line_ref) = self.last_sender_line.borrow().as_ref()
+                    && let Ok(guard) = line_ref.lock()
+                    && let Some((n, txt)) = guard.as_ref()
+                {
+                    text.push_str(&format!("\n  {} #{}: `{}`", t!("Failed line"), n, txt));
+                }
+
+                // 3) Detalle del decodificador GRBL: solo si `reason` contiene
+                //    un número (error:33). Si el firmware manda texto, no aplica.
+                let code = reason
+                    .trim()
+                    .strip_prefix("error:")
+                    .or_else(|| reason.trim().strip_prefix("error: "))
+                    .and_then(|rest| rest.split_whitespace().next())
+                    .and_then(|s| s.parse::<u8>().ok());
+                if let Some(code) = code {
+                    text.push_str("\n\n");
+                    text.push_str(&error_decoder::format_error_detailed(code));
+                } else {
+                    // Firmware manda texto, no código: al menos indica el tipo.
+                    text.push_str(&format!(
+                        "\n  (Sin código numérico GRBL; respuesta del firmware: `{}`)",
+                        reason.trim()
+                    ));
+                }
+
                 self.log(&text);
                 self.show_controller_error(&text);
             }

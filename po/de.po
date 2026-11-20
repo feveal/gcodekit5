@@ -3011,3 +3011,21 @@ msgstr "Innen"
 
 msgid "External"
 msgstr "Außen"
+
+msgid "Arc Segment Length (mm)"
+msgstr "Bogenabschnittslänge (mm)"
+
+msgid "Length of arc segments for arc-to-line expansion"
+msgstr "Länge von Bogensegmenten für die Erweiterung von Bögen zu Geraden"
+
+msgid "Max Line Length"
+msgstr "Maximale Zeilenlänge"
+
+msgid "Maximum characters per line in output files"
+msgstr "Maximale Zeichenanzahl pro Zeile in Ausgabedateien"
+
+msgid "Arc centers outside work area"
+msgstr "Bogenmittelpunkte außerhalb des Arbeitsbereichs"
+
+msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
+msgstr "Einige Kreisbögen haben Mittelpunkte außerhalb der Maschinengrenzen, was bei engen Kurven zu einem Stillstand der Steuerung führen kann. Falls die Maschine anhält, erhöhen Sie den Wert für „Kreisbogensegmentlänge“ (Arc Segment Length) in den Einstellungen."

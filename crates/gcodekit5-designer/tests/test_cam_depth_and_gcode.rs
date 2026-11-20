@@ -182,7 +182,7 @@ fn test_designer_cnc_cut_within_stock_has_no_warning() {
     let mut state = DesignerState::new();
     state.set_machine_mode(MachineMode::Cnc3D);
     state.canvas.add_rectangle(10.0, 10.0, 20.0, 20.0);
-    let (gcode, warn) = state.generate_gcode_with_warning_info(Some(limits()));
+    let (gcode, warn, _) = state.generate_gcode_with_warning_info(Some(limits()));
     assert!(!warn, "{gcode}");
     assert!(!gcode.contains("OUT OF LIMITS"));
 }
@@ -195,7 +195,7 @@ fn test_designer_cnc_cut_below_stock_bottom_warns() {
     let obj = state.canvas.get_shape_mut(id).expect("shape");
     // Stock is 10 mm thick; cutting 12 mm deep goes below the stock bottom.
     obj.start_depth = 12.0;
-    let (_, warn) = state.generate_gcode_with_warning_info(Some(limits()));
+    let (_, warn, _) = state.generate_gcode_with_warning_info(Some(limits()));
     assert!(warn);
 }
 

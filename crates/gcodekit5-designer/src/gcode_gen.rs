@@ -33,6 +33,8 @@ pub struct ToolpathToGcode {
     /// Lowest Z (mm) the tool may reach, e.g. the bottom of the configured stock.
     /// `None` disables the Z check in [`Self::has_boundary_violation`].
     pub z_min_limit: Option<f64>,
+    // Limit arcs
+    pub arc_segment_length: f64,
 }
 
 impl ToolpathToGcode {
@@ -51,7 +53,14 @@ impl ToolpathToGcode {
             machine_limits: None,
             continuous_z_between_passes: false,
             z_min_limit: None,
+            arc_segment_length: 0.5,
         }
+    }
+
+    // Arcs
+    pub fn with_arc_segment_length(mut self, length: f64) -> Self {
+        self.arc_segment_length = length.max(0.0);
+        self
     }
 
     /// Creates a new G-code generator with line numbers enabled.
@@ -66,6 +75,7 @@ impl ToolpathToGcode {
             machine_limits: None,
             continuous_z_between_passes: false,
             z_min_limit: None,
+            arc_segment_length: 0.5,
         }
     }
 
@@ -183,11 +193,40 @@ impl ToolpathToGcode {
                 }
 
                 ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW => {
-                    if let Some(pending) = pending_segment.take() {
-                        optimized.segments.push(pending);
+                    let chord_len = segment.start.distance_to(&segment.end);
+                    let radius = segment
+                        .center
+                        .map(|c| {
+                            ((c.x - segment.start.x).powi(2) + (c.y - segment.start.y).powi(2))
+                                .sqrt()
+                        })
+                        .unwrap_or(0.0);
+
+                    if radius < self.arc_segment_length
+                        || (chord_len > 1e-6 && chord_len < self.arc_segment_length)
+                    {
+                        // Tratar como LinearMove para que pase por el filtro de distancia y fusión colineal
+                        if let Some(last) = last_point
+                            && last.distance_to(&segment.end) < self.min_point_distance
+                        {
+                            continue;
+                        }
+
+                        if let Some(pending) = pending_segment.take() {
+                            optimized.segments.push(pending);
+                        }
+                        let mut linear = segment.clone();
+                        linear.segment_type = ToolpathSegmentType::LinearMove;
+                        linear.center = None;
+                        pending_segment = Some(linear);
+                        last_point = Some(segment.end);
+                    } else {
+                        if let Some(pending) = pending_segment.take() {
+                            optimized.segments.push(pending);
+                        }
+                        optimized.segments.push(segment.clone());
+                        last_point = Some(segment.end);
                     }
-                    optimized.segments.push(segment.clone());
-                    last_point = Some(segment.end);
                 }
             }
         }
@@ -522,13 +561,15 @@ impl ToolpathToGcode {
 
                     let line_prefix = self.get_line_prefix(line_number);
 
-                    let min_radius_mm = 0.25; // Limite de radio mas pequeño
-
                     let is_small_arc = if let Some(center) = segment.center {
                         let i = center.x - segment.start.x;
                         let j = center.y - segment.start.y;
                         let radius = (i * i + j * j).sqrt();
-                        radius < min_radius_mm
+                        let chord_len = segment.start.distance_to(&segment.end);
+
+                        // Si el radio o la longitud del tramo son menores que arc_segment_length,
+                        // emitir como G01 para evitar errores de redondeo/bloqueos en el controlador.
+                        radius < self.arc_segment_length || chord_len < self.arc_segment_length
                     } else {
                         true // Sin centro, tratar como pequeño
                     };
@@ -730,10 +771,10 @@ impl ToolpathToGcode {
                 || p.y > limits.y_max + EPS
         };
 
-        toolpath.segments.iter().any(|segment| {
-            outside(&segment.start)
-                || outside(&segment.end)
-        })
+        toolpath
+            .segments
+            .iter()
+            .any(|segment| outside(&segment.start) || outside(&segment.end))
     }
 
     /// Sets the machine XY limits used by [`Self::has_boundary_violation`].
@@ -746,6 +787,43 @@ impl ToolpathToGcode {
     pub fn with_z_min_limit(mut self, z_min: f64) -> Self {
         self.z_min_limit = Some(z_min);
         self
+    }
+
+    /// Comprueba si algún arco que se vaya a emitir como G02/G03 tiene su centro
+    /// fuera de los límites de la máquina (útil para sugerir ajustar `arc_segment_length`).
+    pub fn has_arc_center_outside_limits(&self, toolpath: &Toolpath) -> bool {
+        const EPS: f64 = 1e-6;
+        let Some(limits) = &self.machine_limits else {
+            return false;
+        };
+        let outside = |p: &Point| {
+            p.x < limits.x_min - EPS
+                || p.x > limits.x_max + EPS
+                || p.y < limits.y_min - EPS
+                || p.y > limits.y_max + EPS
+        };
+
+        toolpath.segments.iter().any(|segment| {
+            if !matches!(
+                segment.segment_type,
+                ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW
+            ) {
+                return false;
+            }
+            let Some(center) = &segment.center else {
+                return false;
+            };
+
+            // Si este arco se va a convertir en G01 por arc_segment_length, ya no supone riesgo
+            let radius = ((center.x - segment.start.x).powi(2)
+                + (center.y - segment.start.y).powi(2))
+            .sqrt();
+            let chord_len = segment.start.distance_to(&segment.end);
+            let will_be_linear = radius < self.arc_segment_length
+                || (chord_len > 1e-6 && chord_len < self.arc_segment_length);
+
+            !will_be_linear && outside(center)
+        })
     }
 }
 

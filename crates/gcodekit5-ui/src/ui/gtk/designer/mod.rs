@@ -86,6 +86,16 @@ impl DesignerView {
         // Create designer state
         let state = shared(DesignerState::new());
 
+        {
+            let arc_len = settings_controller
+                .persistence
+                .borrow()
+                .config()
+                .file_processing
+                .arc_segment_length;
+            state.borrow_mut().set_arc_segment_length(arc_len);
+        }
+
         // Create main horizontal layout (toolbox + canvas + properties)
         let main_box = Box::new(Orientation::Horizontal, 0);
         main_box.set_hexpand(true);
@@ -735,12 +745,17 @@ impl DesignerView {
                 state.toolpath_generator.set_start_depth(start_depth);
                 state.toolpath_generator.set_step_in(tool_diameter * 0.4);
 
-                let limits = designer_machine_limits(
-                    device_manager.as_ref(),
-                    &settings_for_limits.borrow(),
-                );
+                let (limits, arc_segment_length) = {
+                    let s = settings_for_limits.borrow();
+                    (
+                        designer_machine_limits(device_manager.as_ref(), &s),
+                        s.config().file_processing.arc_segment_length,
+                    )
+                };
+                state.set_arc_segment_length(arc_segment_length);
 
-                let (gcode, has_out_of_limits_warning) = state.generate_gcode_with_warning_info(limits);
+                let (gcode, has_out_of_limits_warning, has_arc_notice) =
+                    state.generate_gcode_with_warning_info(limits);
 
                 drop(state);
 
@@ -749,6 +764,15 @@ impl DesignerView {
                     crate::ui::gtk::common::dialog::show_warning(
                         &t!("Out of limits warning"),
                         &t!("The generated G-code contains coordinates outside the machine working area (Negative values). Review the path before sending it to the machine."),
+                        parent.as_ref(),
+                    );
+                }
+
+                if has_arc_notice {
+                    let parent = crate::ui::gtk::file_dialog::parent_window(&canvas_gen.widget);
+                    crate::ui::gtk::common::dialog::show_warning(
+                        &t!("Arc centers outside work area"),
+                        &t!("Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."),
                         parent.as_ref(),
                     );
                 }
@@ -783,13 +807,6 @@ impl DesignerView {
             settings_persistence: Some(settings_controller.persistence.clone()),
         });
 
-        // Empty state actions
-        /*
-                {
-                    let v = view.clone();
-                    empty_new_btn.connect_clicked(move |_| v.new_file());
-                }
-        */
         {
             let v = view.clone();
             empty_open_btn.connect_clicked(move |_| v.open_file());
@@ -816,6 +833,17 @@ impl DesignerView {
                 }
                 let enabled = value == "true";
                 empty_import_stl_btn.set_visible(enabled);
+            });
+        }
+
+        {
+            let state_arc = state.clone();
+            settings_controller.on_setting_changed(move |key, value| {
+                if key == "arc_segment_length"
+                    && let Ok(len) = value.parse::<f64>()
+                {
+                    state_arc.borrow_mut().set_arc_segment_length(len);
+                }
             });
         }
 

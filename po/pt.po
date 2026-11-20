@@ -3006,3 +3006,21 @@ msgstr "Interno"
 
 msgid "External"
 msgstr "Externo"
+
+msgid "Arc Segment Length (mm)"
+msgstr "Comprimento do segmento de arco (mm)"
+
+msgid "Length of arc segments for arc-to-line expansion"
+msgstr "Comprimento dos segmentos de arco para a expansão de arcos em linhas"
+
+msgid "Max Line Length"
+msgstr "Comprimento máximo da linha"
+
+msgid "Maximum characters per line in output files"
+msgstr "Número máximo de caracteres por linha nos ficheiros de saída"
+
+msgid "Arc centers outside work area"
+msgstr "Centros de arcos fora da área de trabalho"
+
+msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
+msgstr "Alguns arcos possuem centros fora dos limites da máquina, o que pode causar paragens do controlador em curvas apertadas. Se a máquina parar, aumente o 'Comprimento do Segmento de Arco' nas Preferências."

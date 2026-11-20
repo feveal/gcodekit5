@@ -852,20 +852,43 @@ impl DesignerView {
 
                         // The same working area Generate checks: the active
                         // device profile, else the Preferences limits.
-                        let limits = settings_persistence_for_limits.as_ref().and_then(|p| {
-                            super::designer_machine_limits(
-                                canvas.device_manager.as_ref(),
-                                &p.borrow(),
-                            )
-                        });
-                        let (gcode, has_out_of_limits_warning) =
+                        let (limits, arc_segment_length) = settings_persistence_for_limits
+                            .as_ref()
+                            .map(|p| {
+                                let s = p.borrow();
+                                (
+                                    super::designer_machine_limits(
+                                        canvas.device_manager.as_ref(),
+                                        &s,
+                                    ),
+                                    Some(s.config().file_processing.arc_segment_length),
+                                )
+                            })
+                            .unwrap_or((None, None));
+
+                        if let Some(arc_len) = arc_segment_length {
+                            state.set_arc_segment_length(arc_len);
+                        }
+
+                        let (gcode, has_out_of_limits_warning, has_arc_notice) =
                             state.generate_gcode_with_warning_info(limits);
+
+                        drop(state);
 
                         if has_out_of_limits_warning {
                             let parent = crate::ui::gtk::file_dialog::parent_window(&canvas.widget);
                             crate::ui::gtk::common::dialog::show_warning(
                                 &t!("Out of limits warning"),
                                 &t!("The generated G-code contains coordinates outside the machine working area (Negative values). Review the path before sending it to the machine."),
+                                parent.as_ref(),
+                            );
+                        }
+
+                        if has_arc_notice {
+                            let parent = crate::ui::gtk::file_dialog::parent_window(&canvas.widget);
+                            crate::ui::gtk::common::dialog::show_warning(
+                                &t!("Arc centers outside work area"),
+                                &t!("Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."),
                                 parent.as_ref(),
                             );
                         }
