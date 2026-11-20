@@ -1319,6 +1319,9 @@ msgstr "G-Code exportado:"
 msgid "Export Failed"
 msgstr "Falha na exportação"
 
+msgid "G-code processing failed"
+msgstr "Falha ao processar o G-code"
+
 msgid "Export SVG"
 msgstr "Exportar SVG"
 
@@ -3012,6 +3015,18 @@ msgstr "Comprimento do segmento de arco (mm)"
 
 msgid "Length of arc segments for arc-to-line expansion"
 msgstr "Comprimento dos segmentos de arco para a expansão de arcos em linhas"
+
+msgid "Linearize Arcs"
+msgstr "Linearizar arcos"
+
+msgid "Convert short arcs to linear moves"
+msgstr "Converter arcos curtos em movimentos lineares"
+
+msgid "Minimum Arc Length (mm)"
+msgstr "Comprimento mínimo do arco (mm)"
+
+msgid "Linearize arcs with a radius or chord below this length"
+msgstr "Linearizar arcos cujo raio ou corda seja menor que este comprimento"
 
 msgid "Max Line Length"
 msgstr "Comprimento máximo da linha"

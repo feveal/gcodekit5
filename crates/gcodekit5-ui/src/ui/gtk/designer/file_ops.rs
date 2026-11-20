@@ -893,6 +893,24 @@ impl DesignerView {
                             );
                         }
 
+                        let gcode = match super::linearize_generated_gcode(
+                            &gcode,
+                            settings_persistence_for_limits.as_ref(),
+                        ) {
+                            Ok(gcode) => gcode,
+                            Err(reason) => {
+                                status_label.set_text(&t!("G-code processing failed"));
+                                let parent =
+                                    crate::ui::gtk::file_dialog::parent_window(&canvas.widget);
+                                crate::ui::gtk::common::dialog::show_warning(
+                                    &t!("G-code processing failed"),
+                                    &reason,
+                                    parent.as_ref(),
+                                );
+                                return;
+                            }
+                        };
+
                         match std::fs::write(&path, gcode) {
                             Ok(_) => {
                                 status_label.set_text(&format!(

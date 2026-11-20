@@ -33,6 +33,7 @@ use crate::ui::gtk::machine_control::continuous_jog::{ContinuousJogState, numpad
 use crate::ui::gtk::machine_control::direct_sender::{DirectSender, JobOutcome, SenderEvent};
 use crate::ui::gtk::machine_control::grbl_stream::{
     format_probe_move, jog_step_presets, nearest_jog_step_preset, parse_jog_feed,
+    prepare_program_with_arc_linearization,
 };
 use crate::ui::gtk::machine_control::status_report::QuickProbeState;
 use crate::ui::gtk::status_bar::StatusBar;
@@ -3054,22 +3055,42 @@ impl MachineControlView {
         self.update_job_controls();
     }
 
-    /// Returns the job content to stream: comments handled and line length
-    /// checked per Preferences > File Processing, and prefixed with `G90` when a
-    /// failed quick probe left the controller in incremental mode.
+    /// Returns the job content to stream after applying file-processing
+    /// preferences, and prefixes `G90` if a failed quick probe left the
+    /// controller in incremental mode.
     ///
     /// # Errors
-    /// Returns a message when a line is longer than the configured maximum.
+    /// Returns a message when a prepared line is too long or an arc would
+    /// exceed the segment limit.
     fn prepare_job_content(&self, content: String) -> Result<String, String> {
-        let (preserve_comments, max_line_length) = match &self.settings_controller {
+        let (
+            preserve_comments,
+            max_line_length,
+            linearize_arcs,
+            minimum_arc_length,
+            arc_segment_length,
+        ) = match &self.settings_controller {
             Some(controller) => {
                 let p = controller.persistence.borrow();
                 let file = &p.config().file_processing;
-                (file.preserve_comments, file.max_line_length as usize)
+                (
+                    file.preserve_comments,
+                    file.max_line_length as usize,
+                    file.linearize_arcs,
+                    file.minimum_arc_length,
+                    file.arc_segment_length,
+                )
             }
-            None => (true, 0),
+            None => (true, 0, false, 0.5, 0.5),
         };
-        let content = grbl_stream::prepare_program(&content, preserve_comments, max_line_length)?;
+        let content = prepare_program_with_arc_linearization(
+            &content,
+            preserve_comments,
+            max_line_length,
+            linearize_arcs,
+            minimum_arc_length,
+            arc_segment_length,
+        )?;
         Ok(
             if self.quick_probe.get() == QuickProbeState::NeedsAbsoluteRestore {
                 self.quick_probe.set(QuickProbeState::Idle);

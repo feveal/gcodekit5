@@ -24,6 +24,8 @@ pub struct ToolpathToGcode {
     pub is_laser_2d: bool,
     /// Minimum distance between points for laser mode (mm)
     pub min_point_distance: f64,
+    /// Decimal places used for coordinates in generated G-code.
+    coordinate_precision: usize,
     /// Tolerance for curve simplification (Ramer-Douglas-Peucker)
     pub curve_simplification_tolerance: f64,
     /// Machine Limits
@@ -49,6 +51,7 @@ impl ToolpathToGcode {
             num_axes: 3,
             is_laser_2d: false,
             min_point_distance: 0.1,
+            coordinate_precision: 3,
             curve_simplification_tolerance: 0.05,
             machine_limits: None,
             continuous_z_between_passes: false,
@@ -71,6 +74,7 @@ impl ToolpathToGcode {
             num_axes: 3,
             is_laser_2d: false,
             min_point_distance: 0.1,
+            coordinate_precision: 3,
             curve_simplification_tolerance: 0.05,
             machine_limits: None,
             continuous_z_between_passes: false,
@@ -82,6 +86,12 @@ impl ToolpathToGcode {
     /// Activate 2D laser mode
     pub fn with_laser_2d(mut self) -> Self {
         self.is_laser_2d = true;
+        self
+    }
+
+    /// Set the number of decimal places used for G-code coordinates.
+    pub fn with_coordinate_precision(mut self, precision: usize) -> Self {
+        self.coordinate_precision = precision;
         self
     }
 
@@ -291,18 +301,16 @@ impl ToolpathToGcode {
         gcode
     }
 
-    /// Formats a coordinate to 3 decimals (micrometres). Two decimals are not
-    /// enough for arcs: GRBL rejects an arc whose start and end radii differ
-    /// by more than 0.005 mm (error:33), and 0.01 mm rounding of X, Y, I and J
-    /// together can exceed that on small radii.
+    /// Formats a coordinate using the configured number of decimal places.
     fn fmt_coord(&self, value: f64) -> String {
-        format!("{:.3}", value)
+        format!("{:.*}", self.coordinate_precision, value)
     }
 
     /// Rounds a value the way [`Self::fmt_coord`] prints it, so arc centre
     /// offsets can be taken from the position the controller actually has.
-    fn round_coord(value: f64) -> f64 {
-        (value * 1000.0).round() / 1000.0
+    fn round_coord(&self, value: f64) -> f64 {
+        let scale = 10_f64.powi(self.coordinate_precision as i32);
+        (value * scale).round() / scale
     }
 
     /// Helper para obtener prefijo de línea
@@ -610,8 +618,8 @@ impl ToolpathToGcode {
                         if let Some(center) = segment.center {
                             // I/J are relative to the arc start as the controller
                             // knows it: the previous endpoint as printed (rounded).
-                            let i = center.x - Self::round_coord(segment.start.x);
-                            let j = center.y - Self::round_coord(segment.start.y);
+                            let i = center.x - self.round_coord(segment.start.x);
+                            let j = center.y - self.round_coord(segment.start.y);
                             let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW {
                                 "G02"
                             } else {

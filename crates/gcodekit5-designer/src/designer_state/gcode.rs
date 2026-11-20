@@ -211,6 +211,7 @@ impl DesignerState {
             MachineMode::Laser2D => {
                 gcode_gen = gcode_gen
                     .with_laser_2d()
+                    .with_coordinate_precision(4)
                     .with_curve_tolerance(0.05)
                     .with_min_point_distance(0.15);
             }

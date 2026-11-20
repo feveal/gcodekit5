@@ -57,6 +57,26 @@ pub(crate) fn designer_machine_limits(
     )
 }
 
+fn linearize_generated_gcode(
+    content: &str,
+    settings: Option<&Shared<gcodekit5_settings::SettingsPersistence>>,
+) -> Result<String, String> {
+    let Some(settings) = settings else {
+        return Ok(content.to_string());
+    };
+    let settings = settings.borrow();
+    let file = &settings.config().file_processing;
+    if !file.linearize_arcs {
+        return Ok(content.to_string());
+    }
+
+    crate::ui::gtk::machine_control::grbl_stream::linearize_program_for_display(
+        content,
+        file.minimum_arc_length,
+        file.arc_segment_length,
+    )
+}
+
 // Complex type due to GTK widget and callback fields.
 #[allow(clippy::type_complexity)]
 pub struct DesignerView {
@@ -679,9 +699,26 @@ impl DesignerView {
                 match image_engraver::ImageEngraver::from_raster_image(&raster_image, params) {
                     Ok(engraver) => match engraver.generate_gcode() {
                         Ok(gcode) => {
-                            status_label_gen.set_text(&t!("G-Code generated for image"));
-                            if let Some(callback) = on_gen.borrow().as_ref() {
-                                callback(gcode);
+                            match linearize_generated_gcode(&gcode, Some(&settings_for_limits)) {
+                                Ok(gcode) => {
+                                    status_label_gen
+                                        .set_text(&t!("G-Code generated for image"));
+                                    if let Some(callback) = on_gen.borrow().as_ref() {
+                                        callback(gcode);
+                                    }
+                                }
+                                Err(reason) => {
+                                    status_label_gen
+                                        .set_text(&t!("G-code processing failed"));
+                                    let parent = crate::ui::gtk::file_dialog::parent_window(
+                                        &canvas_gen.widget,
+                                    );
+                                    crate::ui::gtk::common::dialog::show_warning(
+                                        &t!("G-code processing failed"),
+                                        &reason,
+                                        parent.as_ref(),
+                                    );
+                                }
                             }
                         }
                         Err(e) => {
@@ -776,6 +813,21 @@ impl DesignerView {
                         parent.as_ref(),
                     );
                 }
+
+                let gcode = match linearize_generated_gcode(&gcode, Some(&settings_for_limits)) {
+                    Ok(gcode) => gcode,
+                    Err(reason) => {
+                        status_label_gen.set_text(&t!("G-code processing failed"));
+                        let parent =
+                            crate::ui::gtk::file_dialog::parent_window(&canvas_gen.widget);
+                        crate::ui::gtk::common::dialog::show_warning(
+                            &t!("G-code processing failed"),
+                            &reason,
+                            parent.as_ref(),
+                        );
+                        return;
+                    }
+                };
 
                 status_label_gen.set_text(&t!("G-Code generated"));
 

@@ -423,6 +423,28 @@ impl SettingsPersistence {
             .with_category(SettingsCategory::FileProcessing),
         );
 
+        dialog.add_setting(
+            Setting::new(
+                "linearize_arcs",
+                t!("Linearize Arcs"),
+                SettingValue::Boolean(file.linearize_arcs),
+            )
+            .with_description(t!("Convert short arcs to linear moves"))
+            .with_category(SettingsCategory::FileProcessing),
+        );
+
+        dialog.add_setting(
+            Setting::new(
+                "minimum_arc_length",
+                t!("Minimum Arc Length (mm)"),
+                SettingValue::Float(file.minimum_arc_length),
+            )
+            .with_description(t!(
+                "Linearize arcs with a radius or chord below this length"
+            ))
+            .with_category(SettingsCategory::FileProcessing),
+        );
+
         // Arc Segment Length
         dialog.add_setting(
             Setting::new(
@@ -842,6 +864,18 @@ impl SettingsPersistence {
             && let Ok(value) = setting.value.as_str().parse::<bool>()
         {
             self.config.file_processing.preserve_comments = value;
+        }
+
+        if let Some(setting) = dialog.get_setting("linearize_arcs")
+            && let Ok(value) = setting.value.as_str().parse::<bool>()
+        {
+            self.config.file_processing.linearize_arcs = value;
+        }
+
+        if let Some(setting) = dialog.get_setting("minimum_arc_length")
+            && let Ok(value) = setting.value.as_str().parse::<f64>()
+        {
+            self.config.file_processing.minimum_arc_length = value;
         }
 
         if let Some(setting) = dialog.get_setting("arc_segment_length")

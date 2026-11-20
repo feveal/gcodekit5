@@ -12,6 +12,7 @@ use gtk4::{
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, ComboRow, PreferencesGroup, PreferencesPage, PreferencesRow};
+use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::error;
 
@@ -115,9 +116,20 @@ impl SettingsWindow {
         let page = PreferencesPage::builder().title(title).build();
         let group = PreferencesGroup::builder().title(title).build();
 
-        let settings = self.controller.get_settings_for_ui(Some(category));
+        let mut settings = self.controller.get_settings_for_ui(Some(category.clone()));
+        if category == SettingsCategory::FileProcessing {
+            settings.sort_by_key(|setting| match setting.id.as_str() {
+                "preserve_comments" => 0,
+                "linearize_arcs" => 1,
+                "minimum_arc_length" => 2,
+                "arc_segment_length" => 3,
+                "max_line_length" => 4,
+                _ => 5,
+            });
+        }
+        let minimum_arc_entry = Rc::new(RefCell::new(None));
         for setting in settings {
-            let row = self.create_setting_row(&setting);
+            let row = self.create_setting_row(&setting, minimum_arc_entry.clone());
             group.add(&row);
         }
 
@@ -133,7 +145,11 @@ impl SettingsWindow {
         self.notebook.append_page(&scroller, Some(&tab_label));
     }
 
-    fn create_setting_row(&self, setting: &SettingUiModel) -> PreferencesRow {
+    fn create_setting_row(
+        &self,
+        setting: &SettingUiModel,
+        minimum_arc_entry: Rc<RefCell<Option<Entry>>>,
+    ) -> PreferencesRow {
         let controller = self.controller.clone();
         let id = setting.id.clone();
 
@@ -151,9 +167,14 @@ impl SettingsWindow {
 
                 let id_clone = id.clone();
                 let controller_clone = controller.clone();
-
+                let minimum_arc_entry_clone = minimum_arc_entry.clone();
                 switch.connect_state_set(move |_, state| {
                     controller_clone.update_setting(&id_clone, &state.to_string());
+                    if id_clone == "linearize_arcs"
+                        && let Some(entry) = minimum_arc_entry_clone.borrow().as_ref()
+                    {
+                        entry.set_sensitive(state);
+                    }
                     glib::Propagation::Proceed
                 });
 
@@ -244,6 +265,15 @@ impl SettingsWindow {
                     .valign(Align::Center)
                     .width_chars(20)
                     .build();
+                if id == "minimum_arc_length" {
+                    let enabled = controller
+                        .dialog
+                        .borrow()
+                        .get_setting("linearize_arcs")
+                        .is_some_and(|linearize| linearize.value.as_str() == "true");
+                    entry.set_sensitive(enabled);
+                    *minimum_arc_entry.borrow_mut() = Some(entry.clone());
+                }
 
                 let id_clone = id.clone();
                 let controller_clone = controller.clone();

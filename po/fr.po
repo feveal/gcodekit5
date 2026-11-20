@@ -1330,6 +1330,9 @@ msgstr "G-code exporté :"
 msgid "Export Failed"
 msgstr "Échec de l'export"
 
+msgid "G-code processing failed"
+msgstr "Échec du traitement du G-code"
+
 msgid "Export SVG"
 msgstr "Exporter en SVG"
 
@@ -3024,6 +3027,18 @@ msgstr "Longueur du segment d'arc (mm)"
 
 msgid "Length of arc segments for arc-to-line expansion"
 msgstr "Longueur des segments d’arc pour le développement d’arcs en segments linéaires"
+
+msgid "Linearize Arcs"
+msgstr "Linéariser les arcs"
+
+msgid "Convert short arcs to linear moves"
+msgstr "Convertir les arcs courts en mouvements linéaires"
+
+msgid "Minimum Arc Length (mm)"
+msgstr "Longueur minimale d’arc (mm)"
+
+msgid "Linearize arcs with a radius or chord below this length"
+msgstr "Linéariser les arcs dont le rayon ou la corde est inférieur à cette longueur"
 
 msgid "Max Line Length"
 msgstr "Longueur maximale de ligne"
