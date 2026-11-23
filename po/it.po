@@ -2930,6 +2930,9 @@ msgstr "Maiusc+tasto sinistro+trascina: sposta"
 msgid "Mouse wheel: Zoom+/-"
 msgstr "Rotellina: zoom +/-"
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr "Ctrl+rotellina: zoom rapido +/-"
+
 msgid "Left Button+Drag: Orbit"
 msgstr "Tasto sinistro+trascina: orbita"
 

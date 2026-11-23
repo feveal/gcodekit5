@@ -2930,6 +2930,9 @@ msgstr "Shift+botón izq.+arrastrar: Encuadre"
 msgid "Mouse wheel: Zoom+/-"
 msgstr "Rueda del Ratón: Zoom +/-"
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr "Ctrl+Rueda ratón: Zoom rápido+/-"
+
 msgid "Left Button+Drag: Orbit"
 msgstr "Botón izq.+arrastrar: Orbita"
 
@@ -3047,4 +3050,5 @@ msgstr "Centros de arco fuera del área de trabajo"
 
 msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
 msgstr "Algunos arcos tienen los centros situados fuera de los límites de la máquina, lo que puede provocar que el controlador se detenga en curvas cerradas. Si la máquina se detiene, aumente la «Longitud del segmento de arco» en las Preferencias."
+
 

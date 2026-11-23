@@ -2851,6 +2851,9 @@ msgstr ""
 msgid "Mouse wheel: Zoom+/-"
 msgstr ""
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr ""
+
 msgid "Left Button+Drag: Orbit"
 msgstr ""
 

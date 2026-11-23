@@ -2934,6 +2934,9 @@ msgstr "Maj+bouton gauche+glisser : déplacer"
 msgid "Mouse wheel: Zoom+/-"
 msgstr "Molette : zoom +/-"
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr "Ctrl+molette : zoom rapide +/-"
+
 msgid "Left Button+Drag: Orbit"
 msgstr "Bouton gauche+glisser : orbite"
 

@@ -2922,6 +2922,9 @@ msgstr "Shift+botão esquerdo+arrastar: deslocar"
 msgid "Mouse wheel: Zoom+/-"
 msgstr "Roda do rato: zoom +/-"
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr "Ctrl+roda do rato: zoom rápido +/-"
+
 msgid "Left Button+Drag: Orbit"
 msgstr "Botão esquerdo+arrastar: orbitar"
 

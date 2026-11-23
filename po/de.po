@@ -2926,6 +2926,9 @@ msgstr "Umschalt+Linke Taste+Ziehen: Verschieben"
 msgid "Mouse wheel: Zoom+/-"
 msgstr "Mausrad: Zoom +/-"
 
+msgid "Ctrl+Mouse wheel: Fast Zoom+/-"
+msgstr "Strg+Mausrad: Schnellzoom +/-"
+
 msgid "Left Button+Drag: Orbit"
 msgstr "Linke Taste+Ziehen: Drehen"
 
