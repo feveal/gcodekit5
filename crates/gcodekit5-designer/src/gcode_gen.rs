@@ -569,18 +569,36 @@ impl ToolpathToGcode {
 
                     let line_prefix = self.get_line_prefix(line_number);
 
-                    let is_small_arc = if let Some(center) = segment.center {
-                        let i = center.x - segment.start.x;
-                        let j = center.y - segment.start.y;
-                        let radius = (i * i + j * j).sqrt();
+                    // Posición real desde la que parte el arco en el G-code impreso
+                    let (start_x, start_y) = current_xy.unwrap_or((
+                        self.round_coord(segment.start.x),
+                        self.round_coord(segment.start.y),
+                    ));
+                    let end_x = self.round_coord(segment.end.x);
+                    let end_y = self.round_coord(segment.end.y);
+
+                    let valid_arc_offsets = segment.center.and_then(|center| {
+                        let i = self.round_coord(center.x - start_x);
+                        let j = self.round_coord(center.y - start_y);
                         let chord_len = segment.start.distance_to(&segment.end);
 
-                        // Si el radio o la longitud del tramo son menores que arc_segment_length,
-                        // emitir como G01 para evitar errores de redondeo/bloqueos en el controlador.
-                        radius < self.arc_segment_length || chord_len < self.arc_segment_length
-                    } else {
-                        true // Sin centro, tratar como pequeño
-                    };
+                        // Centro real que calculará el controlador GRBL
+                        let cx = start_x + i;
+                        let cy = start_y + j;
+                        let r_start = (i * i + j * j).sqrt();
+                        let r_end = ((end_x - cx).powi(2) + (end_y - cy).powi(2)).sqrt();
+
+                        let is_small = r_start < self.arc_segment_length
+                            || (chord_len > 1e-6 && chord_len < self.arc_segment_length);
+                        // GRBL tolera ~0.005 mm; usamos 0.002 mm como margen seguro
+                        let radius_mismatch = (r_start - r_end).abs() > 0.002;
+
+                        if is_small || radius_mismatch {
+                            None
+                        } else {
+                            Some((i, j))
+                        }
+                    });
 
                     let feed_rate_cmd =
                         if last_feed_rate.is_none_or(|fr| (fr - segment.feed_rate).abs() > 0.1) {
@@ -590,8 +608,42 @@ impl ToolpathToGcode {
                             String::new()
                         };
 
-                    if is_small_arc {
-                        // Arco pequeño → convertir a línea recta
+                    if let Some((i, j)) = valid_arc_offsets {
+                        // Arco geométricamente válido → emitir G02/G03
+                        let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW {
+                            "G02"
+                        } else {
+                            "G03"
+                        };
+                        line_g01 = true;
+
+                        if has_z && (target_z - current_z).abs() > 0.001 {
+                            gcode.push_str(&format!(
+                                "{}{} X{} Y{} Z{} I{} J{}{}\n",
+                                line_prefix,
+                                cmd,
+                                self.fmt_coord(segment.end.x),
+                                self.fmt_coord(segment.end.y),
+                                self.fmt_coord(target_z),
+                                self.fmt_coord(i),
+                                self.fmt_coord(j),
+                                feed_rate_cmd
+                            ));
+                            current_z = target_z;
+                        } else {
+                            gcode.push_str(&format!(
+                                "{}{} X{} Y{} I{} J{}{}\n",
+                                line_prefix,
+                                cmd,
+                                self.fmt_coord(segment.end.x),
+                                self.fmt_coord(segment.end.y),
+                                self.fmt_coord(i),
+                                self.fmt_coord(j),
+                                feed_rate_cmd
+                            ));
+                        }
+                    } else {
+                        // Arco pequeño, sin centro o con radios desajustados → emitir G01 seguro
                         if has_z && (target_z - current_z).abs() > 0.001 {
                             gcode.push_str(&format!(
                                 "{}{} X{} Y{} Z{}{}\n",
@@ -613,75 +665,11 @@ impl ToolpathToGcode {
                                 feed_rate_cmd
                             ));
                         }
-                    } else {
-                        // Arco normal → usar G02/G03
-                        if let Some(center) = segment.center {
-                            // I/J are relative to the arc start as the controller
-                            // knows it: the previous endpoint as printed (rounded).
-                            let i = center.x - self.round_coord(segment.start.x);
-                            let j = center.y - self.round_coord(segment.start.y);
-                            let cmd = if segment.segment_type == ToolpathSegmentType::ArcCW {
-                                "G02"
-                            } else {
-                                "G03"
-                            };
-                            // G02/G03 are modal: the next linear move must restate G01,
-                            // otherwise it would be interpreted as another arc.
-                            line_g01 = true;
-
-                            if has_z && (target_z - current_z).abs() > 0.001 {
-                                gcode.push_str(&format!(
-                                    "{}{} X{} Y{} Z{} I{} J{}{}\n",
-                                    line_prefix,
-                                    cmd,
-                                    self.fmt_coord(segment.end.x),
-                                    self.fmt_coord(segment.end.y),
-                                    self.fmt_coord(target_z),
-                                    self.fmt_coord(i),
-                                    self.fmt_coord(j),
-                                    feed_rate_cmd
-                                ));
-                                current_z = target_z;
-                            } else {
-                                gcode.push_str(&format!(
-                                    "{}{} X{} Y{} I{} J{}{}\n",
-                                    line_prefix,
-                                    cmd,
-                                    self.fmt_coord(segment.end.x),
-                                    self.fmt_coord(segment.end.y),
-                                    self.fmt_coord(i),
-                                    self.fmt_coord(j),
-                                    feed_rate_cmd
-                                ));
-                            }
-                        } else {
-                            // Sin centro → fallback a línea
-                            if has_z && (target_z - current_z).abs() > 0.001 {
-                                gcode.push_str(&format!(
-                                    "{}{} X{} Y{} Z{}{}\n",
-                                    line_prefix,
-                                    "G01",
-                                    self.fmt_coord(segment.end.x),
-                                    self.fmt_coord(segment.end.y),
-                                    self.fmt_coord(target_z),
-                                    feed_rate_cmd
-                                ));
-                                current_z = target_z;
-                            } else {
-                                gcode.push_str(&format!(
-                                    "{}{} X{} Y{}{}\n",
-                                    line_prefix,
-                                    "G01",
-                                    self.fmt_coord(segment.end.x),
-                                    self.fmt_coord(segment.end.y),
-                                    feed_rate_cmd
-                                ));
-                            }
-                        }
                     }
 
                     line_number += 10;
-                    current_xy = Some((segment.end.x, segment.end.y));
+                    current_xy = Some((end_x, end_y));
+
                 }
             }
         }
@@ -797,42 +785,6 @@ impl ToolpathToGcode {
         self
     }
 
-    /// Comprueba si algún arco que se vaya a emitir como G02/G03 tiene su centro
-    /// fuera de los límites de la máquina (útil para sugerir ajustar `arc_segment_length`).
-    pub fn has_arc_center_outside_limits(&self, toolpath: &Toolpath) -> bool {
-        const EPS: f64 = 1e-6;
-        let Some(limits) = &self.machine_limits else {
-            return false;
-        };
-        let outside = |p: &Point| {
-            p.x < limits.x_min - EPS
-                || p.x > limits.x_max + EPS
-                || p.y < limits.y_min - EPS
-                || p.y > limits.y_max + EPS
-        };
-
-        toolpath.segments.iter().any(|segment| {
-            if !matches!(
-                segment.segment_type,
-                ToolpathSegmentType::ArcCW | ToolpathSegmentType::ArcCCW
-            ) {
-                return false;
-            }
-            let Some(center) = &segment.center else {
-                return false;
-            };
-
-            // Si este arco se va a convertir en G01 por arc_segment_length, ya no supone riesgo
-            let radius = ((center.x - segment.start.x).powi(2)
-                + (center.y - segment.start.y).powi(2))
-            .sqrt();
-            let chord_len = segment.start.distance_to(&segment.end);
-            let will_be_linear = radius < self.arc_segment_length
-                || (chord_len > 1e-6 && chord_len < self.arc_segment_length);
-
-            !will_be_linear && outside(center)
-        })
-    }
 }
 
 impl Default for ToolpathToGcode {

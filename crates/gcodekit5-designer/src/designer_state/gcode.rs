@@ -21,17 +21,6 @@ const LIMIT_WARNING: &str = ";
 ;
 ";
 
-/// Comment block added when Arc centers outside work area
-const ARC_WARNING: &str = ";
-; ******************************************************************
-; ************* NOTICE: ARC CENTERS OUTSIDE WORK AREA **************
-; ** Some arcs have centers outside machine limits, which may    **
-; ** cause controller stalls on tight curves. If the machine      **
-; ** pauses, increase 'Arc Segment Length' in Preferences.        **
-; ******************************************************************
-;
-";
-
 impl DesignerState {
     fn shape_embedded_laser_use_global(shape: &DrawingObject) -> bool {
         match &shape.shape {
@@ -790,7 +779,7 @@ impl DesignerState {
     pub fn generate_gcode_with_warning_info(
         &mut self,
         machine_limits: Option<MachineLimits>,
-    ) -> (String, bool, bool) {
+    ) -> (String, bool) {
         let mut gcode = String::new();
         let gcode_gen = self.configured_gcode_generator(machine_limits);
         let shape_toolpaths = self.build_shape_toolpaths(&gcode_gen);
@@ -838,22 +827,15 @@ impl DesignerState {
             gcode.push_str(LIMIT_WARNING);
         }
 
-        let has_arc_notice = shape_toolpaths
-            .iter()
-            .flat_map(|(_, tps, _)| tps.iter())
-            .any(|tp| gcode_gen.has_arc_center_outside_limits(tp));
-        if has_arc_notice {
-            gcode.push_str(ARC_WARNING);
-        }
-
         self.emit_shapes_gcode(&mut gcode, &gcode_gen, &shape_toolpaths, header_speed);
 
         gcode.push_str(&gcode_gen.generate_footer());
 
         self.generated_gcode = gcode.clone();
         self.gcode_generated = self.canvas.shape_count() > 0;
-        (gcode, has_violation, has_arc_notice)
+        (gcode, has_violation)
     }
+
 
     /// Generates G-code from the current design.
     pub fn generate_gcode(&mut self, machine_limits: Option<MachineLimits>) -> String {

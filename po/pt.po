@@ -1172,10 +1172,12 @@ msgid "Unsaved changes"
 msgstr "Alterações não guardadas"
 
 msgid "The current design has unsaved changes. Save them before continuing?"
-msgstr "O desenho atual tem alterações não guardadas. Guardá-las antes de continuar?"
+msgstr ""
+"O desenho atual tem alterações não guardadas. Guardá-las antes de continuar?"
 
 msgid "The tool has unsaved changes. Save them before continuing?"
-msgstr "A ferramenta tem alterações não guardadas. Guardá-las antes de continuar?"
+msgstr ""
+"A ferramenta tem alterações não guardadas. Guardá-las antes de continuar?"
 
 msgid "Could not save the tool:"
 msgstr "Não foi possível guardar a ferramenta:"
@@ -1186,8 +1188,11 @@ msgstr "Falha ao eliminar"
 msgid "Could not delete the tool:"
 msgstr "Não foi possível eliminar a ferramenta:"
 
-msgid "The G-code in the editor has unsaved changes. Save them before continuing?"
-msgstr "O G-code no editor tem alterações não guardadas. Guardá-las antes de continuar?"
+msgid ""
+"The G-code in the editor has unsaved changes. Save them before continuing?"
+msgstr ""
+"O G-code no editor tem alterações não guardadas. Guardá-las antes de "
+"continuar?"
 
 msgid "Discard"
 msgstr "Descartar"
@@ -2276,7 +2281,6 @@ msgstr "Desligado"
 msgid "Connect to enable controls."
 msgstr "Ligue para ativar os controlos."
 
-#, rust-format
 msgid ""
 "Connection rejected: active machine is configured as {} but the device "
 "responded as {}. Change the active machine in the Device Manager."
@@ -2309,7 +2313,6 @@ msgstr "Ligado"
 msgid "Connected to"
 msgstr "Ligado a"
 
-#, rust-format
 msgid ""
 "→ Protocol: {}\n"
 "  sender: {}"
@@ -2875,7 +2878,9 @@ msgstr "Inferior esquerdo"
 msgid ""
 "Where on the stock the program's work X0 Y0 is set: the lower-left corner or "
 "the centre of the stock."
-msgstr "Onde fica o X0 Y0 de trabalho do programa no bloco: o canto inferior esquerdo ou o centro do bloco."
+msgstr ""
+"Onde fica o X0 Y0 de trabalho do programa no bloco: o canto inferior "
+"esquerdo ou o centro do bloco."
 
 msgid "Stock XY0 at:"
 msgstr "XY0 do bloco em:"
@@ -2996,7 +3001,9 @@ msgid "Retrieving settings and device info..."
 msgstr "Obtendo configurações e informações do dispositivo..."
 
 msgid "Settings retrieval incomplete (timed out), settings received:"
-msgstr "Leitura das configurações incompleta (tempo esgotado), configurações recebidas:"
+msgstr ""
+"Leitura das configurações incompleta (tempo esgotado), configurações "
+"recebidas:"
 
 msgid "the controller replied"
 msgstr "o controlador respondeu"
@@ -3019,26 +3026,8 @@ msgstr "Comprimento do segmento de arco (mm)"
 msgid "Length of arc segments for arc-to-line expansion"
 msgstr "Comprimento dos segmentos de arco para a expansão de arcos em linhas"
 
-msgid "Linearize Arcs"
-msgstr "Linearizar arcos"
-
-msgid "Convert short arcs to linear moves"
-msgstr "Converter arcos curtos em movimentos lineares"
-
-msgid "Minimum Arc Length (mm)"
-msgstr "Comprimento mínimo do arco (mm)"
-
-msgid "Linearize arcs with a radius or chord below this length"
-msgstr "Linearizar arcos cujo raio ou corda seja menor que este comprimento"
-
 msgid "Max Line Length"
 msgstr "Comprimento máximo da linha"
 
 msgid "Maximum characters per line in output files"
 msgstr "Número máximo de caracteres por linha nos ficheiros de saída"
-
-msgid "Arc centers outside work area"
-msgstr "Centros de arcos fora da área de trabalho"
-
-msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
-msgstr "Alguns arcos possuem centros fora dos limites da máquina, o que pode causar paragens do controlador em curvas apertadas. Se a máquina parar, aumente o 'Comprimento do Segmento de Arco' nas Preferências."

@@ -66,13 +66,10 @@ fn linearize_generated_gcode(
     };
     let settings = settings.borrow();
     let file = &settings.config().file_processing;
-    if !file.linearize_arcs {
-        return Ok(content.to_string());
-    }
 
     crate::ui::gtk::machine_control::grbl_stream::linearize_program_for_display(
         content,
-        file.minimum_arc_length,
+        f64::INFINITY,
         file.arc_segment_length,
     )
 }
@@ -791,7 +788,7 @@ impl DesignerView {
                 };
                 state.set_arc_segment_length(arc_segment_length);
 
-                let (gcode, has_out_of_limits_warning, has_arc_notice) =
+                let (gcode, has_out_of_limits_warning) =
                     state.generate_gcode_with_warning_info(limits);
 
                 drop(state);
@@ -801,15 +798,6 @@ impl DesignerView {
                     crate::ui::gtk::common::dialog::show_warning(
                         &t!("Out of limits warning"),
                         &t!("The generated G-code contains coordinates outside the machine working area (Negative values). Review the path before sending it to the machine."),
-                        parent.as_ref(),
-                    );
-                }
-
-                if has_arc_notice {
-                    let parent = crate::ui::gtk::file_dialog::parent_window(&canvas_gen.widget);
-                    crate::ui::gtk::common::dialog::show_warning(
-                        &t!("Arc centers outside work area"),
-                        &t!("Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."),
                         parent.as_ref(),
                     );
                 }

@@ -12,7 +12,6 @@ use gtk4::{
 };
 use libadwaita::prelude::*;
 use libadwaita::{ActionRow, ComboRow, PreferencesGroup, PreferencesPage, PreferencesRow};
-use std::cell::RefCell;
 use std::rc::Rc;
 use tracing::error;
 
@@ -120,16 +119,13 @@ impl SettingsWindow {
         if category == SettingsCategory::FileProcessing {
             settings.sort_by_key(|setting| match setting.id.as_str() {
                 "preserve_comments" => 0,
-                "linearize_arcs" => 1,
-                "minimum_arc_length" => 2,
-                "arc_segment_length" => 3,
-                "max_line_length" => 4,
-                _ => 5,
+                "arc_segment_length" => 1,
+                "max_line_length" => 2,
+                _ => 3,
             });
         }
-        let minimum_arc_entry = Rc::new(RefCell::new(None));
         for setting in settings {
-            let row = self.create_setting_row(&setting, minimum_arc_entry.clone());
+            let row = self.create_setting_row(&setting);
             group.add(&row);
         }
 
@@ -148,7 +144,6 @@ impl SettingsWindow {
     fn create_setting_row(
         &self,
         setting: &SettingUiModel,
-        minimum_arc_entry: Rc<RefCell<Option<Entry>>>,
     ) -> PreferencesRow {
         let controller = self.controller.clone();
         let id = setting.id.clone();
@@ -167,14 +162,8 @@ impl SettingsWindow {
 
                 let id_clone = id.clone();
                 let controller_clone = controller.clone();
-                let minimum_arc_entry_clone = minimum_arc_entry.clone();
                 switch.connect_state_set(move |_, state| {
                     controller_clone.update_setting(&id_clone, &state.to_string());
-                    if id_clone == "linearize_arcs"
-                        && let Some(entry) = minimum_arc_entry_clone.borrow().as_ref()
-                    {
-                        entry.set_sensitive(state);
-                    }
                     glib::Propagation::Proceed
                 });
 
@@ -265,22 +254,12 @@ impl SettingsWindow {
                     .valign(Align::Center)
                     .width_chars(20)
                     .build();
-                if id == "minimum_arc_length" {
-                    let enabled = controller
-                        .dialog
-                        .borrow()
-                        .get_setting("linearize_arcs")
-                        .is_some_and(|linearize| linearize.value.as_str() == "true");
-                    entry.set_sensitive(enabled);
-                    *minimum_arc_entry.borrow_mut() = Some(entry.clone());
-                }
 
                 let id_clone = id.clone();
                 let controller_clone = controller.clone();
                 entry.connect_changed(move |e| {
                     controller_clone.update_setting(&id_clone, &e.text());
                 });
-
                 row.add_suffix(&entry);
                 row.upcast()
             }

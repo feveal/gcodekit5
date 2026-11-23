@@ -1171,10 +1171,13 @@ msgid "Unsaved changes"
 msgstr "Ungespeicherte Änderungen"
 
 msgid "The current design has unsaved changes. Save them before continuing?"
-msgstr "Das aktuelle Design hat ungespeicherte Änderungen. Vor dem Fortfahren speichern?"
+msgstr ""
+"Das aktuelle Design hat ungespeicherte Änderungen. Vor dem Fortfahren "
+"speichern?"
 
 msgid "The tool has unsaved changes. Save them before continuing?"
-msgstr "Das Werkzeug hat ungespeicherte Änderungen. Vor dem Fortfahren speichern?"
+msgstr ""
+"Das Werkzeug hat ungespeicherte Änderungen. Vor dem Fortfahren speichern?"
 
 msgid "Could not save the tool:"
 msgstr "Das Werkzeug konnte nicht gespeichert werden:"
@@ -1185,8 +1188,11 @@ msgstr "Löschen fehlgeschlagen"
 msgid "Could not delete the tool:"
 msgstr "Das Werkzeug konnte nicht gelöscht werden:"
 
-msgid "The G-code in the editor has unsaved changes. Save them before continuing?"
-msgstr "Der G-Code im Editor hat ungespeicherte Änderungen. Vor dem Fortfahren speichern?"
+msgid ""
+"The G-code in the editor has unsaved changes. Save them before continuing?"
+msgstr ""
+"Der G-Code im Editor hat ungespeicherte Änderungen. Vor dem Fortfahren "
+"speichern?"
 
 msgid "Discard"
 msgstr "Verwerfen"
@@ -2279,7 +2285,6 @@ msgstr "Getrennt"
 msgid "Connect to enable controls."
 msgstr "Verbinden, um die Steuerung zu aktivieren."
 
-#, rust-format
 msgid ""
 "Connection rejected: active machine is configured as {} but the device "
 "responded as {}. Change the active machine in the Device Manager."
@@ -2311,7 +2316,6 @@ msgstr "Verbunden"
 msgid "Connected to"
 msgstr "Verbunden mit"
 
-#, rust-format
 msgid ""
 "→ Protocol: {}\n"
 "  sender: {}"
@@ -2879,7 +2883,9 @@ msgstr "Unten links"
 msgid ""
 "Where on the stock the program's work X0 Y0 is set: the lower-left corner or "
 "the centre of the stock."
-msgstr "Wo auf dem Rohteil der Werkstücknullpunkt X0 Y0 des Programms liegt: an der unteren linken Ecke oder in der Mitte des Rohteils."
+msgstr ""
+"Wo auf dem Rohteil der Werkstücknullpunkt X0 Y0 des Programms liegt: an der "
+"unteren linken Ecke oder in der Mitte des Rohteils."
 
 msgid "Stock XY0 at:"
 msgstr "Rohteil-XY0 bei:"
@@ -2981,7 +2987,6 @@ msgstr "Repetier EEPROM"
 msgid "Tpulley"
 msgstr "Tpulley"
 
-
 msgid "Edit EEPROM Pos"
 msgstr "EEPROM-Position bearbeiten"
 
@@ -3001,7 +3006,9 @@ msgid "Retrieving settings and device info..."
 msgstr "Einstellungen und Geräteinformationen werden abgerufen..."
 
 msgid "Settings retrieval incomplete (timed out), settings received:"
-msgstr "Einstellungen unvollständig abgerufen (Zeitüberschreitung), empfangene Einstellungen:"
+msgstr ""
+"Einstellungen unvollständig abgerufen (Zeitüberschreitung), empfangene "
+"Einstellungen:"
 
 msgid "the controller replied"
 msgstr "die Steuerung antwortete"
@@ -3024,26 +3031,8 @@ msgstr "Bogenabschnittslänge (mm)"
 msgid "Length of arc segments for arc-to-line expansion"
 msgstr "Länge von Bogensegmenten für die Erweiterung von Bögen zu Geraden"
 
-msgid "Linearize Arcs"
-msgstr "Bögen linearisieren"
-
-msgid "Convert short arcs to linear moves"
-msgstr "Kurze Bögen in lineare Bewegungen umwandeln"
-
-msgid "Minimum Arc Length (mm)"
-msgstr "Mindestbogenlänge (mm)"
-
-msgid "Linearize arcs with a radius or chord below this length"
-msgstr "Bögen linearisieren, deren Radius oder Sehne kürzer als dieser Wert ist"
-
 msgid "Max Line Length"
 msgstr "Maximale Zeilenlänge"
 
 msgid "Maximum characters per line in output files"
 msgstr "Maximale Zeichenanzahl pro Zeile in Ausgabedateien"
-
-msgid "Arc centers outside work area"
-msgstr "Bogenmittelpunkte außerhalb des Arbeitsbereichs"
-
-msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
-msgstr "Einige Kreisbögen haben Mittelpunkte außerhalb der Maschinengrenzen, was bei engen Kurven zu einem Stillstand der Steuerung führen kann. Falls die Maschine anhält, erhöhen Sie den Wert für „Kreisbogensegmentlänge“ (Arc Segment Length) in den Einstellungen."

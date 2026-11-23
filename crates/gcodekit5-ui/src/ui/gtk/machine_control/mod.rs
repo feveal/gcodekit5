@@ -3066,8 +3066,6 @@ impl MachineControlView {
         let (
             preserve_comments,
             max_line_length,
-            linearize_arcs,
-            minimum_arc_length,
             arc_segment_length,
         ) = match &self.settings_controller {
             Some(controller) => {
@@ -3076,19 +3074,17 @@ impl MachineControlView {
                 (
                     file.preserve_comments,
                     file.max_line_length as usize,
-                    file.linearize_arcs,
-                    file.minimum_arc_length,
                     file.arc_segment_length,
                 )
             }
-            None => (true, 0, false, 0.5, 0.5),
+            None => (true, 0, 0.5),
         };
         let content = prepare_program_with_arc_linearization(
             &content,
             preserve_comments,
             max_line_length,
-            linearize_arcs,
-            minimum_arc_length,
+            arc_segment_length > 0.0,
+            f64::INFINITY,
             arc_segment_length,
         )?;
         Ok(

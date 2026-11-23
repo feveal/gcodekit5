@@ -39,25 +39,39 @@ fn test_settings_restore_defaults_uses_factory_values() {
 }
 
 #[test]
-fn test_linearize_arcs_settings_default_and_persist() {
+fn test_arc_segment_length_settings_default_and_persist() {
     let mut persistence = SettingsPersistence::new();
-    assert!(!persistence.config().file_processing.linearize_arcs);
-    assert_eq!(persistence.config().file_processing.minimum_arc_length, 0.5);
+    assert_eq!(persistence.config().file_processing.arc_segment_length, 0.5);
 
     let mut dialog = SettingsDialog::new();
     persistence.populate_dialog(&mut dialog);
-    dialog.update_setting("linearize_arcs", SettingValue::Boolean(true));
-    dialog.update_setting("minimum_arc_length", SettingValue::Float(1.25));
+    dialog.update_setting(
+        "arc_segment_length",
+        SettingValue::String("1.25".to_string()),
+    );
     persistence
         .load_from_dialog(&dialog)
         .expect("load settings");
 
-    assert!(persistence.config().file_processing.linearize_arcs);
     assert_eq!(
-        persistence.config().file_processing.minimum_arc_length,
+        persistence.config().file_processing.arc_segment_length,
         1.25
     );
+
+    dialog.update_setting(
+        "arc_segment_length",
+        SettingValue::String("0.0".to_string()),
+    );
+    persistence
+        .load_from_dialog(&dialog)
+        .expect("load zero arc segment length");
+
+    assert_eq!(
+        persistence.config().file_processing.arc_segment_length,
+        0.0
+    );
 }
+
 
 #[test]
 fn test_settings_invalid_numeric_input_is_ignored() {

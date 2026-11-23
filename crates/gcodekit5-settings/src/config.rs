@@ -277,10 +277,6 @@ pub struct FileProcessingSettings {
     pub max_line_length: u32,
     /// Whether to preserve comments
     pub preserve_comments: bool,
-    /// Whether to convert short arcs to linear moves
-    pub linearize_arcs: bool,
-    /// Minimum arc radius or chord length in mm for linearization
-    pub minimum_arc_length: f64,
     /// Default output directory
     pub output_directory: PathBuf,
     /// Number of recent files to track
@@ -299,8 +295,6 @@ impl Default for FileProcessingSettings {
             arc_segment_length: 0.5,
             max_line_length: 256,
             preserve_comments: false,
-            linearize_arcs: false,
-            minimum_arc_length: 0.5,
             output_directory: dirs::home_dir().unwrap_or_else(|| PathBuf::from(".")),
             recent_files_count: 10,
             line_numbers_enabled: false,
@@ -560,15 +554,8 @@ impl Config {
         }
 
         // Validate file processing
-        if self.file_processing.arc_segment_length <= 0.0 {
-            return Err(Error::other("Arc segment length must be > 0".to_string()));
-        }
-
-        if self.file_processing.linearize_arcs
-            && (!self.file_processing.minimum_arc_length.is_finite()
-                || self.file_processing.minimum_arc_length <= 0.0)
-        {
-            return Err(Error::other("Minimum arc length must be > 0".to_string()));
+        if self.file_processing.arc_segment_length < 0.0 {
+            return Err(Error::other("Arc segment length must be >= 0".to_string()));
         }
 
         if self.file_processing.max_line_length == 0 {

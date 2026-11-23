@@ -2948,26 +2948,8 @@ msgstr ""
 msgid "Length of arc segments for arc-to-line expansion"
 msgstr ""
 
-msgid "Linearize Arcs"
-msgstr ""
-
-msgid "Convert short arcs to linear moves"
-msgstr ""
-
-msgid "Minimum Arc Length (mm)"
-msgstr ""
-
-msgid "Linearize arcs with a radius or chord below this length"
-msgstr ""
-
 msgid "Max Line Length"
 msgstr ""
 
 msgid "Maximum characters per line in output files"
-msgstr ""
-
-msgid "Arc centers outside work area"
-msgstr ""
-
-msgid "Some arcs have centers outside machine limits, which may cause controller stalls on tight curves. If the machine pauses, increase 'Arc Segment Length' in Preferences."
 msgstr ""
