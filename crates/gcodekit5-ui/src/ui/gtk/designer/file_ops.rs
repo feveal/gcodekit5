@@ -524,13 +524,23 @@ impl DesignerView {
         let status_label = self.status_label.clone();
         let settings_persistence_clone = self.settings_persistence.clone();
         let toolbox = self.toolbox.clone();
+        let parent_for_cursor = parent.clone();
         // Open dialogs take no file name (`set_initial_name` only applies to Save).
 
         dialog.pick_open(parent.as_ref(), move |file| {
                     if let Some(path) = file.path() {
+                        let previous_window_cursor = parent_for_cursor
+                            .as_ref()
+                            .and_then(|window| window.cursor());
+                        let previous_canvas_cursor = canvas.widget.cursor();
+                        if let Some(window) = parent_for_cursor.as_ref() {
+                            window.set_cursor_from_name(Some("wait"));
+                        }
+                        canvas.widget.set_cursor_from_name(Some("wait"));
 
-
-
+                        gtk4::glib::timeout_add_local_once(
+                            std::time::Duration::from_millis(100),
+                            move || {
 
                         // --- SAVE THE PATH ON IMPORT ---
                         if let Some(ref settings) = settings_persistence_clone
@@ -707,6 +717,12 @@ impl DesignerView {
                                 ));
                             }
                         }
+                        canvas.widget.set_cursor(previous_canvas_cursor.as_ref());
+                        if let Some(window) = parent_for_cursor.as_ref() {
+                            window.set_cursor(previous_window_cursor.as_ref());
+                        }
+                            },
+                        );
                     }
                 });
     }
